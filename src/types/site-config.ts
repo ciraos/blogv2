@@ -11,7 +11,7 @@ export interface SiteConfig {
     ABOUT_LINK: string;
     API_URL: string;
     APPEARANCE_SKIN: string;
-    APPEARANCE_TOKENS: Record<string, any>;
+    APPEARANCE_TOKENS: Record<string, unknown>;
     APP_NAME: string;
     APP_VERSION: string;
     BUILTIN_DIRECT_SERVE_EXTS: string;
@@ -23,7 +23,7 @@ export interface SiteConfig {
     CUSTOM_JS: string;
     CUSTOM_POST_BOTTOM_HTML: string;
     CUSTOM_POST_TOP_HTML: string;
-    CUSTOM_SIDEBAR: any[];
+    CUSTOM_SIDEBAR: unknown[];
     DEFAULT_BIG_PARAM: string;
     DEFAULT_GRAVATAR_TYPE: string;
     DEFAULT_THEME_MODE: "light" | "dark";
@@ -337,7 +337,7 @@ export interface EquipmentConfig {
         tip: string;
         title: string;
     };
-    list: any[];
+    list: unknown[];
 }
 
 // ===================== 即刻短文 ESSAY =====================
@@ -445,7 +445,7 @@ export interface HeaderConfig {
     menu: HeaderMenuGroup[];
     nav: {
         clock: boolean;
-        menu: any[];
+        menu: unknown[];
         travelling: boolean;
     };
 }

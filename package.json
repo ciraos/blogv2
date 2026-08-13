@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "copy": "",
-    "deploy": ""
+    "copy": "cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
+    "deploy": "pnpm i && pnpm build && pnpm copy && export PORT=3126 && node .next/standalone/server.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

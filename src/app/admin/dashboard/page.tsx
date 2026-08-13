@@ -8,7 +8,6 @@ import { ApiError, getBasicStatisticsApi, getUserInfoApi } from "@/lib/api";
 import type { BasicStatistics } from "@/lib/api";
 import type { LoginUserInfo } from "@/types/auth";
 
-const site_url = process.env.NEXT_PUBLIC_SITE_URL;
 const api_url = process.env.NEXT_PUBLIC_API_URL;
 
 export async function generateMetadata(): Promise<Metadata> {

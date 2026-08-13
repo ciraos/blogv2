@@ -144,11 +144,14 @@ export function ChartAreaInteractive() {
   const isMobile = useIsMobile()
   const [timeRange, setTimeRange] = React.useState("90d")
 
-  React.useEffect(() => {
+  // 设备切换时调整默认时间范围（渲染期调整状态，替代 setState-in-effect）
+  const [prevIsMobile, setPrevIsMobile] = React.useState(isMobile)
+  if (prevIsMobile !== isMobile) {
+    setPrevIsMobile(isMobile)
     if (isMobile) {
       setTimeRange("7d")
     }
-  }, [isMobile])
+  }
 
   const filteredData = chartData.filter((item) => {
     const date = new Date(item.date)

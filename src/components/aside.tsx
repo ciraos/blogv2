@@ -1,8 +1,6 @@
-import Image from "next/image";
 // import ImageAvatar from "@/components/ImageAvatar";
 import { SiteConfigResponse } from "@/types/site-config";
 
-const site_url = process.env.NEXT_PUBLIC_SITE_URL;
 const api_url = process.env.NEXT_PUBLIC_API_URL;
 
 export async function getSiteConfigs() {
@@ -18,8 +16,6 @@ export async function getSiteConfigs() {
 }
 
 export default async function Aside() {
-    const config = await getSiteConfigs();
-
     return (
         <>
             <div className="aside w-[26%] pl-3.75">

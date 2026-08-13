@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import "../globals.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { SiteConfigResponse } from "@/types/site-config";
@@ -30,8 +29,6 @@ export async function getSiteConfigs() {
 }
 
 export default async function AuthLayout({ children }: Readonly<{ children: React.ReactNode; }>) {
-    const config = await getSiteConfigs();
-
     return (
         <html data-theme="light" lang="zh-CN" suppressHydrationWarning>
             <body className="">
