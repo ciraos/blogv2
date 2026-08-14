@@ -1,7 +1,8 @@
 "use client";
-import Link from "next/link";
 
-import { SquareTerminal } from "lucide-react"
+import Link from "next/link";
+import { Menu, SquareTerminal } from "lucide-react";
+
 import {
     NavigationMenu,
     NavigationMenuContent,
@@ -9,101 +10,96 @@ import {
     NavigationMenuLink,
     NavigationMenuList,
     NavigationMenuTrigger,
-    navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
+import {
+    Sheet,
+    SheetClose,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet";
 
-const components: { title: string; href: string; description: string }[] = [
-    {
-        title: "Alert Dialog",
-        href: "/docs/primitives/alert-dialog",
-        description:
-            "A modal dialog that interrupts the user with important content and expects a response.",
-    },
-    {
-        title: "Hover Card",
-        href: "/docs/primitives/hover-card",
-        description:
-            "For sighted users to preview content available behind a link.",
-    },
-    {
-        title: "Progress",
-        href: "/docs/primitives/progress",
-        description:
-            "Displays an indicator showing the completion progress of a task, typically displayed as a progress bar.",
-    },
-    {
-        title: "Scroll-area",
-        href: "/docs/primitives/scroll-area",
-        description: "Visually or semantically separates content.",
-    },
-    {
-        title: "Tabs",
-        href: "/docs/primitives/tabs",
-        description:
-            "A set of layered sections of content—known as tab panels—that are displayed one at a time.",
-    },
-    {
-        title: "Tooltip",
-        href: "/docs/primitives/tooltip",
-        description:
-            "A popup that displays information related to an element when the element receives keyboard focus or the mouse hovers over it.",
-    },
-]
+import type { HeaderMenuGroup, HeaderMenuItem } from "@/types/site-config";
 
-export default function Header() {
+interface HeaderProps {
+    /** 站点配置中的导航菜单（header.menu） */
+    menu?: HeaderMenuGroup[];
+    /** 站点名称 */
+    appName?: string;
+}
+
+export default function Header({ menu = [], appName = "博客" }: HeaderProps) {
     return (
         <>
             <div className="header w-full max-w-300 h-12 mx-auto px-5 flex items-center justify-between bg-white rounded-xl shadow-md hover:shadow-lg">
-                <Link href="/" className="hover:underline">葱苓小筑</Link>
-                <div className="menu">
-                    <NavigationMenu>
-                        <NavigationMenuList>
-                            <NavigationMenuItem>
-                                <NavigationMenuTrigger>文章</NavigationMenuTrigger>
-                                <NavigationMenuContent>
-                                    <ul className="w-96">
-                                        <ListItem href="/archives" title="归档">
-                                            查看文章归档
-                                        </ListItem>
-                                        <ListItem href="/categories" title="分类">
-                                            查看文章分类
-                                        </ListItem>
-                                        <ListItem href="/tags" title="标签">
-                                            查看文章标签
-                                        </ListItem>
-                                    </ul>
-                                </NavigationMenuContent>
-                            </NavigationMenuItem>
-                            <NavigationMenuItem className="hidden md:flex">
-                                <NavigationMenuTrigger>Components</NavigationMenuTrigger>
-                                <NavigationMenuContent>
-                                    <ul className="grid w-100 gap-2 md:w-125 md:grid-cols-2 lg:w-150px">
-                                        {components.map((component) => (
-                                            <ListItem
-                                                key={component.title}
-                                                title={component.title}
-                                                href={component.href}
-                                            >
-                                                {component.description}
-                                            </ListItem>
-                                        ))}
-                                    </ul>
-                                </NavigationMenuContent>
-                            </NavigationMenuItem>
-                            <NavigationMenuItem>
-                                <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-                                    <Link href="/link">友链</Link>
-                                </NavigationMenuLink>
-                            </NavigationMenuItem>
-                            <NavigationMenuItem>
-                                <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-                                    <Link href="/docs">Docs</Link>
-                                </NavigationMenuLink>
-                            </NavigationMenuItem>
-                        </NavigationMenuList>
-                    </NavigationMenu>
-                </div>
-                <div className="header-buttons flex items-center justify-around">
+                <Link href="/" className="hover:underline">{appName}</Link>
+
+                {/* 桌面端导航（≥768px） */}
+                {menu.length > 0 && (
+                    <div className="hidden md:block">
+                        <NavigationMenu>
+                            <NavigationMenuList>
+                                {menu.map((group) => (
+                                    <NavigationMenuItem key={group.title}>
+                                        <NavigationMenuTrigger>{group.title}</NavigationMenuTrigger>
+                                        <NavigationMenuContent>
+                                            <ul className="w-52 p-1">
+                                                {group.items.map((item) => (
+                                                    <ListItem key={item.path + item.title} item={item} />
+                                                ))}
+                                            </ul>
+                                        </NavigationMenuContent>
+                                    </NavigationMenuItem>
+                                ))}
+                            </NavigationMenuList>
+                        </NavigationMenu>
+                    </div>
+                )}
+
+                <div className="flex items-center justify-around gap-1">
+                    {/* 移动端汉堡菜单（<768px） */}
+                    <Sheet>
+                        <SheetTrigger asChild>
+                            <button
+                                className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
+                                aria-label="打开菜单"
+                            >
+                                <Menu className="size-5" />
+                            </button>
+                        </SheetTrigger>
+                        <SheetContent side="right" className="w-72 sm:max-w-sm">
+                            <SheetHeader>
+                                <SheetTitle>{appName}</SheetTitle>
+                            </SheetHeader>
+                            <nav className="mt-6 space-y-6 overflow-y-auto px-1 pb-6">
+                                {menu.map((group) => (
+                                    <div key={group.title}>
+                                        <h3 className="px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                            {group.title}
+                                        </h3>
+                                        <ul className="mt-2 space-y-0.5">
+                                            {group.items.map((item) => (
+                                                <li key={item.path + item.title}>
+                                                    <SheetClose asChild>
+                                                        <Link
+                                                            href={item.path}
+                                                            target={item.isExternal ? "_blank" : undefined}
+                                                            rel={item.isExternal ? "noopener noreferrer nofollow" : undefined}
+                                                            className="flex items-center gap-2.5 rounded-lg px-2 py-2.5 text-sm transition-colors hover:bg-muted"
+                                                        >
+                                                            {item.icon && <span className={item.icon} aria-hidden="true" />}
+                                                            {item.title}
+                                                        </Link>
+                                                    </SheetClose>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ))}
+                            </nav>
+                        </SheetContent>
+                    </Sheet>
                     <SquareTerminal />
                 </div>
             </div>
@@ -111,20 +107,19 @@ export default function Header() {
     )
 }
 
-function ListItem({
-    title,
-    children,
-    href,
-    ...props
-}: React.ComponentPropsWithoutRef<"li"> & { href: string }) {
+function ListItem({ item }: { item: HeaderMenuItem }) {
+    const external = item.isExternal;
     return (
-        <li {...props}>
+        <li className="mb-0.5">
             <NavigationMenuLink asChild>
-                <Link href={href}>
-                    <div className="flex flex-col gap-1 text-sm">
-                        <div className="leading-none font-medium">{title}</div>
-                        <div className="line-clamp-2 text-muted-foreground">{children}</div>
-                    </div>
+                <Link
+                    href={item.path}
+                    target={external ? "_blank" : undefined}
+                    rel={external ? "noopener noreferrer nofollow" : undefined}
+                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm leading-none hover:bg-muted hover:text-foreground"
+                >
+                    {item.icon && <span className={item.icon} aria-hidden="true" />}
+                    <span>{item.title}</span>
                 </Link>
             </NavigationMenuLink>
         </li>

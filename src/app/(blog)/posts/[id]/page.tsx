@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ArticleBody } from "@/components/(blog)/article-body";
+
 import { ApiError, getPublicArticleApi } from "@/lib/api";
 import { resolveAssetUrl } from "@/lib/utils";
 
@@ -81,11 +83,8 @@ export default async function PostPage({ params }: PostPageProps) {
                 </div>
             )}
 
-            {/* 后端已渲染好的正文 HTML（content_html） */}
-            <div
-                className="article-body mt-6"
-                dangerouslySetInnerHTML={{ __html: article.content_html || "" }}
-            />
+            {/* 后端渲染好的正文 HTML，客户端组件负责代码块高亮 + 复制按钮 */}
+            <ArticleBody html={article.content_html || ""} />
 
             {(prev || next) && (
                 <nav className="mt-10 grid gap-3 border-t pt-6 sm:grid-cols-2">

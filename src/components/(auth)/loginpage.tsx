@@ -47,7 +47,7 @@ export function LoginPage() {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="w-full max-w-xs mx-auto mt-24">
+        <form onSubmit={handleSubmit} className="w-full max-w-xs mx-auto">
             <FieldSet>
                 <div className="text-center">
                     <h1 className="text-2xl font-bold tracking-tight">登录</h1>

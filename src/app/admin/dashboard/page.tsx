@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
+import { StatCard } from "@/components/(admin)/stat-card";
 import { ApiError, getBasicStatisticsApi, getUserInfoApi } from "@/lib/api";
 import type { BasicStatistics } from "@/lib/api";
 import type { LoginUserInfo } from "@/types/auth";
@@ -40,46 +38,36 @@ export default async function Dashboard() {
         throw err;
     }
 
-    const statsItems: { label: string; value: number }[] = [
-        { label: "今日访问", value: stats.today_visitors },
-        { label: "今日浏览", value: stats.today_views },
-        { label: "本月浏览", value: stats.month_views },
-        { label: "本年浏览", value: stats.year_views },
-    ];
+    // 环比百分比：基准为 0 时无法计算（返回 null 显示 —）
+    const pct = (current: number, previous: number): number | null =>
+        previous === 0 ? null : ((current - previous) / previous) * 100;
 
     return (
-        <div className="space-y-6">
-            <div>
+        <>
+            <div className="flex justify-start">
                 <h1 className="text-2xl font-bold tracking-tight">仪表盘</h1>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="ml-2 mt-1 text-sm text-muted-foreground content-end">
                     欢迎回来，{user.nickname || user.username}
                 </p>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {statsItems.map((item) => (
-                    <Card key={item.label}>
-                        <CardHeader>
-                            <CardTitle className="text-sm text-muted-foreground">{item.label}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{item.value.toLocaleString()}</div>
-                        </CardContent>
-                    </Card>
-                ))}
+                <StatCard
+                    label="今日访问"
+                    value={stats.today_visitors}
+                    deltaPercent={pct(stats.today_visitors, stats.yesterday_visitors)}
+                    deltaLabel="较昨日"
+                />
+                <StatCard
+                    label="今日浏览"
+                    value={stats.today_views}
+                    deltaPercent={pct(stats.today_views, stats.yesterday_views)}
+                    deltaLabel="较昨日"
+                />
+                {/* /public/statistics/basic 无上月基准数据，不显示环比 */}
+                <StatCard label="本月浏览" value={stats.month_views} deltaPercent={null} />
+                <StatCard label="本年浏览" value={stats.year_views} deltaPercent={null} />
             </div>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">账号信息</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-2 text-sm sm:grid-cols-2">
-                    <div>用户名：<span className="font-medium">{user.username}</span></div>
-                    <div>昵称：<span className="font-medium">{user.nickname || "—"}</span></div>
-                    <div>邮箱：<span className="font-medium">{user.email}</span></div>
-                    <div>用户组：<span className="font-medium">{user.userGroup?.name || "—"}</span></div>
-                </CardContent>
-            </Card>
-        </div>
+        </>
     );
 }

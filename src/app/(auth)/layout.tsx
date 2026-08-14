@@ -42,8 +42,8 @@ export default async function AuthLayout({ children }: Readonly<{ children: Reac
                 >
                     <div id="CIRAOS">
 
-                        <div className="">
-                            <div className="">{children}</div>
+                        <div className="flex min-h-screen items-center justify-center p-6">
+                            <div className="w-full">{children}</div>
                         </div>
 
                         {/* <div id="footer" className="">

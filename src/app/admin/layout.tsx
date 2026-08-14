@@ -5,7 +5,6 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
-
 import { SiteConfigResponse } from "@/types/site-config";
 
 const site_url = process.env.NEXT_PUBLIC_SITE_URL;
@@ -50,10 +49,12 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
                     <TooltipProvider>
                         <SidebarProvider>
                             <AppSidebar />
-                            <main className="py-2 px-5">
+                            <main className="flex min-h-screen w-full flex-1 min-w-0 flex-col py-2 px-5">
                                 <SidebarTrigger />
-                                {children}
-                                <Link href="https://beian.miit.gov.cn" target="_blank" rel="noopener external nofollow noreferrer" className="w-full flex items-center justify-center hover:underline">{config?.ICP_NUMBER}</Link>
+                                <div className="dsh-main flex-1 space-y-6">{children}</div>
+                                <footer className="mt-auto flex h-14 shrink-0 items-center justify-center border-t">
+                                    <Link href="https://beian.miit.gov.cn" target="_blank" rel="noopener external nofollow noreferrer" className="text-xs text-muted-foreground hover:underline">{config?.ICP_NUMBER}</Link>
+                                </footer>
                             </main>
                         </SidebarProvider>
                     </TooltipProvider>

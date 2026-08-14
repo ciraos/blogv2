@@ -47,9 +47,9 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
           enableColorScheme
         >
           <div id="CIRAOS">
-            <Header />
+            <Header menu={config?.header?.menu ?? []} appName={config?.APP_NAME ?? "博客"} />
 
-            <div className="main w-full max-w-233 mx-auto mt-10 p-0 flex">
+            <div className="main w-full max-w-233 mx-auto mt-10 px-4 sm:px-0 flex">
               {children}
             </div>
 
