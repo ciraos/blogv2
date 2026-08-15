@@ -16,6 +16,7 @@ const PAGE_SIZE = 20;
 
 interface FcircleSearchParams {
     page?: string;
+    sort_type?: string;
 }
 
 export default async function FcirclePage({ searchParams }: { searchParams: Promise<FcircleSearchParams> }) {
