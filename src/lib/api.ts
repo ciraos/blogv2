@@ -7,6 +7,8 @@ import type { ArchiveSummary, ArticleDetail, PostItem, PostListData } from "@/ty
 import type { LoginData, LoginUserInfo } from "@/types/auth";
 import type { FriendLink, LinkCategory, LinkListData, LinkListParams } from "@/types/links";
 import type { AdminEssayListParams, Essay, EssayListData } from "@/types/essays";
+import type { MomentsListData, MomentsListParams } from "@/types/moments";
+import type { SiteConfig } from "@/types/site-config";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -75,6 +77,25 @@ export async function loginApi(email: string, password: string): Promise<void> {
     });
 }
 
+/**
+ * POST /api/auth/register（本应用同源路由，服务端转发到远端 /auth/register）
+ * 注意：后端要求 nickname 必填（文档未列全），注册成功后不会自动登录。
+ */
+export async function registerApi(nickname: string, email: string, password: string, repeatPassword: string): Promise<void> {
+    await request<unknown>("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ nickname, email, password, repeat_password: repeatPassword }),
+    });
+}
+
+/** POST /auth/activate 激活用户账号（仅限服务端调用；参数来自激活链接） */
+export async function activateApi(publicUserId: string, sign: string): Promise<void> {
+    await request<unknown>("/auth/activate", {
+        method: "POST",
+        body: JSON.stringify({ publicUserId, sign }),
+    });
+}
+
 /** POST /auth/refresh 刷新访问令牌（仅限服务端调用） */
 export function refreshTokenApi(refreshToken: string): Promise<LoginData> {
     return request<LoginData>("/auth/refresh", {
@@ -130,6 +151,11 @@ export async function getPublicArticlesApi(params: PublicArticlesParams = {}): P
 /** GET /public/articles/{id} 前台文章详情（公共ID 或 Abbrlink） */
 export function getPublicArticleApi(id: string): Promise<ArticleDetail> {
     return request<ArticleDetail>(`/public/articles/${encodeURIComponent(id)}`, { method: "GET" });
+}
+
+/** GET /public/articles/random 随机获取一篇文章（无已发布文章时 404） */
+export function getRandomArticleApi(): Promise<ArticleDetail> {
+    return request<ArticleDetail>("/public/articles/random", { method: "GET" });
 }
 
 /** GET /public/articles/archives 归档摘要（按年月分组统计） */
@@ -201,6 +227,11 @@ export async function getLinksByCategoryApi(categoryId: number): Promise<FriendL
     return all;
 }
 
+/** GET /public/links/random 随机获取友链（num=0 表示全部） */
+export async function getPublicLinksRandomApi(num = 1): Promise<FriendLink[]> {
+    return request<FriendLink[]>(`/public/links/random?num=${num}`, { method: "GET" });
+}
+
 // ===================== 即刻 / 说说（PRO） =====================
 
 /**
@@ -234,4 +265,37 @@ export async function getPublicEssaysApi(params: { page?: number; page_size?: nu
     }
     const query = qs.toString();
     return request<EssayListData>(`/pro/essays${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
+/** GET /pro/moments 朋友圈/RSS 聚合文章列表（公开；实测路径，文档中的 /pro/public/moments 在本部署为 404） */
+export async function getPublicMomentsApi(params: MomentsListParams = {}): Promise<MomentsListData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<MomentsListData>(`/pro/moments${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
+/** GET /public/site-config 站点公开配置（服务端调用） */
+export function getPublicSiteConfigApi(): Promise<SiteConfig> {
+    return request<SiteConfig>("/public/site-config", { method: "GET" });
+}
+
+// ===================== 站点统计 =====================
+
+export interface BasicStats {
+    today_visitors: number;
+    today_views: number;
+    yesterday_visitors: number;
+    yesterday_views: number;
+    month_views: number;
+    year_views: number;
+}
+
+/** GET /public/statistics/basic 站点访问统计（今日/昨日/本月/年度） */
+export function getPublicBasicStatsApi(): Promise<BasicStats> {
+    return request<BasicStats>("/public/statistics/basic", { method: "GET" });
 }

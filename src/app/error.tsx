@@ -1,5 +1,7 @@
 "use client";
 
+import "./globals.css";
+
 import { useEffect } from "react";
 import Link from "next/link";
 import { RotateCw, TriangleAlert } from "lucide-react";

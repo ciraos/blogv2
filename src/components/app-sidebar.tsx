@@ -14,23 +14,17 @@ import {
 } from "@/components/ui/sidebar"
 import {
   LayoutDashboardIcon,
-  ListIcon,
-  ChartBarIcon,
-  FolderIcon,
-  UsersIcon,
-  CameraIcon,
   FileTextIcon,
+  MessageSquareIcon,
+  UsersIcon,
   Settings2Icon,
   CircleHelpIcon,
-  SearchIcon,
-  DatabaseIcon,
-  FileChartColumnIcon,
-  FileIcon,
-  CommandIcon
+  CommandIcon,
+  Grid2x2Plus,
+  Settings
 } from "lucide-react"
 import { SiteConfigResponse } from "@/types/site-config";
 
-const site_url = process.env.NEXT_PUBLIC_SITE_URL;
 const api_url = process.env.NEXT_PUBLIC_API_URL;
 
 export async function getSiteConfigs() {
@@ -48,16 +42,62 @@ export async function getSiteConfigs() {
 
 const config = await getSiteConfigs();
 const data = {
-  user: {
-    name: `${config?.frontDesk.siteOwner.name}`,
-    email: `${config?.frontDesk.siteOwner.email}`,
-    avatar: `${site_url}${config?.USER_AVATAR}`,
-  },
   navMain: [
     {
       title: "仪表盘",
       url: "/admin/dashboard",
       icon: (<LayoutDashboardIcon />),
+    },
+    {
+      title: "概览",
+      icon: (<Grid2x2Plus />),
+      items: [
+        { title: "文件管理", url: "/admin/file-management" },
+      ]
+    },
+    {
+      title: "内容管理",
+      icon: (<FileTextIcon />),
+      items: [
+        { title: "文章管理", url: "/admin/post-management" },
+        { title: "页面管理", url: "/admin/page-management" },
+        { title: "文档系列", url: "/admin/doc-series" },
+        { title: "说说管理", url: "/admin/essays" },
+        { title: "评论管理", url: "/admin/comments" },
+        { title: "相册管理", url: "/admin/albums" },
+      ],
+    },
+    {
+      title: "互动管理",
+      icon: (<MessageSquareIcon />),
+      items: [
+        { title: "友链", url: "/admin/friends" },
+        { title: "朋友圈", url: "/admin/moments" },
+        { title: "用户管理", url: "/admin/users" },
+      ],
+    },
+    {
+      title: "运营管理",
+      icon: (<UsersIcon />),
+      items: [
+        { title: "订单管理", url: "/admin/orders" },
+        { title: "打赏管理", url: "/admin/donations" },
+        { title: "商品管理", url: "/admin/products" },
+        { title: "会员管理", url: "/admin/memberships" },
+        { title: "售后工单", url: "/admin/supports" },
+      ],
+    }, {
+      title: "系统管理",
+      icon: (<Settings />),
+      items: [
+        { title: "系统设置", url: "/admin/settings" },
+        { title: "SEO 推送", url: "/admn/seo-push" },
+        { title: "存储策略", url: "/admin/storage" },
+        { title: "图片样式缓存", url: "/admin/image-styles/cache" },
+        { title: "主题商城", url: "/admin/themes" },
+        { title: "知识库管理", url: "/admin/knowledge" },
+        { title: "插件管理", url: "/admin/plugins" },
+      ]
     }
   ],
   navClouds: [],
@@ -77,7 +117,13 @@ const data = {
   documents: [],
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  user,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & {
+  /** 当前登录用户（由 admin layout 从 /user/info 获取） */
+  user: { name: string; email: string; avatar: string }
+}) {
   return (
     <Sidebar collapsible="offcanvas" {...props}>
 
@@ -104,7 +150,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
 
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={user} />
       </SidebarFooter>
 
     </Sidebar>

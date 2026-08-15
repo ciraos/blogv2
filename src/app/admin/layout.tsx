@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import "../globals.css";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ApiError, getUserInfoApi } from "@/lib/api";
+import { resolveAssetUrl } from "@/lib/utils";
 import { SiteConfigResponse } from "@/types/site-config";
 
 const site_url = process.env.NEXT_PUBLIC_SITE_URL;
@@ -35,6 +39,28 @@ export async function getSiteConfigs() {
 export default async function AdminLayout({ children }: Readonly<{ children: React.ReactNode; }>) {
     const config = await getSiteConfigs();
 
+    // 读取登录 token，获取当前登录用户信息（proxy 已拦截未登录，这里兜底）
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+    if (!token) redirect("/login");
+
+    let user;
+    try {
+        user = await getUserInfoApi(token);
+    } catch (err) {
+        // token 失效 → 走登出路由清 cookie 再回登录页
+        if (err instanceof ApiError && err.status === 401) {
+            redirect("/api/auth/logout");
+        }
+        throw err;
+    }
+
+    const navUser = {
+        name: user.nickname || user.username,
+        email: user.email,
+        avatar: resolveAssetUrl(user.avatar) ?? "",
+    };
+
     return (
         <html data-theme="light" lang="zh-CN" suppressHydrationWarning>
             <body>
@@ -48,7 +74,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
                 >
                     <TooltipProvider>
                         <SidebarProvider>
-                            <AppSidebar />
+                            <AppSidebar user={navUser} />
                             <main className="flex min-h-screen w-full flex-1 min-w-0 flex-col py-2 px-5">
                                 <SidebarTrigger />
                                 <div className="dsh-main flex-1 space-y-6">{children}</div>

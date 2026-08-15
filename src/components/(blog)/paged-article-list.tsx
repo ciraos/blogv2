@@ -1,14 +1,6 @@
 import type { PostItem } from "@/types/articles";
-import {
-    Pagination,
-    PaginationContent,
-    PaginationEllipsis,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from "@/components/ui/pagination";
 import { ArticleCard } from "@/components/(blog)/article-card";
+import { NumberedPagination } from "@/components/(blog)/numbered-pagination";
 
 interface PagedArticleListProps {
     articles: PostItem[];
@@ -45,32 +37,7 @@ export function PagedArticleList({
                 </div>
             )}
 
-            {totalPages > 1 && (
-                <Pagination>
-                    <PaginationContent>
-                        {page > 1 && (
-                            <PaginationItem>
-                                <PaginationPrevious text="上一页" href={makePageHref(page - 1)} />
-                            </PaginationItem>
-                        )}
-                        <PaginationItem>
-                            <PaginationLink isActive href={makePageHref(page)}>
-                                {page} / {totalPages}
-                            </PaginationLink>
-                        </PaginationItem>
-                        {page < totalPages && (
-                            <PaginationItem>
-                                <PaginationEllipsis />
-                            </PaginationItem>
-                        )}
-                        {page < totalPages && (
-                            <PaginationItem>
-                                <PaginationNext text="下一页" href={makePageHref(page + 1)} />
-                            </PaginationItem>
-                        )}
-                    </PaginationContent>
-                </Pagination>
-            )}
+            <NumberedPagination page={page} totalPages={totalPages} makePageHref={makePageHref} />
         </div>
     );
 }

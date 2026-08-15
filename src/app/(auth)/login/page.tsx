@@ -16,10 +16,12 @@ export async function generateMetadata(): Promise<Metadata> {
     };
 }
 
-export default async function Login() {
+export default async function Login({ searchParams }: { searchParams: Promise<{ registered?: string }> }) {
+    const { registered } = await searchParams;
+
     return (
         <>
-            <LoginPage />
+            <LoginPage registered={registered === "1"} />
         </>
     )
 }

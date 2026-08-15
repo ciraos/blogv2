@@ -121,10 +121,6 @@
   * {
     @apply border-border outline-ring/50;
   }
-
-  body {}
-
-  html {}
 }
 
 /*! */
@@ -175,12 +171,10 @@
   font-size: 1.4em;
   padding-bottom: 0.35em;
   border-bottom: 2px solid transparent;
-  border-image: linear-gradient(
-    90deg,
-    color-mix(in oklch, var(--primary) 55%, transparent),
-    var(--border) 65%,
-    transparent
-  ) 1;
+  border-image: linear-gradient(90deg,
+      color-mix(in oklch, var(--primary) 55%, transparent),
+      var(--border) 65%,
+      transparent) 1;
 }
 
 .article-body h3 {
@@ -212,6 +206,7 @@
   text-underline-offset: 3px;
   transition: text-decoration-color 0.2s, color 0.2s;
 }
+
 .article-body a:hover {
   text-decoration-thickness: 2px;
   color: color-mix(in oklch, var(--primary) 80%, var(--foreground));
@@ -223,17 +218,21 @@
   margin: 0.9em 0;
   padding-left: 1.6em;
 }
+
 .article-body li {
   margin: 0.35em 0;
 }
+
 .article-body li::marker {
   color: var(--primary);
   font-weight: 600;
 }
-.article-body li > ul,
-.article-body li > ol {
+
+.article-body li>ul,
+.article-body li>ol {
   margin: 0.3em 0;
 }
+
 .article-body input[type="checkbox"] {
   accent-color: var(--primary);
 }
@@ -242,9 +241,11 @@
 .article-body ul {
   list-style: disc;
 }
+
 .article-body ul ul {
   list-style: circle;
 }
+
 .article-body ul ul ul {
   list-style: square;
 }
@@ -255,13 +256,15 @@
   padding-left: 0;
   list-style: none;
 }
-.article-body ol > li {
+
+.article-body ol>li {
   counter-increment: md-ol;
   position: relative;
   padding-left: 2.1em;
   margin: 0.55em 0;
 }
-.article-body ol > li::before {
+
+.article-body ol>li::before {
   content: counter(md-ol);
   position: absolute;
   left: 0;
@@ -276,11 +279,13 @@
   line-height: 1.55em;
   text-align: center;
 }
-.article-body ol > li > ol {
+
+.article-body ol>li>ol {
   counter-reset: md-ol;
   padding-left: 0;
 }
-.article-body ol > li > ol > li::before {
+
+.article-body ol>li>ol>li::before {
   content: counter(md-ol);
 }
 
@@ -294,6 +299,7 @@
   background: color-mix(in oklch, var(--muted) 65%, transparent);
   color: var(--muted-foreground);
 }
+
 .article-body blockquote::before {
   content: "\201C";
   position: absolute;
@@ -304,12 +310,15 @@
   color: color-mix(in oklch, var(--primary) 30%, transparent);
   user-select: none;
 }
+
 .article-body blockquote p {
   margin: 0.4em 0;
 }
+
 .article-body blockquote p:first-child {
   margin-top: 0;
 }
+
 .article-body blockquote p:last-child {
   margin-bottom: 0;
 }
@@ -322,6 +331,7 @@
   background: var(--muted);
   font-size: 0.88em;
 }
+
 .article-body pre {
   margin: 1em 0;
   padding: 1em;
@@ -329,6 +339,7 @@
   border-radius: 0.5rem;
   background: var(--muted);
 }
+
 .article-body pre code {
   padding: 0;
   border: none;
@@ -339,12 +350,14 @@
 .article-body strong {
   font-weight: 650;
 }
+
 .article-body mark {
   padding: 0 0.25em;
   border-radius: 0.25em;
   background: color-mix(in oklch, var(--primary) 28%, transparent);
   color: inherit;
 }
+
 .article-body kbd {
   padding: 0.1em 0.4em;
   border: 1px solid var(--border);
@@ -382,19 +395,23 @@
   display: block;
   overflow-x: auto;
 }
+
 .article-body th,
 .article-body td {
   padding: 0.55em 0.9em;
   border: 1px solid var(--border);
   text-align: left;
 }
+
 .article-body th {
   background: color-mix(in oklch, var(--muted) 80%, transparent);
   font-weight: 600;
 }
+
 .article-body tbody tr:nth-child(even) {
   background: color-mix(in oklch, var(--muted) 35%, transparent);
 }
+
 .article-body tbody tr:hover {
   background: color-mix(in oklch, var(--muted) 60%, transparent);
 }
@@ -407,11 +424,13 @@
   border-radius: 0.5rem;
   background: color-mix(in oklch, var(--muted) 45%, transparent);
 }
+
 .article-body details:not(.md-editor-code) summary {
   cursor: pointer;
   font-weight: 600;
   user-select: none;
 }
+
 .article-body details:not(.md-editor-code) summary::marker {
   color: var(--primary);
 }
@@ -431,6 +450,7 @@
   opacity: 0;
   transition: opacity 0.15s;
 }
+
 .article-body h1:hover .heading-anchor,
 .article-body h2:hover .heading-anchor,
 .article-body h3:hover .heading-anchor,
@@ -438,12 +458,14 @@
 .article-body .heading-anchor:focus-visible {
   opacity: 1;
 }
+
 .article-body h1:target,
 .article-body h2:target,
 .article-body h3:target,
 .article-body h4:target {
   color: var(--primary);
 }
+
 .article-body h1:target .heading-anchor,
 .article-body h2:target .heading-anchor,
 .article-body h3:target .heading-anchor,
@@ -459,6 +481,7 @@
   align-items: baseline;
   gap: 0.5em;
 }
+
 .article-body input[type="checkbox"] {
   appearance: none;
   flex-shrink: 0;
@@ -472,10 +495,12 @@
   position: relative;
   cursor: default;
 }
+
 .article-body input[type="checkbox"]:checked {
   background: var(--primary);
   border-color: var(--primary);
 }
+
 .article-body input[type="checkbox"]:checked::after {
   content: "";
   position: absolute;
@@ -487,6 +512,7 @@
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
+
 .article-body li:has(> input[type="checkbox"]:checked) {
   color: var(--muted-foreground);
 }
@@ -501,9 +527,11 @@
   text-decoration: none;
   vertical-align: baseline;
 }
+
 .article-body sup a[href^="#fn"]:hover {
   background: color-mix(in oklch, var(--primary) 22%, transparent);
 }
+
 .article-body section.footnotes,
 .article-body .footnotes {
   margin-top: 2.2em;
@@ -512,20 +540,24 @@
   font-size: 0.9em;
   color: var(--muted-foreground);
 }
+
 .article-body section.footnotes h2,
 .article-body .footnotes h2 {
   font-size: 1.05em;
 }
+
 .article-body section.footnotes li,
 .article-body .footnotes li {
   margin: 0.5em 0;
 }
+
 .article-body section.footnotes li:target,
 .article-body .footnotes li:target {
   background: color-mix(in oklch, var(--primary) 10%, transparent);
   border-radius: 0.35em;
   padding: 0.2em 0.6em;
 }
+
 .article-body section.footnotes a[href^="#fnref"],
 .article-body .footnotes a[href^="#fnref"] {
   color: var(--muted-foreground);
@@ -534,7 +566,7 @@
 }
 
 /* ============ 首字下沉 ============ */
-.article-body > p:first-child::first-letter {
+.article-body>p:first-child::first-letter {
   float: left;
   margin-top: 0.06em;
   padding: 0.04em 0.14em 0 0;
@@ -662,4 +694,671 @@
 .article-body .code-copy-btn.copied {
   color: #1a7f37;
   border-color: #1a7f37;
+}
+
+/* ===================== 关于页（复刻 anheyu-app） ===================== */
+/* 头像特效结构 .avatar-wrap > .avatar-ring + .avatar-img */
+@keyframes avatar-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes avatar-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes avatar-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 18px color-mix(in oklch, var(--primary) 45%, transparent),
+      0 8px 24px rgb(0 0 0 / 0.12);
+  }
+
+  50% {
+    box-shadow: 0 0 34px color-mix(in oklch, var(--primary) 70%, transparent),
+      0 8px 28px rgb(0 0 0 / 0.16);
+  }
+}
+
+.avatar-wrap {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .avatar-wrap {
+    width: 120px;
+    height: 120px;
+  }
+}
+
+.avatar-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  padding: 5px;
+  background: conic-gradient(from 0deg,
+      #ff5f57, #febc2e, #28c840, #2094f3, #a55eea, #ff5f57);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: avatar-ring-spin 6s linear infinite;
+}
+
+.avatar-img {
+  position: absolute;
+  inset: 5px;
+  border-radius: 9999px;
+  overflow: hidden;
+  animation: avatar-float 3.2s ease-in-out infinite, avatar-glow 3.2s ease-in-out infinite;
+  transition: transform 0.3s ease;
+}
+
+.avatar-img:hover {
+  transform: scale(1.1);
+}
+
+.avatar-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 头像绿色在线点 */
+.avatar-online {
+  position: absolute;
+  right: 10px;
+  bottom: 5px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  background: #2ecc71;
+  border: 5px solid var(--background);
+  border-radius: 50%;
+}
+
+@media (max-width: 768px) {
+  .avatar-online {
+    right: -3px;
+    bottom: -3px;
+    width: 20px;
+    height: 20px;
+    border-width: 3px;
+  }
+}
+
+/* 作者头像两侧技能标签（浮动） */
+@keyframes about-floating {
+  0%,
+  100% {
+    transform: translate(0, -4px);
+  }
+
+  50% {
+    transform: translate(0, -10px);
+  }
+}
+
+.about-tag {
+  padding: 4px 8px;
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 40px;
+  animation: about-floating 6s ease-in-out infinite;
+}
+
+.about-tag:nth-child(2) {
+  animation-delay: 0.6s;
+}
+
+.about-tag:nth-child(3) {
+  animation-delay: 1.2s;
+}
+
+.about-tag:nth-child(4) {
+  animation-delay: 1.8s;
+}
+
+/* 渐变背景流动动画 */
+@keyframes about-gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* 关键词轮播 */
+.about-word-mask {
+  position: relative;
+  height: 38px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.about-word-item {
+  position: absolute;
+  top: 38px;
+  display: block;
+  font-size: 36px;
+  font-weight: bold;
+  line-height: 1.06;
+  background-repeat: no-repeat;
+  background-clip: text;
+  background-size: 100% 100%;
+  -webkit-text-fill-color: transparent;
+}
+
+.about-word-item[data-show] {
+  transition: 0.5s transform ease-in-out;
+  transform: translateY(-100%);
+}
+
+.about-word-item[data-up] {
+  transition: 0.5s transform ease-in-out;
+  transform: translateY(-200%);
+}
+
+.about-word-color1 {
+  background-image: linear-gradient(45deg, #0ecffe 50%, #07a6f1);
+}
+
+.about-word-color2 {
+  background-image: linear-gradient(45deg, #18e198 50%, #0ec15d);
+}
+
+.about-word-color3 {
+  background-image: linear-gradient(45deg, #8a7cfb 50%, #633e9c);
+}
+
+.about-word-color4 {
+  background-image: linear-gradient(45deg, #fa7671 50%, #f45f7f);
+}
+
+/* 技能图标横滚 */
+@keyframes about-rowup {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.about-skills-tags {
+  display: flex;
+  flex-wrap: nowrap;
+  animation: about-rowup 60s linear infinite;
+}
+
+.about-skills-card:hover .about-skills-tags {
+  opacity: 0;
+}
+
+.about-skills-card:hover .about-skills-list {
+  opacity: 1;
+}
+
+/* 卡片入场动画 */
+@keyframes about-slide-in {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.about-slide-in {
+  animation: about-slide-in 0.6s backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .avatar-ring,
+  .avatar-img,
+  .about-tag,
+  .about-skills-tags {
+    animation: none;
+  }
+}
+
+/* ===================== 404 页装饰（幽灵 + 漂浮圆点） ===================== */
+@keyframes nf-float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-16px);
+  }
+}
+
+@keyframes nf-drift {
+
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.3;
+  }
+
+  50% {
+    transform: translate(14px, -22px);
+    opacity: 0.9;
+  }
+}
+
+/* CSS 幽灵：圆顶 + 两只小脚 */
+.nf-ghost {
+  position: relative;
+  width: 112px;
+  height: 132px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, #ffffff, #eef0f2);
+  border: 1px solid var(--border);
+  border-radius: 56px 56px 18px 18px;
+  box-shadow: 0 18px 44px rgb(0 0 0 / 0.1);
+  animation: nf-float 3.6s ease-in-out infinite;
+}
+
+.nf-ghost::before,
+.nf-ghost::after {
+  content: "";
+  position: absolute;
+  bottom: -14px;
+  width: 38px;
+  height: 26px;
+  background: #eef0f2;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 22px 22px;
+}
+
+.nf-ghost::before {
+  left: 17px;
+}
+
+.nf-ghost::after {
+  right: 17px;
+}
+
+/* 漂浮装饰圆点 */
+.nf-dot {
+  position: absolute;
+  border-radius: 9999px;
+  background: var(--primary);
+  animation: nf-drift 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .nf-ghost,
+  .nf-dot {
+    animation: none;
+  }
+}
+
+/*! loader */
+/* From Uiverse.io by Nawsome */
+.loader {
+  position: relative;
+  width: 75px;
+  height: 100px;
+}
+
+.loader__bar {
+  position: absolute;
+  bottom: 0;
+  width: 10px;
+  height: 50%;
+  background: rgb(0, 0, 0);
+  transform-origin: center bottom;
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.loader__bar:nth-child(1) {
+  left: 0px;
+  transform: scale(1, 0.2);
+  -webkit-animation: barUp1 4s infinite;
+  animation: barUp1 4s infinite;
+}
+
+.loader__bar:nth-child(2) {
+  left: 15px;
+  transform: scale(1, 0.4);
+  -webkit-animation: barUp2 4s infinite;
+  animation: barUp2 4s infinite;
+}
+
+.loader__bar:nth-child(3) {
+  left: 30px;
+  transform: scale(1, 0.6);
+  -webkit-animation: barUp3 4s infinite;
+  animation: barUp3 4s infinite;
+}
+
+.loader__bar:nth-child(4) {
+  left: 45px;
+  transform: scale(1, 0.8);
+  -webkit-animation: barUp4 4s infinite;
+  animation: barUp4 4s infinite;
+}
+
+.loader__bar:nth-child(5) {
+  left: 60px;
+  transform: scale(1, 1);
+  -webkit-animation: barUp5 4s infinite;
+  animation: barUp5 4s infinite;
+}
+
+.loader__ball {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  background: rgb(44, 143, 255);
+  border-radius: 50%;
+  -webkit-animation: ball624 4s infinite;
+  animation: ball624 4s infinite;
+}
+
+@keyframes ball624 {
+  0% {
+    transform: translate(0, 0);
+  }
+
+  5% {
+    transform: translate(8px, -14px);
+  }
+
+  10% {
+    transform: translate(15px, -10px);
+  }
+
+  17% {
+    transform: translate(23px, -24px);
+  }
+
+  20% {
+    transform: translate(30px, -20px);
+  }
+
+  27% {
+    transform: translate(38px, -34px);
+  }
+
+  30% {
+    transform: translate(45px, -30px);
+  }
+
+  37% {
+    transform: translate(53px, -44px);
+  }
+
+  40% {
+    transform: translate(60px, -40px);
+  }
+
+  50% {
+    transform: translate(60px, 0);
+  }
+
+  57% {
+    transform: translate(53px, -14px);
+  }
+
+  60% {
+    transform: translate(45px, -10px);
+  }
+
+  67% {
+    transform: translate(37px, -24px);
+  }
+
+  70% {
+    transform: translate(30px, -20px);
+  }
+
+  77% {
+    transform: translate(22px, -34px);
+  }
+
+  80% {
+    transform: translate(15px, -30px);
+  }
+
+  87% {
+    transform: translate(7px, -44px);
+  }
+
+  90% {
+    transform: translate(0, -40px);
+  }
+
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@-webkit-keyframes barUp1 {
+  0% {
+    transform: scale(1, 0.2);
+  }
+
+  40% {
+    transform: scale(1, 0.2);
+  }
+
+  50% {
+    transform: scale(1, 1);
+  }
+
+  90% {
+    transform: scale(1, 1);
+  }
+
+  100% {
+    transform: scale(1, 0.2);
+  }
+}
+
+@keyframes barUp1 {
+  0% {
+    transform: scale(1, 0.2);
+  }
+
+  40% {
+    transform: scale(1, 0.2);
+  }
+
+  50% {
+    transform: scale(1, 1);
+  }
+
+  90% {
+    transform: scale(1, 1);
+  }
+
+  100% {
+    transform: scale(1, 0.2);
+  }
+}
+
+@-webkit-keyframes barUp2 {
+  0% {
+    transform: scale(1, 0.4);
+  }
+
+  40% {
+    transform: scale(1, 0.4);
+  }
+
+  50% {
+    transform: scale(1, 0.8);
+  }
+
+  90% {
+    transform: scale(1, 0.8);
+  }
+
+  100% {
+    transform: scale(1, 0.4);
+  }
+}
+
+@keyframes barUp2 {
+  0% {
+    transform: scale(1, 0.4);
+  }
+
+  40% {
+    transform: scale(1, 0.4);
+  }
+
+  50% {
+    transform: scale(1, 0.8);
+  }
+
+  90% {
+    transform: scale(1, 0.8);
+  }
+
+  100% {
+    transform: scale(1, 0.4);
+  }
+}
+
+@-webkit-keyframes barUp3 {
+  0% {
+    transform: scale(1, 0.6);
+  }
+
+  100% {
+    transform: scale(1, 0.6);
+  }
+}
+
+@keyframes barUp3 {
+  0% {
+    transform: scale(1, 0.6);
+  }
+
+  100% {
+    transform: scale(1, 0.6);
+  }
+}
+
+@-webkit-keyframes barUp4 {
+  0% {
+    transform: scale(1, 0.8);
+  }
+
+  40% {
+    transform: scale(1, 0.8);
+  }
+
+  50% {
+    transform: scale(1, 0.4);
+  }
+
+  90% {
+    transform: scale(1, 0.4);
+  }
+
+  100% {
+    transform: scale(1, 0.8);
+  }
+}
+
+@keyframes barUp4 {
+  0% {
+    transform: scale(1, 0.8);
+  }
+
+  40% {
+    transform: scale(1, 0.8);
+  }
+
+  50% {
+    transform: scale(1, 0.4);
+  }
+
+  90% {
+    transform: scale(1, 0.4);
+  }
+
+  100% {
+    transform: scale(1, 0.8);
+  }
+}
+
+@-webkit-keyframes barUp5 {
+  0% {
+    transform: scale(1, 1);
+  }
+
+  40% {
+    transform: scale(1, 1);
+  }
+
+  50% {
+    transform: scale(1, 0.2);
+  }
+
+  90% {
+    transform: scale(1, 0.2);
+  }
+
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+@keyframes barUp5 {
+  0% {
+    transform: scale(1, 1);
+  }
+
+  40% {
+    transform: scale(1, 1);
+  }
+
+  50% {
+    transform: scale(1, 0.2);
+  }
+
+  90% {
+    transform: scale(1, 0.2);
+  }
+
+  100% {
+    transform: scale(1, 1);
+  }
 }

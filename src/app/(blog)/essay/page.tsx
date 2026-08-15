@@ -2,15 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { EssayCard } from "@/components/(blog)/essay-card";
-import {
-    Pagination,
-    PaginationContent,
-    PaginationEllipsis,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from "@/components/ui/pagination";
+import { NumberedPagination } from "@/components/(blog)/numbered-pagination";
 import {
     LinkIcon
 } from "lucide-react";
@@ -119,32 +111,11 @@ export default async function EssayPage({ searchParams }: { searchParams: Promis
                 ))}
             </div>
 
-            {totalPages > 1 && (
-                <Pagination>
-                    <PaginationContent>
-                        {page > 1 && (
-                            <PaginationItem>
-                                <PaginationPrevious text="上一页" href={`/essay?page=${page - 1}`} />
-                            </PaginationItem>
-                        )}
-                        <PaginationItem>
-                            <PaginationLink isActive href={`/essay?page=${page}`}>
-                                {page} / {totalPages}
-                            </PaginationLink>
-                        </PaginationItem>
-                        {page < totalPages && (
-                            <PaginationItem>
-                                <PaginationEllipsis />
-                            </PaginationItem>
-                        )}
-                        {page < totalPages && (
-                            <PaginationItem>
-                                <PaginationNext text="下一页" href={`/essay?page=${page + 1}`} />
-                            </PaginationItem>
-                        )}
-                    </PaginationContent>
-                </Pagination>
-            )}
+            <NumberedPagination
+                page={page}
+                totalPages={totalPages}
+                makePageHref={(p) => `/essay?page=${p}`}
+            />
         </div>
     );
 }

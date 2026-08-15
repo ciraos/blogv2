@@ -16,6 +16,15 @@ interface UserMenuProps {
 
 /** 导航栏最右侧的用户菜单 */
 export function UserMenu({ isLoggedIn }: UserMenuProps) {
+    /** 登出：清 cookie 后原地刷新，不跳转登录页 */
+    async function handleLogout() {
+        try {
+            await fetch("/api/auth/logout?redirect=0")
+        } finally {
+            window.location.reload()
+        }
+    }
+
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -36,12 +45,12 @@ export function UserMenu({ isLoggedIn }: UserMenuProps) {
                         </div>
                         <div className="mt-2 text-base font-semibold">已登录</div>
                         <div className="text-xs text-muted-foreground">欢迎回来</div>
-                        <Link
-                            href="/api/auth/logout"
+                        <button
+                            onClick={handleLogout}
                             className="mt-3 w-full rounded-lg border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
                         >
                             退出登录
-                        </Link>
+                        </button>
                     </div>
                 ) : (
                     /* ===== 未登录 ===== */

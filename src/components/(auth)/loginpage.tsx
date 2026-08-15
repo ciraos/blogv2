@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 
 import { ApiError, loginApi } from "@/lib/api";
 
-export function LoginPage() {
+export function LoginPage({ registered = false }: { registered?: boolean }) {
     const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -53,6 +53,13 @@ export function LoginPage() {
                     <h1 className="text-2xl font-bold tracking-tight">登录</h1>
                     <p className="mt-1 text-sm text-muted-foreground">欢迎回来，请登录你的账号</p>
                 </div>
+
+                {/* 注册成功提示 */}
+                {registered && (
+                    <p className="rounded-lg bg-green-500/10 px-3 py-2 text-center text-sm text-green-600">
+                        注册成功，请登录
+                    </p>
+                )}
 
                 <FieldGroup>
                     <Field>
