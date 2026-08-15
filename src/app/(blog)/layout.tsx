@@ -46,14 +46,15 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
           enableSystem
           enableColorScheme
         >
-          <div id="CIRAOS">
+          {/* flex 列布局 + min-h-dvh：内容不足一屏时 footer 吸附在视口底部 */}
+          <div id="CIRAOS" className="flex min-h-dvh flex-col">
             <Header menu={config?.header?.menu ?? []} appName={config?.APP_NAME ?? "博客"} />
 
-            <div className="main w-full max-w-233 mx-auto mt-10 px-4 sm:px-0 flex">
+            <div className="main w-full max-w-300 mx-auto mt-10 px-4 sm:px-0 flex flex-1">
               {children}
             </div>
 
-            <div id="footer" className="footer w-4/5 mx-auto mt-15">
+            <div id="footer" className="footer w-full max-w-300 mx-auto mt-15 px-4 sm:px-0">
               <Link href="https://beian.miit.gov.cn" target="_blank" rel="noopener external nofollow noreferrer" className="flex items-center justify-center hover:underline">{config?.ICP_NUMBER}</Link>
             </div>
 

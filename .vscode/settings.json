@@ -10,7 +10,7 @@
     "explorer.sortOrder": "type",
     "files.autoSave": "onFocusChange",
     "github.copilot.enable": {
-        "*": true,
+        "*": false,
     },
     "terminal.integrated.fontLigatures.enabled": true,
     "terminal.integrated.fontSize": 12,

@@ -38,7 +38,7 @@ export function PagedArticleList({
                     {page > 1 ? "该页没有文章" : emptyText}
                 </div>
             ) : (
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {articles.map((article) => (
                         <ArticleCard key={article.id} article={article} />
                     ))}

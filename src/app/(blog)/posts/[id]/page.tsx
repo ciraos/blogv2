@@ -76,12 +76,11 @@ export default async function PostPage({ params }: PostPageProps) {
                 )}
             </header>
 
-            {cover && (
+            {/* {cover && (
                 <div className="mt-6 overflow-hidden rounded-xl border">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={cover} alt={article.title} className="h-auto w-full object-cover" />
                 </div>
-            )}
+            )} */}
 
             {/* 后端渲染好的正文 HTML，客户端组件负责代码块高亮 + 复制按钮 */}
             <ArticleBody html={article.content_html || ""} />

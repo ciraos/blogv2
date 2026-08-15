@@ -6,6 +6,7 @@
 import type { ArchiveSummary, ArticleDetail, PostItem, PostListData } from "@/types/articles";
 import type { LoginData, LoginUserInfo } from "@/types/auth";
 import type { FriendLink, LinkCategory, LinkListData, LinkListParams } from "@/types/links";
+import type { AdminEssayListParams, Essay, EssayListData } from "@/types/essays";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -198,4 +199,39 @@ export async function getLinksByCategoryApi(categoryId: number): Promise<FriendL
         }
     }
     return all;
+}
+
+// ===================== 即刻 / 说说（PRO） =====================
+
+/**
+ * GET /pro/admin/essays 管理后台即刻列表（需鉴权）
+ * 参数：page（默认 1）、page_size（默认 20）、status（1=发布 2=草稿 3=隐藏）
+ */
+export async function getAdminEssaysApi(token: string, params: AdminEssayListParams = {}): Promise<EssayListData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        // 参数均为 number，只跳过 undefined/null
+        if (value !== undefined && value !== null) {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<EssayListData>(`/pro/admin/essays${query ? `?${query}` : ""}`, { method: "GET" }, token);
+}
+
+/** GET /pro/admin/essays/{id} 即刻详情（需鉴权） */
+export function getAdminEssayApi(token: string, id: number): Promise<Essay> {
+    return request<Essay>(`/pro/admin/essays/${id}`, { method: "GET" }, token);
+}
+
+/** GET /pro/essays 前台即刻列表（公开，无需鉴权；实测路径，文档中的 /pro/public/essays 在本部署为 404） */
+export async function getPublicEssaysApi(params: { page?: number; page_size?: number } = {}): Promise<EssayListData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<EssayListData>(`/pro/essays${query ? `?${query}` : ""}`, { method: "GET" });
 }
