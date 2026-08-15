@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import "../globals.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import Header from "@/components/header";
@@ -34,6 +35,9 @@ export async function getSiteConfigs() {
 
 export default async function BlogLayout({ children }: Readonly<{ children: React.ReactNode; }>) {
   const config = await getSiteConfigs();
+  // httpOnly token 由服务端读取，判断登录态传给 Header
+  const cookieStore = await cookies();
+  const isLoggedIn = !!cookieStore.get("token")?.value;
 
   return (
     <html data-theme="light" lang="zh-CN" suppressHydrationWarning>
@@ -48,7 +52,7 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
         >
           {/* flex 列布局 + min-h-dvh：内容不足一屏时 footer 吸附在视口底部 */}
           <div id="CIRAOS" className="flex min-h-dvh flex-col">
-            <Header menu={config?.header?.menu ?? []} appName={config?.APP_NAME ?? "博客"} />
+            <Header menu={config?.header?.menu ?? []} appName={config?.APP_NAME ?? "博客"} isLoggedIn={isLoggedIn} />
 
             <div className="main w-full max-w-300 mx-auto mt-10 px-4 sm:px-0 flex flex-1">
               {children}

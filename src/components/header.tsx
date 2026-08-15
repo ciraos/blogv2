@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, SquareTerminal } from "lucide-react";
+import { Menu } from "lucide-react";
 
 import {
     NavigationMenu,
@@ -20,6 +20,7 @@ import {
     SheetTrigger,
 } from "@/components/ui/sheet";
 
+import { UserMenu } from "@/components/user-menu";
 import type { HeaderMenuGroup, HeaderMenuItem } from "@/types/site-config";
 
 interface HeaderProps {
@@ -27,9 +28,11 @@ interface HeaderProps {
     menu?: HeaderMenuGroup[];
     /** 站点名称 */
     appName?: string;
+    /** 是否已登录（服务端读取 httpOnly cookie 传入） */
+    isLoggedIn?: boolean;
 }
 
-export default function Header({ menu = [], appName = "博客" }: HeaderProps) {
+export default function Header({ menu = [], appName = "博客", isLoggedIn = false }: HeaderProps) {
     return (
         <>
             <div className="header w-full max-w-300 h-12 mx-auto px-5 flex items-center justify-between bg-white rounded-xl shadow-md hover:shadow-lg">
@@ -100,7 +103,7 @@ export default function Header({ menu = [], appName = "博客" }: HeaderProps) {
                             </nav>
                         </SheetContent>
                     </Sheet>
-                    <SquareTerminal />
+                    <UserMenu isLoggedIn={isLoggedIn} />
                 </div>
             </div>
         </>

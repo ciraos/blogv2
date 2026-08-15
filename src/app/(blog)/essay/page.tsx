@@ -78,7 +78,7 @@ export default async function EssayPage({ searchParams }: { searchParams: Promis
         <div className="w-full space-y-6">
 
             {config?.essay.home_enable ? (
-                <div className="essay-banner relative h-75 overflow-hidden rounded-xl p-8 text-white flex flex-col justify-between">
+                <div className="essay-banner relative h-56 md:h-75 overflow-hidden rounded-xl p-5 md:p-8 text-white flex flex-col justify-between">
                     {/* 背景图：top_background（相对路径拼站点前缀） */}
                     {resolveAssetUrl(config.essay.top_background) && (
                         <>
@@ -95,13 +95,13 @@ export default async function EssayPage({ searchParams }: { searchParams: Promis
 
                     <div className="relative z-10">
                         <div className="mb-2 text-[.75rem] font-medium text-white/80">{config?.essay.tips}</div>
-                        <div className="mb-4 block text-[2.25rem] font-bold leading-[1.2]">{config?.essay.title}</div>
+                        <div className="mb-4 block text-3xl font-bold leading-[1.2] md:text-[2.25rem]">{config?.essay.title}</div>
                     </div>
-                    <div className="relative z-10 flex items-center justify-between">
-                        <div className="text-[.875rem] leading-normal text-white/90">{config?.essay.subtitle}</div>
+                    <div className="relative z-10 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                        <div className="min-w-0 flex-1 line-clamp-2 text-[.875rem] leading-normal text-white/90">{config?.essay.subtitle}</div>
                         <Link
                             href={config?.essay.button_link}
-                            className="flex items-center rounded-lg bg-white/20 px-3.5 py-1.5 text-sm font-medium backdrop-blur-sm transition-colors hover:bg-white/30"
+                            className="flex shrink-0 items-center rounded-lg bg-white/20 px-3.5 py-1.5 text-sm font-medium backdrop-blur-sm transition-colors hover:bg-white/30"
                         >
                             <LinkIcon className="mr-1 size-4.5" />
                             {config?.essay.button_text}
@@ -110,8 +110,8 @@ export default async function EssayPage({ searchParams }: { searchParams: Promis
                 </div>
             ) : (<h1 className="text-2xl font-bold tracking-tight">即刻</h1>)}
 
-            {/* 瀑布流：固定 3 列（每条说说宽度为容器 1/3），高度自适应、断列不截断 */}
-            <div className="columns-3 gap-4">
+            {/* 瀑布流：桌面 3 列（1/3 宽），平板 2 列，移动端 1 列；高度自适应、断列不截断 */}
+            <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
                 {data.list.map((essay) => (
                     <div key={essay.id} className="mb-4 break-inside-avoid">
                         <EssayCard essay={essay} />
