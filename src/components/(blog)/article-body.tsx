@@ -237,6 +237,156 @@ function enhanceInlineText(root: HTMLElement) {
     });
 }
 
+/** 折叠框裸文本解析：后端未渲染的 `::: folding [open] [#色值] 标题 内容 :::` 转成 details.folding-tag */
+function enhanceFolding(root: HTMLElement) {
+    root.querySelectorAll<HTMLElement>("p, li, div").forEach((el) => {
+        // 只处理包含折叠框语法的元素
+        const text = el.textContent ?? "";
+        if (!text.includes("::: folding")) return;
+        // 跳过代码块 / 已渲染的折叠框
+        if (el.closest("pre") || el.closest(".md-editor-code") || el.closest("details")) return;
+
+        // 匹配：::: folding [open] [#hex] 标题 ... 内容 ... :::（标题/内容可换行或同行）
+        const re = /::: folding\s*(open)?\s*(#[0-9a-fA-F]{3,8})?\s*([\s\S]*?)\s*:::/;
+
+        // 遍历文本节点，找到含折叠框语法的节点替换（保留事件绑定，不用 innerHTML 序列化）
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        const textNodes: Text[] = [];
+        let node: Node | null;
+        while ((node = walker.nextNode())) {
+            textNodes.push(node as Text);
+        }
+
+        for (const textNode of textNodes) {
+            const nodeText = textNode.data ?? "";
+            if (!nodeText.includes("::: folding")) continue;
+
+            const m = nodeText.match(re);
+            if (!m) continue;
+
+            const isOpen = !!m[1];
+            const color = m[2] || "";
+            const bodyText = m[3] || "";
+
+            // 标题/内容拆分：
+            // - 换行格式（::: folding\n标题\n内容\n:::）：第一行标题，其余内容
+            // - 单行格式（::: folding 标题 内容 :::）：标题取第一段（到首个空格），其余为内容
+            const lines = bodyText.split("\n").map((l) => l.trim()).filter(Boolean);
+            if (lines.length === 0) continue;
+            let title: string;
+            let content: string;
+            if (lines.length > 1) {
+                title = lines[0];
+                content = lines.slice(1).join("\n");
+            } else {
+                const firstSpace = lines[0].indexOf(" ");
+                if (firstSpace > 0) {
+                    title = lines[0].slice(0, firstSpace).trim();
+                    content = lines[0].slice(firstSpace).trim();
+                } else {
+                    title = lines[0];
+                    content = "";
+                }
+            }
+
+            const details = document.createElement("details");
+            details.className = "folding-tag" + (color ? " custom-color" : "");
+            if (isOpen) details.setAttribute("open", "");
+
+            const summary = document.createElement("summary");
+            summary.textContent = title;
+
+            // 自定义颜色折叠框：边框 + summary 背景随展开/收起联动
+            // - 默认折叠：点击展开 → 长条背景 + 边框变自定义色；收起后恢复默认
+            // - 默认打开：长条背景 + 边框一直是自定义色；收起后恢复默认
+            if (color) {
+                const applyColor = () => {
+                    details.style.borderColor = color;
+                    summary.style.backgroundColor = color;
+                    summary.style.color = "#fff";
+                };
+                const resetColor = () => {
+                    details.style.borderColor = "";
+                    summary.style.backgroundColor = "";
+                    summary.style.color = "";
+                };
+
+                if (isOpen) applyColor();
+
+                details.addEventListener("toggle", () => {
+                    if (details.open) {
+                        applyColor();
+                    } else {
+                        resetColor();
+                    }
+                });
+            }
+
+            const contentDiv = document.createElement("div");
+            contentDiv.className = "content";
+            contentDiv.innerHTML = content.replace(/\n/g, "<br>");
+
+            details.appendChild(summary);
+            details.appendChild(contentDiv);
+
+            // 用 details 替换折叠语法文本节点（保留其他文本，事件绑定随元素保留）
+            const before = nodeText.slice(0, m.index ?? 0);
+            const after = nodeText.slice((m.index ?? 0) + m[0].length);
+            const frag = document.createDocumentFragment();
+            if (before) frag.appendChild(document.createTextNode(before));
+            frag.appendChild(details);
+            if (after) frag.appendChild(document.createTextNode(after));
+            textNode.replaceWith(frag);
+        }
+    });
+}
+
+/** 提示块裸文本解析：后端未渲染的 `!!! type\n内容\n!!!` 转成 div.admonition */
+function enhanceAdmonition(root: HTMLElement) {
+    root.querySelectorAll<HTMLElement>("p, div").forEach((el) => {
+        const text = el.textContent ?? "";
+        if (!text.includes("!!!")) return;
+        if (el.closest("pre") || el.closest(".md-editor-code") || el.closest(".admonition") || el.closest("details")) return;
+
+        // 匹配：!!! type\n内容\n!!!（可同行：!!! type 内容 !!!）
+        const re = /!!!\s*(\w+)\s*\n?([\s\S]*?)\n?\s*!!!/;
+        const m = el.innerHTML.match(re);
+        if (!m) return;
+
+        const type = m[1].toLowerCase();
+        const bodyText = m[2].trim();
+
+        const div = document.createElement("div");
+        div.className = `admonition ${type}`;
+
+        const title = document.createElement("div");
+        title.className = "admonition-title";
+        title.textContent = type;
+
+        const body = document.createElement("div");
+        body.className = "admonition-body";
+        body.innerHTML = bodyText.replace(/\n/g, "<br>");
+
+        div.appendChild(title);
+        div.appendChild(body);
+
+        // 用 DOM 节点替换，保留前后文本
+        const before = el.innerHTML.slice(0, m.index ?? 0);
+        const after = el.innerHTML.slice((m.index ?? 0) + m[0].length);
+        const frag = document.createDocumentFragment();
+        if (before) frag.appendChild(document.createTextNode(before));
+        frag.appendChild(div);
+        if (after) frag.appendChild(document.createTextNode(after));
+        // 替换 el 自身：若 el 只剩提示块则整体替换，否则重建
+        if (el.innerHTML.trim() === m[0]) {
+            el.replaceWith(frag);
+        } else {
+            el.innerHTML = "";
+            el.appendChild(frag);
+        }
+    });
+}
+
 /** 外链加 target=_blank */
 function enhanceExternalLinks(root: HTMLElement) {
     root.querySelectorAll<HTMLAnchorElement>('a[href^="http"]').forEach((link) => {
@@ -639,6 +789,8 @@ export function ArticleBody({ html }: { html: string }) {
 
         // 插件增强
         enhanceInlineText(root);
+        enhanceFolding(root);
+        enhanceAdmonition(root);
         enhanceExternalLinks(root);
         enhanceTabs(root);
         enhanceTips(root, cleanups);

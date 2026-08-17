@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "katex/dist/katex.min.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -409,14 +410,17 @@
 }
 
 /* ============ 表格 ============ */
+.article-body .table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
 .article-body table {
   width: 100%;
   max-width: 100%;
   margin: 1.2em 0;
   border-collapse: collapse;
   font-size: 0.95em;
-  display: block;
-  overflow-x: auto;
 }
 
 .article-body th,
@@ -424,6 +428,22 @@
   padding: 0.55em 0.9em;
   border: 1px solid var(--border);
   text-align: left;
+}
+
+/* 表格单元格 align 属性（后端 :---/:---:/---: 对齐语法）优先于默认左对齐 */
+.article-body th[align="left"],
+.article-body td[align="left"] {
+  text-align: left;
+}
+
+.article-body th[align="center"],
+.article-body td[align="center"] {
+  text-align: center;
+}
+
+.article-body th[align="right"],
+.article-body td[align="right"] {
+  text-align: right;
 }
 
 .article-body th {
@@ -674,6 +694,79 @@
 .article-body .code-block-body code.hljs {
   background: transparent;
   padding: 0;
+}
+
+/* ============ hljs 语法高亮 token 配色（浅色，移植 atom-one-light） ============
+   作用域限定 .article-body 内所有代码块（含后端 _HTML 直出的 yaml 等），
+   不依赖 atom-one-light.css 独立 chunk（link 页等未渲染 ArticleBody 的页面也能高亮） */
+.article-body .hljs-comment,
+.article-body .hljs-quote {
+  color: #a0a1a7;
+  font-style: italic;
+}
+
+.article-body .hljs-doctag,
+.article-body .hljs-keyword,
+.article-body .hljs-formula {
+  color: #a626a4;
+}
+
+.article-body .hljs-section,
+.article-body .hljs-name,
+.article-body .hljs-selector-tag,
+.article-body .hljs-deletion,
+.article-body .hljs-subst {
+  color: #e45649;
+}
+
+.article-body .hljs-literal {
+  color: #0184bb;
+}
+
+.article-body .hljs-string,
+.article-body .hljs-regexp,
+.article-body .hljs-addition,
+.article-body .hljs-attribute,
+.article-body .hljs-meta .hljs-string {
+  color: #50a14f;
+}
+
+.article-body .hljs-attr,
+.article-body .hljs-variable,
+.article-body .hljs-template-variable,
+.article-body .hljs-type,
+.article-body .hljs-selector-class,
+.article-body .hljs-selector-attr,
+.article-body .hljs-selector-pseudo,
+.article-body .hljs-number {
+  color: #986801;
+}
+
+.article-body .hljs-symbol,
+.article-body .hljs-bullet,
+.article-body .hljs-link,
+.article-body .hljs-meta,
+.article-body .hljs-selector-id,
+.article-body .hljs-title {
+  color: #4078f2;
+}
+
+.article-body .hljs-built_in,
+.article-body .hljs-title.class_,
+.article-body .hljs-class .hljs-title {
+  color: #c18401;
+}
+
+.article-body .hljs-emphasis {
+  font-style: italic;
+}
+
+.article-body .hljs-strong {
+  font-weight: bold;
+}
+
+.article-body .hljs-link {
+  text-decoration: underline;
 }
 
 .article-body .code-block-body pre,
@@ -1324,6 +1417,7 @@
   padding: 16px;
   margin: 1em 0;
   font-size: 1rem;
+  overflow: hidden;
   transition: border 0s ease;
 }
 
@@ -1331,15 +1425,18 @@
   margin-top: 0 !important;
 }
 
-.article-body details.folding-tag:not(.custom-color)[open] {
+/* 无自定义颜色的折叠框：展开时默认边框 */
+.article-body details.folding-tag:not(.custom-color):not([style])[open] {
   background: var(--card);
-  border: 1px solid var(--primary);
-  border-radius: 15px;
+  border: 1px solid var(--border);
+  /* border-radius: 15px; */
 }
 
-.article-body details.folding-tag.custom-color[open] {
+/* 带内联 border-color 的折叠框（官方渲染为 style="border-color:#xxx"）：保留自定义色 */
+.article-body details.folding-tag[open][style] {
+  background: var(--card);
   border: 1px solid;
-  border-radius: 15px;
+  /* border-radius: 15px; */
 }
 
 .article-body details.folding-tag summary:not(.md-editor-code-head) {
@@ -1353,13 +1450,68 @@
   user-select: none;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  /* border-radius: 14px; */
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.05);
   list-style: none;
 }
 
+/* 窄屏：折叠框 padding 缩小，避免偏肥 */
+@media (max-width: 480px) {
+  .article-body details.folding-tag {
+    padding: 10px;
+  }
+
+  .article-body details.folding-tag summary:not(.md-editor-code-head) {
+    padding: 12px;
+    margin: -10px;
+  }
+
+  .article-body details.folding-tag[open] summary:not(.md-editor-code-head) {
+    margin-bottom: 12px;
+  }
+}
+
+/* 展开时：summary 作为顶部条贴 details 边框 —— 去圆角 + 去自身边框，消除缝隙 */
+.article-body details.folding-tag[open] summary:not(.md-editor-code-head) {
+  margin-bottom: 16px;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  box-shadow: none;
+}
+
 .article-body details.folding-tag summary:not(.md-editor-code-head)::-webkit-details-marker {
   display: none;
+}
+
+/* 展开箭头：收起 ▶，展开旋转 90° */
+.article-body details.folding-tag summary:not(.md-editor-code-head)::before {
+  content: "▶";
+  margin-right: 8px;
+  font-size: 0.75rem;
+  transition: transform 0.3s;
+  display: inline-block;
+}
+
+.article-body details.folding-tag[open] summary:not(.md-editor-code-head)::before {
+  transform: rotate(90deg);
+}
+
+/* hover：右侧显示 +，背景变主题色 */
+.article-body details.folding-tag summary:not(.md-editor-code-head):hover::after {
+  content: "+";
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+}
+
+.article-body details.folding-tag:not(.custom-color):not([style]) summary:not(.md-editor-code-head):hover {
+  background: var(--primary);
+  transition: all 0.3s;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+  color: #fff !important;
 }
 
 /* ---------- 隐藏块 hidden ---------- */
@@ -1399,6 +1551,312 @@
 
 .article-body .hide-content> :first-child {
   margin-top: 0;
+}
+
+/* ---------- Admonition 提示块（!!! type） ---------- */
+.article-body .md-editor-admonition {
+  position: relative;
+  margin: 1em 0;
+  padding: 14px 18px;
+  border-radius: 10px;
+  border-left: 4px solid;
+  background: var(--muted);
+}
+
+.article-body .md-editor-admonition .md-editor-admonition-title {
+  margin: 0 0 6px;
+  font-weight: 700;
+  font-size: 1em;
+}
+
+/* 各类型配色（独立不重复） */
+.article-body .md-editor-admonition-note {
+  border-left-color: #4078f2;
+  background: rgb(64 120 242 / 0.1);
+}
+
+.article-body .md-editor-admonition-abstract {
+  border-left-color: #6a737d;
+  background: rgb(106 115 125 / 0.1);
+}
+
+.article-body .md-editor-admonition-info {
+  border-left-color: #0184bb;
+  background: rgb(1 132 187 / 0.1);
+}
+
+.article-body .md-editor-admonition-tip {
+  border-left-color: #50a14f;
+  background: rgb(80 161 79 / 0.1);
+}
+
+.article-body .md-editor-admonition-success {
+  border-left-color: #2ecc71;
+  background: rgb(46 204 113 / 0.1);
+}
+
+.article-body .md-editor-admonition-question {
+  border-left-color: #1abc9c;
+  background: rgb(26 188 156 / 0.1);
+}
+
+.article-body .md-editor-admonition-warning {
+  border-left-color: #e6a23c;
+  background: rgb(230 162 60 / 0.1);
+}
+
+.article-body .md-editor-admonition-failure {
+  border-left-color: #e45649;
+  background: rgb(228 86 73 / 0.12);
+}
+
+.article-body .md-editor-admonition-danger {
+  border-left-color: #c0392b;
+  background: rgb(192 57 43 / 0.12);
+}
+
+.article-body .md-editor-admonition-bug {
+  border-left-color: #a626a4;
+  background: rgb(166 38 164 / 0.12);
+}
+
+.article-body .md-editor-admonition-example {
+  border-left-color: #7e57c2;
+  background: rgb(126 87 194 / 0.1);
+}
+
+.article-body .md-editor-admonition-quote {
+  border-left-color: #95a5a6;
+  background: rgb(149 165 166 / 0.1);
+}
+
+.article-body .md-editor-admonition-hint {
+  border-left-color: #16a085;
+  background: rgb(22 160 133 / 0.1);
+}
+
+.article-body .md-editor-admonition-caution {
+  border-left-color: #f39c12;
+  background: rgb(243 156 18 / 0.12);
+}
+
+.article-body .md-editor-admonition-error {
+  border-left-color: #e74c3c;
+  background: rgb(231 76 60 / 0.12);
+}
+
+.article-body .md-editor-admonition-attention {
+  border-left-color: #ff9800;
+  background: rgb(255 152 0 / 0.15);
+}
+
+/* ciraos 后端结构：.admonition.type + .admonition-title + .admonition-body */
+.article-body .admonition {
+  position: relative;
+  margin: 1em 0;
+  padding: 14px 18px;
+  border-radius: 10px;
+  border-left: 4px solid;
+  background: var(--muted);
+}
+
+.article-body .admonition .admonition-title {
+  margin: 0 0 6px;
+  font-weight: 700;
+  font-size: 1em;
+}
+
+/* 每种类型独立配色（背景不重复） */
+.article-body .admonition.note {
+  border-left-color: #4078f2;
+  background: rgb(64 120 242 / 0.1);
+}
+
+.article-body .admonition.abstract {
+  border-left-color: #6a737d;
+  background: rgb(106 115 125 / 0.1);
+}
+
+.article-body .admonition.info {
+  border-left-color: #0184bb;
+  background: rgb(1 132 187 / 0.1);
+}
+
+.article-body .admonition.tip {
+  border-left-color: #50a14f;
+  background: rgb(80 161 79 / 0.1);
+}
+
+.article-body .admonition.success {
+  border-left-color: #2ecc71;
+  background: rgb(46 204 113 / 0.1);
+}
+
+.article-body .admonition.question {
+  border-left-color: #1abc9c;
+  background: rgb(26 188 156 / 0.1);
+}
+
+.article-body .admonition.warning {
+  border-left-color: #e6a23c;
+  background: rgb(230 162 60 / 0.1);
+}
+
+.article-body .admonition.failure {
+  border-left-color: #e45649;
+  background: rgb(228 86 73 / 0.12);
+}
+
+.article-body .admonition.danger {
+  border-left-color: #c0392b;
+  background: rgb(192 57 43 / 0.12);
+}
+
+.article-body .admonition.bug {
+  border-left-color: #a626a4;
+  background: rgb(166 38 164 / 0.12);
+}
+
+.article-body .admonition.example {
+  border-left-color: #7e57c2;
+  background: rgb(126 87 194 / 0.1);
+}
+
+.article-body .admonition.quote {
+  border-left-color: #95a5a6;
+  background: rgb(149 165 166 / 0.1);
+}
+
+.article-body .admonition.hint {
+  border-left-color: #16a085;
+  background: rgb(22 160 133 / 0.1);
+}
+
+.article-body .admonition.caution {
+  border-left-color: #f39c12;
+  background: rgb(243 156 18 / 0.12);
+}
+
+.article-body .admonition.error {
+  border-left-color: #e74c3c;
+  background: rgb(231 76 60 / 0.12);
+}
+
+.article-body .admonition.attention {
+  border-left-color: #ff9800;
+  background: rgb(255 152 0 / 0.15);
+}
+
+/* ---------- 公式 katex ---------- */
+.article-body .md-editor-katex-inline {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0 0.2em;
+  overflow-x: auto;
+  vertical-align: middle;
+}
+
+.article-body .md-editor-katex-block {
+  margin: 1em 0;
+  padding: 0.5em 1em;
+  overflow-x: auto;
+  text-align: center;
+  background: var(--muted);
+  border-radius: 8px;
+}
+
+.article-body .katex {
+  font-size: 1.05em;
+}
+
+.article-body .katex-display {
+  margin: 0;
+}
+
+/* ---------- 公式 math-inline / math-block（ciraos 后端结构） ---------- */
+.article-body .math-inline {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0 0.2em;
+  overflow-x: auto;
+  vertical-align: middle;
+  font-family: var(--font-mono, monospace);
+  background: color-mix(in oklch, var(--muted) 60%, transparent);
+  border-radius: 4px;
+}
+
+.article-body .math-block {
+  margin: 1em 0;
+  padding: 0.75em 1em;
+  overflow-x: auto;
+  text-align: center;
+  font-family: var(--font-mono, monospace);
+  font-size: 1.1em;
+  background: var(--muted);
+  border-radius: 8px;
+}
+
+/* ---------- 视频画廊 video-gallery ---------- */
+.article-body .video-gallery-container {
+  display: grid;
+  gap: 16px;
+  margin: 1rem 0;
+}
+
+.article-body .video-gallery-cols-1 {
+  grid-template-columns: repeat(1, 1fr);
+}
+
+.article-body .video-gallery-cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.article-body .video-gallery-cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.article-body .video-gallery-cols-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.article-body .video-gallery-item {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.article-body .video-gallery-video-wrapper video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: #000;
+}
+
+.article-body .video-gallery-caption {
+  padding: 10px 14px;
+}
+
+.article-body .video-gallery-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.article-body .video-gallery-desc {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+@media (max-width: 640px) {
+
+  .article-body .video-gallery-cols-2,
+  .article-body .video-gallery-cols-3,
+  .article-body .video-gallery-cols-4 {
+    grid-template-columns: repeat(1, 1fr);
+  }
 }
 
 /* ---------- 按钮 btn ---------- */
@@ -1678,6 +2136,24 @@
 .article-body .gallery-container .gallery-item:hover .gallery-caption {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* 触屏设备：gallery 标题常显 */
+@media (hover: none) {
+  .article-body .gallery-container .gallery-caption {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 移动端：图片组降为 2 列，避免格子过窄 */
+@media (max-width: 640px) {
+  .article-body .gallery-container.gallery-cols-3,
+  .article-body .gallery-container.gallery-cols-4,
+  .article-body .gallery-container.gallery-cols-5,
+  .article-body .gallery-container.gallery-cols-6 {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 /* ---------- LinkCard 链接卡片 ---------- */

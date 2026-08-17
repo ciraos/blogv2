@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { LinkCard } from "@/components/(blog)/link-card";
 
-import { getLinksByCategoryApi, getPublicLinkCategoriesApi } from "@/lib/api";
+import { getLinksByCategoryApi, getPublicLinkCategoriesApi, getPublicSiteConfigApi } from "@/lib/api";
 import { generateBlogMetadata } from "@/lib/seo";
 
 // 友链来自远端实时数据，不做构建期静态预渲染
@@ -13,6 +13,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function LinkPage() {
+    // 站点配置（用于页脚自定义内容）
+    const config = await getPublicSiteConfigApi().catch(() => null);
+
     // 先获取分类列表，再按分类拉取友链
     const categories = await getPublicLinkCategoriesApi();
 
@@ -25,6 +28,9 @@ export default async function LinkPage() {
     // 只展示有友链的分类，保持接口返回顺序
     const visible = sections.filter((section) => section.links.length > 0);
     const totalLinks = visible.reduce((sum, section) => sum + section.links.length, 0);
+
+    // 页脚自定义内容（后端已渲染好的 HTML）
+    const customHtml = config?.FRIEND_LINK_APPLY_CUSTOM_CODE_HTML || "";
 
     return (
         <div className="w-full space-y-8">
@@ -51,6 +57,14 @@ export default async function LinkPage() {
                         </div>
                     </section>
                 ))
+            )}
+
+            {/* 页脚自定义内容（免责声明 + 友链申请须知等，后端渲染好的 HTML） */}
+            {customHtml && (
+                <div
+                    className="FRIEND_LINK_APPLY_CUSTOM_CODE article-body"
+                    dangerouslySetInnerHTML={{ __html: customHtml }}
+                />
             )}
         </div>
     );

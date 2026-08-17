@@ -3,21 +3,10 @@ import Link from "next/link";
 import { CheckCircle2, TriangleAlert } from "lucide-react";
 
 import { ApiError, activateApi } from "@/lib/api";
-import { SiteConfigResponse } from "@/types/site-config";
-
-const api_url = process.env.NEXT_PUBLIC_API_URL;
+import { generateBlogMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
-    try {
-        const a = await fetch(`${api_url}/public/site-config`);
-        const data: SiteConfigResponse = await a.json();
-        return {
-            title: data.data.APP_NAME + ' - 激活账号',
-            description: data.data.SUB_TITLE,
-        };
-    } catch {
-        return { title: '激活账号' };
-    }
+    return generateBlogMetadata("激活账号");
 }
 
 interface ActivateSearchParams {

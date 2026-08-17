@@ -338,3 +338,25 @@ export async function getLatestCommentsApi(params: { page?: number; pageSize?: n
     const query = qs.toString();
     return request<CommentListData>(`/public/comments/latest${query ? `?${query}` : ""}`, { method: "GET" });
 }
+
+// ===================== 公开页面 =====================
+
+export interface PublicPage {
+    id: number;
+    path: string;
+    title: string;
+    description: string;
+    content: string;
+    markdown_content: string;
+    is_published: boolean;
+    show_comment: boolean;
+    sort: number;
+    created_at: string;
+    updated_at: string;
+}
+
+/** GET /public/pages/{path} 根据路径获取已发布的页面详情（公开）。path 如 /privacy，自动去前导斜杠 */
+export async function getPublicPageApi(path: string): Promise<PublicPage> {
+    const clean = path.replace(/^\/+/, "");
+    return request<PublicPage>(`/public/pages/${encodeURIComponent(clean)}`, { method: "GET" });
+}

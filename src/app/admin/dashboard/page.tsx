@@ -5,8 +5,7 @@ import { StatCard } from "@/components/(admin)/stat-card";
 import { ApiError, getBasicStatisticsApi, getUserInfoApi } from "@/lib/api";
 import type { BasicStatistics } from "@/lib/api";
 import type { LoginUserInfo } from "@/types/auth";
-
-const api_url = process.env.NEXT_PUBLIC_API_URL;
+import { generateBlogMetadata } from "@/lib/seo";
 
 // 区块标题：左侧主题色竖条 + 标题 + 向右延伸的分隔线
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -20,12 +19,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-    const a = await fetch(`${api_url}/public/site-config`);
-    const data = await a.json();
-    return {
-        title: data.data.APP_NAME + ' - 仪表盘',
-        description: data.data.SUB_TITLE,
-    };
+    return generateBlogMetadata("仪表盘");
 }
 
 export default async function Dashboard() {

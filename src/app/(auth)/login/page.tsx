@@ -2,18 +2,10 @@ import type { Metadata } from "next";
 
 import { LoginPage } from "@/components/(auth)/loginpage";
 
-import { SiteConfigResponse } from "@/types/site-config";
-
-const api_url = process.env.NEXT_PUBLIC_API_URL;
+import { generateBlogMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
-    const a = await fetch(`${api_url}/public/site-config`);
-    const data: SiteConfigResponse = await a.json();
-    // console.log(data.data.APP_NAME);
-    return {
-        title: data.data.APP_NAME + ' - 登录',
-        description: data.data.SUB_TITLE,
-    };
+    return generateBlogMetadata("登录");
 }
 
 export default async function Login({ searchParams }: { searchParams: Promise<{ registered?: string }> }) {

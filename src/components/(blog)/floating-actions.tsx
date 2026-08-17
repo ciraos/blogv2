@@ -109,14 +109,14 @@ export function FloatingActions() {
                     }`}
             >
 
-                {/* 目录按钮（仅文章页，位于回到顶部下方） */}
+                {/* 目录按钮（仅文章页移动端；PC 端文章页有右侧常驻目录） */}
                 {isPostPage && (
                     <button
                         type="button"
                         onClick={() => setTocOpen((v) => !v)}
                         aria-label="文章目录"
                         title={tocOpen ? "收起目录" : "文章目录"}
-                        className={`flex size-11 items-center justify-center rounded-full border shadow-lg backdrop-blur transition-colors ${tocOpen
+                        className={`flex size-11 items-center justify-center rounded-full border shadow-lg backdrop-blur transition-colors lg:hidden ${tocOpen
                             ? "border-primary bg-primary text-primary-foreground"
                             : "border-border bg-card text-foreground hover:border-primary hover:text-primary"
                             }`}
