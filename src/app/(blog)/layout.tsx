@@ -3,7 +3,9 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import "../globals.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 import Header from "@/components/header";
+import { FloatingActions } from "@/components/(blog)/floating-actions";
 import { FooterRandomLinks } from "@/components/(blog)/footer-random-links";
 // import Aside from "@/components/aside";
 
@@ -61,6 +63,8 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
           enableSystem
           enableColorScheme
         >
+          <Toaster position="top-right" richColors closeButton />
+
           {/* flex 列布局 + min-h-dvh：内容不足一屏时 footer 吸附在视口底部 */}
           <div id="CIRAOS" className="flex min-h-dvh flex-col">
             <Header menu={config?.header?.menu ?? []} appName={config?.APP_NAME ?? "博客"} isLoggedIn={isLoggedIn} />
@@ -102,6 +106,9 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
             </div>
 
           </div>
+
+          {/* (blog) 全局右下角悬浮按钮组：外层展开 → 目录（仅文章页）+ 回到顶部 */}
+          <FloatingActions />
         </ThemeProvider>
 
       </body>

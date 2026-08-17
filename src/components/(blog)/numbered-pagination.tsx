@@ -43,7 +43,7 @@ export function NumberedPagination({ page, totalPages, makePageHref }: NumberedP
 
     return (
         <Pagination>
-            <PaginationContent className="gap-1.5">
+            <PaginationContent className="flex-wrap justify-center gap-1.5">
                 {page > 1 && (
                     <PaginationItem>
                         <PaginationPrevious text="上一页" href={makePageHref(page - 1)} className="rounded-lg" />

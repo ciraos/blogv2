@@ -12,7 +12,7 @@ import { generateBlogMetadata } from "@/lib/seo";
 import { resolveAssetUrl } from "@/lib/utils";
 import { SiteConfigResponse } from "@/types/site-config";
 
-const site_url = process.env.NEXT_PUBLIC_SITE_URL;
+// const site_url = process.env.NEXT_PUBLIC_SITE_URL;
 const api_url = process.env.NEXT_PUBLIC_API_URL;
 const PAGE_SIZE = 10;
 

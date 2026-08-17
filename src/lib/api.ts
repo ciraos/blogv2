@@ -299,3 +299,42 @@ export interface BasicStats {
 export function getPublicBasicStatsApi(): Promise<BasicStats> {
     return request<BasicStats>("/public/statistics/basic", { method: "GET" });
 }
+
+// ===================== 评论 =====================
+
+export interface RecentComment {
+    id: string;
+    created_at: string;
+    nickname: string;
+    website: string;
+    email_md5: string;
+    content_html: string;
+    content: string;
+    is_admin_comment: boolean;
+    is_anonymous: boolean;
+    ip_location: string;
+    target_path: string;
+    target_title: string;
+    like_count: number;
+    total_children: number;
+}
+
+export interface CommentListData {
+    list: RecentComment[];
+    page: number;
+    pageSize: number;
+    total: number;
+    total_with_children: number;
+}
+
+/** GET /public/comments/latest 全站最新已发布评论（公开，分页） */
+export async function getLatestCommentsApi(params: { page?: number; pageSize?: number } = {}): Promise<CommentListData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<CommentListData>(`/public/comments/latest${query ? `?${query}` : ""}`, { method: "GET" });
+}

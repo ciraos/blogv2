@@ -357,6 +357,8 @@ export function DataTable({
     [data]
   )
 
+  // TanStack Table 的 useReactTable() 返回函数无法安全 memoize（React Compiler 兼容性提示，属库限制）
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,

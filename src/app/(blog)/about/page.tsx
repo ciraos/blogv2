@@ -237,18 +237,18 @@ export default async function AboutPage() {
                                     {page.map.title} <b>{page.map.strengthenTitle}</b>
                                 </span>
                             </div>
-                            <div className="flex flex-wrap items-center justify-between rounded-xl border bg-card px-4 py-3 md:min-h-[100px]">
-                                <div className="mr-8 flex min-w-[120px] flex-col">
-                                    <span className="mb-2 text-xs leading-none opacity-80">{page.self_info.tips1}</span>
-                                    <span className="text-4xl font-bold leading-none" style={{ color: "#43a6c6" }}>{page.self_info.contentYear}</span>
+                            <div className="grid grid-cols-3 items-center justify-between gap-2 rounded-xl border bg-card px-3 py-3 md:min-h-[100px] md:px-4">
+                                <div className="flex min-w-0 flex-col">
+                                    <span className="mb-2 truncate text-xs leading-none opacity-80">{page.self_info.tips1}</span>
+                                    <span className="truncate text-2xl font-bold leading-none md:text-4xl" style={{ color: "#43a6c6" }}>{page.self_info.contentYear}</span>
                                 </div>
-                                <div className="mr-8 flex min-w-[120px] flex-col">
-                                    <span className="mb-2 text-xs leading-none opacity-80">{page.self_info.tips2}</span>
-                                    <span className="text-4xl font-bold leading-none" style={{ color: "#c69043" }}>{page.self_info.content2}</span>
+                                <div className="flex min-w-0 flex-col">
+                                    <span className="mb-2 truncate text-xs leading-none opacity-80">{page.self_info.tips2}</span>
+                                    <span className="truncate text-2xl font-bold leading-none md:text-4xl" style={{ color: "#c69043" }}>{page.self_info.content2}</span>
                                 </div>
-                                <div className="flex min-w-[120px] flex-col">
-                                    <span className="mb-2 text-xs leading-none opacity-80">{page.self_info.tips3}</span>
-                                    <span className="text-4xl font-bold leading-none" style={{ color: "#b04fe6" }}>{page.self_info.content3}</span>
+                                <div className="flex min-w-0 flex-col">
+                                    <span className="mb-2 truncate text-xs leading-none opacity-80">{page.self_info.tips3}</span>
+                                    <span className="truncate text-2xl font-bold leading-none md:text-4xl" style={{ color: "#b04fe6" }}>{page.self_info.content3}</span>
                                 </div>
                             </div>
                         </div>
@@ -277,9 +277,12 @@ export default async function AboutPage() {
                                 </a>
                             </div>
                             {page.personalities.personalityImg && (
-                                <div className="absolute right-8 top-2.5 w-[220px] transition-transform duration-1000 md:right-8" style={{ transitionTimingFunction: "cubic-bezier(0.13,0.45,0.21,1.02)" }}>
+                                <div
+                                    className="mt-4 flex justify-center md:absolute md:right-8 md:top-2.5 md:mt-0 md:w-[220px] md:justify-start"
+                                    style={{ transitionTimingFunction: "cubic-bezier(0.13,0.45,0.21,1.02)" }}
+                                >
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={resolveAssetUrl(page.personalities.personalityImg) ?? ""} alt="人格" className="mx-auto mb-5 block max-w-full" />
+                                    <img src={resolveAssetUrl(page.personalities.personalityImg) ?? ""} alt="人格" className="mx-auto mb-5 block max-w-full md:mx-0" />
                                 </div>
                             )}
                         </Card>
@@ -353,9 +356,11 @@ export default async function AboutPage() {
                         >
                             <ItemTips>{page.game.tips}</ItemTips>
                             <span className="text-4xl font-bold leading-none">{page.game.title}</span>
-                            <div className="mt-auto flex items-center justify-between">
-                                {page.game.title === "原神" && <div className="relative h-[62.5px] w-[500px] overflow-hidden" aria-hidden="true" />}
-                                <div className="ml-auto text-sm opacity-80">{page.game.uid}</div>
+                            <div className="mt-auto flex items-center justify-between gap-2">
+                                {page.game.title === "原神" && (
+                                    <div className="relative hidden h-[62.5px] w-full max-w-[300px] overflow-hidden sm:block" aria-hidden="true" />
+                                )}
+                                <div className="ml-auto shrink-0 text-sm opacity-80">{page.game.uid}</div>
                             </div>
                         </Card>
                     )}

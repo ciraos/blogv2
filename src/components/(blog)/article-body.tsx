@@ -40,6 +40,8 @@ for (const [name, language] of Object.entries(commonLanguages)) {
     }
 }
 
+// ===================== 代码块增强（原有） =====================
+
 /** 从 code 元素上读取语言（language-xxx class） */
 function detectLanguage(codeEl: HTMLElement): string {
     for (const cls of codeEl.classList) {
@@ -65,7 +67,6 @@ function makeCopyButton(codeEl: HTMLElement): HTMLButtonElement {
         try {
             await navigator.clipboard.writeText(codeEl.innerText);
         } catch {
-            // 非安全上下文时的降级方案
             const textarea = document.createElement("textarea");
             textarea.value = codeEl.innerText;
             textarea.style.position = "fixed";
@@ -92,8 +93,25 @@ function enhanceBlock(pre: HTMLPreElement) {
     if (!codeEl || codeEl.dataset.enhanced === "true") return;
     codeEl.dataset.enhanced = "true";
 
-    // 1) 语法高亮
-    hljs.highlightElement(codeEl);
+    // mermaid 代码块不在此处理（单独渲染图表）
+    if (codeEl.classList.contains("language-mermaid") || pre.closest("[data-mermaid-code]")) return;
+
+    // 1) 语法高亮：后端 md-editor 的 code 内含 <span class="md-editor-code-block"> 与行号 span，
+    //    highlightElement 会用 innerHTML 整体替换导致结构丢失/报错，
+    //    所以改为：取纯文本 → hljs.highlight() → 保留 md-editor-code-block 结构重新注入。
+    const lang = detectLanguage(codeEl);
+    const rawText = codeEl.textContent ?? "";
+    const highlighted = lang && hljs.getLanguage(lang)
+        ? hljs.highlight(rawText, { language: lang, ignoreIllegals: true }).value
+        : hljs.highlightAuto(rawText).value;
+
+    const codeBlock = codeEl.querySelector<HTMLElement>(".md-editor-code-block");
+    if (codeBlock) {
+        codeBlock.innerHTML = highlighted;
+    } else {
+        codeEl.innerHTML = highlighted;
+    }
+    codeEl.classList.add("hljs");
 
     // 2) 行号栏 + 代码横向滚动容器
     const details = pre.closest<HTMLElement>("details.md-editor-code");
@@ -104,7 +122,7 @@ function enhanceBlock(pre: HTMLPreElement) {
     const body = document.createElement("div");
     body.className = "code-block-body";
     body.appendChild(makeLineNumbers(codeEl));
-    body.appendChild(pre); // 把 pre 移入 body
+    body.appendChild(pre);
 
     // 3) 后端 md-editor 结构：details + summary（语言标签已存在，只加复制按钮）
     if (details && summary) {
@@ -116,7 +134,6 @@ function enhanceBlock(pre: HTMLPreElement) {
     }
 
     // 4) 普通 pre > code：包一层 .code-block（head + body）
-    const lang = detectLanguage(codeEl);
     const wrapper = document.createElement("div");
     wrapper.className = "code-block";
 
@@ -186,14 +203,454 @@ function enhanceHeadings(root: HTMLElement) {
     });
 }
 
+// ===================== 插件增强（移植自 anheyu-app-frontend） =====================
+
+/** 行内文本插件解析：后端未转换的 {u}{/u} {emp}{/emp} {wavy}{/wavy} {del}{/del} {kbd}{/kbd} {psw}{/psw} 转成 HTML 元素 */
+function enhanceInlineText(root: HTMLElement) {
+    const tagMap: Record<string, string> = {
+        u: "inline-underline",
+        emp: "inline-emphasis-mark",
+        wavy: "inline-wavy",
+        del: "inline-delete",
+        kbd: "inline-kbd",
+        psw: "inline-password",
+    };
+
+    root.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, blockquote, td, th, figcaption, span").forEach((el) => {
+        // 跳过代码块和已有插件容器
+        if (el.closest("pre") || el.closest(".md-editor-code") || el.closest(".anzhiyu-tip") || el.closest(".tabs")) return;
+        if (!el.textContent?.includes("{")) return;
+
+        for (const [tag, cls] of Object.entries(tagMap)) {
+            const re = new RegExp(`\\{${tag}\\}([\\s\\S]*?)\\{/${tag}\\}`, "g");
+            if (!re.test(el.innerHTML)) continue;
+            el.innerHTML = el.innerHTML.replace(
+                re,
+                (_m, inner: string) => {
+                    if (tag === "psw") {
+                        return `<span class="${cls}">${inner}</span>`;
+                    }
+                    return `<span class="${cls}">${inner}</span>`;
+                }
+            );
+        }
+    });
+}
+
+/** 外链加 target=_blank */
+function enhanceExternalLinks(root: HTMLElement) {
+    root.querySelectorAll<HTMLAnchorElement>('a[href^="http"]').forEach((link) => {
+        if (!link.getAttribute("target")) {
+            link.setAttribute("target", "_blank");
+            link.setAttribute("rel", "noopener noreferrer nofollow");
+        }
+    });
+}
+
+/** Tabs 标签页切换 */
+function enhanceTabs(root: HTMLElement) {
+    root.querySelectorAll<HTMLElement>(".tabs").forEach((container) => {
+        const tabs = container.querySelectorAll<HTMLElement>(".nav-tabs .tab");
+        const contents = container.querySelectorAll<HTMLElement>(".tab-contents .tab-item-content");
+
+        tabs.forEach((tab, index) => {
+            tab.addEventListener("click", () => {
+                tabs.forEach((t) => t.classList.remove("active"));
+                contents.forEach((c) => c.classList.remove("active"));
+                tab.classList.add("active");
+                if (contents[index]) contents[index].classList.add("active");
+            });
+        });
+
+        // 确保导航和内容的 active 状态同步
+        const activeBtn = container.querySelector(".nav-tabs .tab.active");
+        if (tabs.length > 0) {
+            if (!activeBtn) tabs[0].classList.add("active");
+            const activeIdx = activeBtn ? Array.from(tabs).indexOf(activeBtn) : 0;
+            if (!container.querySelector(".tab-item-content.active") && contents[activeIdx]) {
+                contents[activeIdx].classList.add("active");
+            }
+        }
+    });
+}
+
+/** Tip 提示（hover / click） */
+function enhanceTips(root: HTMLElement, cleanupFns: (() => void)[]) {
+    root.querySelectorAll<HTMLElement>(".anzhiyu-tip-wrapper").forEach((wrapper) => {
+        const tipText = wrapper.querySelector<HTMLElement>(".anzhiyu-tip-text");
+        const tip = wrapper.querySelector<HTMLElement>(".anzhiyu-tip");
+        if (!tipText || !tip) return;
+
+        const trigger = tip.getAttribute("data-trigger") || "hover";
+        const delay = parseInt(tip.getAttribute("data-delay") || "0", 10);
+
+        const showTip = () => {
+            tip.style.visibility = "visible";
+            tip.style.opacity = "1";
+            tip.classList.add("show");
+            tip.setAttribute("data-visible", "true");
+        };
+        const hideTip = () => {
+            tip.style.visibility = "hidden";
+            tip.style.opacity = "0";
+            tip.classList.remove("show");
+            tip.setAttribute("data-visible", "false");
+        };
+
+        if (trigger === "click") {
+            const handleClick = (e: Event) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const isVisible = tip.getAttribute("data-visible") === "true";
+                if (isVisible) hideTip();
+                else showTip();
+            };
+            const handleDocumentClick = (e: Event) => {
+                if (!wrapper.contains(e.target as Node)) hideTip();
+            };
+            tipText.addEventListener("click", handleClick);
+            document.addEventListener("click", handleDocumentClick);
+            cleanupFns.push(() => {
+                tipText.removeEventListener("click", handleClick);
+                document.removeEventListener("click", handleDocumentClick);
+            });
+        } else {
+            let showTimer: ReturnType<typeof setTimeout> | null = null;
+            let hideTimer: ReturnType<typeof setTimeout> | null = null;
+            const handleMouseEnter = () => {
+                if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+                showTimer = setTimeout(showTip, delay);
+            };
+            const handleMouseLeave = () => {
+                if (showTimer) { clearTimeout(showTimer); showTimer = null; }
+                hideTimer = setTimeout(hideTip, 100);
+            };
+            tipText.addEventListener("mouseenter", handleMouseEnter);
+            tipText.addEventListener("mouseleave", handleMouseLeave);
+            cleanupFns.push(() => {
+                tipText.removeEventListener("mouseenter", handleMouseEnter);
+                tipText.removeEventListener("mouseleave", handleMouseLeave);
+                if (showTimer) clearTimeout(showTimer);
+                if (hideTimer) clearTimeout(hideTimer);
+            });
+        }
+    });
+}
+
+/** 隐藏块 hidden */
+function enhanceHidden(root: HTMLElement) {
+    const hideContents = root.querySelectorAll<HTMLElement>(".hide-content");
+    hideContents.forEach((content) => {
+        content.style.display = "none";
+    });
+
+    root.querySelectorAll<HTMLElement>(".hide-button").forEach((button) => {
+        if (!button.getAttribute("data-display")) {
+            button.setAttribute("data-display", button.textContent || "查看");
+        }
+        button.addEventListener("click", () => {
+            const parent = button.closest<HTMLElement>(".hide-block, .hide-inline");
+            if (!parent) return;
+            const content = parent.querySelector<HTMLElement>(".hide-content");
+            if (!content) return;
+            if (content.style.display === "none" || !content.style.display) {
+                content.style.display = parent.classList.contains("hide-inline") ? "inline" : "block";
+                button.textContent = "收起";
+            } else {
+                content.style.display = "none";
+                button.textContent = button.getAttribute("data-display") || "查看";
+            }
+        });
+    });
+}
+
+/** 行内密码 psw */
+function enhancePasswords(root: HTMLElement) {
+    root.querySelectorAll<HTMLElement>(".inline-password").forEach((pw) => {
+        pw.addEventListener("click", () => {
+            pw.classList.toggle("revealed");
+        });
+    });
+}
+
+/** LinkCard 链接卡片：iconify 图标转 img、补缺失节点 */
+function enhanceLinkCards(root: HTMLElement) {
+    const toIconifySvgUrl = (iconifyName: string): string => {
+        const [prefix, name] = iconifyName.split(":");
+        if (!prefix || !name) return "";
+        return `https://api.iconify.design/${prefix}/${name}.svg?color=currentColor`;
+    };
+
+    root.querySelectorAll<HTMLElement>(".anzhiyu-tag-link .tag-Link").forEach((card) => {
+        const bottom = card.querySelector<HTMLElement>(".tag-link-bottom");
+        if (!bottom) return;
+        const left = bottom.querySelector<HTMLElement>(".tag-link-left");
+
+        if (left) {
+            // iconify span → img
+            left.querySelectorAll<HTMLElement>(".iconify[data-icon]").forEach((span) => {
+                const iconName = (span.getAttribute("data-icon") || "").trim();
+                const [prefix, name] = iconName.split(":");
+                if (!prefix || !name) return;
+                const img = document.createElement("img");
+                img.src = toIconifySvgUrl(`${prefix}:${name}`);
+                img.alt = "";
+                img.loading = "eager";
+                span.replaceWith(img);
+            });
+            // i.anzhiyufont 旧图标 → img
+            left.querySelectorAll<HTMLElement>("i.anzhiyufont").forEach((node) => {
+                const img = document.createElement("img");
+                img.src = toIconifySvgUrl("rivet-icons:link");
+                img.alt = "";
+                img.loading = "eager";
+                node.replaceWith(img);
+            });
+            // 无图标时补默认链接图标
+            if (!left.querySelector("img, i")) {
+                const img = document.createElement("img");
+                img.src = toIconifySvgUrl("rivet-icons:link");
+                img.alt = "";
+                img.loading = "eager";
+                left.appendChild(img);
+            }
+        }
+
+        const right = bottom.querySelector<HTMLElement>(".tag-link-right");
+        if (right) {
+            const titleEl = right.querySelector<HTMLElement>(".tag-link-title");
+            if (titleEl && !(titleEl.textContent || "").trim()) {
+                titleEl.textContent = (card as HTMLAnchorElement).getAttribute("href") || "链接卡片";
+            }
+            let sitenameEl = right.querySelector<HTMLElement>(".tag-link-sitename");
+            if (!sitenameEl) {
+                sitenameEl = document.createElement("span");
+                sitenameEl.className = "tag-link-sitename";
+                right.appendChild(sitenameEl);
+            }
+            if (!(sitenameEl.textContent || "").trim()) {
+                sitenameEl.textContent = "网站名称";
+            }
+        }
+
+        const tipsEl = card.querySelector<HTMLElement>(".tag-link-tips");
+        if (tipsEl && !(tipsEl.textContent || "").trim()) {
+            tipsEl.textContent = "引用站外地址";
+        }
+
+        // 补箭头
+        if (!bottom.querySelector(".tag-link-arrow-icon")) {
+            const arrow = document.createElement("img");
+            arrow.className = "tag-link-arrow-icon";
+            arrow.src = toIconifySvgUrl("fa6-solid:angle-right");
+            arrow.alt = "";
+            arrow.loading = "eager";
+            bottom.appendChild(arrow);
+        }
+    });
+
+    // 图标不懒加载（data-src 直接替换）
+    root.querySelectorAll<HTMLImageElement>(".anzhiyu-tag-link .tag-link-left img[data-src]").forEach((img) => {
+        const dataSrc = img.getAttribute("data-src");
+        if (dataSrc) {
+            img.src = dataSrc;
+            img.removeAttribute("data-src");
+        }
+    });
+}
+
+/** Mermaid 图表渲染 */
+async function renderMermaid(root: HTMLElement) {
+    const blocks: { element: Element; code: string }[] = [];
+    root.querySelectorAll<HTMLElement>("div[data-mermaid-code]").forEach((div) => {
+        const code = div.getAttribute("data-mermaid-code") || div.querySelector("code.language-mermaid")?.textContent || "";
+        if (code.trim()) blocks.push({ element: div, code });
+    });
+    root.querySelectorAll<HTMLPreElement>("pre").forEach((pre) => {
+        if (pre.closest("[data-mermaid-code]")) return;
+        const codeEl = pre.querySelector<HTMLElement>("code.language-mermaid");
+        if (codeEl) blocks.push({ element: pre, code: codeEl.textContent || "" });
+    });
+    if (blocks.length === 0) return;
+
+    try {
+        const { default: mermaid } = await import("mermaid");
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: "loose",
+            theme: "default",
+            flowchart: { useMaxWidth: true, htmlLabels: true },
+            sequence: { useMaxWidth: true },
+            gantt: { useMaxWidth: true },
+        });
+        for (const block of blocks) {
+            if (!block.element.isConnected) continue;
+            try {
+                const id = `mermaid-${Math.random().toString(36).slice(2, 11)}`;
+                const { svg } = await mermaid.render(id, block.code);
+                const wrapper = document.createElement("div");
+                wrapper.className = "md-editor-mermaid";
+                wrapper.setAttribute("data-mermaid-code", block.code);
+                wrapper.innerHTML = svg;
+                block.element.replaceWith(wrapper);
+            } catch {
+                // 单个图表失败保留源码
+            }
+        }
+    } catch {
+        // mermaid 加载失败
+    }
+}
+
+/** 音乐播放器增强：后端已渲染完整 UI（.music-player-container），这里绑定播放控制事件 */
+function enhanceMusic(root: HTMLElement, cleanupFns: (() => void)[]) {
+    const players = root.querySelectorAll<HTMLElement>(".markdown-music-player");
+    players.forEach((player) => {
+        // 已绑定过则跳过
+        if (player.dataset.musicEnhanced === "true") return;
+        player.dataset.musicEnhanced = "true";
+
+        const container = player.querySelector<HTMLElement>(".music-player-container");
+        if (!container) return;
+
+        const audio = container.querySelector<HTMLAudioElement>(".music-audio-element");
+        if (!audio || audio.dataset.eventsAttached) return;
+        audio.dataset.eventsAttached = "true";
+
+        const artwork = container.querySelector<HTMLElement>(".music-artwork-wrapper");
+        const playIcon = container.querySelector<HTMLElement>(".music-play-icon");
+        const pauseIcon = container.querySelector<HTMLElement>(".music-pause-icon");
+        const progressFill = container.querySelector<HTMLElement>(".music-progress-fill");
+        const progressBar = container.querySelector<HTMLElement>(".music-progress-bar");
+        const currentTimeEl = container.querySelector<HTMLElement>(".current-time");
+        const durationEl = container.querySelector<HTMLElement>(".duration");
+        const errorEl = container.querySelector<HTMLElement>(".music-error");
+        let audioLoaded = false;
+
+        // 解析 data-music-data
+        const dataAttr = player.getAttribute("data-music-data") || "";
+        let musicData: Record<string, string> = {};
+        try {
+            musicData = JSON.parse(dataAttr.replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, "&"));
+        } catch {
+            musicData = {};
+        }
+        const neteaseId = player.getAttribute("data-music-id") || musicData.neteaseId || "";
+
+        const formatTime = (s: number) => {
+            if (!isFinite(s) || s < 0) return "00:00";
+            const mins = Math.floor(s / 60);
+            const secs = Math.floor(s % 60);
+            return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+        };
+
+        const loadAudio = async () => {
+            if (audioLoaded || !neteaseId) {
+                if (!neteaseId && errorEl) errorEl.style.display = "flex";
+                return;
+            }
+            if (errorEl) errorEl.style.display = "none";
+            try {
+                const res = await fetch("/api/public/music/song-resources", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ neteaseId }),
+                });
+                const json = (await res.json()) as { code: number; data?: { audioUrl?: string } };
+                const url = json.data?.audioUrl;
+                if (!res.ok || !url) {
+                    if (errorEl) errorEl.style.display = "flex";
+                    return;
+                }
+                const httpsUrl = url.startsWith("http://") ? url.replace("http://", "https://") : url;
+                audio.src = httpsUrl;
+                audio.preload = "metadata";
+                audioLoaded = true;
+                audio.addEventListener("loadedmetadata", () => {
+                    if (durationEl) durationEl.textContent = formatTime(audio.duration);
+                });
+            } catch {
+                if (errorEl) errorEl.style.display = "flex";
+            }
+        };
+
+        const toggle = async () => {
+            if (!audioLoaded) await loadAudio();
+            if (!audio.src) return;
+            if (audio.paused) {
+                audio.play().catch(() => {});
+            } else {
+                audio.pause();
+            }
+        };
+
+        artwork?.addEventListener("click", toggle);
+        progressBar?.addEventListener("click", (e) => {
+            const rect = progressBar.getBoundingClientRect();
+            if (audio.duration) {
+                audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+            }
+        });
+
+        audio.addEventListener("play", () => {
+            artwork?.classList.add("is-playing");
+            if (playIcon) playIcon.style.display = "none";
+            if (pauseIcon) pauseIcon.style.display = "block";
+        });
+        audio.addEventListener("pause", () => {
+            artwork?.classList.remove("is-playing");
+            if (playIcon) playIcon.style.display = "block";
+            if (pauseIcon) pauseIcon.style.display = "none";
+        });
+        audio.addEventListener("timeupdate", () => {
+            if (progressFill && audio.duration) {
+                progressFill.style.width = `${(audio.currentTime / audio.duration) * 100}%`;
+            }
+            if (currentTimeEl) currentTimeEl.textContent = formatTime(audio.currentTime);
+        });
+        audio.addEventListener("ended", () => {
+            audio.currentTime = 0;
+            artwork?.classList.remove("is-playing");
+        });
+
+        // 预加载元数据以显示时长
+        if (neteaseId) void loadAudio();
+
+        cleanupFns.push(() => {
+            audio.pause();
+            audio.src = "";
+        });
+    });
+}
+
+// ===================== 组件 =====================
+
 export function ArticleBody({ html }: { html: string }) {
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const root = ref.current;
         if (!root) return;
+        const cleanups: (() => void)[] = [];
+
+        // 代码块高亮 + 标题锚点（原有）
         root.querySelectorAll<HTMLPreElement>("pre").forEach(enhanceBlock);
         enhanceHeadings(root);
+
+        // 插件增强
+        enhanceInlineText(root);
+        enhanceExternalLinks(root);
+        enhanceTabs(root);
+        enhanceTips(root, cleanups);
+        enhanceHidden(root);
+        enhancePasswords(root);
+        enhanceLinkCards(root);
+        enhanceMusic(root, cleanups);
+        void renderMermaid(root);
+
+        return () => {
+            cleanups.forEach((fn) => fn());
+        };
     }, [html]);
 
     return (

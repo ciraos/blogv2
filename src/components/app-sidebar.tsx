@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { NavDocuments } from "@/components/nav-documents"
+// import Link from "next/link";
+// import { NavDocuments } from "@/components/nav-documents"
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
@@ -134,7 +134,7 @@ export function AppSidebar({
               asChild
               className="data-[slot=sidebar-menu-button]:p-1.5!"
             >
-              <div>
+              <div className="flex items-center justify-center">
                 <CommandIcon className="size-5!" />
                 <span className="text-base font-semibold">{config?.APP_NAME}</span>
               </div>

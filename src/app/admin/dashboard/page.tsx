@@ -8,6 +8,17 @@ import type { LoginUserInfo } from "@/types/auth";
 
 const api_url = process.env.NEXT_PUBLIC_API_URL;
 
+// 区块标题：左侧主题色竖条 + 标题 + 向右延伸的分隔线
+function SectionTitle({ children }: { children: React.ReactNode }) {
+    return (
+        <h2 className="mt-8 mb-4 flex items-center gap-2.5 text-lg font-semibold tracking-tight">
+            <span className="h-4 w-1 rounded-full bg-primary" aria-hidden="true" />
+            {children}
+            <span className="h-px flex-1 bg-border" aria-hidden="true" />
+        </h2>
+    );
+}
+
 export async function generateMetadata(): Promise<Metadata> {
     const a = await fetch(`${api_url}/public/site-config`);
     const data = await a.json();
@@ -44,13 +55,14 @@ export default async function Dashboard() {
 
     return (
         <>
-            <div className="flex justify-start">
+            <div className="flex flex-col">
                 <h1 className="text-2xl font-bold tracking-tight">仪表盘</h1>
-                <p className="ml-2 mt-1 text-sm text-muted-foreground content-end">
+                <p className="ml-0 mt-1 text-sm text-muted-foreground content-end">
                     欢迎回来，{user.nickname || user.username}
                 </p>
             </div>
 
+            <SectionTitle>统计</SectionTitle>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard
                     label="今日访问"
@@ -68,6 +80,9 @@ export default async function Dashboard() {
                 <StatCard label="本月浏览" value={stats.month_views} deltaPercent={null} />
                 <StatCard label="本年浏览" value={stats.year_views} deltaPercent={null} />
             </div>
+
+            {/* 杂项：预留区块（未来放小工具） */}
+            <SectionTitle>杂项</SectionTitle>
         </>
     );
 }

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { ArrowUpDown } from "lucide-react";
 
 import { MomentCard } from "@/components/(blog)/moment-card";
+import { MomentsRefreshButton } from "@/components/(blog)/moments-refresh-button";
 import { NumberedPagination } from "@/components/(blog)/numbered-pagination";
 
 import { ApiError, getPublicMomentsApi } from "@/lib/api";
@@ -24,6 +26,10 @@ export default async function FcirclePage({ searchParams }: { searchParams: Prom
     const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
     // 排序：published_at（发布时间，默认）/ created_at（抓取时间）
     const sortType = sp.sort_type === "created_at" ? "created_at" : "published_at";
+
+    // 登录态：httpOnly cookie 有 token 即视为已登录
+    const cookieStore = await cookies();
+    const isLoggedIn = !!cookieStore.get("token")?.value;
 
     let data;
     let errorMessage: string | null = null;
@@ -56,8 +62,8 @@ export default async function FcirclePage({ searchParams }: { searchParams: Prom
         <div className="w-full space-y-6">
             <header>
                 <h1 className="text-2xl font-bold tracking-tight">朋友圈</h1>
-                {/* 统计 + 排序按钮（最右侧） */}
-                <div className="mt-1 flex items-center justify-between gap-4">
+                {/* 统计 + 排序按钮（移动端纵向堆叠，桌面端同行） */}
+                <div className="mt-1 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
                     <p className="text-sm text-muted-foreground">
                         {stats
                             ? `${stats.active_links} 个活跃友链 · ${stats.total_moments} 篇动态`
@@ -81,6 +87,14 @@ export default async function FcirclePage({ searchParams }: { searchParams: Prom
             </div>
 
             <NumberedPagination page={page} totalPages={totalPages} makePageHref={pageHref} />
+
+            {/* 上次抓取时间 + 刷新按钮（右下角） */}
+            {stats?.last_updated_time && (
+                <p className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
+                    上次抓取更新：{stats.last_updated_time}
+                    <MomentsRefreshButton isLoggedIn={isLoggedIn} />
+                </p>
+            )}
         </div>
     );
 }

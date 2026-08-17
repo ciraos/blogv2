@@ -1,4 +1,6 @@
-import Link from "next/link";
+import { Zap } from "lucide-react";
+
+import { TimelineShell } from "@/components/(blog)/timeline-shell";
 
 import type { Essay } from "@/types/essays";
 import { resolveAssetUrl } from "@/lib/utils";
@@ -19,15 +21,8 @@ export function EssayTimeline({ essays }: { essays: Essay[] }) {
     if (essays.length === 0) return null;
 
     return (
-        <section className="w-full">
-            <div className="flex items-baseline justify-between gap-4">
-                <h2 className="text-lg font-semibold tracking-tight">即刻动态</h2>
-                <Link href="/essay" className="shrink-0 text-xs text-muted-foreground hover:underline">
-                    查看全部 →
-                </Link>
-            </div>
-
-            <div className="relative mt-4 overflow-x-auto pb-2">
+        <TimelineShell title="即刻动态" icon={<Zap className="size-4" />} linkText="查看全部" linkHref="/essay">
+            <div className="no-scrollbar relative overflow-x-auto pb-2">
                 {/* 时间轴线（横向）：对准小黑点正中间（日期行 16px + mt-1 4px + 半点 5px = 25px 中心） */}
                 <div className="absolute inset-x-0 top-[24px] h-0.5 bg-border" />
 
@@ -37,7 +32,7 @@ export function EssayTimeline({ essays }: { essays: Essay[] }) {
                     ))}
                 </div>
             </div>
-        </section>
+        </TimelineShell>
     );
 }
 
