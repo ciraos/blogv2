@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
+import katex from "katex";
 import hljs from "highlight.js/lib/core";
 import type { LanguageFn } from "highlight.js";
 import bash from "highlight.js/lib/languages/bash";
@@ -199,6 +200,32 @@ function enhanceHeadings(root: HTMLElement) {
             anchor.setAttribute("aria-hidden", "true");
             anchor.textContent = "#";
             heading.prepend(anchor);
+        }
+    });
+}
+
+// ===================== 公式 katex 前端渲染 =====================
+
+/**
+ * ciraos 后端只输出 `<span data-latex="..." data-type="math-inline" class="math-inline">裸 latex 文本</span>`，
+ * 没有 katex HTML；这里用 katex 前端渲染。若后端已输出完整 katex HTML 则跳过。
+ */
+function enhanceKatex(root: HTMLElement) {
+    root.querySelectorAll<HTMLElement>("[data-latex]").forEach((el) => {
+        const latex = el.getAttribute("data-latex");
+        if (!latex) return;
+        if (el.querySelector(".katex")) return; // 后端已渲染过
+        const displayMode =
+            el.getAttribute("data-type") === "math-block" ||
+            el.classList.contains("math-block");
+        try {
+            katex.render(latex, el, {
+                displayMode,
+                throwOnError: false,
+                strict: false,
+            });
+        } catch {
+            // 渲染失败保留原文本
         }
     });
 }
@@ -609,18 +636,88 @@ function enhanceLinkCards(root: HTMLElement) {
     });
 }
 
+/** mermaid 图表类型关键字（识别后端未渲染、被 markdown 解析成裸文本的图表源码） */
+const MERMAID_KEYWORDS = [
+    "flowchart", "graph", "sequenceDiagram", "classDiagram", "stateDiagram-v2", "stateDiagram",
+    "erDiagram", "journey", "gantt", "pie", "mindmap", "timeline", "quadrantChart", "gitGraph",
+    "C4Context", "C4Component", "C4Container", "C4Deployment", "C4Dynamic", "packet",
+    "block-beta", "sankey-beta", "xychart-beta", "zenuml", "architecture-beta", "kanban",
+    "radar", "sankey", "matrix", "dimension", "info",
+];
+
+/** 形如 `flowchart TD\n  Start --> Stop` 的多行 mermaid 源码 */
+const MERMAID_SOURCE_RE = new RegExp(
+    `^(?:${MERMAID_KEYWORDS.join("|")})\\b[\\s\\S]*\\n[\\s\\S]+`
+);
+
+/** 去掉 mermaid 源码开头的 `--- title: ... ---` frontmatter（用于识别） */
+function stripMermaidFrontmatter(text: string): string {
+    return text.replace(/^---\r?\n[\s\S]*?\r?\n---\s*/, "");
+}
+
+/** 提取被 markdown 解析过的 mermaid 裸文本（ciraos 后端不渲染 mermaid 时的兜底） */
+function collectMermaidTextBlocks(root: HTMLElement): { element: HTMLElement; code: string }[] {
+    const blocks: { element: HTMLElement; code: string }[] = [];
+    const handledContainers = new Set<HTMLElement>();
+
+    // 1) 带 frontmatter 的形式：<hr> + <h1~h4>title: X</h1~h4> + <p>diagram...</p>
+    //    （markdown 把 ```mermaid 内的 --- 解析成 hr、`title: X` 解析成标题）
+    root.querySelectorAll<HTMLElement>("div, section").forEach((el) => {
+        if (el.closest("pre") || el.closest(".md-editor-code") || el.closest(".md-editor-mermaid") || el.closest("details")) return;
+        const hr = el.querySelector<HTMLElement>(":scope > hr");
+        const titleEl = el.querySelector<HTMLElement>(":scope > h1, :scope > h2, :scope > h3, :scope > h4");
+        if (!hr || !titleEl) return;
+
+        // 去掉我们自己加的 heading-anchor（#）再取标题
+        const titleClone = titleEl.cloneNode(true) as HTMLElement;
+        titleClone.querySelector(".heading-anchor")?.remove();
+        const titleText = (titleClone.textContent ?? "").trim();
+        const titleMatch = titleText.match(/^title:\s*(.+)$/i);
+        if (!titleMatch) return;
+
+        // 标题之后的所有兄弟节点文本拼成图表正文
+        let rest = "";
+        let node: Node | null = titleEl.nextSibling;
+        while (node) {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                const part = ((node as HTMLElement).textContent ?? "").trim();
+                if (part) rest += (rest ? "\n" : "") + part;
+            }
+            node = node.nextSibling;
+        }
+        if (!MERMAID_SOURCE_RE.test(rest)) return;
+
+        const code = `---\ntitle: ${titleMatch[1].trim()}\n---\n${rest}`;
+        blocks.push({ element: el, code });
+        handledContainers.add(el);
+    });
+
+    // 2) 单个块元素形式：<p>flowchart TD\n  Start --> Stop</p>（正文直接在自己身上）
+    root.querySelectorAll<HTMLElement>("p, div").forEach((el) => {
+        if (el.closest("pre") || el.closest(".md-editor-code") || el.closest(".md-editor-mermaid") || el.closest("details")) return;
+        for (const c of handledContainers) {
+            if (c.contains(el)) return; // 已被 frontmatter 容器整体处理
+        }
+        if (el.querySelector("p, div")) return; // 只处理叶子块
+        const text = (el.textContent ?? "").trim();
+        if (!MERMAID_SOURCE_RE.test(text) && !MERMAID_SOURCE_RE.test(stripMermaidFrontmatter(text))) return;
+        blocks.push({ element: el, code: text });
+    });
+
+    return blocks;
+}
+
 /** Mermaid 图表渲染 */
 async function renderMermaid(root: HTMLElement) {
     const blocks: { element: Element; code: string }[] = [];
+    // 后端已渲染 / 带 data-mermaid-code 标记的图表（anheyu 结构），前端补齐渲染
     root.querySelectorAll<HTMLElement>("div[data-mermaid-code]").forEach((div) => {
         const code = div.getAttribute("data-mermaid-code") || div.querySelector("code.language-mermaid")?.textContent || "";
         if (code.trim()) blocks.push({ element: div, code });
     });
-    root.querySelectorAll<HTMLPreElement>("pre").forEach((pre) => {
-        if (pre.closest("[data-mermaid-code]")) return;
-        const codeEl = pre.querySelector<HTMLElement>("code.language-mermaid");
-        if (codeEl) blocks.push({ element: pre, code: codeEl.textContent || "" });
-    });
+    // 注意：`pre > code.language-mermaid` 代码框**不**自动渲染成图——用户要求代码框保留源码。
+    // 兜底：后端未渲染、被 markdown 解析成裸文本的图表源码（ciraos 后端常见于 tabs 的"样式预览"tab）
+    blocks.push(...collectMermaidTextBlocks(root));
     if (blocks.length === 0) return;
 
     try {
@@ -642,7 +739,12 @@ async function renderMermaid(root: HTMLElement) {
                 wrapper.className = "md-editor-mermaid";
                 wrapper.setAttribute("data-mermaid-code", block.code);
                 wrapper.innerHTML = svg;
-                block.element.replaceWith(wrapper);
+                // 裸文本兜底可能命中 tab 容器：保留 .tab-item-content 本身（tabs 切换依赖它），只替换其子节点
+                if (block.element.classList.contains("tab-item-content")) {
+                    block.element.replaceChildren(wrapper);
+                } else {
+                    block.element.replaceWith(wrapper);
+                }
             } catch {
                 // 单个图表失败保留源码
             }
@@ -786,6 +888,9 @@ export function ArticleBody({ html }: { html: string }) {
         // 代码块高亮 + 标题锚点（原有）
         root.querySelectorAll<HTMLPreElement>("pre").forEach(enhanceBlock);
         enhanceHeadings(root);
+
+        // 公式 katex 前端渲染（ciraos 后端只输出 data-latex + 裸文本）
+        enhanceKatex(root);
 
         // 插件增强
         enhanceInlineText(root);

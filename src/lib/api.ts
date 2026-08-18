@@ -224,7 +224,9 @@ export async function getLinksByCategoryApi(categoryId: number): Promise<FriendL
             break;
         }
     }
-    return all;
+    // 后端不提供排序参数（固定 id 升序 = 先添加在前）。
+    // 新添加的友链 id 更大，前端按 id 降序排列，让新友链排在最前。
+    return all.sort((a, b) => b.id - a.id);
 }
 
 /** GET /public/links/random 随机获取友链（num=0 表示全部） */

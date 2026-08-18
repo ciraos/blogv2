@@ -86,16 +86,20 @@ export default async function AboutPage() {
             {enable.author_box && (
                 <div className="flex items-center justify-center">
                     <div className="hidden flex-col items-end md:flex">
-                        {(page.avatar_skills_left || []).map((skill, i) => (
-                            <span key={i} className="about-tag" style={{ marginRight: i === 0 || i === (page.avatar_skills_left?.length ?? 1) - 1 ? -16 : undefined }}>
-                                {skill}
-                            </span>
-                        ))}
+                        {(page.avatar_skills_left || []).map((skill, i) => {
+                            const n = page.avatar_skills_left?.length ?? 1;
+                            // 弧形环绕：首尾标签稍近，中间标签略外推（幅度克制）
+                            const push = i === 0 || i === n - 1 ? 0 : 8;
+                            return (
+                                <span key={i} className="about-tag" style={{ marginRight: push }}>
+                                    {skill}
+                                </span>
+                            );
+                        })}
                     </div>
 
                     {avatar && (
-                        <div className="avatar-wrap mx-7 md:mx-8">
-                            <div className="avatar-ring" aria-hidden="true" />
+                        <div className="avatar-wrap mx-8 md:mx-9">
                             <div className="avatar-img">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src={avatar} alt="avatar" />
@@ -105,11 +109,16 @@ export default async function AboutPage() {
                     )}
 
                     <div className="hidden flex-col items-start md:flex">
-                        {(page.avatar_skills_right || []).map((skill, i) => (
-                            <span key={i} className="about-tag" style={{ marginLeft: i === 0 || i === (page.avatar_skills_right?.length ?? 1) - 1 ? -16 : undefined }}>
-                                {skill}
-                            </span>
-                        ))}
+                        {(page.avatar_skills_right || []).map((skill, i) => {
+                            const n = page.avatar_skills_right?.length ?? 1;
+                            // 弧形环绕：首尾标签稍近，中间标签略外推（幅度克制）
+                            const push = i === 0 || i === n - 1 ? 0 : 8;
+                            return (
+                                <span key={i} className="about-tag" style={{ marginLeft: push }}>
+                                    {skill}
+                                </span>
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -228,7 +237,7 @@ export default async function AboutPage() {
                         <AboutStatisticCard stats={stats} cover={resolveAssetUrl(page.statistics_background) ?? ""} />
                     )}
                     {enable.map_and_info && page.map && page.self_info && (
-                        <div className="item-group flex min-w-0 flex-1 flex-col justify-between">
+                        <div className="item-group flex min-w-0 flex-1 flex-col justify-between self-start">
                             <div
                                 className="about-map relative mb-2 h-60 overflow-hidden rounded-xl border bg-card"
                                 style={{ backgroundImage: `url(${resolveAssetUrl(page.map.background) ?? ""})`, backgroundPosition: "center", backgroundSize: "100%", transition: "all 1s ease-in-out" }}
@@ -237,16 +246,21 @@ export default async function AboutPage() {
                                     {page.map.title} <b>{page.map.strengthenTitle}</b>
                                 </span>
                             </div>
-                            <div className="grid grid-cols-3 items-center justify-between gap-2 rounded-xl border bg-card px-3 py-3 md:min-h-[100px] md:px-4">
-                                <div className="flex min-w-0 flex-col">
-                                    <span className="mb-2 truncate text-xs leading-none opacity-80">{page.self_info.tips1}</span>
-                                    <span className="truncate text-2xl font-bold leading-none md:text-4xl" style={{ color: "#43a6c6" }}>{page.self_info.contentYear}</span>
+                            <div className="rounded-xl border bg-card px-3 py-3 md:px-4">
+                                {/* 第一行：生于 + 毕业院校（两列网格，毕业院校在右列） */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="flex min-w-0 flex-col">
+                                        <span className="mb-2 truncate text-xs leading-none opacity-80">{page.self_info.tips1}</span>
+                                        <span className="truncate text-2xl font-bold leading-none md:text-4xl" style={{ color: "#43a6c6" }}>{page.self_info.contentYear}</span>
+                                    </div>
+                                    <div className="flex min-w-0 flex-col">
+                                        <span className="mb-2 truncate text-xs leading-none opacity-80">{page.self_info.tips2}</span>
+                                        {/* 校名：单行显示，超长省略号，不换行 */}
+                                        <span className="truncate text-2xl font-bold leading-none md:text-4xl" style={{ color: "#c69043" }}>{page.self_info.content2}</span>
+                                    </div>
                                 </div>
-                                <div className="flex min-w-0 flex-col">
-                                    <span className="mb-2 truncate text-xs leading-none opacity-80">{page.self_info.tips2}</span>
-                                    <span className="truncate text-2xl font-bold leading-none md:text-4xl" style={{ color: "#c69043" }}>{page.self_info.content2}</span>
-                                </div>
-                                <div className="flex min-w-0 flex-col">
+                                {/* 第二行：现在职业（独占一行，无分隔线） */}
+                                <div className="mt-3 flex min-w-0 flex-col">
                                     <span className="mb-2 truncate text-xs leading-none opacity-80">{page.self_info.tips3}</span>
                                     <span className="truncate text-2xl font-bold leading-none md:text-4xl" style={{ color: "#b04fe6" }}>{page.self_info.content3}</span>
                                 </div>

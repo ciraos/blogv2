@@ -813,22 +813,11 @@
 }
 
 /* ===================== 关于页（复刻 anheyu-app） ===================== */
-/* 头像特效结构 .avatar-wrap > .avatar-ring + .avatar-img */
+/* 头像特效结构 .avatar-wrap > .avatar-img */
+/* 注：avatar-ring-spin / avatar-glow 两个 keyframes 同时被侧边栏 .nav-user-ring 使用，保留 */
 @keyframes avatar-ring-spin {
   to {
     transform: rotate(360deg);
-  }
-}
-
-@keyframes avatar-float {
-
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-6px);
   }
 }
 
@@ -850,7 +839,7 @@
   position: relative;
   width: 180px;
   height: 180px;
-  margin: 0;
+  /* 两侧 margin 由 JSX 的 mx-7 md:mx-8 控制（技能标签与头像的间距） */
 }
 
 @media (max-width: 768px) {
@@ -860,31 +849,13 @@
   }
 }
 
-.avatar-ring {
+.avatar-img {
   position: absolute;
   inset: 0;
   border-radius: 9999px;
-  padding: 5px;
-  background: conic-gradient(from 0deg,
-      #ff5f57, #febc2e, #28c840, #2094f3, #a55eea, #ff5f57);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  animation: avatar-ring-spin 6s linear infinite;
-}
-
-.avatar-img {
-  position: absolute;
-  inset: 5px;
-  border-radius: 9999px;
   overflow: hidden;
-  animation: avatar-float 3.2s ease-in-out infinite, avatar-glow 3.2s ease-in-out infinite;
-  transition: transform 0.3s ease;
-}
-
-.avatar-img:hover {
-  transform: scale(1.1);
+  /* 头像描边：随深浅模式自动适配 */
+  border: 2px solid var(--border);
 }
 
 .avatar-img img {
@@ -893,25 +864,26 @@
   object-fit: cover;
 }
 
-/* 头像绿色在线点 */
+/* 头像右下角绿色在线点（贴合圆边，随深浅模式用 --background 做间隔环） */
 .avatar-online {
   position: absolute;
-  right: 10px;
-  bottom: 5px;
+  right: 8px;
+  bottom: 8px;
   z-index: 2;
   width: 30px;
   height: 30px;
   background: #2ecc71;
-  border: 5px solid var(--background);
+  border: 4px solid var(--background);
   border-radius: 50%;
+  box-shadow: 0 0 6px rgb(0 0 0 / 0.15);
 }
 
 @media (max-width: 768px) {
   .avatar-online {
-    right: -3px;
-    bottom: -3px;
-    width: 20px;
-    height: 20px;
+    right: 5px;
+    bottom: 5px;
+    width: 22px;
+    height: 22px;
     border-width: 3px;
   }
 }
@@ -1070,8 +1042,6 @@
 
 @media (prefers-reduced-motion: reduce) {
 
-  .avatar-ring,
-  .avatar-img,
   .about-tag,
   .about-skills-tags,
   .nav-user-ring {
@@ -1569,85 +1539,85 @@
   font-size: 1em;
 }
 
-/* 各类型配色（独立不重复） */
+/* 各类型配色（同色系用深浅/色相拉开区分） */
 .article-body .md-editor-admonition-note {
-  border-left-color: #4078f2;
-  background: rgb(64 120 242 / 0.1);
+  border-left-color: #3b82f6;
+  background: rgb(59 130 246 / 0.1);
 }
 
 .article-body .md-editor-admonition-abstract {
-  border-left-color: #6a737d;
-  background: rgb(106 115 125 / 0.1);
+  border-left-color: #64748b;
+  background: rgb(100 116 139 / 0.1);
 }
 
 .article-body .md-editor-admonition-info {
-  border-left-color: #0184bb;
-  background: rgb(1 132 187 / 0.1);
+  border-left-color: #06b6d4;
+  background: rgb(6 182 212 / 0.1);
 }
 
 .article-body .md-editor-admonition-tip {
-  border-left-color: #50a14f;
-  background: rgb(80 161 79 / 0.1);
+  border-left-color: #22c55e;
+  background: rgb(34 197 94 / 0.12);
 }
 
 .article-body .md-editor-admonition-success {
-  border-left-color: #2ecc71;
-  background: rgb(46 204 113 / 0.1);
+  border-left-color: #15803d;
+  background: rgb(21 128 61 / 0.12);
 }
 
 .article-body .md-editor-admonition-question {
-  border-left-color: #1abc9c;
-  background: rgb(26 188 156 / 0.1);
+  border-left-color: #14b8a6;
+  background: rgb(20 184 166 / 0.1);
 }
 
 .article-body .md-editor-admonition-warning {
-  border-left-color: #e6a23c;
-  background: rgb(230 162 60 / 0.1);
+  border-left-color: #f59e0b;
+  background: rgb(245 158 11 / 0.12);
 }
 
 .article-body .md-editor-admonition-failure {
-  border-left-color: #e45649;
-  background: rgb(228 86 73 / 0.12);
+  border-left-color: #f87171;
+  background: rgb(248 113 113 / 0.12);
 }
 
 .article-body .md-editor-admonition-danger {
-  border-left-color: #c0392b;
-  background: rgb(192 57 43 / 0.12);
+  border-left-color: #b91c1c;
+  background: rgb(185 28 28 / 0.15);
 }
 
 .article-body .md-editor-admonition-bug {
-  border-left-color: #a626a4;
-  background: rgb(166 38 164 / 0.12);
+  border-left-color: #a855f7;
+  background: rgb(168 85 247 / 0.12);
 }
 
 .article-body .md-editor-admonition-example {
-  border-left-color: #7e57c2;
-  background: rgb(126 87 194 / 0.1);
+  border-left-color: #6366f1;
+  background: rgb(99 102 241 / 0.1);
 }
 
 .article-body .md-editor-admonition-quote {
-  border-left-color: #95a5a6;
-  background: rgb(149 165 166 / 0.1);
+  border-left-color: #9ca3af;
+  background: rgb(156 163 175 / 0.1);
 }
 
 .article-body .md-editor-admonition-hint {
-  border-left-color: #16a085;
-  background: rgb(22 160 133 / 0.1);
+  border-left-color: #10b981;
+  background: rgb(16 185 129 / 0.1);
 }
 
 .article-body .md-editor-admonition-caution {
-  border-left-color: #f39c12;
-  background: rgb(243 156 18 / 0.12);
+  border-left-color: #f97316;
+  background: rgb(249 115 22 / 0.12);
 }
 
 .article-body .md-editor-admonition-error {
-  border-left-color: #e74c3c;
-  background: rgb(231 76 60 / 0.12);
+  border-left-color: #ec4899;
+  background: rgb(236 72 153 / 0.12);
 }
 
 .article-body .md-editor-admonition-attention {
-  border-left-color: #ff9800;
-  background: rgb(255 152 0 / 0.15);
+  border-left-color: #fbbf24;
+  background: rgb(251 191 36 / 0.15);
 }
 
 /* ciraos 后端结构：.admonition.type + .admonition-title + .admonition-body */
@@ -1666,85 +1636,85 @@
   font-size: 1em;
 }
 
-/* 每种类型独立配色（背景不重复） */
+/* 每种类型独立配色（同色系用深浅/色相拉开区分） */
 .article-body .admonition.note {
-  border-left-color: #4078f2;
-  background: rgb(64 120 242 / 0.1);
+  border-left-color: #3b82f6;
+  background: rgb(59 130 246 / 0.1);
 }
 
 .article-body .admonition.abstract {
-  border-left-color: #6a737d;
-  background: rgb(106 115 125 / 0.1);
+  border-left-color: #64748b;
+  background: rgb(100 116 139 / 0.1);
 }
 
 .article-body .admonition.info {
-  border-left-color: #0184bb;
-  background: rgb(1 132 187 / 0.1);
+  border-left-color: #06b6d4;
+  background: rgb(6 182 212 / 0.1);
 }
 
 .article-body .admonition.tip {
-  border-left-color: #50a14f;
-  background: rgb(80 161 79 / 0.1);
+  border-left-color: #22c55e;
+  background: rgb(34 197 94 / 0.12);
 }
 
 .article-body .admonition.success {
-  border-left-color: #2ecc71;
-  background: rgb(46 204 113 / 0.1);
+  border-left-color: #15803d;
+  background: rgb(21 128 61 / 0.12);
 }
 
 .article-body .admonition.question {
-  border-left-color: #1abc9c;
-  background: rgb(26 188 156 / 0.1);
+  border-left-color: #14b8a6;
+  background: rgb(20 184 166 / 0.1);
 }
 
 .article-body .admonition.warning {
-  border-left-color: #e6a23c;
-  background: rgb(230 162 60 / 0.1);
+  border-left-color: #f59e0b;
+  background: rgb(245 158 11 / 0.12);
 }
 
 .article-body .admonition.failure {
-  border-left-color: #e45649;
-  background: rgb(228 86 73 / 0.12);
+  border-left-color: #f87171;
+  background: rgb(248 113 113 / 0.12);
 }
 
 .article-body .admonition.danger {
-  border-left-color: #c0392b;
-  background: rgb(192 57 43 / 0.12);
+  border-left-color: #b91c1c;
+  background: rgb(185 28 28 / 0.15);
 }
 
 .article-body .admonition.bug {
-  border-left-color: #a626a4;
-  background: rgb(166 38 164 / 0.12);
+  border-left-color: #a855f7;
+  background: rgb(168 85 247 / 0.12);
 }
 
 .article-body .admonition.example {
-  border-left-color: #7e57c2;
-  background: rgb(126 87 194 / 0.1);
+  border-left-color: #6366f1;
+  background: rgb(99 102 241 / 0.1);
 }
 
 .article-body .admonition.quote {
-  border-left-color: #95a5a6;
-  background: rgb(149 165 166 / 0.1);
+  border-left-color: #9ca3af;
+  background: rgb(156 163 175 / 0.1);
 }
 
 .article-body .admonition.hint {
-  border-left-color: #16a085;
-  background: rgb(22 160 133 / 0.1);
+  border-left-color: #10b981;
+  background: rgb(16 185 129 / 0.1);
 }
 
 .article-body .admonition.caution {
-  border-left-color: #f39c12;
-  background: rgb(243 156 18 / 0.12);
+  border-left-color: #f97316;
+  background: rgb(249 115 22 / 0.12);
 }
 
 .article-body .admonition.error {
-  border-left-color: #e74c3c;
-  background: rgb(231 76 60 / 0.12);
+  border-left-color: #ec4899;
+  background: rgb(236 72 153 / 0.12);
 }
 
 .article-body .admonition.attention {
-  border-left-color: #ff9800;
-  background: rgb(255 152 0 / 0.15);
+  border-left-color: #fbbf24;
+  background: rgb(251 191 36 / 0.15);
 }
 
 /* ---------- 公式 katex ---------- */

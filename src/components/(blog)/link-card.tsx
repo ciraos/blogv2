@@ -1,6 +1,8 @@
 import type { FriendLink } from "@/types/links";
 import { resolveAssetUrl } from "@/lib/utils";
 
+import { LinkAvatar } from "@/components/(blog)/link-avatar";
+
 function initials(name: string): string {
     return name.trim().charAt(0) || "友";
 }
@@ -17,15 +19,7 @@ export function LinkCard({ link }: { link: FriendLink }) {
             className="group flex items-center gap-3 rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md"
         >
             {logo ? (
-                <div className="size-12 shrink-0 overflow-hidden rounded-full border bg-muted">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                        src={logo}
-                        alt={link.name}
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                    />
-                </div>
+                <LinkAvatar src={logo} alt={link.name} />
             ) : (
                 <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-semibold text-primary-foreground">
                     {initials(link.name)}

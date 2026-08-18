@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import Header from "@/components/header";
 import { FloatingActions } from "@/components/(blog)/floating-actions";
 import { FooterRandomLinks } from "@/components/(blog)/footer-random-links";
+import { ScrollToTop } from "@/components/(blog)/scroll-to-top";
 // import Aside from "@/components/aside";
 
 import { getPublicLinksRandomApi } from "@/lib/api";
@@ -64,6 +65,9 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
           enableColorScheme
         >
           <Toaster position="top-right" richColors closeButton />
+
+          {/* 全局：路由切换时回到顶部（修复跨页面滚动位置残留） */}
+          <ScrollToTop />
 
           {/* flex 列布局 + min-h-dvh：内容不足一屏时 footer 吸附在视口底部 */}
           <div id="CIRAOS" className="flex min-h-dvh flex-col">
