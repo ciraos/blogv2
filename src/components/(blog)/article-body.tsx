@@ -413,7 +413,7 @@ function enhanceTabs(root: HTMLElement) {
         });
 
         // 确保导航和内容的 active 状态同步
-        const activeBtn = container.querySelector(".nav-tabs .tab.active");
+        const activeBtn = container.querySelector<HTMLElement>(".nav-tabs .tab.active");
         if (tabs.length > 0) {
             if (!activeBtn) tabs[0].classList.add("active");
             const activeIdx = activeBtn ? Array.from(tabs).indexOf(activeBtn) : 0;
