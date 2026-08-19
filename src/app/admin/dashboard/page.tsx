@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { StatCard } from "@/components/(admin)/stat-card";
-import { ApiError, getBasicStatisticsApi, getUserInfoApi } from "@/lib/api";
-import type { BasicStatistics } from "@/lib/api";
+import { QuickActions } from "@/components/(admin)/quick-actions";
+import { StatisticsSummary } from "@/components/(admin)/statistics-summary";
+import { ApiError, getUserInfoApi } from "@/lib/api";
 import type { LoginUserInfo } from "@/types/auth";
 import { generateBlogMetadata } from "@/lib/seo";
 
@@ -29,12 +29,8 @@ export default async function Dashboard() {
     if (!token) redirect("/login");
 
     let user: LoginUserInfo;
-    let stats: BasicStatistics;
     try {
-        [user, stats] = await Promise.all([
-            getUserInfoApi(token),
-            getBasicStatisticsApi(),
-        ]);
+        user = await getUserInfoApi(token);
     } catch (err) {
         // token 失效 → 走登出路由清 cookie 再回登录页
         if (err instanceof ApiError && err.status === 401) {
@@ -42,10 +38,6 @@ export default async function Dashboard() {
         }
         throw err;
     }
-
-    // 环比百分比：基准为 0 时无法计算（返回 null 显示 —）
-    const pct = (current: number, previous: number): number | null =>
-        previous === 0 ? null : ((current - previous) / previous) * 100;
 
     return (
         <>
@@ -56,27 +48,13 @@ export default async function Dashboard() {
                 </p>
             </div>
 
-            <SectionTitle>统计</SectionTitle>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <StatCard
-                    label="今日访问"
-                    value={stats.today_visitors}
-                    deltaPercent={pct(stats.today_visitors, stats.yesterday_visitors)}
-                    deltaLabel="较昨日"
-                />
-                <StatCard
-                    label="今日浏览"
-                    value={stats.today_views}
-                    deltaPercent={pct(stats.today_views, stats.yesterday_views)}
-                    deltaLabel="较昨日"
-                />
-                {/* /public/statistics/basic 无上月基准数据，不显示环比 */}
-                <StatCard label="本月浏览" value={stats.month_views} deltaPercent={null} />
-                <StatCard label="本年浏览" value={stats.year_views} deltaPercent={null} />
-            </div>
+            {/* 快速操作：常用管理入口 */}
+            <SectionTitle>快速操作</SectionTitle>
+            <QuickActions />
 
-            {/* 杂项：预留区块（未来放小工具） */}
-            <SectionTitle>杂项</SectionTitle>
+            {/* 统计概览（基础统计 + 趋势 + 访客分析排行 + 热门页面） */}
+            <SectionTitle>统计</SectionTitle>
+            <StatisticsSummary />
         </>
     );
 }

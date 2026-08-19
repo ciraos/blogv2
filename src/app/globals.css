@@ -897,27 +897,6 @@
 
 /* ===================== 关于页（复刻 anheyu-app） ===================== */
 /* 头像特效结构 .avatar-wrap > .avatar-img */
-/* 注：avatar-ring-spin / avatar-glow 两个 keyframes 同时被侧边栏 .nav-user-ring 使用，保留 */
-@keyframes avatar-ring-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes avatar-glow {
-
-  0%,
-  100% {
-    box-shadow: 0 0 18px color-mix(in oklch, var(--primary) 45%, transparent),
-      0 8px 24px rgb(0 0 0 / 0.12);
-  }
-
-  50% {
-    box-shadow: 0 0 34px color-mix(in oklch, var(--primary) 70%, transparent),
-      0 8px 28px rgb(0 0 0 / 0.16);
-  }
-}
-
 .avatar-wrap {
   position: relative;
   width: 180px;
@@ -1126,13 +1105,12 @@
 @media (prefers-reduced-motion: reduce) {
 
   .about-tag,
-  .about-skills-tags,
-  .nav-user-ring {
+  .about-skills-tags {
     animation: none;
   }
 }
 
-/* ===================== 侧边栏用户头像（旋转彩虹环 + 呼吸光晕） ===================== */
+/* ===================== 侧边栏用户头像（静态 + 主题边框） ===================== */
 /* 结构：.nav-user-ring > .nav-user-avatar（img 填充圆形） */
 .nav-user-ring {
   position: relative;
@@ -1141,33 +1119,13 @@
   flex-shrink: 0;
 }
 
-/* 旋转彩虹环（conic-gradient + mask 抠出圆环） */
-.nav-user-ring::before {
-  content: "";
+.nav-user-ring .nav-user-avatar {
   position: absolute;
   inset: 0;
   border-radius: 9999px;
-  padding: 2.5px;
-  background: conic-gradient(from 0deg,
-      #ff5f57, #febc2e, #28c840, #2094f3, #a55eea, #ff5f57);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  animation: avatar-ring-spin 6s linear infinite;
-}
-
-.nav-user-ring .nav-user-avatar {
-  position: absolute;
-  inset: 2.5px;
-  border-radius: 9999px;
   overflow: hidden;
-  animation: avatar-glow 3.2s ease-in-out infinite;
-  transition: transform 0.3s ease;
-}
-
-.nav-user-ring:hover .nav-user-avatar {
-  transform: scale(1.12);
+  /* 细边框：随深浅色主题自动适配 */
+  border: 2px solid var(--border);
 }
 
 .nav-user-ring .nav-user-avatar img,
@@ -2998,4 +2956,43 @@
   100% {
     transform: scale(1, 1);
   }
+}
+
+/* ===================== 全局滚动条美化（所有路由统一生效） =====================
+   改这里几个变量即可统一调整滚动条外观：
+   - --scrollbar-width：滚动条粗细
+   - --scrollbar-thumb / --scrollbar-thumb-hover：滑块颜色（随深浅色主题自动适配）
+   - --scrollbar-track：轨道颜色 */
+:root {
+  --scrollbar-width: 8px;
+  --scrollbar-thumb: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
+  --scrollbar-thumb-hover: color-mix(in oklch, var(--muted-foreground) 60%, transparent);
+  --scrollbar-track: transparent;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+  height: var(--scrollbar-width);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }

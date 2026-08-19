@@ -90,7 +90,7 @@ export default async function Post({ params }: PostPageProps) {
                 <ArticleBody html={article.content_html || ""} />
 
                 {(prev || next) && (
-                    <nav className="mt-10 grid gap-3 border-t pt-6 sm:grid-cols-2">
+                    <nav className="mt-10 grid grid-cols-1 gap-3 border-t pt-6 sm:grid-cols-2">
                         {prev ? (
                             <Link href={`/posts/${prev.id}`} className="group rounded-lg border p-3 transition-colors hover:border-primary">
                                 <div className="text-xs text-muted-foreground">← 上一篇</div>

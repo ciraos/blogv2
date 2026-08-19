@@ -79,8 +79,8 @@ export default async function Fcircle({ searchParams }: { searchParams: Promise<
                 </div>
             </header>
 
-            {/* 网格：严格从左到右、逐行排列（最新在前） */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {/* 网格：严格从左到右、逐行排列（最新在前）。grid-cols-1 保证移动端单列不按内容撑宽 */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {data.list.map((moment) => (
                     <MomentCard key={moment.id} moment={moment} />
                 ))}

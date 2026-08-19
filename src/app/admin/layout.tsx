@@ -6,6 +6,7 @@ import "../globals.css";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ui/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ApiError, getUserInfoApi } from "@/lib/api";
 import { resolveAssetUrl } from "@/lib/utils";
@@ -72,6 +73,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
                     enableSystem
                     enableColorScheme
                 >
+                    <Toaster position="top-right" richColors closeButton />
                     <TooltipProvider>
                         <SidebarProvider>
                             <AppSidebar user={navUser} />
