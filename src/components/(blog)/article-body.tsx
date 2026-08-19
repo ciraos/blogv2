@@ -634,6 +634,24 @@ function enhanceLinkCards(root: HTMLElement) {
             img.removeAttribute("data-src");
         }
     });
+
+    // 自定义图标加载失败 → 显示占位图（如 iconify 无对应图标集时 404）
+    const iconPlaceholder = "https://cdn.jsdmirror.com/gh/ciraos/ciraos-static@main/img/404_1.avif";
+    root.querySelectorAll<HTMLImageElement>(".anzhiyu-tag-link .tag-link-left img").forEach((img) => {
+        if (img.dataset.iconFallback) return;
+        img.dataset.iconFallback = "1";
+        img.addEventListener("error", () => {
+            if (img.dataset.iconFallbackApplied) return;
+            img.dataset.iconFallbackApplied = "1";
+            img.src = iconPlaceholder;
+            img.removeAttribute("data-src");
+        });
+        // 已缓存的失败图片可能不触发 error，检查自然宽度
+        if (img.complete && img.naturalWidth === 0) {
+            img.dataset.iconFallbackApplied = "1";
+            img.src = iconPlaceholder;
+        }
+    });
 }
 
 /** mermaid 图表类型关键字（识别后端未渲染、被 markdown 解析成裸文本的图表源码） */
@@ -645,20 +663,82 @@ const MERMAID_KEYWORDS = [
     "radar", "sankey", "matrix", "dimension", "info",
 ];
 
-/** 形如 `flowchart TD\n  Start --> Stop` 的多行 mermaid 源码 */
-const MERMAID_SOURCE_RE = new RegExp(
-    `^(?:${MERMAID_KEYWORDS.join("|")})\\b[\\s\\S]*\\n[\\s\\S]+`
+/** 形如 `flowchart TD` 的图表类型关键字前缀 */
+const MERMAID_KEYWORD_RE = new RegExp(`^(?:${MERMAID_KEYWORDS.join("|")})\\b`);
+
+/** mermaid 连接符：flowchart 等单行书写时仍是合法语法 */
+const MERMAID_CONNECTOR_RE = /-->|--x|->|==>|-.->|---|:::|~>/;
+
+/** 行式语法类型：单行内容必须按语句关键字重新断行才能渲染（gitGraph / sequenceDiagram 等） */
+const MERMAID_LINE_ORIENTED_RE = new RegExp(
+    `^(?:gitGraph|sequenceDiagram|classDiagram|stateDiagram-v2|stateDiagram|erDiagram|journey|gantt|pie|mindmap|timeline|quadrantChart|block-beta|sankey-beta|xychart-beta|zenuml|architecture-beta|kanban|radar|sankey|matrix|dimension)\\b`
 );
+
+/** gitGraph 语句关键字（行式语法，单行时需断行） */
+const MERMAID_GITGRAPH_RE = /^gitGraph\b/;
+
+/**
+ * 判断文本是否像 mermaid 源码：
+ * - 多行（原先后端保留换行的情况）
+ * - 单行但含连接符（flowchart 单行含连接符，可还原断行后渲染）
+ * - 单行行式语法类型（gitGraph 等，需先还原断行）
+ */
+function looksLikeMermaidSource(text: string): boolean {
+    if (!MERMAID_KEYWORD_RE.test(text)) return false;
+    if (text.includes("\n")) return true;
+    if (MERMAID_CONNECTOR_RE.test(text)) return true;
+    return MERMAID_LINE_ORIENTED_RE.test(text);
+}
+
+/**
+ * 单行 mermaid 源码断行还原：
+ * markdown 会把段落内的单个换行压成空格，导致 flowchart / gitGraph 这类行式语法变成一行；
+ * 按语法结构重新断行后即可正常渲染。
+ */
+function restoreMermaidLines(code: string): string {
+    let c = code;
+    // flowchart/graph：`flowchart TD Start --> Stop` → 方向声明与节点换行
+    c = c.replace(/^(flowchart|graph)\s+[A-Z]{2}\s+/i, (m) => `${m.trimEnd()}\n`);
+    // gitGraph 语句关键字断行（仅当确为 gitGraph 时，避免误伤 flowchart 节点名）
+    if (MERMAID_GITGRAPH_RE.test(c)) {
+        c = c.replace(/\b(commit|branch|checkout|merge|tag|cherry-pick|reset)\b/g, "\n$1");
+    }
+    // 行式语法类型关键字单独一行（放在 gitGraph 断行之后，避免 ^ 锚点失效）
+    c = c.replace(MERMAID_LINE_ORIENTED_RE, "\n$&");
+    c = c.replace(/\n{2,}/g, "\n");
+    return c.trim();
+}
+
+/**
+ * 统一处理为可渲染的 mermaid 源码：
+ * - gitGraph：markdown 可能把语句压成单行（空格分隔）或拆成逐词换行，先合并为单行再按关键字断行
+ * - 其余类型：无换行时按语法结构还原断行
+ */
+function prepareMermaidSource(raw: string): string {
+    const code = raw.trim();
+    if (MERMAID_GITGRAPH_RE.test(code)) {
+        return restoreMermaidLines(code.replace(/\s+/g, " ").trim());
+    }
+    return code.includes("\n") ? code : restoreMermaidLines(code);
+}
 
 /** 去掉 mermaid 源码开头的 `--- title: ... ---` frontmatter（用于识别） */
 function stripMermaidFrontmatter(text: string): string {
     return text.replace(/^---\r?\n[\s\S]*?\r?\n---\s*/, "");
 }
 
+/** 取元素文本，把 <br>（markdown 行尾两个空格的硬换行）还原成 \n */
+function elementTextWithBreaks(el: HTMLElement): string {
+    const clone = el.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
+    return (clone.textContent ?? "").trim();
+}
+
 /** 提取被 markdown 解析过的 mermaid 裸文本（ciraos 后端不渲染 mermaid 时的兜底） */
 function collectMermaidTextBlocks(root: HTMLElement): { element: HTMLElement; code: string }[] {
     const blocks: { element: HTMLElement; code: string }[] = [];
     const handledContainers = new Set<HTMLElement>();
+    const replacedRegions = new Set<HTMLElement>();
 
     // 1) 带 frontmatter 的形式：<hr> + <h1~h4>title: X</h1~h4> + <p>diagram...</p>
     //    （markdown 把 ```mermaid 内的 --- 解析成 hr、`title: X` 解析成标题）
@@ -680,16 +760,34 @@ function collectMermaidTextBlocks(root: HTMLElement): { element: HTMLElement; co
         let node: Node | null = titleEl.nextSibling;
         while (node) {
             if (node.nodeType === Node.ELEMENT_NODE) {
-                const part = ((node as HTMLElement).textContent ?? "").trim();
+                const part = elementTextWithBreaks(node as HTMLElement);
                 if (part) rest += (rest ? "\n" : "") + part;
             }
             node = node.nextSibling;
         }
-        if (!MERMAID_SOURCE_RE.test(rest)) return;
+        if (!looksLikeMermaidSource(rest)) return;
 
-        const code = `---\ntitle: ${titleMatch[1].trim()}\n---\n${rest}`;
-        blocks.push({ element: el, code });
-        handledContainers.add(el);
+        const body = prepareMermaidSource(rest);
+        const code = `---\ntitle: ${titleMatch[1].trim()}\n---\n${body}`;
+
+        // hr 是容器第一个子节点 → 整体替换容器；否则只包住 hr 起的区域，保留 hr 之前的内容
+        if (hr === el.firstElementChild) {
+            blocks.push({ element: el, code });
+            handledContainers.add(el);
+        } else {
+            const holder = document.createElement("div");
+            const range = document.createRange();
+            range.setStartBefore(hr);
+            range.setEndAfter(el.lastChild ?? hr);
+            try {
+                range.surroundContents(holder);
+                blocks.push({ element: holder, code });
+                replacedRegions.add(holder);
+            } catch {
+                blocks.push({ element: el, code });
+                handledContainers.add(el);
+            }
+        }
     });
 
     // 2) 单个块元素形式：<p>flowchart TD\n  Start --> Stop</p>（正文直接在自己身上）
@@ -698,10 +796,14 @@ function collectMermaidTextBlocks(root: HTMLElement): { element: HTMLElement; co
         for (const c of handledContainers) {
             if (c.contains(el)) return; // 已被 frontmatter 容器整体处理
         }
+        for (const h of replacedRegions) {
+            if (h.contains(el)) return; // 已被 frontmatter 局部区域处理
+        }
         if (el.querySelector("p, div")) return; // 只处理叶子块
-        const text = (el.textContent ?? "").trim();
-        if (!MERMAID_SOURCE_RE.test(text) && !MERMAID_SOURCE_RE.test(stripMermaidFrontmatter(text))) return;
-        blocks.push({ element: el, code: text });
+        const text = elementTextWithBreaks(el);
+        const stripped = stripMermaidFrontmatter(text);
+        if (!looksLikeMermaidSource(text) && !looksLikeMermaidSource(stripped)) return;
+        blocks.push({ element: el, code: prepareMermaidSource(text) });
     });
 
     return blocks;
@@ -722,10 +824,12 @@ async function renderMermaid(root: HTMLElement) {
 
     try {
         const { default: mermaid } = await import("mermaid");
+        // 深色模式用 mermaid dark 主题，浅色用 default
+        const isDark = document.documentElement.classList.contains("dark");
         mermaid.initialize({
             startOnLoad: false,
             securityLevel: "loose",
-            theme: "default",
+            theme: isDark ? "dark" : "default",
             flowchart: { useMaxWidth: true, htmlLabels: true },
             sequence: { useMaxWidth: true },
             gantt: { useMaxWidth: true },
@@ -777,6 +881,18 @@ function enhanceMusic(root: HTMLElement, cleanupFns: (() => void)[]) {
         const currentTimeEl = container.querySelector<HTMLElement>(".current-time");
         const durationEl = container.querySelector<HTMLElement>(".duration");
         const errorEl = container.querySelector<HTMLElement>(".music-error");
+
+        // 封面图加载失败（占位图 404 等）→ 隐藏破图，显示音符占位背景
+        const coverImg = container.querySelector<HTMLImageElement>("img.artwork-image");
+        if (coverImg && !coverImg.dataset.coverFallback) {
+            coverImg.dataset.coverFallback = "1";
+            const hideBrokenCover = () => {
+                coverImg.style.display = "none";
+            };
+            coverImg.addEventListener("error", hideBrokenCover);
+            if (coverImg.complete && coverImg.naturalWidth === 0) hideBrokenCover();
+        }
+
         let audioLoaded = false;
 
         // 解析 data-music-data
@@ -889,6 +1005,18 @@ export function ArticleBody({ html }: { html: string }) {
         root.querySelectorAll<HTMLPreElement>("pre").forEach(enhanceBlock);
         enhanceHeadings(root);
 
+        // 跨页面锚点跳转：标题 id 是客户端生成的，挂载后再根据 URL hash 滚动到对应标题
+        const hash = window.location.hash;
+        if (hash) {
+            const id = decodeURIComponent(hash.slice(1));
+            const target = document.getElementById(id);
+            if (target) {
+                window.setTimeout(() => {
+                    target.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 100);
+            }
+        }
+
         // 公式 katex 前端渲染（ciraos 后端只输出 data-latex + 裸文本）
         enhanceKatex(root);
 
@@ -904,6 +1032,13 @@ export function ArticleBody({ html }: { html: string }) {
         enhanceLinkCards(root);
         enhanceMusic(root, cleanups);
         void renderMermaid(root);
+
+        // 主题切换时重渲染 mermaid（深色/浅色用不同 mermaid 主题）
+        const themeObserver = new MutationObserver(() => {
+            void renderMermaid(root);
+        });
+        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+        cleanups.push(() => themeObserver.disconnect());
 
         return () => {
             cleanups.forEach((fn) => fn());

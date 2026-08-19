@@ -18,6 +18,8 @@ export function ScrollToTop() {
         if ("scrollRestoration" in history) {
             history.scrollRestoration = "manual";
         }
+        // 带锚点（#hash）进入时不做回顶：交给文章页挂载后的锚点滚动
+        if (window.location.hash) return;
         window.scrollTo(0, 0);
         // 流式渲染内容到达后可能再次滚动，补一次回顶
         const timer = window.setTimeout(() => window.scrollTo(0, 0), 50);

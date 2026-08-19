@@ -18,7 +18,7 @@ interface CategoriesSearchParams {
     page?: string;
 }
 
-export default async function CategoriesPage({ searchParams }: { searchParams: Promise<CategoriesSearchParams> }) {
+export default async function Categories({ searchParams }: { searchParams: Promise<CategoriesSearchParams> }) {
     const sp = await searchParams;
     const name = typeof sp.name === "string" ? sp.name.trim() : "";
     const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);

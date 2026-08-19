@@ -46,7 +46,7 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
 
     return (
         <>
-            <div className="header w-full max-w-300 h-12 mx-auto px-5 flex items-center justify-between bg-white rounded-xl shadow-md hover:shadow-lg">
+            <div className="header w-full max-w-300 h-12 mx-auto px-5 flex items-center justify-between bg-card rounded-xl shadow-md hover:shadow-lg">
                 <Link href="/" className="text-base font-bold tracking-tight hover:opacity-80">{appName}</Link>
 
                 {/* 桌面端导航（≥768px）：自研下拉，面板绝对定位在触发器正下方 */}

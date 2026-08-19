@@ -129,9 +129,7 @@
 
 /*!  */
 @media (prefers-color-scheme: light) {
-  body {
-    background-color: #f4f4f4;
-  }
+  body {}
 }
 
 @media (prefers-color-scheme: dark) {}
@@ -767,6 +765,91 @@
 
 .article-body .hljs-link {
   text-decoration: underline;
+}
+
+/* ============ 深色模式：代码块容器 + hljs token 深色配色（atom-one-dark） ============ */
+.dark .article-body .code-block,
+.dark .article-body .md-editor-code {
+  background: var(--muted);
+  border-color: var(--border);
+}
+
+.dark .article-body .code-block-head,
+.dark .article-body .md-editor-code>summary {
+  background: var(--muted);
+  border-bottom-color: var(--border);
+}
+
+.dark .article-body .code-block-lang,
+.dark .article-body .md-editor-code .code-lang {
+  color: var(--muted-foreground);
+}
+
+.dark .article-body .line-numbers {
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border-right-color: var(--border);
+}
+
+.dark .article-body .hljs {
+  color: var(--foreground);
+}
+
+.dark .article-body .hljs-comment,
+.dark .article-body .hljs-quote {
+  color: #7f848e;
+}
+
+.dark .article-body .hljs-doctag,
+.dark .article-body .hljs-keyword,
+.dark .article-body .hljs-formula {
+  color: #c678dd;
+}
+
+.dark .article-body .hljs-section,
+.dark .article-body .hljs-name,
+.dark .article-body .hljs-selector-tag,
+.dark .article-body .hljs-deletion,
+.dark .article-body .hljs-subst {
+  color: #e06c75;
+}
+
+.dark .article-body .hljs-literal {
+  color: #56b6c2;
+}
+
+.dark .article-body .hljs-string,
+.dark .article-body .hljs-regexp,
+.dark .article-body .hljs-addition,
+.dark .article-body .hljs-attribute,
+.dark .article-body .hljs-meta .hljs-string {
+  color: #98c379;
+}
+
+.dark .article-body .hljs-attr,
+.dark .article-body .hljs-variable,
+.dark .article-body .hljs-template-variable,
+.dark .article-body .hljs-type,
+.dark .article-body .hljs-selector-class,
+.dark .article-body .hljs-selector-attr,
+.dark .article-body .hljs-selector-pseudo,
+.dark .article-body .hljs-number {
+  color: #d19a66;
+}
+
+.dark .article-body .hljs-symbol,
+.dark .article-body .hljs-bullet,
+.dark .article-body .hljs-link,
+.dark .article-body .hljs-meta,
+.dark .article-body .hljs-selector-id,
+.dark .article-body .hljs-title {
+  color: #61aeee;
+}
+
+.dark .article-body .hljs-built_in,
+.dark .article-body .hljs-title.class_,
+.dark .article-body .hljs-class .hljs-title {
+  color: #e6c07b;
 }
 
 .article-body .code-block-body pre,
@@ -1836,15 +1919,22 @@
 }
 
 .article-body .btn-container .btn-anzhiyu,
-.article-body .btn-anzhiyu:not(.btn-item):not(.anzhiyu-tag-link) {
+.article-body .btn-anzhiyu:not(:where(.btn-item, .anzhiyu-tag-link)) {
   display: inline-block;
-  padding: 8px 18px;
+  padding: 6px 14px;
   margin: 4px;
+  font-size: 0.875rem;
   color: #fff !important;
   text-decoration: none !important;
   background: var(--primary);
-  border-radius: 0.25rem;
+  border-radius: 0.5rem;
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+}
+
+/* 深色模式：--primary 是浅色，白字会看不见 → 默认按钮改用固定蓝底 */
+.dark .article-body .btn-container .btn-anzhiyu,
+.dark .article-body .btn-anzhiyu:not(:where(.btn-item, .anzhiyu-tag-link)) {
+  background: #409eff;
 }
 
 .article-body .btn-container .btn-anzhiyu:hover,
@@ -1857,64 +1947,78 @@
   margin-right: 4px;
 }
 
-/* 按钮颜色主题 */
-.article-body .btn-anzhiyu.color-blue {
-  background: #2196f3;
+/* 按钮颜色主题（anheyu 格式 color-* 与 ciraos 格式 btn-* 并存）
+   注意：基础规则 .btn-anzhiyu:not(.btn-item):not(.anzhiyu-tag-link) 优先级更高，颜色必须 !important */
+.article-body .btn-anzhiyu.color-blue,
+.article-body .btn-anzhiyu.btn-blue {
+  background: #2196f3 !important;
 }
 
-.article-body .btn-anzhiyu.color-pink {
-  background: #ec407a;
+.article-body .btn-anzhiyu.color-pink,
+.article-body .btn-anzhiyu.btn-pink {
+  background: #ec407a !important;
 }
 
-.article-body .btn-anzhiyu.color-red {
-  background: #e53935;
+.article-body .btn-anzhiyu.color-red,
+.article-body .btn-anzhiyu.btn-red {
+  background: #e53935 !important;
 }
 
-.article-body .btn-anzhiyu.color-purple {
-  background: #7e57c2;
+.article-body .btn-anzhiyu.color-purple,
+.article-body .btn-anzhiyu.btn-purple {
+  background: #7e57c2 !important;
 }
 
-.article-body .btn-anzhiyu.color-orange {
-  background: #ff9800;
+.article-body .btn-anzhiyu.color-orange,
+.article-body .btn-anzhiyu.btn-orange {
+  background: #ff9800 !important;
 }
 
-.article-body .btn-anzhiyu.color-green {
-  background: #4caf50;
+.article-body .btn-anzhiyu.color-green,
+.article-body .btn-anzhiyu.btn-green {
+  background: #4caf50 !important;
 }
 
 /* 空心按钮 */
-.article-body .btn-anzhiyu.style-outline {
+.article-body .btn-anzhiyu.style-outline,
+.article-body .btn-anzhiyu.btn-outline {
   color: var(--primary) !important;
   background: transparent !important;
   border: 1px solid var(--primary);
 }
 
-.article-body .btn-anzhiyu.style-outline.color-blue {
+.article-body .btn-anzhiyu.style-outline.color-blue,
+.article-body .btn-anzhiyu.btn-outline.btn-blue {
   color: #2196f3 !important;
   border-color: #2196f3;
 }
 
-.article-body .btn-anzhiyu.style-outline.color-pink {
+.article-body .btn-anzhiyu.style-outline.color-pink,
+.article-body .btn-anzhiyu.btn-outline.btn-pink {
   color: #ec407a !important;
   border-color: #ec407a;
 }
 
-.article-body .btn-anzhiyu.style-outline.color-red {
+.article-body .btn-anzhiyu.style-outline.color-red,
+.article-body .btn-anzhiyu.btn-outline.btn-red {
   color: #e53935 !important;
   border-color: #e53935;
 }
 
-.article-body .btn-anzhiyu.style-outline.color-purple {
+.article-body .btn-anzhiyu.style-outline.color-purple,
+.article-body .btn-anzhiyu.btn-outline.btn-purple {
   color: #7e57c2 !important;
   border-color: #7e57c2;
 }
 
-.article-body .btn-anzhiyu.style-outline.color-orange {
+.article-body .btn-anzhiyu.style-outline.color-orange,
+.article-body .btn-anzhiyu.btn-outline.btn-orange {
   color: #ff9800 !important;
   border-color: #ff9800;
 }
 
-.article-body .btn-anzhiyu.style-outline.color-green {
+.article-body .btn-anzhiyu.style-outline.color-green,
+.article-body .btn-anzhiyu.btn-outline.btn-green {
   color: #4caf50 !important;
   border-color: #4caf50;
 }
@@ -1936,9 +2040,10 @@
 }
 
 /* 大号按钮 */
-.article-body .btn-anzhiyu.size-larger {
-  padding: 12px 28px;
-  font-size: 1.05em;
+.article-body .btn-anzhiyu.size-larger,
+.article-body .btn-anzhiyu.btn-larger {
+  padding: 10px 22px;
+  font-size: 1em;
 }
 
 /* 按钮组 btns */
@@ -2012,6 +2117,38 @@
   height: 32px;
   object-fit: contain;
   color: var(--foreground);
+}
+
+/* 按钮组 item 颜色主题（对应 MD 语法 color= 参数 → btn-color-* class）：
+   图标圆圈 10% 底色 + 实色描边，与单按钮同一套命名色 */
+.article-body .btns-container .btn-item.btn-color-blue .btn-icon {
+  background: rgb(33 150 243 / 0.1);
+  border-color: #2196f3;
+}
+
+.article-body .btns-container .btn-item.btn-color-pink .btn-icon {
+  background: rgb(236 64 122 / 0.1);
+  border-color: #ec407a;
+}
+
+.article-body .btns-container .btn-item.btn-color-red .btn-icon {
+  background: rgb(229 57 53 / 0.1);
+  border-color: #e53935;
+}
+
+.article-body .btns-container .btn-item.btn-color-purple .btn-icon {
+  background: rgb(126 87 194 / 0.1);
+  border-color: #7e57c2;
+}
+
+.article-body .btns-container .btn-item.btn-color-orange .btn-icon {
+  background: rgb(255 152 0 / 0.1);
+  border-color: #ff9800;
+}
+
+.article-body .btns-container .btn-item.btn-color-green .btn-icon {
+  background: rgb(76 175 80 / 0.1);
+  border-color: #4caf50;
 }
 
 .article-body .btns-container .btn-item .btn-title {
@@ -2118,6 +2255,7 @@
 
 /* 移动端：图片组降为 2 列，避免格子过窄 */
 @media (max-width: 640px) {
+
   .article-body .gallery-container.gallery-cols-3,
   .article-body .gallery-container.gallery-cols-4,
   .article-body .gallery-container.gallery-cols-5,
@@ -2127,6 +2265,7 @@
 }
 
 /* ---------- LinkCard 链接卡片 ---------- */
+/* anheyu 结构：.anzhiyu-tag-link 本身即卡片（内含 .tag-link-bottom 横向容器） */
 .article-body .anzhiyu-tag-link {
   display: block;
   margin: 1rem 0;
@@ -2138,6 +2277,40 @@
   border-radius: 12px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.06);
   transition: all 0.3s ease;
+}
+
+/* ciraos 结构：.anzhiyu-tag-link 是外层 div，a.tag-Link 才是卡片（无 .tag-link-bottom） */
+.article-body .anzhiyu-tag-link:has(.tag-Link) {
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.article-body .anzhiyu-tag-link:has(.tag-Link) .tag-Link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  color: var(--foreground) !important;
+  text-decoration: none !important;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.06);
+  transition: all 0.3s ease;
+}
+
+.article-body .anzhiyu-tag-link:has(.tag-Link) .tag-Link:hover {
+  border-color: var(--primary);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.1);
+}
+
+/* ciraos 结构下 tips 靠右对齐 */
+.article-body .anzhiyu-tag-link:has(.tag-Link) .tag-Link .tag-link-tips {
+  margin: 0 0 0 auto;
+  flex-shrink: 0;
 }
 
 .article-body .anzhiyu-tag-link:hover {
@@ -2239,8 +2412,8 @@
 
 .article-body .markdown-music-player .music-artwork-container {
   flex-shrink: 0;
-  width: 96px;
-  height: 96px;
+  width: 72px;
+  height: 72px;
   position: relative;
 }
 
@@ -2254,6 +2427,28 @@
   transition: all 0.4s;
   border: 2px solid var(--border);
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.15);
+  background: var(--muted);
+}
+
+/* 封面缺失/加载失败时的音符占位（封面图正常加载时会被盖住） */
+.article-body .markdown-music-player .music-artwork-wrapper::before {
+  content: "🎵";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  color: var(--muted-foreground);
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.article-body .markdown-music-player .music-artwork-wrapper .artwork-transition-wrapper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .article-body .markdown-music-player .music-artwork-wrapper.is-playing {
@@ -2288,8 +2483,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: rgb(255 255 255 / 0.9);
   color: #000;
@@ -2297,8 +2492,8 @@
 
 .article-body .markdown-music-player .music-play-icon,
 .article-body .markdown-music-player .music-pause-icon {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
 }
 
 .article-body .markdown-music-player .music-info-container {
@@ -2361,6 +2556,8 @@
   justify-content: center;
   gap: 8px;
   font-size: 14px;
+  /* width: 0; */
+  /* height: 0; */
   color: var(--muted-foreground);
   background: var(--card);
 }

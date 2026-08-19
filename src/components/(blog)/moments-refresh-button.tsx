@@ -45,7 +45,7 @@ export function MomentsRefreshButton({ isLoggedIn }: MomentsRefreshButtonProps) 
             onClick={handleRefresh}
             disabled={loading}
             aria-label="手动刷新朋友圈"
-            className="inline-flex size-6 items-center justify-center rounded border border-border bg-white text-black transition-colors hover:border-primary hover:text-primary disabled:opacity-60"
+            className="inline-flex size-6 items-center justify-center rounded border border-border bg-card text-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-60"
         >
             <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
         </button>

@@ -12,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
     return generateBlogMetadata("友情链接");
 }
 
-export default async function LinkPage() {
+export default async function Link() {
     // 站点配置（用于页脚自定义内容）
     const config = await getPublicSiteConfigApi().catch(() => null);
 

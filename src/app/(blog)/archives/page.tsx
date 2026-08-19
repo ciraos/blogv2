@@ -26,7 +26,7 @@ interface ArchivesSearchParams {
     page?: string;
 }
 
-export default async function ArchivesPage({ searchParams }: { searchParams: Promise<ArchivesSearchParams> }) {
+export default async function Archives({ searchParams }: { searchParams: Promise<ArchivesSearchParams> }) {
     const sp = await searchParams;
     const year = Number.parseInt(sp.year ?? "", 10);
     const month = Number.parseInt(sp.month ?? "", 10);

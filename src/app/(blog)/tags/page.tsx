@@ -18,7 +18,7 @@ interface TagsSearchParams {
     page?: string;
 }
 
-export default async function TagsPage({ searchParams }: { searchParams: Promise<TagsSearchParams> }) {
+export default async function Tags({ searchParams }: { searchParams: Promise<TagsSearchParams> }) {
     const sp = await searchParams;
     const name = typeof sp.name === "string" ? sp.name.trim() : "";
     const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);

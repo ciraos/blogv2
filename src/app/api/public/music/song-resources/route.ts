@@ -3,9 +3,10 @@ import type { NextRequest } from "next/server"
 
 import { API_URL } from "@/lib/api"
 
-// 网易云音乐音频资源代理：POST 转发到远端 /api/public/music/song-resources。
+// 网易云音乐音频资源代理：POST 转发到远端 /public/music/song-resources。
 // 后端不开放 CORS，浏览器端（文章内音乐播放器）需经本路由转发。
-const REMOTE = `${API_URL}/api/public/music/song-resources`
+// 注意：API_URL 已含 /api 前缀，这里不能再拼 /api。
+const REMOTE = `${API_URL}/public/music/song-resources`
 
 interface MusicData {
     neteaseId?: string

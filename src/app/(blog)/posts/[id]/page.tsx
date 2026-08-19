@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
     }
 }
 
-export default async function PostPage({ params }: PostPageProps) {
+export default async function Post({ params }: PostPageProps) {
     const { id } = await params;
 
     let article: Awaited<ReturnType<typeof getPublicArticleApi>>;

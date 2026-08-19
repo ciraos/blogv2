@@ -7,7 +7,7 @@ import { getRandomArticleApi } from "@/lib/api";
 // 每次请求都实时随机，不做构建期预渲染
 export const dynamic = "force-dynamic";
 
-export default async function RandomPostPage() {
+export default async function RandomPost() {
     let id: string | null = null;
 
     try {

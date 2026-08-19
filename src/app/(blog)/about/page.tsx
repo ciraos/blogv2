@@ -49,7 +49,7 @@ function Card({
 
 // ===================== 页面主体 =====================
 
-export default async function AboutPage() {
+export default async function About() {
     const config = await getPublicSiteConfigApi();
     const page = config.about.page;
     const enable = page.enable;
@@ -130,7 +130,7 @@ export default async function AboutPage() {
             {enable.page_content && page.name && (
                 <div className="flex w-full flex-wrap gap-2.5">
                     <Card
-                        className="flex min-h-[200px] flex-[4] flex-col justify-center !border-transparent !text-white md:min-h-[200px]"
+                        className="flex min-h-50 flex-4 flex-col justify-center border-transparent! text-white! md:min-h-50"
                         style={{
                             background: "linear-gradient(120deg, #5b27ff 0%, #00d4ff 100%)",
                             backgroundSize: "200%",

@@ -40,7 +40,7 @@ export function FooterRandomLinks({ initialLinks, count }: FooterRandomLinksProp
                     onClick={refresh}
                     disabled={loading}
                     aria-label="刷新随机友链"
-                    className="inline-flex items-center justify-center p-0.5 text-black transition-opacity hover:opacity-70 disabled:opacity-60"
+                    className="inline-flex items-center justify-center p-0.5 text-muted-foreground transition-opacity hover:opacity-70 disabled:opacity-60"
                 >
                     <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
                 </button>

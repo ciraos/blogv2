@@ -37,7 +37,7 @@ export async function getSiteConfigs() {
     }
 }
 
-export default async function EssayPage({ searchParams }: { searchParams: Promise<EssaySearchParams> }) {
+export default async function Essay({ searchParams }: { searchParams: Promise<EssaySearchParams> }) {
     const config = await getSiteConfigs();
     const { page: pageRaw } = await searchParams;
     const page = Math.max(1, parseInt(pageRaw ?? "1", 10) || 1);

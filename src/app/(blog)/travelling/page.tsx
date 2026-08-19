@@ -7,7 +7,7 @@ import { getPublicLinksRandomApi } from "@/lib/api";
 // 每次请求都实时取随机友链并跳转，不做构建期预渲染
 export const dynamic = "force-dynamic";
 
-export default async function TravellingPage() {
+export default async function Travelling() {
     let url: string | null = null;
 
     try {

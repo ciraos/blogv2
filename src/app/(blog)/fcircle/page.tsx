@@ -21,7 +21,7 @@ interface FcircleSearchParams {
     sort_type?: string;
 }
 
-export default async function FcirclePage({ searchParams }: { searchParams: Promise<FcircleSearchParams> }) {
+export default async function Fcircle({ searchParams }: { searchParams: Promise<FcircleSearchParams> }) {
     const sp = await searchParams;
     const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
     // 排序：published_at（发布时间，默认）/ created_at（抓取时间）

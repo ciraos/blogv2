@@ -34,11 +34,12 @@ export function PostToc() {
         setTocItems(items);
     }, []);
 
-    /** 点击目录项滚动到标题 */
+    /** 点击目录项滚动到标题，并同步 URL hash（锚点可分享） */
     const scrollToHeading = useCallback((id: string) => {
         const el = document.getElementById(id);
         if (!el) return;
         el.scrollIntoView({ behavior: "smooth", block: "start" });
+        history.replaceState(null, "", `#${id}`);
         setActiveId(id);
     }, []);
 

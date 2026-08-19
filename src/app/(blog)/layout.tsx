@@ -54,8 +54,12 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
   }
 
   return (
-    <html data-theme="light" lang="zh-CN" suppressHydrationWarning>
-      <body className="">
+    <html
+      data-theme="light"
+      lang="zh-CN"
+      suppressHydrationWarning
+    >
+      <body>
 
         <ThemeProvider
           attribute="class"
