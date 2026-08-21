@@ -12,10 +12,12 @@ import {
 interface UserMenuProps {
     /** 是否已登录（由服务端读取 httpOnly cookie 传入） */
     isLoggedIn: boolean;
+    /** 页面下滑状态：true 时触发器胶囊变半透明毛玻璃（与 Header 联动） */
+    scrolled?: boolean;
 }
 
 /** 导航栏最右侧的用户菜单 */
-export function UserMenu({ isLoggedIn }: UserMenuProps) {
+export function UserMenu({ isLoggedIn, scrolled = false }: UserMenuProps) {
     /** 登出：清 cookie 后原地刷新，不跳转登录页 */
     async function handleLogout() {
         try {
@@ -27,7 +29,14 @@ export function UserMenu({ isLoggedIn }: UserMenuProps) {
 
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger
+                asChild
+                className={`transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] will-change-transform ${
+                    scrolled
+                        ? "scale-[0.94] bg-card/60 shadow-sm backdrop-blur-md"
+                        : "scale-100 bg-card shadow-md hover:shadow-xl"
+                }`}
+            >
                 <button
                     className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     aria-label="用户菜单"

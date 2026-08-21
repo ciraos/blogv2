@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, Menu } from "lucide-react";
 
@@ -31,7 +31,25 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
     const [openGroup, setOpenGroup] = useState<string | null>(null);
     // 关闭宽限期：鼠标穿过触发器与面板之间的间隙时不误关
     const closeTimer = useRef<number | null>(null);
+    // 下滑超过阈值时胶囊背景变半透明毛玻璃，回到顶部恢复
+    const [scrolled, setScrolled] = useState(false);
 
+    useEffect(() => {
+        const onScroll = () => setScrolled(window.scrollY > 40);
+        // React Compiler 规则：effect 内不直接同步 setState，用宏任务包裹初始求值
+        const t = setTimeout(onScroll, 0);
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => {
+            clearTimeout(t);
+            window.removeEventListener("scroll", onScroll);
+        };
+    }, []);
+
+    // 超级岛式弹性切换：spring 过冲曲线（cubic-bezier 回弹）+ 缩放形变
+    const pillCls = cn(
+        "transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] will-change-transform",
+        scrolled ? "scale-[0.94] bg-card/60 shadow-sm backdrop-blur-md" : "scale-100 bg-card shadow-md"
+    );
     function handleEnter(title: string) {
         if (closeTimer.current !== null) {
             window.clearTimeout(closeTimer.current);
@@ -46,13 +64,13 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
 
     return (
         <>
-            <div className="header w-full max-w-300 h-12 mx-auto px-5 flex items-center justify-between bg-card rounded-xl shadow-md hover:shadow-lg">
-                <Link href="/" className="text-base font-bold tracking-tight hover:opacity-80">{appName}</Link>
+            <div className="header w-full max-w-300 h-12 my-1 mx-auto p-0 sticky top-0 z-50 bg-none rounded-none flex items-center justify-between">
+                <Link href="/" className={`py-1 px-3 rounded-[99px] ${pillCls} text-base font-bold tracking-tight hover:opacity-80 hover:shadow-xl`}>{appName}</Link>
 
                 {/* 桌面端导航（≥768px）：自研下拉，面板绝对定位在触发器正下方 */}
                 {menu.length > 0 && (
                     <nav className="hidden md:block">
-                        <ul className="flex items-center gap-0.5">
+                        <ul className={`py-1 px-3 rounded-[99px] ${pillCls} flex items-center gap-0.5 hover:shadow-xl`}>
                             {menu.map((group) => (
                                 <li
                                     key={group.title}
@@ -62,7 +80,7 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
                                 >
                                     <button
                                         className={cn(
-                                            "flex h-9 items-center gap-1 rounded-lg px-3 text-sm font-medium transition-colors hover:text-primary",
+                                            "flex h-9 items-center gap-1 rounded-lg px-3 text-base font-medium transition-colors hover:text-primary",
                                             openGroup === group.title && "text-primary"
                                         )}
                                     >
@@ -142,7 +160,7 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
                             </nav>
                         </SheetContent>
                     </Sheet>
-                    <UserMenu isLoggedIn={isLoggedIn} />
+                    <UserMenu isLoggedIn={isLoggedIn} scrolled={scrolled} />
                 </div>
             </div>
         </>

@@ -3,9 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ArticleBody } from "@/components/(blog)/article-body";
+import { PostActions } from "@/components/(blog)/post-actions";
+import { PostComments } from "@/components/(blog)/post-comments";
 import { PostToc } from "@/components/(blog)/post-toc";
 
-import { ApiError, getPublicArticleApi } from "@/lib/api";
+import { ApiError, getCommentChildrenApi, getCommentsByPathApi, getPublicArticleApi, getPublicSiteConfigApi } from "@/lib/api";
+import type { RecentComment } from "@/lib/api";
 import { resolveAssetUrl } from "@/lib/utils";
 
 interface PostPageProps {
@@ -48,6 +51,62 @@ export default async function Post({ params }: PostPageProps) {
     const prev = article.prev_article;
     const next = article.next_article;
 
+    // 站点配置（版权块/打赏/订阅/分享）：服务端取数后通过 props 传入客户端组件
+    let actionsConfig: {
+        siteName: string;
+        author: string;
+        subtitle: string;
+        siteUrl: string;
+        userAvatar: string | null;
+        icp: string;
+        showRewardButton: boolean;
+        showSubscribeButton: boolean;
+        showShareButton: boolean;
+    } | null = null;
+    try {
+        const config = await getPublicSiteConfigApi();
+        actionsConfig = {
+            siteName: config.APP_NAME ?? "博客",
+            author: article.owner_nickname || config.APP_NAME || "博主",
+            subtitle: config.SUB_TITLE ?? "",
+            siteUrl: config.SITE_URL ?? "/",
+            userAvatar: resolveAssetUrl(config.USER_AVATAR),
+            icp: config.ICP_NUMBER ?? "",
+            showRewardButton: config.post?.copyright?.show_reward_button ?? true,
+            showSubscribeButton: config.post?.copyright?.show_subscribe_button ?? true,
+            showShareButton: config.post?.copyright?.show_share_button ?? true,
+        };
+    } catch {
+        // 配置获取失败时不渲染版权块（不阻塞文章正文）
+        actionsConfig = null;
+    }
+
+    // 评论区：按 target_path 获取本文章评论 + 子评论（博主回复等），失败时降级为空列表
+    const targetPath = `/posts/${article.id}`;
+    interface CommentWithChildren extends RecentComment {
+        children: RecentComment[];
+    }
+    let comments: CommentWithChildren[] = [];
+    try {
+        const commentData = await getCommentsByPathApi({ target_path: targetPath, page: 1, pageSize: 20 });
+        const parents = commentData.list ?? [];
+        // 并行拉取有子评论的评论（total_children > 0）
+        const childrenResults = await Promise.all(
+            parents.map(async (parent) => {
+                if ((parent.total_children ?? 0) <= 0) return [] as RecentComment[];
+                try {
+                    const childData = await getCommentChildrenApi(parent.id, { page: 1, pageSize: 20 });
+                    return childData.list ?? [];
+                } catch {
+                    return [] as RecentComment[];
+                }
+            }),
+        );
+        comments = parents.map((parent, i) => ({ ...parent, children: childrenResults[i] ?? [] }));
+    } catch {
+        comments = [];
+    }
+
     return (
         /* PC：内容 + 右侧目录双栏；移动端单栏（目录由右下角悬浮按钮接管） */
         <div className="w-full gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_220px]">
@@ -86,11 +145,19 @@ export default async function Post({ params }: PostPageProps) {
                     </div>
                 )}
 
-                {/* 后端渲染好的正文 HTML，客户端组件负责代码块高亮 + 复制按钮 */}
-                <ArticleBody html={article.content_html || ""} />
+                {/* 后端渲染好的正文 HTML，客户端组件负责代码块高亮 + 复制按钮；正文白底卡片，深浅色随主题切换 */}
+                <div className="mt-6 rounded-xl border border-border/60 bg-card p-5 shadow-sm md:p-8">
+                    <ArticleBody html={article.content_html || ""} />
+                </div>
 
+                {/* 文章末尾：版权信息 + 打赏 / 订阅 / 分享（配置由服务端从 site-config 获取） */}
+                {actionsConfig && (
+                    <PostActions {...actionsConfig} title={article.title} url={`/posts/${article.id}`} />
+                )}
+
+                {/* 上一篇 / 下一篇（放在评论区上方） */}
                 {(prev || next) && (
-                    <nav className="mt-10 grid grid-cols-1 gap-3 border-t pt-6 sm:grid-cols-2">
+                    <nav className="mt-10 grid grid-cols-1 gap-3 border-none pt-6 sm:grid-cols-2">
                         {prev ? (
                             <Link href={`/posts/${prev.id}`} className="group rounded-lg border p-3 transition-colors hover:border-primary">
                                 <div className="text-xs text-muted-foreground">← 上一篇</div>
@@ -107,6 +174,9 @@ export default async function Post({ params }: PostPageProps) {
                         )}
                     </nav>
                 )}
+
+                {/* 评论区（评论列表由服务端按 target_path 获取） */}
+                <PostComments targetPath={targetPath} comments={comments} />
 
                 {article.related_articles.length > 0 && (
                     <section className="mt-10 border-t pt-6">

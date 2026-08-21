@@ -50,7 +50,7 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
+  --background: #f4f4f4;
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -121,6 +121,12 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+
+  /* 全局背景色：浅色 #f4f4f4 与卡片白区分；深色模式由 .dark 变量接管 */
+  html,
+  body {
+    background-color: var(--background);
   }
 }
 

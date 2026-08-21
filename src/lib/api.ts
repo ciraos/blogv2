@@ -310,6 +310,8 @@ export interface RecentComment {
     nickname: string;
     website: string;
     email_md5: string;
+    /** 头像完整 URL（子评论接口直接返回；父评论可能为空，需用 email_md5 拼） */
+    avatar_url?: string;
     content_html: string;
     content: string;
     is_admin_comment: boolean;
@@ -319,6 +321,12 @@ export interface RecentComment {
     target_title: string;
     like_count: number;
     total_children: number;
+    /** 子评论字段：父评论 id */
+    parent_id?: string;
+    /** 子评论字段：被回复的评论 id */
+    reply_to_id?: string;
+    /** 子评论字段：被回复者昵称 */
+    reply_to_nick?: string;
 }
 
 export interface CommentListData {
@@ -339,6 +347,42 @@ export async function getLatestCommentsApi(params: { page?: number; pageSize?: n
     }
     const query = qs.toString();
     return request<CommentListData>(`/public/comments/latest${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
+/**
+ * GET /public/comments 按目标路径获取评论列表（公开）
+ * @param params target_path 必需；page / pageSize 可选
+ */
+export async function getCommentsByPathApi(params: {
+    target_path: string;
+    page?: number;
+    pageSize?: number;
+}): Promise<CommentListData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<CommentListData>(`/public/comments${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
+/** GET /public/comments/{id}/children 获取某条评论的子评论（博主回复等，公开） */
+export async function getCommentChildrenApi(
+    id: string,
+    params: { page?: number; pageSize?: number } = {},
+): Promise<CommentListData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<CommentListData>(`/public/comments/${encodeURIComponent(id)}/children${query ? `?${query}` : ""}`, {
+        method: "GET",
+    });
 }
 
 // ===================== 公开页面 =====================

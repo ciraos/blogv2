@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { EssayCard } from "@/components/(blog)/essay-card";
+import { EssayWaterfall } from "@/components/(blog)/essay-waterfall";
 import { NumberedPagination } from "@/components/(blog)/numbered-pagination";
 import {
     LinkIcon
@@ -102,14 +102,8 @@ export default async function Essay({ searchParams }: { searchParams: Promise<Es
                 </div>
             ) : (<h1 className="text-2xl font-bold tracking-tight">即刻</h1>)}
 
-            {/* 瀑布流：桌面 3 列（1/3 宽），平板 2 列，移动端 1 列；高度自适应、断列不截断 */}
-            <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
-                {data.list.map((essay) => (
-                    <div key={essay.id} className="mb-4 break-inside-avoid">
-                        <EssayCard essay={essay} />
-                    </div>
-                ))}
-            </div>
+            {/* JS 瀑布流：桌面 3 列 / 平板 2 列 / 移动端 1 列，最短列放置；图片可点击打开看图器 */}
+            <EssayWaterfall essays={data.list} />
 
             <NumberedPagination
                 page={page}
