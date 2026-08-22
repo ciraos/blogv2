@@ -2,21 +2,33 @@
 
 import { useState } from "react";
 
-/** 友链头像：加载失败时兜底显示固定头像 */
-export function LinkAvatar({ src, alt }: { src: string; alt: string }) {
-    const [imgSrc, setImgSrc] = useState<string>(src);
+interface LinkAvatarProps {
+    src: string;
+    alt: string;
+    /** 图片加载失败时回调（父组件切换到首字头像兜底） */
+    onError?: () => void;
+}
+
+/** 友链头像：加载失败时由父组件兜底显示首字圆形头像 */
+export function LinkAvatar({ src, alt, onError }: LinkAvatarProps) {
+    const [failed, setFailed] = useState(false);
+
+    if (failed) {
+        return null;
+    }
 
     return (
         <div className="size-12 shrink-0 overflow-hidden rounded-full border bg-muted">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-                src={imgSrc}
+                src={src}
                 alt={alt}
                 className="h-full w-full object-cover"
                 loading="lazy"
                 onError={() => {
-                    // 头像失效 → 固定兜底图（避免无限重试）
-                    setImgSrc("https://cdn.jsdmirror.com/gh/ciraos/ciraos-static@main/img/404_1.avif");
+                    // 失败后本组件渲染 null，并通知父组件显示首字兜底
+                    setFailed(true);
+                    onError?.();
                 }}
             />
         </div>

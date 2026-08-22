@@ -82,6 +82,10 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --scrollbar-width: 8px;
+  --scrollbar-thumb: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
+  --scrollbar-thumb-hover: color-mix(in oklch, var(--muted-foreground) 60%, transparent);
+  --scrollbar-track: transparent;
 }
 
 .dark {
@@ -134,9 +138,7 @@
 @media screen and (max-width: 768px) {}
 
 /*!  */
-@media (prefers-color-scheme: light) {
-  body {}
-}
+@media (prefers-color-scheme: light) {}
 
 @media (prefers-color-scheme: dark) {}
 
@@ -625,6 +627,7 @@
 }
 
 /* ===================== 代码块（macOS 窗口风格 · 浅色） ===================== */
+
 /* 容器：普通 pre 的 .code-block 与后端 md-editor 的 .md-editor-code 共用 */
 .article-body .code-block,
 .article-body .md-editor-code {
@@ -902,6 +905,7 @@
 }
 
 /* ===================== 关于页（复刻 anheyu-app） ===================== */
+
 /* 头像特效结构 .avatar-wrap > .avatar-img */
 .avatar-wrap {
   position: relative;
@@ -1117,6 +1121,7 @@
 }
 
 /* ===================== 侧边栏用户头像（静态 + 主题边框） ===================== */
+
 /* 结构：.nav-user-ring > .nav-user-avatar（img 填充圆形） */
 .nav-user-ring {
   position: relative;
@@ -1142,6 +1147,7 @@
 }
 
 /* ===================== 最新评论时间轴（粉色节点 + border 扩张动画） ===================== */
+
 /* 粉色实心点 + 一圈 border 圆环周期性向外扩张消散 */
 .comment-dot {
   position: relative;
@@ -1195,6 +1201,7 @@
 }
 
 /* ===================== AnZhiYu 内容插件样式（移植自 anheyu-app-frontend） ===================== */
+
 /* ---------- Tabs 标签页 ---------- */
 .article-body .tabs {
   position: relative;
@@ -2575,7 +2582,7 @@
   }
 }
 
-/* CSS 幽灵：圆顶 + 两只小脚 */
+/* ===================== CSS 幽灵：圆顶 + 两只小脚 ===================== */
 .nf-ghost {
   position: relative;
   width: 112px;
@@ -2625,7 +2632,7 @@
   }
 }
 
-/*! loader */
+/* ===================== loader ===================== */
 /* From Uiverse.io by Nawsome */
 .loader {
   position: relative;
@@ -2964,18 +2971,7 @@
   }
 }
 
-/* ===================== 全局滚动条美化（所有路由统一生效） =====================
-   改这里几个变量即可统一调整滚动条外观：
-   - --scrollbar-width：滚动条粗细
-   - --scrollbar-thumb / --scrollbar-thumb-hover：滑块颜色（随深浅色主题自动适配）
-   - --scrollbar-track：轨道颜色 */
-:root {
-  --scrollbar-width: 8px;
-  --scrollbar-thumb: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
-  --scrollbar-thumb-hover: color-mix(in oklch, var(--muted-foreground) 60%, transparent);
-  --scrollbar-track: transparent;
-}
-
+/* ===================== 全局滚动条美化（所有路由统一生效） ===================== */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogIn, User, UserPlus } from "lucide-react";
+import { LayoutDashboard, LogIn, LogOut, User, UserPlus } from "lucide-react";
 
 import {
     DropdownMenu,
@@ -31,11 +31,10 @@ export function UserMenu({ isLoggedIn, scrolled = false }: UserMenuProps) {
         <DropdownMenu>
             <DropdownMenuTrigger
                 asChild
-                className={`transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] will-change-transform ${
-                    scrolled
-                        ? "scale-[0.94] bg-card/60 shadow-sm backdrop-blur-md"
-                        : "scale-100 bg-card shadow-md hover:shadow-xl"
-                }`}
+                className={`transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] will-change-transform ${scrolled
+                    ? "scale-[0.94] bg-card/60 shadow-sm backdrop-blur-md"
+                    : "scale-100 bg-card shadow-md hover:shadow-xl"
+                    }`}
             >
                 <button
                     className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -47,17 +46,32 @@ export function UserMenu({ isLoggedIn, scrolled = false }: UserMenuProps) {
 
             <DropdownMenuContent align="end" className="w-60">
                 {isLoggedIn ? (
-                    /* ===== 已登录 ===== */
-                    <div className="flex flex-col items-center gap-1 px-2 py-4 text-center">
-                        <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-                            <User className="size-7" />
+                    /* ===== 已登录：菜单项列表风格 ===== */
+                    <div className="p-1.5">
+                        {/* 用户信息头 */}
+                        <div className="flex flex-col items-center gap-1 border-b px-2 pb-3 pt-2 text-center">
+                            <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                <User className="size-6" />
+                            </div>
+                            <div className="mt-1 text-sm font-semibold">已登录</div>
+                            <div className="text-xs text-muted-foreground">欢迎回来</div>
                         </div>
-                        <div className="mt-2 text-base font-semibold">已登录</div>
-                        <div className="text-xs text-muted-foreground">欢迎回来</div>
+
+                        {/* 仪表盘：页面跳转，用 Link（享受客户端导航） */}
+                        <Link
+                            href="/admin/dashboard"
+                            className="mt-1 flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-muted"
+                        >
+                            <LayoutDashboard className="size-4 text-muted-foreground" />
+                            前往仪表盘
+                        </Link>
+
+                        {/* 登出：触发动作，用 button */}
                         <button
                             onClick={handleLogout}
-                            className="mt-3 w-full rounded-lg border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+                            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10"
                         >
+                            <LogOut className="size-4" />
                             退出登录
                         </button>
                     </div>

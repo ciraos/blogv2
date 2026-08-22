@@ -100,7 +100,7 @@ function CommentRow({ comment, reverse = false }: { comment: RecentComment; reve
  * 评论列表（含子评论/博主回复）由服务端组件获取后传入；
  * 提交评论 POST /public/comments 接口待接入。
  */
-export function PostComments({ targetPath, comments }: PostCommentsProps) {
+export function PostComments({ targetPath, comments = [] }: PostCommentsProps) {
     // TODO: 提交评论 —— submitComment(targetPath, form)
     // TODO: 随机匿名昵称、图片上传、预览（后端 allow_image_upload / emoji 配置）
 
@@ -207,8 +207,7 @@ export function PostComments({ targetPath, comments }: PostCommentsProps) {
                             <div key={comment.id} className="rounded-lg border border-border/40 bg-card/40 p-3.5">
                                 <CommentRow comment={comment} />
                                 {/* 子评论（博主回复等）：头像在右、内容在左 */}
-                                {comment.children && comment.children.length > 0 && (
-                                    <div className="mt-3 space-y-3 pl-3 sm:ml-4 sm:pl-4">
+                                {comment.children && comment.children.length > 0 && (                                    <div className="mt-3 space-y-3 pl-3 sm:ml-4 sm:pl-4">
                                         {comment.children.map((child) => (
                                             <CommentRow key={child.id} comment={child} reverse />
                                         ))}

@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 import type { MomentItem } from "@/types/moments";
 import { resolveAssetUrl } from "@/lib/utils";
 
@@ -12,9 +16,17 @@ function formatTime(iso: string): string {
     });
 }
 
+function initials(name: string): string {
+    return name.trim().charAt(0) || "友";
+}
+
 /** 朋友圈卡片（flex 纵向：内容顶对齐，时间贴底，适配 grid 等高拉伸） */
 export function MomentCard({ moment }: { moment: MomentItem }) {
     const logo = resolveAssetUrl(moment.link_logo);
+    // 头像加载失败或数据里就是占位图时，切到首字圆形兜底
+    const [avatarFailed, setAvatarFailed] = useState(false);
+    const isPlaceholderLogo = !!logo && /404|placeholder|default/i.test(logo);
+    const showInitials = avatarFailed || isPlaceholderLogo || !logo;
 
     return (
         <div className="flex h-full flex-col rounded-lg border bg-card p-3.5 shadow-sm transition-shadow hover:shadow-md">
@@ -26,16 +38,19 @@ export function MomentCard({ moment }: { moment: MomentItem }) {
             >
                 {/* 友链信息 */}
                 <div className="flex items-center gap-2">
-                    {logo ? (
+                    {logo && !showInitials ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                             src={logo}
                             alt=""
                             loading="lazy"
+                            onError={() => setAvatarFailed(true)}
                             className="size-6 shrink-0 rounded-full object-cover"
                         />
                     ) : (
-                        <div className="size-6 shrink-0 rounded-full bg-muted" />
+                        <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                            {initials(moment.link_name)}
+                        </div>
                     )}
                     <span className="truncate text-xs font-medium text-muted-foreground">{moment.link_name}</span>
                 </div>
