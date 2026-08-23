@@ -385,6 +385,41 @@ export async function getCommentChildrenApi(
     });
 }
 
+/** 带子评论的评论（父评论 + 博主回复等） */
+export interface CommentWithChildren extends RecentComment {
+    children: RecentComment[];
+}
+
+/**
+ * 获取某目标路径的评论（含子评论），供评论区组件使用。
+ * 失败时降级为空数组，不抛出。
+ */
+export async function getCommentsWithChildrenApi(
+    targetPath: string,
+    params: { page?: number; pageSize?: number } = {},
+): Promise<CommentWithChildren[]> {
+    const { page = 1, pageSize = 20 } = params;
+    try {
+        const commentData = await getCommentsByPathApi({ target_path: targetPath, page, pageSize });
+        const parents = commentData.list ?? [];
+        // 并行拉取有子评论的评论（total_children > 0）
+        const childrenResults = await Promise.all(
+            parents.map(async (parent) => {
+                if ((parent.total_children ?? 0) <= 0) return [] as RecentComment[];
+                try {
+                    const childData = await getCommentChildrenApi(parent.id, { page: 1, pageSize: 20 });
+                    return childData.list ?? [];
+                } catch {
+                    return [] as RecentComment[];
+                }
+            }),
+        );
+        return parents.map((parent, i) => ({ ...parent, children: childrenResults[i] ?? [] }));
+    } catch {
+        return [];
+    }
+}
+
 // ===================== 公开页面 =====================
 
 export interface PublicPage {

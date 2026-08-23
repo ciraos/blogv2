@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { LinkCard } from "@/components/(blog)/link-card";
+import { LinkApplyConditions } from "@/components/(blog)/link-apply-conditions";
 
 import { getLinksByCategoryApi, getPublicLinkCategoriesApi, getPublicSiteConfigApi } from "@/lib/api";
 import { generateBlogMetadata } from "@/lib/seo";
@@ -31,9 +32,11 @@ export default async function Link() {
 
     // 页脚自定义内容（后端已渲染好的 HTML）
     const customHtml = config?.FRIEND_LINK_APPLY_CUSTOM_CODE_HTML || "";
+    // 友链申请条件（勾选全部后可申请）
+    const applyConditions = config?.FRIEND_LINK_APPLY_CONDITION || [];
 
     return (
-        <div className="w-full space-y-8">
+        <div className="linksetcion w-full space-y-4">
             <header className="space-y-1">
                 <h1 className="text-2xl font-bold tracking-tight">友情链接</h1>
                 <p className="text-sm text-muted-foreground">
@@ -59,13 +62,16 @@ export default async function Link() {
                 ))
             )}
 
-            {/* 页脚自定义内容（免责声明 + 友链申请须知等，后端渲染好的 HTML） */}
+            {/* 页脚自定义内容（免责声明 + 友链申请须知等，后端渲染好的 HTML，末尾含 yaml 示例框） */}
             {customHtml && (
                 <div
                     className="FRIEND_LINK_APPLY_CUSTOM_CODE article-body"
                     dangerouslySetInnerHTML={{ __html: customHtml }}
                 />
             )}
+
+            {/* 申请条件：放在 yaml 示例框下方，全部勾选后可申请友链 */}
+            <LinkApplyConditions conditions={applyConditions} />
         </div>
     );
 }

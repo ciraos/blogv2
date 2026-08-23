@@ -7,8 +7,7 @@ import { PostActions } from "@/components/(blog)/post-actions";
 import { PostComments } from "@/components/(blog)/post-comments";
 import { PostToc } from "@/components/(blog)/post-toc";
 
-import { ApiError, getCommentChildrenApi, getCommentsByPathApi, getPublicArticleApi, getPublicSiteConfigApi } from "@/lib/api";
-import type { RecentComment } from "@/lib/api";
+import { ApiError, getCommentsWithChildrenApi, getPublicArticleApi, getPublicSiteConfigApi } from "@/lib/api";
 import { resolveAssetUrl } from "@/lib/utils";
 
 interface PostPageProps {
@@ -83,29 +82,7 @@ export default async function Post({ params }: PostPageProps) {
 
     // 评论区：按 target_path 获取本文章评论 + 子评论（博主回复等），失败时降级为空列表
     const targetPath = `/posts/${article.id}`;
-    interface CommentWithChildren extends RecentComment {
-        children: RecentComment[];
-    }
-    let comments: CommentWithChildren[] = [];
-    try {
-        const commentData = await getCommentsByPathApi({ target_path: targetPath, page: 1, pageSize: 20 });
-        const parents = commentData.list ?? [];
-        // 并行拉取有子评论的评论（total_children > 0）
-        const childrenResults = await Promise.all(
-            parents.map(async (parent) => {
-                if ((parent.total_children ?? 0) <= 0) return [] as RecentComment[];
-                try {
-                    const childData = await getCommentChildrenApi(parent.id, { page: 1, pageSize: 20 });
-                    return childData.list ?? [];
-                } catch {
-                    return [] as RecentComment[];
-                }
-            }),
-        );
-        comments = parents.map((parent, i) => ({ ...parent, children: childrenResults[i] ?? [] }));
-    } catch {
-        comments = [];
-    }
+    const comments = await getCommentsWithChildrenApi(targetPath);
 
     return (
         /* PC：内容 + 右侧目录双栏；移动端单栏（目录由右下角悬浮按钮接管） */
