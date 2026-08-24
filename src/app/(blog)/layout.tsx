@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import "../globals.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -12,6 +12,7 @@ import { ScrollToTop } from "@/components/(blog)/scroll-to-top";
 
 import { getPublicLinksRandomApi } from "@/lib/api";
 import { SiteConfigResponse } from "@/types/site-config";
+import { BlogSidebar } from "@/components/(blog)/blog-sidebar";
 
 const site_url = process.env.NEXT_PUBLIC_SITE_URL;
 const api_url = process.env.NEXT_PUBLIC_API_URL;
@@ -44,6 +45,13 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
   const cookieStore = await cookies();
   const isLoggedIn = !!cookieStore.get("token")?.value;
 
+  // 文章详情页：目录（TOC）移入全局侧边栏顶部，正文不再单独双栏
+  const headerList = await headers();
+  const pathname = headerList.get("x-pathname") ?? "";
+  const isPostDetail = /^\/posts\/[^/]+$/.test(pathname);
+  // 关于页：内容自带丰富布局（头像/技能/信息），不显示全局侧边栏
+  const isAbout = pathname === "/about";
+
   // 页脚随机友链：数量取配置 footer.list.randomFriends（默认 3）
   const randomFriendsCount = config?.footer?.list?.randomFriends ?? 3;
   let randomLinks: Awaited<ReturnType<typeof getPublicLinksRandomApi>> = [];
@@ -75,10 +83,19 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
 
           {/* flex 列布局 + min-h-dvh：内容不足一屏时 footer 吸附在视口底部 */}
           <div id="CIRAOS" className="flex min-h-dvh flex-col">
-            <Header menu={config?.header?.menu ?? []} appName={config?.APP_NAME ?? "博客"} isLoggedIn={isLoggedIn} />
+            <Header
+              menu={config?.header?.menu ?? []}
+              appName={config?.APP_NAME ?? "博客"}
+              isLoggedIn={isLoggedIn}
+              userpanel={config?.userpanel}
+            />
 
-            <div className="main w-full max-w-300 mx-auto mt-10 px-4 sm:px-0 flex flex-1">
-              {children}
+            <div className="main w-full max-w-300 mx-auto mt-10 px-4 sm:px-0 flex flex-1 gap-6">
+              {/* 主体内容区（container query 容器：收缩侧边栏时撑满，网格列数随宽度自适应） */}
+              <div className="min-w-0 flex-1 @container/main">{children}</div>
+
+              {/* 右侧边栏（300px，桌面端显示；移动端隐藏；文章详情页顶部插入目录卡片；关于页不显示） */}
+              {!isAbout && <BlogSidebar config={config} showToc={isPostDetail} />}
             </div>
 
             <div id="footer" className="footer w-full max-w-300 mx-auto mt-15 px-4 sm:px-0">

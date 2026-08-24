@@ -132,6 +132,46 @@
   body {
     background-color: var(--background);
   }
+
+  /* 侧边栏作者卡头像：悬浮时缩小消失（配合原位淡入描述） */
+  .author-avatar-hover {
+    transform: scale(1);
+    opacity: 1;
+  }
+  .group:hover .author-avatar-hover {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+
+/* 文章列表网格：列数随内容区宽度（container query，容器 .@container/main）自适应 */
+/* 放在 @layer 外，避免被 Tailwind utilities 的 grid-cols-1 覆盖 */
+.article-grid {
+  grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  transition: grid-template-columns 0.5s ease;
+}
+@container main (min-width: 448px) {
+  .article-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+@container main (min-width: 896px) {
+  .article-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+/* 侧边栏收缩/展开：宽度 + 透明度平滑过渡（按钮通过 data-collapsed 切换） */
+#blog-sidebar {
+  transition: width 0.5s ease, opacity 0.4s ease;
+  width: 300px;
+  opacity: 1;
+  overflow: hidden;
+}
+#blog-sidebar[data-collapsed="1"] {
+  width: 0 !important;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /*! */

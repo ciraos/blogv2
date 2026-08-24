@@ -79,7 +79,7 @@ export function PostToc() {
     if (tocItems.length === 0) return null;
 
     return (
-        <nav className="sticky top-20 max-h-[calc(100dvh-8rem)] overflow-y-auto no-scrollbar">
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
             {/* 标题：渐变小徽章 + 文字 */}
             <div className="mb-3 flex items-center gap-2">
                 <span className="flex size-6 items-center justify-center rounded-md bg-linear-to-br from-pink-500 to-indigo-500 text-white shadow-sm">
@@ -93,7 +93,7 @@ export function PostToc() {
             </div>
 
             {/* 目录列表：扁平列表，h2 与 h3 缩进区分，当前项高亮 */}
-            <div ref={listRef} className="rounded-xl border bg-card/60 p-2 shadow-sm">
+            <div ref={listRef} className="rounded-lg">
                 <ul className="space-y-0.5">
                     {tocItems.map((item) => (
                         <li key={item.id}>
@@ -121,6 +121,6 @@ export function PostToc() {
                     ))}
                 </ul>
             </div>
-        </nav>
+        </div>
     );
 }

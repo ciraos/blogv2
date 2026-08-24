@@ -5,7 +5,6 @@ import { notFound } from "next/navigation";
 import { ArticleBody } from "@/components/(blog)/article-body";
 import { PostActions } from "@/components/(blog)/post-actions";
 import { PostComments } from "@/components/(blog)/post-comments";
-import { PostToc } from "@/components/(blog)/post-toc";
 
 import { ApiError, getCommentsWithChildrenApi, getPublicArticleApi, getPublicSiteConfigApi } from "@/lib/api";
 import { resolveAssetUrl } from "@/lib/utils";
@@ -85,9 +84,8 @@ export default async function Post({ params }: PostPageProps) {
     const comments = await getCommentsWithChildrenApi(targetPath);
 
     return (
-        /* PC：内容 + 右侧目录双栏；移动端单栏（目录由右下角悬浮按钮接管） */
-        <div className="w-full gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_220px]">
-            <article className="min-w-0">
+        /* 单栏文章正文；右侧目录（TOC）由全局侧边栏顶部的「文章目录」卡片接管 */
+        <article className="min-w-0">
                 <header className="space-y-3 border-b pb-6">
                     <h1 className="text-2xl font-bold leading-snug tracking-tight md:text-3xl">{article.title}</h1>
 
@@ -169,12 +167,6 @@ export default async function Post({ params }: PostPageProps) {
                         </ul>
                     </section>
                 )}
-            </article>
-
-            {/* PC 端右侧常驻目录（lg+ 显示，sticky 跟随滚动） */}
-            <aside className="hidden lg:block">
-                <PostToc />
-            </aside>
-        </div>
+        </article>
     );
 }

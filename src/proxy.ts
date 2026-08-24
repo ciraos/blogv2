@@ -32,9 +32,13 @@ export function proxy(request: NextRequest) {
         return redirectTo(request, "/login")
     }
 
-    return NextResponse.next()
+    // 3. 注入当前路径，供服务端 layout 判断（如文章详情页跳过全局侧边栏）
+    const response = NextResponse.next()
+    response.headers.set("x-pathname", pathname)
+    return response
 }
 
 export const config = {
-    matcher: ["/admin/:path*", "/login"],
+    // 覆盖全站（除静态资源），以便注入 x-pathname
+    matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico)$).*)"],
 }

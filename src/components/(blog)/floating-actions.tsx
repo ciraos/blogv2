@@ -3,7 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { ArrowUp, ListTree, Moon, Plus, Sun } from "lucide-react";
+import {
+    ArrowUp,
+    ListTree,
+    Moon,
+    MoveHorizontal,
+    Plus,
+    Sun
+} from "lucide-react";
 
 interface TocItem {
     id: string;
@@ -25,11 +32,46 @@ export function FloatingActions() {
     const [groupOpen, setGroupOpen] = useState(false);
     const [tocOpen, setTocOpen] = useState(false);
     const [showTop, setShowTop] = useState(false);
+    // 侧边栏收缩状态（初始 false=展开；localStorage 持久化）
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     // 繁简状态（仅按钮 UI，转换逻辑后续接入）
     const [lang, setLang] = useState<"cn" | "tw">("cn");
     const [tocItems, setTocItems] = useState<TocItem[]>([]);
     const [activeId, setActiveId] = useState<string>("");
     const tocRef = useRef<HTMLDivElement | null>(null);
+
+    /** 侧边栏收缩切换：宽度过渡（300↔0 平滑收起/展开，配合 aside 的 transition）+ 持久化 */
+    const toggleSidebar = useCallback(() => {
+        const aside = document.getElementById("blog-sidebar");
+        if (!aside) return;
+        const collapsed = aside.dataset.collapsed === "1";
+        aside.dataset.collapsed = collapsed ? "0" : "1";
+        setSidebarCollapsed(!collapsed);
+        try {
+            localStorage.setItem("blog-sidebar-collapsed", collapsed ? "0" : "1");
+        } catch {
+            // 忽略
+        }
+    }, []);
+
+    /** 初始 / 路由切换后：读取 localStorage 恢复侧边栏收缩状态 */
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            try {
+                const saved = localStorage.getItem("blog-sidebar-collapsed");
+                if (saved === "1") {
+                    const aside = document.getElementById("blog-sidebar");
+                    if (aside) aside.dataset.collapsed = "1";
+                    setSidebarCollapsed(true);
+                } else {
+                    setSidebarCollapsed(false);
+                }
+            } catch {
+                // 忽略
+            }
+        }, 0);
+        return () => clearTimeout(timer);
+    }, [pathname]);
 
     /** 回到顶部（收起目录与展开组） */
     const scrollToTop = useCallback(() => {
@@ -125,13 +167,26 @@ export function FloatingActions() {
     };
 
     return (
-        <div className="fixed bottom-3 right-3 z-50 flex flex-col items-end gap-3">
+        <div className="fixed bottom-4 right-5 z-50 flex flex-col items-end gap-3">
 
-            {/* 操作组（藏在触发器展开组里，全端）：深浅色切换 + 繁简转换 */}
+            {/* 操作组（藏在触发器展开组里，全端）：深浅色切换 + 繁简转换；absolute 不占位，触发器位置恒定 */}
             <div
-                className={`flex flex-col items-end gap-3 transition-all duration-300 ${groupOpen ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"
+                className={`absolute bottom-14 right-0 flex flex-col items-end gap-3 transition-all duration-300 ${groupOpen ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"
                     }`}
             >
+                {/* 侧边栏收缩按钮 */}
+                <button
+                    type="button"
+                    onClick={toggleSidebar}
+                    aria-label={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
+                    title={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
+                    className={`flex size-10 items-center justify-center rounded-full border shadow-lg backdrop-blur transition-colors ${sidebarCollapsed
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card text-foreground hover:border-primary hover:text-primary"
+                        }`}
+                >
+                    <MoveHorizontal className="size-4" />
+                </button>
                 {/* 深浅色切换（图标/高亮用 CSS dark: 变体切换，避免 useTheme 导致 SSR/客户端水合不一致） */}
                 <button
                     type="button"

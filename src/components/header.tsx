@@ -15,7 +15,7 @@ import {
 
 import { UserMenu } from "@/components/user-menu";
 import { cn } from "@/lib/utils";
-import type { HeaderMenuGroup } from "@/types/site-config";
+import type { HeaderMenuGroup, UserPanelConfig } from "@/types/site-config";
 
 interface HeaderProps {
     /** 站点配置中的导航菜单（header.menu） */
@@ -24,9 +24,11 @@ interface HeaderProps {
     appName?: string;
     /** 是否已登录（服务端读取 httpOnly cookie 传入） */
     isLoggedIn?: boolean;
+    /** 用户面板开关（userpanel，登录态用户菜单按开关显示） */
+    userpanel?: UserPanelConfig;
 }
 
-export default function Header({ menu = [], appName = "博客", isLoggedIn = false }: HeaderProps) {
+export default function Header({ menu = [], appName = "博客", isLoggedIn = false, userpanel }: HeaderProps) {
     // 桌面端下拉：hover 展开，一次只开一个
     const [openGroup, setOpenGroup] = useState<string | null>(null);
     // 关闭宽限期：鼠标穿过触发器与面板之间的间隙时不误关
@@ -65,7 +67,7 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
     return (
         <>
             <div className="header w-full max-w-300 h-12 my-1 mx-auto p-0 sticky top-0 z-50 bg-none rounded-none flex items-center justify-between">
-                <Link href="/" className={`py-1 px-3 rounded-[99px] ${pillCls} text-base font-bold tracking-tight hover:opacity-80 hover:shadow-xl`}>{appName}</Link>
+                <Link href="/" className={`h-11 py-1 px-3 rounded-[99px] ${pillCls} text-base text-center content-center font-bold tracking-tight hover:opacity-80 hover:shadow-xl`}>{appName}</Link>
 
                 {/* 桌面端导航（≥768px）：自研下拉，面板绝对定位在触发器正下方 */}
                 {menu.length > 0 && (
@@ -160,7 +162,7 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
                             </nav>
                         </SheetContent>
                     </Sheet>
-                    <UserMenu isLoggedIn={isLoggedIn} scrolled={scrolled} />
+                    <UserMenu isLoggedIn={isLoggedIn} scrolled={scrolled} userpanel={userpanel} />
                 </div>
             </div>
         </>
