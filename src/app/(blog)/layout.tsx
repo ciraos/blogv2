@@ -48,7 +48,6 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
   // 文章详情页：目录（TOC）移入全局侧边栏顶部，正文不再单独双栏
   const headerList = await headers();
   const pathname = headerList.get("x-pathname") ?? "";
-  const isPostDetail = /^\/posts\/[^/]+$/.test(pathname);
   // 关于页：内容自带丰富布局（头像/技能/信息），不显示全局侧边栏
   const isAbout = pathname === "/about";
 
@@ -94,8 +93,8 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
               {/* 主体内容区（container query 容器：收缩侧边栏时撑满，网格列数随宽度自适应） */}
               <div className="min-w-0 flex-1 @container/main">{children}</div>
 
-              {/* 右侧边栏（300px，桌面端显示；移动端隐藏；文章详情页顶部插入目录卡片；关于页不显示） */}
-              {!isAbout && <BlogSidebar config={config} showToc={isPostDetail} />}
+              {/* 右侧边栏（300px，桌面端显示；移动端隐藏；关于页不显示） */}
+              {!isAbout && <BlogSidebar config={config} />}
             </div>
 
             <div id="footer" className="footer w-full max-w-300 mx-auto mt-15 px-4 sm:px-0">

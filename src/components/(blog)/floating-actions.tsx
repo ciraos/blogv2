@@ -232,7 +232,7 @@ export function FloatingActions() {
             {tocOpen && isPostPage && (
                 <div
                     ref={tocRef}
-                    className="max-h-72 w-60 max-w-[calc(100vw-2.5rem)] overflow-y-auto rounded-xl border bg-card/95 p-3 shadow-xl backdrop-blur lg:hidden"
+                    className="no-scrollbar max-h-72 w-60 max-w-[calc(100vw-2.5rem)] overflow-y-auto rounded-xl border bg-card/95 p-3 shadow-xl backdrop-blur lg:hidden"
                 >
                     <div className="mb-2 px-1 text-xs font-semibold text-muted-foreground">目录</div>
                     <ul className="space-y-0.5">

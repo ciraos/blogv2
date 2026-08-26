@@ -441,3 +441,66 @@ export async function getPublicPageApi(path: string): Promise<PublicPage> {
     const clean = path.replace(/^\/+/, "");
     return request<PublicPage>(`/public/pages/${encodeURIComponent(clean)}`, { method: "GET" });
 }
+
+// ===================== 相册 ALBUM =====================
+
+/** 公开相册分类 */
+export interface AlbumCategory {
+    id: number;
+    name: string;
+    description?: string;
+    cover?: string;
+    sort?: number;
+}
+
+/** 相册图片项（实测 /public/albums 返回图片墙：imageUrl 为访问路径） */
+export interface Album {
+    id: number;
+    created_at: string;
+    updated_at: string;
+    imageUrl: string;
+    bigImageUrl: string;
+    downloadUrl?: string;
+    thumbParam?: string;
+    bigParam?: string;
+    tags?: string;
+    viewCount?: number;
+    downloadCount?: number;
+    width?: number;
+    height?: number;
+    fileSize?: number;
+    format?: string;
+    aspectRatio?: string;
+    fileHash?: string;
+    displayOrder?: number;
+    categoryId?: number;
+    title?: string;
+    description?: string;
+    location?: string;
+    published_at?: string | null;
+}
+
+/** 相册列表分页 data（实测 /public/albums） */
+export interface AlbumListData {
+    list: Album[];
+    pageNum: number;
+    pageSize: number;
+    total: number;
+}
+
+/** GET /public/album-categories 公开相册分类列表 */
+export function getPublicAlbumCategoriesApi(): Promise<AlbumCategory[]> {
+    return request<AlbumCategory[]>("/public/album-categories", { method: "GET" });
+}
+
+/** GET /public/albums 公开相册列表（分页） */
+export async function getPublicAlbumsApi(params: { page?: number; pageSize?: number } = {}): Promise<AlbumListData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<AlbumListData>(`/public/albums${query ? `?${query}` : ""}`, { method: "GET" });
+}

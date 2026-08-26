@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowRight, CalendarDays, FileText, Tag as TagIcon } from "lucide-react";
-
 import { PostToc } from "@/components/(blog)/post-toc";
 import { AuthorGreeting } from "@/components/(blog)/author-greeting";
 import { collectTags } from "@/lib/articles";
@@ -144,12 +143,12 @@ async function ArchivesCard({ displayMonths = 6 }: { displayMonths?: number }) {
                 <CalendarDays className="size-4 text-primary" />
                 归档
             </h3>
-            <ul className="mt-3 space-y-2">
+            <ul className="mt-3 space-y-1">
                 {shown.map((item) => (
                     <li key={`${item.year}-${item.month}`}>
                         <Link
                             href={`/archives/${item.year}/${item.month}`}
-                            className="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted"
+                            className="flex items-center justify-between rounded-none p-0 text-sm transition-colors hover:bg-muted"
                         >
                             <span className="text-muted-foreground">{formatMonth(item.year, item.month)}</span>
                             <span className="text-xs text-muted-foreground">
@@ -159,7 +158,7 @@ async function ArchivesCard({ displayMonths = 6 }: { displayMonths?: number }) {
                     </li>
                 ))}
             </ul>
-            <Link href="/archives" className="mt-2 flex items-center gap-1 text-xs text-primary hover:underline">
+            <Link href="/archives" className="mt-2 flex items-center gap-0 text-xs text-primary hover:underline">
                 查看全部归档
                 <ArrowRight className="size-3" />
             </Link>
@@ -187,21 +186,21 @@ function SiteInfoCard({
                 <FileText className="size-4 text-primary" />
                 网站信息
             </h3>
-            <div className="mt-3 grid grid-cols-1 gap-1.5 text-sm">
+            <div className="mt-3 grid grid-cols-1 gap-0 text-sm">
                 {totalPostCount != null && (
-                    <div className="flex items-center justify-between rounded-lg px-2 py-1.5">
+                    <div className="flex items-center justify-between rounded-lg px-0 py-1.5">
                         <span className="text-muted-foreground">文章总数</span>
                         <span className="font-medium">{totalPostCount}</span>
                     </div>
                 )}
                 {totalWordCount != null && (
-                    <div className="flex items-center justify-between rounded-lg px-2 py-1.5">
+                    <div className="flex items-center justify-between rounded-lg px-0 py-1.5">
                         <span className="text-muted-foreground">全站字数</span>
                         <span className="font-medium">{totalWordCount.toLocaleString()}</span>
                     </div>
                 )}
                 {runtimeEnable && days > 0 && (
-                    <div className="flex items-center justify-between rounded-lg px-2 py-1.5">
+                    <div className="flex items-center justify-between rounded-lg px-0 py-1.5">
                         <span className="text-muted-foreground">建站天数</span>
                         <span className="font-medium">{days} 天</span>
                     </div>
@@ -211,9 +210,10 @@ function SiteInfoCard({
     );
 }
 
-/** (blog) 右侧边栏：作者卡 + 标签云 + 归档 + 站点信息（300px，桌面端显示）
- *  showToc：文章详情页为 true 时，顶部插入「文章目录」卡片 */
-export async function BlogSidebar({ config, showToc = false }: { config?: SiteConfig; showToc?: boolean }) {
+/** (blog) 右侧边栏：作者卡 + 标签云 + 归档 + 站点信息（300px，桌面端显示）。
+ *  「文章目录」卡片由 PostToc 始终渲染，是否显示由 PostToc 内部按 usePathname 判断——
+ *  不依赖服务端 x-pathname（软导航时该值可能不更新，导致目录概率性不显示）。 */
+export async function BlogSidebar({ config }: { config?: SiteConfig }) {
     const author = config?.sidebar?.author;
     const siteinfo = config?.sidebar?.siteinfo;
 
@@ -231,10 +231,12 @@ export async function BlogSidebar({ config, showToc = false }: { config?: SiteCo
     }
 
     return (
-        <aside id="blog-sidebar" className="hidden w-75 shrink-0 lg:block">
+        <aside id="blog-sidebar" className="hidden w-75 shrink-0 self-stretch lg:block">
+            {/* self-stretch：aside 撑满正文高度 → sticky 的包含块足够长，长文章 TOC 全程固定；
+                不限高：侧边栏内容完整展示，不内部滚动 */}
             <div className="sticky top-20 space-y-4">
                 {author?.enable !== false && config && <AuthorCard config={config} />}
-                {showToc && <PostToc />}
+                <PostToc />
                 <TagsCard />
                 <ArchivesCard displayMonths={config?.sidebar?.archive?.displayMonths || 6} />
                 {config && (
