@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { toast } from "sonner";
 
 import katex from "katex";
 import hljs from "highlight.js/lib/core";
@@ -54,13 +55,15 @@ function detectLanguage(codeEl: HTMLElement): string {
     return "";
 }
 
-/** 创建复制按钮 */
+/** 复制按钮：图标按钮，无背景无边框，复制成功后右上角 toast */
 function makeCopyButton(codeEl: HTMLElement): HTMLButtonElement {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "code-copy-btn";
-    btn.textContent = "复制";
+    btn.title = "复制代码";
     btn.setAttribute("aria-label", "复制代码");
+    btn.innerHTML =
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
 
     btn.addEventListener("click", async (event) => {
         event.preventDefault();
@@ -77,19 +80,72 @@ function makeCopyButton(codeEl: HTMLElement): HTMLButtonElement {
             document.execCommand("copy");
             document.body.removeChild(textarea);
         }
-        btn.textContent = "已复制";
+        toast.success("复制成功！");
         btn.classList.add("copied");
-        window.setTimeout(() => {
-            btn.textContent = "复制";
-            btn.classList.remove("copied");
-        }, 1500);
+        window.setTimeout(() => btn.classList.remove("copied"), 1500);
     });
 
     return btn;
 }
 
-/** 增强一个 <pre> 代码块：高亮 + 复制按钮 + 语言标签 */
-function enhanceBlock(pre: HTMLPreElement) {
+/** 底部「展开 / 收起」按钮：行数超过 code_max_lines 时折叠，点击切换 */
+function makeExpandButton(body: HTMLElement): HTMLButtonElement {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "code-expand-btn";
+    btn.textContent = "展开 ▼";
+    btn.setAttribute("aria-label", "展开代码");
+    btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const collapsed = body.classList.toggle("code-collapsed");
+        // 折叠高度是内联 maxHeight（见 enhanceBlock），展开时必须清除，折叠时恢复
+        body.style.maxHeight = collapsed ? body.dataset.collapsedHeight || "" : "";
+        btn.textContent = collapsed ? "展开 ▼" : "收起 ▲";
+        btn.classList.toggle("expanded", !collapsed);
+    });
+    return btn;
+}
+
+/** 左上角「展开 / 收缩」按钮：点击后代码完全收起（只留带语言标签的头部一行），再点恢复。
+ *  完全收起时底部「展开/收起」按钮一并隐藏，恢复时重新显示。 */
+function makeCollapseButton(body: HTMLElement): HTMLButtonElement {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "code-collapse-btn";
+    btn.title = "收缩代码";
+    btn.setAttribute("aria-label", "收缩代码");
+    btn.textContent = "▼";
+    btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const hidden = body.classList.toggle("code-hidden");
+        // 底部行数展开/收起按钮与代码一起隐藏（恢复时重新显示）
+        const expandBtn = body.parentElement?.querySelector<HTMLElement>(".code-expand-btn");
+        if (expandBtn) {
+            expandBtn.style.display = hidden ? "none" : "";
+        }
+        btn.textContent = hidden ? "▶" : "▼";
+        btn.title = hidden ? "展开代码" : "收缩代码";
+        btn.setAttribute("aria-label", hidden ? "展开代码" : "收缩代码");
+    });
+    return btn;
+}
+
+/** 统计代码行数（去掉末尾换行） */
+function countCodeLines(text: string): number {
+    if (!text) return 0;
+    return text.replace(/\n$/, "").split("\n").length;
+}
+
+/** 代码块配置（来自 site-config post.code_block） */
+interface CodeBlockOptions {
+    codeMaxLines: number;
+    macStyle: boolean;
+}
+
+/** 增强一个 <pre> 代码块：高亮 + mac 风格 + 行数折叠 + 复制按钮 + 语言标签 */
+function enhanceBlock(pre: HTMLPreElement, options: CodeBlockOptions) {
     const codeEl = pre.querySelector<HTMLElement>("code");
     if (!codeEl || codeEl.dataset.enhanced === "true") return;
     codeEl.dataset.enhanced = "true";
@@ -114,6 +170,9 @@ function enhanceBlock(pre: HTMLPreElement) {
     }
     codeEl.classList.add("hljs");
 
+    // 移除后端自带的行号占位 span（rn-wrapper，前端用自建行号栏，避免干扰渲染/行号对齐）
+    codeEl.querySelectorAll<HTMLElement>("[rn-wrapper]").forEach((el) => el.remove());
+
     // 2) 行号栏 + 代码横向滚动容器
     const details = pre.closest<HTMLElement>("details.md-editor-code");
     const summary = details?.querySelector("summary") ?? null;
@@ -125,32 +184,65 @@ function enhanceBlock(pre: HTMLPreElement) {
     body.appendChild(makeLineNumbers(codeEl));
     body.appendChild(pre);
 
-    // 3) 后端 md-editor 结构：details + summary（语言标签已存在，只加复制按钮）
+    // 3) 确定容器与头部（mac 圆圈 / 语言标签 / 按钮都挂在头部）
+    let container: HTMLElement;
+    let head: HTMLElement;
     if (details && summary) {
         details.insertBefore(body, summary.nextSibling);
-        if (!summary.querySelector(".code-copy-btn")) {
-            summary.appendChild(makeCopyButton(codeEl));
+        container = details;
+        head = summary;
+    } else {
+        // 普通 pre > code：包一层 .code-block（head + body）
+        const wrapper = document.createElement("div");
+        wrapper.className = "code-block";
+
+        const headEl = document.createElement("div");
+        headEl.className = "code-block-head";
+        if (lang) {
+            const label = document.createElement("span");
+            label.className = "code-block-lang";
+            label.textContent = lang;
+            headEl.appendChild(label);
         }
-        return;
+
+        wrapper.appendChild(headEl);
+        wrapper.appendChild(body);
+        originalParent?.insertBefore(wrapper, originalNext ?? null);
+        container = wrapper;
+        head = headEl;
     }
 
-    // 4) 普通 pre > code：包一层 .code-block（head + body）
-    const wrapper = document.createElement("div");
-    wrapper.className = "code-block";
-
-    const head = document.createElement("div");
-    head.className = "code-block-head";
-    if (lang) {
-        const label = document.createElement("span");
-        label.className = "code-block-lang";
-        label.textContent = lang;
-        head.appendChild(label);
+    // 行数折叠：超过 code_max_lines 行 → 折叠 + 底部展开按钮
+    const lineCount = countCodeLines(rawText);
+    if (options.codeMaxLines > 0 && lineCount > options.codeMaxLines) {
+        body.classList.add("code-collapsed");
+        // 折叠高度：pre 上下 padding + N 行 × 行高（行号栏与 pre 同高，一起截断）；
+        // 存入 dataset，供展开按钮恢复/清除
+        const preStyle = getComputedStyle(pre);
+        const lineHeight = parseFloat(preStyle.lineHeight) || 22;
+        const padTop = parseFloat(preStyle.paddingTop) || 14;
+        const padBottom = parseFloat(preStyle.paddingBottom) || 14;
+        body.dataset.collapsedHeight = `${padTop + padBottom + lineHeight * options.codeMaxLines}px`;
+        body.style.maxHeight = body.dataset.collapsedHeight;
+        container.appendChild(makeExpandButton(body));
     }
-    head.appendChild(makeCopyButton(codeEl));
 
-    wrapper.appendChild(head);
-    wrapper.appendChild(body);
-    originalParent?.insertBefore(wrapper, originalNext ?? null);
+    // 左上角展开 / 收缩按钮（完全折叠：只留语言标签那一行）——始终放在最左边
+    const collapseBtn = makeCollapseButton(body);
+    head.prepend(collapseBtn);
+
+    // mac 三个圆圈：真实元素（可排在按钮之后）；mac_style=true 时插入
+    if (options.macStyle) {
+        const dots = document.createElement("span");
+        dots.className = "code-dots";
+        dots.setAttribute("aria-hidden", "true");
+        collapseBtn.after(dots);
+    }
+
+    // 右上角复制按钮
+    if (!head.querySelector(".code-copy-btn")) {
+        head.appendChild(makeCopyButton(codeEl));
+    }
 }
 
 /** 生成行号栏（与代码行高对齐） */
@@ -993,16 +1085,32 @@ function enhanceMusic(root: HTMLElement, cleanupFns: (() => void)[]) {
 
 // ===================== 组件 =====================
 
-export function ArticleBody({ html }: { html: string }) {
+export function ArticleBody({
+    html,
+    codeBlock,
+}: {
+    html: string;
+    /** 代码块配置（site-config post.code_block）：mac 风格、超过多少行折叠 */
+    codeBlock?: { codeMaxLines?: number; macStyle?: boolean };
+}) {
     const ref = useRef<HTMLDivElement>(null);
+
+    // 代码块配置缺省值：默认不显示 mac 圆点、10 行折叠（useMemo 稳定引用，避免 effect 频繁重跑）
+    const codeBlockOpts = useMemo<CodeBlockOptions>(
+        () => ({
+            codeMaxLines: codeBlock?.codeMaxLines ?? 10,
+            macStyle: codeBlock?.macStyle ?? false,
+        }),
+        [codeBlock?.codeMaxLines, codeBlock?.macStyle]
+    );
 
     useEffect(() => {
         const root = ref.current;
         if (!root) return;
         const cleanups: (() => void)[] = [];
 
-        // 代码块高亮 + 标题锚点（原有）
-        root.querySelectorAll<HTMLPreElement>("pre").forEach(enhanceBlock);
+        // 代码块高亮 + mac 风格 + 行数折叠（原有点击复制/语言标签保留）
+        root.querySelectorAll<HTMLPreElement>("pre").forEach((pre) => enhanceBlock(pre, codeBlockOpts));
         enhanceHeadings(root);
 
         // 跨页面锚点跳转：标题 id 是客户端生成的，挂载后再根据 URL hash 滚动到对应标题
@@ -1043,7 +1151,7 @@ export function ArticleBody({ html }: { html: string }) {
         return () => {
             cleanups.forEach((fn) => fn());
         };
-    }, [html]);
+    }, [html, codeBlockOpts]);
 
     return (
         <div

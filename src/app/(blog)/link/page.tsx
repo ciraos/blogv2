@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-
 import { LinkCard } from "@/components/(blog)/link-card";
 import { LinkApplyConditions } from "@/components/(blog)/link-apply-conditions";
-
 import { getLinksByCategoryApi, getPublicLinkCategoriesApi, getPublicSiteConfigApi } from "@/lib/api";
 import { generateBlogMetadata } from "@/lib/seo";
 
@@ -37,6 +35,7 @@ export default async function Link() {
 
     return (
         <div className="linksetcion w-full space-y-4">
+            {/* <div className="link-banner shadow-md">a</div> */}
             <header className="space-y-1">
                 <h1 className="text-2xl font-bold tracking-tight">友情链接</h1>
                 <p className="text-sm text-muted-foreground">

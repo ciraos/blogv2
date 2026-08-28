@@ -79,6 +79,18 @@ export default async function Post({ params }: PostPageProps) {
         actionsConfig = null;
     }
 
+    // 代码块配置（mac 风格 / 超过多少行折叠）：取自 site-config post.code_block（后端 snake_case → 前端 camelCase）
+    let codeBlock: { codeMaxLines: number; macStyle: boolean } | undefined;
+    try {
+        const config = await getPublicSiteConfigApi();
+        const cb = config.post?.code_block;
+        if (cb) {
+            codeBlock = { codeMaxLines: cb.code_max_lines, macStyle: cb.mac_style };
+        }
+    } catch {
+        // 配置获取失败时使用默认（不阻塞正文）
+    }
+
     // 评论区：按 target_path 获取本文章评论 + 子评论（博主回复等），失败时降级为空列表
     const targetPath = `/posts/${article.id}`;
     const comments = await getCommentsWithChildrenApi(targetPath);
@@ -122,7 +134,7 @@ export default async function Post({ params }: PostPageProps) {
 
                 {/* 后端渲染好的正文 HTML，客户端组件负责代码块高亮 + 复制按钮；正文白底卡片，深浅色随主题切换 */}
                 <div className="mt-6 rounded-xl border border-border/60 bg-card p-5 shadow-sm md:p-8">
-                    <ArticleBody html={article.content_html || ""} />
+                    <ArticleBody html={article.content_html || ""} codeBlock={codeBlock} />
                 </div>
 
                 {/* 文章末尾：版权信息 + 打赏 / 订阅 / 分享（配置由服务端从 site-config 获取） */}

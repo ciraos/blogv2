@@ -708,10 +708,8 @@ body {
   display: none;
 }
 
-/* 红黄绿三个圆点（radial-gradient 绘制，占满 42px 布局宽度，避免挤压后续元素） */
-.article-body .code-block-head::before,
-.article-body .md-editor-code>summary::before {
-  content: "";
+/* mac 三个圆圈（真实元素 .code-dots，排在展开/收缩按钮之后；mac_style=true 时由 JS 插入） */
+.article-body .code-dots {
   flex-shrink: 0;
   width: 42px;
   height: 12px;
@@ -721,12 +719,68 @@ body {
     radial-gradient(circle 6px at 36px 6px, #28c840 98%, transparent);
 }
 
-/* 语言标签 */
+/* 行数折叠：超过 code_max_lines 行时截断（高度由 JS 按行高设置） */
+.article-body .code-block-body.code-collapsed {
+  overflow: hidden;
+}
+
+/* 完全收缩：代码区隐藏，只留头部语言标签一行 */
+.article-body .code-block-body.code-hidden {
+  display: none;
+}
+
+/* 底部「展开 / 收起」按钮 */
+.article-body .code-expand-btn {
+  display: block;
+  width: 100%;
+  padding: 6px 0;
+  border: none;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.article-body .code-expand-btn:hover {
+  color: var(--foreground);
+  background: var(--muted);
+}
+
+/* 左上角「展开 / 收缩」按钮 */
+.article-body .code-collapse-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-left: 0;
+  border: none;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 0.7rem;
+  line-height: 0;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.article-body .code-collapse-btn:hover {
+  color: var(--foreground);
+  background: var(--muted);
+}
+
+/* 语言标签（无衬线字体，稍大、轻加粗、主题色） */
 .article-body .code-block-lang,
 .article-body .md-editor-code .code-lang {
   font-size: 0.75rem;
-  color: #6e7781;
-  font-family: var(--font-mono, monospace);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--primary);
+  font-family: var(--font-sans, system-ui, sans-serif);
 }
 
 /* 代码区：行号栏 + pre（横向滚动时行号固定） */
@@ -839,7 +893,7 @@ body {
 
 .dark .article-body .code-block-lang,
 .dark .article-body .md-editor-code .code-lang {
-  color: var(--muted-foreground);
+  color: var(--primary);
 }
 
 .dark .article-body .line-numbers {
@@ -927,24 +981,29 @@ body {
   user-select: none;
 }
 
-/* 复制按钮 */
+/* 复制按钮：图标按钮，无背景无边框 */
 .article-body .code-copy-btn {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-left: auto;
-  padding: 0.15rem 0.5rem;
-  border-radius: 0.3rem;
-  border: 1px solid #d0d7de;
+  padding: 0.25rem;
+  border: none;
   background: transparent;
   color: #57606a;
-  font-size: 0.7rem;
-  line-height: 1.4;
+  line-height: 1;
   cursor: pointer;
-  transition: background-color 0.15s, color 0.15s;
+  transition: color 0.15s;
+}
+
+.article-body .code-copy-btn svg {
+  display: block;
 }
 
 .article-body .code-copy-btn:hover {
-  background: rgba(0, 0, 0, 0.06);
   color: #24292f;
+  background: transparent;
 }
 
 .article-body .code-copy-btn.copied {
@@ -1428,6 +1487,33 @@ body {
 }
 
 .article-body .anzhiyu-tip.tip-light:not(:has(.tip-content)) {
+  background: rgb(255 255 255 / 0.95);
+  color: #333;
+  border: 1px solid var(--border);
+}
+
+/* 5 种主题色（success/info/warning/error/light）：后端输出对应 class 后生效 */
+.article-body .anzhiyu-tip.tip-success .tip-content,
+.article-body .anzhiyu-tip.tip-success:not(:has(.tip-content)) {
+  background: #16a34a;
+}
+
+.article-body .anzhiyu-tip.tip-info .tip-content,
+.article-body .anzhiyu-tip.tip-info:not(:has(.tip-content)) {
+  background: #2563eb;
+}
+
+.article-body .anzhiyu-tip.tip-warning .tip-content,
+.article-body .anzhiyu-tip.tip-warning:not(:has(.tip-content)) {
+  background: #d97706;
+}
+
+.article-body .anzhiyu-tip.tip-error .tip-content,
+.article-body .anzhiyu-tip.tip-error:not(:has(.tip-content)) {
+  background: #dc2626;
+}
+
+.article-body .anzhiyu-tip.tip-light .tip-content {
   background: rgb(255 255 255 / 0.95);
   color: #333;
   border: 1px solid var(--border);

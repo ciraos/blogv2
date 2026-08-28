@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 浏览器 headless 测试残留目录（Edge profile 等）
+    ".edge-tmp/**",
+    ".edge-tmp2/**",
   ]),
 ]);
 

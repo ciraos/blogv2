@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { Loader2, PencilLine, Plus, Send } from "lucide-react";
+import { toast } from "sonner";
+
+import { ApiError, submitLinkApplyApi } from "@/lib/api";
 
 interface LinkApplyFormProps {
     /** 提交成功后回调 */
@@ -112,13 +115,20 @@ export function LinkApplyForm({ onSubmitted }: LinkApplyFormProps) {
         setForm((prev) => ({ ...prev, [key]: value }));
     }
 
-    // TODO: 提交 —— POST /public/links（新增）；修改信息接口待后端确认后接入
+    // 提交：新增走 POST /public/links（经同源代理）；修改信息接口待后端确认后接入
     async function handleSubmit() {
         setSubmitting(true);
         try {
-            // 接口预留：mode === "create" ? submitLinkApply(form) : submitLinkUpdate({ ...form, originalUrl, reason })
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            if (mode === "create") {
+                await submitLinkApplyApi({ ...form });
+                toast.success("友链申请已提交，等待管理员审核");
+            } else {
+                await new Promise((resolve) => setTimeout(resolve, 500));
+                toast.info("修改信息功能待接口接入后开放");
+            }
             onSubmitted?.();
+        } catch (err) {
+            toast.error(err instanceof ApiError ? err.message : "提交失败，请稍后重试");
         } finally {
             setSubmitting(false);
         }
@@ -129,8 +139,8 @@ export function LinkApplyForm({ onSubmitted }: LinkApplyFormProps) {
             {/* 标题 */}
             <h3 className="text-lg font-semibold">友链申请</h3>
 
-            {/* 类型切换：新增申请 / 修改信息 */}
-            <div className="mt-3 mx-auto flex w-1/2 gap-1 rounded-lg bg-muted p-1">
+            {/* 类型切换：新增申请 / 修改信息（两个按钮各占一半宽度） */}
+            <div className="mt-3 flex w-full gap-1 rounded-lg bg-muted p-1">
                 <button
                     type="button"
                     onClick={() => setMode("create")}

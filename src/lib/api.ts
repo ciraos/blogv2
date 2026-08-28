@@ -234,6 +234,25 @@ export async function getPublicLinksRandomApi(num = 1): Promise<FriendLink[]> {
     return request<FriendLink[]>(`/public/links/random?num=${num}`, { method: "GET" });
 }
 
+/** 友链申请提交数据（POST /public/links） */
+export interface LinkApplyPayload {
+    name: string;
+    url: string;
+    logo: string;
+    description: string;
+    siteshot?: string;
+    email?: string;
+    rss?: string;
+}
+
+/** POST /api/public/links 提交友链申请（本应用同源代理，客户端调用；等待管理员审核） */
+export async function submitLinkApplyApi(payload: LinkApplyPayload): Promise<unknown> {
+    return request<unknown>("/api/public/links", {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+}
+
 // ===================== 即刻 / 说说（PRO） =====================
 
 /**

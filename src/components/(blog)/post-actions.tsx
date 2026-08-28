@@ -68,7 +68,7 @@ export function PostActions({
     const showButtons = showRewardButton || showSubscribeButton || showShareButton;
 
     return (
-        <div className="mt-16 w-full rounded-lg border border-border/40 bg-card/40 py-4">
+        <div className="mt-16 w-full rounded-lg border border-border/50 bg-linear-to-br from-primary/10 via-card/60 to-primary/10 py-4 dark:from-primary/15 dark:via-card/75 dark:to-primary/15">
             <div className="flex flex-col items-center gap-2">
                 {userAvatar && (
                     <Link href={siteUrl} target="_blank" className="block relative z-10 -mt-12">
