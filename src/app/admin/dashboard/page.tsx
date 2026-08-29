@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { QuickActions } from "@/components/(admin)/quick-actions";
-import { StatisticsSummary } from "@/components/(admin)/statistics-summary";
+import { QuickActions } from "@/components/admin/quick-actions";
+import { StatisticsSummary } from "@/components/admin/statistics-summary";
 import { ApiError, getUserInfoApi } from "@/lib/api";
 import type { LoginUserInfo } from "@/types/auth";
 import { generateBlogMetadata } from "@/lib/seo";

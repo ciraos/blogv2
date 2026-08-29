@@ -1,9 +1,7 @@
 "use client";
-
 import { useState } from "react";
 import { Loader2, PencilLine, Plus, Send } from "lucide-react";
 import { toast } from "sonner";
-
 import { ApiError, submitLinkApplyApi } from "@/lib/api";
 
 interface LinkApplyFormProps {
@@ -16,8 +14,8 @@ type ApplyMode = "create" | "update";
 /** 公共表单字段（新增/修改共用） */
 interface BaseForm {
     name: string;
-    logo: string;
     url: string;
+    logo: string;
     description: string;
     siteshot: string;
     email: string;
@@ -26,8 +24,8 @@ interface BaseForm {
 
 const EMPTY_BASE: BaseForm = {
     name: "",
-    logo: "",
     url: "",
+    logo: "",
     description: "",
     siteshot: "",
     email: "",
@@ -82,11 +80,11 @@ function BaseFields({
         <>
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label="网站名称" required value={form.name} onChange={(v) => onChange("name", v)} placeholder="你的网站名称" />
-                <Field label="Logo链接" required value={form.logo} onChange={(v) => onChange("logo", v)} placeholder="https://example.com/logo.png" />
                 <Field label="网站链接" required value={form.url} onChange={(v) => onChange("url", v)} placeholder="https://example.com" />
+                <Field label="Logo链接" required value={form.logo} onChange={(v) => onChange("logo", v)} placeholder="https://example.com/logo.png" />
                 <Field label="网站简介" required value={form.description} onChange={(v) => onChange("description", v)} placeholder="一句话介绍你的网站" />
                 <Field label="网站截图" optional value={form.siteshot} onChange={(v) => onChange("siteshot", v)} placeholder="https://example.com/shot.png" />
-                <Field label="联系邮箱" optional type="email" value={form.email} onChange={(v) => onChange("email", v)} placeholder="you@example.com" />
+                <Field label="联系邮箱" required type="email" value={form.email} onChange={(v) => onChange("email", v)} placeholder="you@example.com" />
             </div>
 
             {/* RSS 单独一行（下方带说明小字） */}
@@ -115,8 +113,31 @@ export function LinkApplyForm({ onSubmitted }: LinkApplyFormProps) {
         setForm((prev) => ({ ...prev, [key]: value }));
     }
 
+    // 必填校验：网站名称/Logo/链接/简介/邮箱（修改模式额外：修改原因），缺失时阻止提交
+    function validate(): boolean {
+        const required: [keyof BaseForm, string][] = [
+            ["name", "网站名称"],
+            ["url", "网站链接"],
+            ["logo", "Logo链接"],
+            ["description", "网站简介"],
+            ["email", "联系邮箱"],
+        ];
+        for (const [key, label] of required) {
+            if (!form[key].trim()) {
+                toast.error(`请填写${label}`);
+                return false;
+            }
+        }
+        if (mode === "update" && !reason.trim()) {
+            toast.error("请填写修改原因");
+            return false;
+        }
+        return true;
+    }
+
     // 提交：新增走 POST /public/links（经同源代理）；修改信息接口待后端确认后接入
     async function handleSubmit() {
+        if (!validate()) return;
         setSubmitting(true);
         try {
             if (mode === "create") {

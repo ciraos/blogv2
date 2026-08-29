@@ -234,6 +234,28 @@ export async function getPublicLinksRandomApi(num = 1): Promise<FriendLink[]> {
     return request<FriendLink[]>(`/public/links/random?num=${num}`, { method: "GET" });
 }
 
+/** 管理员友链列表请求参数（GET /api/admin/links，客户端经同源代理） */
+export interface AdminLinkListParams {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+    status?: string;
+    category_id?: number | string;
+    tag_id?: number | string;
+}
+
+/** GET /api/admin/links 管理员获取友链列表（分页，浏览器自动携带登录 cookie） */
+export async function getAdminLinksApi(params: AdminLinkListParams = {}): Promise<LinkListData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null && value !== "") {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<LinkListData>(`/api/admin/links${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
 /** 友链申请提交数据（POST /public/links） */
 export interface LinkApplyPayload {
     name: string;

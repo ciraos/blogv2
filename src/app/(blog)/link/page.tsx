@@ -7,6 +7,10 @@ import { generateBlogMetadata } from "@/lib/seo";
 // 友链来自远端实时数据，不做构建期静态预渲染
 export const dynamic = "force-dynamic";
 
+// 友链分类展示顺序（按名称匹配；未匹配到的分类排在最后）
+// 「推荐」分区当前无好友，自动隐藏；以后有友链会出现在 大佬们 之后、小伙伴 之前
+const CATEGORY_ORDER = ["冰糖红茶", "大佬们", "推荐", "小伙伴", "已失联"];
+
 export async function generateMetadata(): Promise<Metadata> {
     return generateBlogMetadata("友情链接");
 }
@@ -15,7 +19,7 @@ export default async function Link() {
     // 站点配置（用于页脚自定义内容）
     const config = await getPublicSiteConfigApi().catch(() => null);
 
-    // 先获取分类列表，再按分类拉取友链
+    // 先获取分类列表，再按分类拉取友链；按 CATEGORY_ORDER 顺序排列（空分类自动隐藏）
     const categories = await getPublicLinkCategoriesApi();
 
     const sections = await Promise.all(
@@ -24,8 +28,13 @@ export default async function Link() {
             links: await getLinksByCategoryApi(category.id),
         }))
     );
-    // 只展示有友链的分类，保持接口返回顺序
-    const visible = sections.filter((section) => section.links.length > 0);
+    // 只展示有友链的分类；顺序：冰糖红茶 → 大佬们 → 小伙伴 → 已失联，未匹配分类放最后
+    const sorted = sections.slice().sort((a, b) => {
+        const ia = CATEGORY_ORDER.indexOf(a.category.name);
+        const ib = CATEGORY_ORDER.indexOf(b.category.name);
+        return (ia === -1 ? CATEGORY_ORDER.length : ia) - (ib === -1 ? CATEGORY_ORDER.length : ib);
+    });
+    const visible = sorted.filter((section) => section.links.length > 0);
     const totalLinks = visible.reduce((sum, section) => sum + section.links.length, 0);
 
     // 页脚自定义内容（后端已渲染好的 HTML）

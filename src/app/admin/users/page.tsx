@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { UserManagement } from "@/components/(admin)/user-management";
+import { UserManagement } from "@/components/admin/user-management";
 import { generateBlogMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
