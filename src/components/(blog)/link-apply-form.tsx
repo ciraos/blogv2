@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Loader2, PencilLine, Plus, Send } from "lucide-react";
 import { toast } from "sonner";
-import { ApiError, submitLinkApplyApi } from "@/lib/api";
+import { ApiError, LinkApplyPayload, submitLinkApplyApi } from "@/lib/api";
 
 interface LinkApplyFormProps {
     /** 提交成功后回调 */
@@ -135,18 +135,29 @@ export function LinkApplyForm({ onSubmitted }: LinkApplyFormProps) {
         return true;
     }
 
-    // 提交：新增走 POST /public/links（经同源代理）；修改信息接口待后端确认后接入
+    // 提交：新增走 type=NEW，修改走 type=UPDATE（后端 POST /public/links 支持两种类型）
     async function handleSubmit() {
         if (!validate()) return;
         setSubmitting(true);
         try {
-            if (mode === "create") {
-                await submitLinkApplyApi({ ...form });
-                toast.success("友链申请已提交，等待管理员审核");
-            } else {
-                await new Promise((resolve) => setTimeout(resolve, 500));
-                toast.info("修改信息功能待接口接入后开放");
-            }
+            const payload: LinkApplyPayload = {
+                type: mode === "create" ? "NEW" : "UPDATE",
+                name: form.name.trim(),
+                url: form.url.trim(),
+                logo: form.logo.trim(),
+                description: form.description.trim(),
+                siteshot: form.siteshot.trim() || undefined,
+                email: form.email.trim(),
+                rss_url: form.rss.trim() || undefined,
+                ...(mode === "update"
+                    ? {
+                          original_url: originalUrl.trim() || undefined,
+                          update_reason: reason.trim(),
+                      }
+                    : {}),
+            };
+            await submitLinkApplyApi(payload);
+            toast.success(mode === "create" ? "友链申请已提交，等待管理员审核" : "修改申请已提交，等待管理员审核");
             onSubmitted?.();
         } catch (err) {
             toast.error(err instanceof ApiError ? err.message : "提交失败，请稍后重试");

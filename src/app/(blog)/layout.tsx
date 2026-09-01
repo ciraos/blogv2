@@ -10,7 +10,8 @@ import { FooterRandomLinks } from "@/components/(blog)/footer-random-links";
 import { ScrollToTop } from "@/components/(blog)/scroll-to-top";
 // import Aside from "@/components/aside";
 
-import { getPublicLinksRandomApi } from "@/lib/api";
+import { getPublicLinksRandomApi, getAllPublicArticlesApi, getPublicArchivesApi, getUserInfoApi } from "@/lib/api";
+import { collectTags } from "@/lib/articles";
 import { SiteConfigResponse } from "@/types/site-config";
 import { BlogSidebar } from "@/components/(blog)/blog-sidebar";
 
@@ -43,7 +44,19 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
   const config = await getSiteConfigs();
   // httpOnly token 由服务端读取，判断登录态传给 Header
   const cookieStore = await cookies();
-  const isLoggedIn = !!cookieStore.get("token")?.value;
+  const token = cookieStore.get("token")?.value;
+  const isLoggedIn = !!token;
+
+  // 已登录时获取用户信息（头像等），传给 Header 显示圆形头像
+  let userAvatar: string | null = null;
+  if (token) {
+    try {
+      const userInfo = await getUserInfoApi(token);
+      userAvatar = userInfo.avatar || null;
+    } catch (error) {
+      console.error("获取用户信息失败", error);
+    }
+  }
 
   // 文章详情页：目录（TOC）移入全局侧边栏顶部，正文不再单独双栏
   const headerList = await headers();
@@ -58,6 +71,29 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
     randomLinks = await getPublicLinksRandomApi(randomFriendsCount);
   } catch (error) {
     console.error("获取页脚随机友链失败", error);
+  }
+
+  // 移动端汉堡菜单：标签云（取全部文章聚合，前 12 个）
+  let mobileTags: { id: string; name: string; count: number }[] = [];
+  try {
+    const articles = await getAllPublicArticlesApi();
+    mobileTags = collectTags(articles).slice(0, 12);
+  } catch (error) {
+    console.error("获取标签失败", error);
+  }
+
+  // 移动端汉堡菜单：网站信息（与侧边栏一致：文章数/字数/建站天数）
+  const siteinfo = config?.sidebar?.siteinfo;
+  let siteCreatedAt: string | undefined;
+  try {
+    const archive = await getPublicArchivesApi();
+    const list = archive.list ?? [];
+    if (list.length > 0) {
+      const first = list[list.length - 1]; // 接口按时间倒序，最后一条最早
+      siteCreatedAt = `${first.year}-${String(first.month).padStart(2, "0")}-01T00:00:00Z`;
+    }
+  } catch (error) {
+    console.error("获取归档失败", error);
   }
 
   return (
@@ -87,6 +123,10 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
               appName={config?.APP_NAME ?? "博客"}
               isLoggedIn={isLoggedIn}
               userpanel={config?.userpanel}
+              userAvatar={userAvatar}
+              mobileTags={mobileTags}
+              siteinfo={siteinfo}
+              siteCreatedAt={siteCreatedAt}
             />
 
             <div className="main w-full max-w-300 mx-auto mt-10 px-4 sm:px-0 flex flex-1 gap-6">

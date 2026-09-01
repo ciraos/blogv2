@@ -26,6 +26,8 @@ interface UserMenuProps {
     scrolled?: boolean;
     /** 用户面板开关（来自 site-config userpanel，登录态菜单项按开关显示） */
     userpanel?: UserPanelConfig;
+    /** 已登录用户的头像 URL（服务端传入；空则回退为默认图标） */
+    userAvatar?: string | null;
 }
 
 /** 菜单项（图标 + 文案 + 链接/动作） */
@@ -38,7 +40,7 @@ interface MenuItem {
 }
 
 /** 导航栏最右侧的用户菜单 */
-export function UserMenu({ isLoggedIn, scrolled = false, userpanel }: UserMenuProps) {
+export function UserMenu({ isLoggedIn, scrolled = false, userpanel, userAvatar }: UserMenuProps) {
     /** 登出：清 cookie 后原地刷新，不跳转登录页 */
     async function handleLogout() {
         try {
@@ -95,17 +97,33 @@ export function UserMenu({ isLoggedIn, scrolled = false, userpanel }: UserMenuPr
         <DropdownMenu>
             <DropdownMenuTrigger
                 asChild
-                className={`w-11 h-11 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] will-change-transform ${scrolled
+                className={`transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] will-change-transform ${scrolled
                     ? "scale-[0.94] bg-card/60 shadow-sm backdrop-blur-md"
                     : "scale-100 bg-card shadow-md hover:shadow-xl"
                     }`}
             >
-                <button
-                    className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    aria-label="用户菜单"
-                >
-                    <User className="size-6" />
-                </button>
+                {isLoggedIn && userAvatar ? (
+                    /* 已登录且有头像：圆形头像（rounded-full），外圈胶囊样式保留 */
+                    <button
+                        className="inline-flex size-11 items-center justify-center overflow-hidden rounded-full p-0.5"
+                        aria-label="用户菜单"
+                    >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                            src={userAvatar}
+                            alt="用户头像"
+                            className="size-full rounded-full object-cover"
+                        />
+                    </button>
+                ) : (
+                    /* 未登录或无头像：默认用户图标（44px 与搜索/汉堡按钮对齐） */
+                    <button
+                        className="inline-flex size-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        aria-label="用户菜单"
+                    >
+                        <User className="size-6" />
+                    </button>
+                )}
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end" className="w-60">

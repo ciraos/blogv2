@@ -1196,6 +1196,10 @@ body {
     display: none;
   }
 
+  .about-skills-card .about-skills-tags-wrap {
+    display: none;
+  }
+
   .about-skills-card .about-skills-list {
     position: static;
     opacity: 1;

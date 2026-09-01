@@ -66,7 +66,7 @@ export function AboutStatisticCard({ stats, cover }: { stats: BasicStats; cover:
     return (
         <div
             ref={containerRef}
-            className="about-statistic relative min-h-[380px] w-full overflow-hidden rounded-xl text-white md:w-[39%]"
+            className="about-statistic relative w-full overflow-hidden rounded-xl text-white md:min-h-[380px] md:w-[39%]"
             style={{ backgroundImage: `url(${cover})`, backgroundPosition: "top", backgroundSize: "cover" }}
         >
             <div className="relative z-[2] flex h-full w-full flex-col p-2.5">

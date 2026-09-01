@@ -39,7 +39,7 @@ function Card({
 }) {
     return (
         <section
-            className={`about-slide-in relative flex-1 overflow-hidden rounded-xl border bg-card p-4 ${className}`}
+            className={`about-slide-in relative overflow-hidden rounded-xl border bg-card p-4 ${className}`}
             style={style}
         >
             {children}
@@ -128,9 +128,9 @@ export default async function About() {
 
             {/* ===== 自我介绍 + 关键词轮播 ===== */}
             {enable.page_content && page.name && (
-                <div className="flex w-full flex-wrap gap-2.5">
+                <div className="flex w-full flex-col gap-2.5 md:flex-row md:flex-wrap">
                     <Card
-                        className="flex min-h-50 flex-4 flex-col justify-center border-transparent! text-white! md:min-h-50"
+                        className="flex w-full flex-none flex-col justify-center border-transparent! text-white! md:min-h-50 md:flex-4"
                         style={{
                             background: "linear-gradient(120deg, #5b27ff 0%, #00d4ff 100%)",
                             backgroundSize: "200%",
@@ -149,15 +149,15 @@ export default async function About() {
 
             {/* ===== 技能 + 生涯 ===== */}
             {(enable.skills || enable.careers) && (
-                <div className="flex w-full flex-wrap gap-2.5">
+                <div className="flex w-full flex-col gap-2.5 md:flex-row md:flex-wrap">
                     {enable.skills && page.skills_tips && (
-                        <Card className="about-skills-card flex min-h-[450px] w-full flex-col items-start justify-center md:w-1/2">
+                        <Card className="about-skills-card flex w-full flex-col items-start justify-center md:min-h-[450px] md:w-1/2">
                             <ItemTips>{page.skills_tips.tips}</ItemTips>
                             <span className="text-4xl font-bold leading-none">{page.skills_tips.title}</span>
 
                             {/* 旋转技能图标 */}
                             {creativityPairs.length > 0 && (
-                                <div className="relative mt-14 h-40 w-full overflow-hidden">
+                                <div className="about-skills-tags-wrap relative mt-14 h-40 w-full overflow-hidden">
                                     <div className="about-skills-tags">
                                         {creativityPairs.map((pair, index) => (
                                             <div key={index} className="mr-4 flex-shrink-0">
@@ -204,7 +204,7 @@ export default async function About() {
 
                     {enable.careers && page.careers && (
                         <Card
-                            className="min-h-[400px] flex-1"
+                            className="flex min-h-[260px] w-full flex-col justify-center md:min-h-[400px] md:flex-1"
                             style={{
                                 backgroundImage: page.careers.img ? `url(${resolveAssetUrl(page.careers.img)})` : undefined,
                                 backgroundRepeat: "no-repeat",
@@ -212,18 +212,21 @@ export default async function About() {
                                 backgroundSize: "contain",
                             }}
                         >
-                            <ItemTips>{page.careers.tips}</ItemTips>
-                            <span className="text-4xl font-bold leading-none">{page.careers.title}</span>
-                            <div className="mt-3 flex flex-col">
-                                {(page.careers.list || []).map((career, index) => (
-                                    <div key={index} className="mb-2 flex items-center justify-start">
-                                        <span
-                                            className="mr-2 h-4 w-4 flex-shrink-0 rounded-full"
-                                            style={{ background: career.color || "#357ef5" }}
-                                        />
-                                        <span className="opacity-80">{career.desc}</span>
-                                    </div>
-                                ))}
+                            {/* 文字内容限宽：与 PC 端一致，图片留在右下角不重叠 */}
+                            <div className="flex max-w-[70%] flex-col md:max-w-none">
+                                <ItemTips>{page.careers.tips}</ItemTips>
+                                <span className="text-4xl font-bold leading-none">{page.careers.title}</span>
+                                <div className="mt-3 flex flex-col">
+                                    {(page.careers.list || []).map((career, index) => (
+                                        <div key={index} className="mb-2 flex items-center justify-start">
+                                            <span
+                                                className="mr-2 h-4 w-4 flex-shrink-0 rounded-full"
+                                                style={{ background: career.color || "#357ef5" }}
+                                            />
+                                            <span className="opacity-80">{career.desc}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </Card>
                     )}
@@ -232,12 +235,12 @@ export default async function About() {
 
             {/* ===== 统计 + 地图信息 ===== */}
             {(enable.statistic || enable.map_and_info) && (
-                <div className="flex w-full flex-wrap gap-2.5">
+                <div className="flex w-full flex-col gap-2.5 md:flex-row md:flex-wrap">
                     {enable.statistic && page.statistics_background && (
                         <AboutStatisticCard stats={stats} cover={resolveAssetUrl(page.statistics_background) ?? ""} />
                     )}
                     {enable.map_and_info && page.map && page.self_info && (
-                        <div className="item-group flex min-w-0 flex-1 flex-col justify-between self-start">
+                        <div className="item-group flex w-full flex-col justify-between self-start md:min-w-0 md:flex-1">
                             <div
                                 className="about-map relative mb-2 h-60 overflow-hidden rounded-xl border bg-card"
                                 style={{ backgroundImage: `url(${resolveAssetUrl(page.map.background) ?? ""})`, backgroundPosition: "center", backgroundSize: "100%", transition: "all 1s ease-in-out" }}
@@ -272,9 +275,9 @@ export default async function About() {
 
             {/* ===== 性格 + 照片 ===== */}
             {(enable.personality || enable.photo) && (
-                <div className="flex w-full flex-wrap gap-2.5">
+                <div className="flex w-full flex-col gap-2.5 md:flex-row md:flex-wrap">
                     {enable.personality && page.personalities && (
-                        <Card className="min-h-[200px] w-full md:w-[59%]">
+                        <Card className="w-full md:min-h-[200px] md:w-[59%]">
                             <ItemTips>{page.personalities.tips}</ItemTips>
                             <div className="mb-1 text-xl leading-none">{page.personalities.authorName}</div>
                             <div className="text-4xl font-bold leading-tight" style={{ color: page.personalities.personalityTypeColor || "#ac899c" }}>
@@ -302,7 +305,7 @@ export default async function About() {
                         </Card>
                     )}
                     {enable.photo && page.personalities?.photoUrl && (
-                        <Card className="group flex min-h-[240px] w-full items-center justify-center overflow-hidden md:w-[39%]">
+                        <Card className="group flex min-h-[200px] w-full items-center justify-center overflow-hidden md:min-h-[240px] md:w-[39%]">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 src={resolveAssetUrl(page.personalities.photoUrl) ?? ""}
@@ -316,9 +319,9 @@ export default async function About() {
 
             {/* ===== 座右铭 + Buff ===== */}
             {(enable.maxim || enable.buff) && (
-                <div className="flex w-full flex-wrap gap-2.5">
+                <div className="flex w-full flex-col gap-2.5 md:flex-row md:flex-wrap">
                     {enable.maxim && page.maxim && (
-                        <Card className="flex min-h-[200px] w-full flex-col items-start justify-center text-4xl font-bold leading-tight md:w-[39%]">
+                        <Card className="flex w-full flex-col items-start justify-center text-4xl font-bold leading-tight md:min-h-[200px] md:w-[39%]">
                             <ItemTips>{page.maxim.tips}</ItemTips>
                             <div className="flex flex-col">
                                 <span className="mb-2 opacity-60">{page.maxim.top}</span>
@@ -328,7 +331,7 @@ export default async function About() {
                     )}
                     {enable.buff && page.buff && (
                         <Card
-                            className="group flex min-h-[200px] w-full flex-[2] flex-col items-start justify-center !border-transparent !text-white md:w-[59%]"
+                            className="group flex min-h-[200px] w-full flex-col items-start justify-center !border-transparent !text-white md:min-h-[200px] md:w-[59%] md:flex-[2]"
                             style={{
                                 background: "linear-gradient(120deg, #ff27e8 0%, #ff8000 100%)",
                                 backgroundSize: "200%",
@@ -340,10 +343,10 @@ export default async function About() {
                                 <span className="mb-2 opacity-60">{page.buff.top}</span>
                                 <span>{page.buff.bottom}</span>
                             </div>
-                            {/* D20 骰子背景图标 */}
+                            {/* D20 骰子背景图标（纯装饰；移动端隐藏避免压住文字） */}
                             <svg
                                 viewBox="0 0 480 512"
-                                className="absolute -bottom-2/3 right-0 h-48 w-48 opacity-20 transition-transform duration-1000 group-hover:rotate-[20deg]"
+                                className="absolute -bottom-2/3 right-0 hidden h-48 w-48 opacity-20 transition-transform duration-1000 group-hover:rotate-[20deg] sm:block"
                                 style={{ transform: "rotate(30deg)" }}
                             >
                                 <path
@@ -358,10 +361,10 @@ export default async function About() {
 
             {/* ===== 游戏 + 追番 ===== */}
             {(enable.game || enable.comic) && (
-                <div className="flex w-full flex-wrap gap-2.5">
+                <div className="flex w-full flex-col gap-2.5 md:flex-row md:flex-wrap">
                     {enable.game && page.game && (
                         <Card
-                            className="group min-h-[300px] w-full flex-[1.5] !text-white md:w-[59%]"
+                            className="group min-h-[200px] w-full !text-white md:min-h-[300px] md:w-[59%] md:flex-[1.5]"
                             style={{
                                 backgroundImage: `url(${resolveAssetUrl(page.game.background) ?? ""})`,
                                 backgroundSize: "cover",
@@ -370,16 +373,21 @@ export default async function About() {
                         >
                             <ItemTips>{page.game.tips}</ItemTips>
                             <span className="text-4xl font-bold leading-none">{page.game.title}</span>
-                            <div className="mt-auto flex items-center justify-between gap-2">
+                            <div className="mt-auto flex items-center gap-2">
                                 {page.game.title === "原神" && (
                                     <div className="relative hidden h-[62.5px] w-full max-w-[300px] overflow-hidden sm:block" aria-hidden="true" />
                                 )}
-                                <div className="ml-auto shrink-0 text-sm opacity-80">{page.game.uid}</div>
+                                {/* UID：左下角 + 半透明深色底突出显示（移动端背景图 cover 时右下角会被图盖住） */}
+                                {page.game.uid && (
+                                    <span className="inline-flex shrink-0 items-center rounded-full bg-black/45 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
+                                        {page.game.uid}
+                                    </span>
+                                )}
                             </div>
                         </Card>
                     )}
                     {enable.comic && page.comic?.list.length ? (
-                        <Card className="group relative min-h-[300px] w-full flex-1 overflow-hidden md:w-[39%]">
+                        <Card className="group relative min-h-[200px] w-full overflow-hidden md:min-h-[300px] md:w-[39%] md:flex-1">
                             <div className="absolute left-0 top-0 z-[4] p-2.5 text-white">
                                 <div className="mb-2.5 text-xs opacity-80">{page.comic.tips}</div>
                                 <div className="text-4xl font-bold leading-none">{page.comic.title}</div>
@@ -409,10 +417,10 @@ export default async function About() {
 
             {/* ===== 技术偏好 + 音乐 ===== */}
             {(enable.like_tech || enable.music) && (
-                <div className="flex w-full flex-wrap gap-2.5">
+                <div className="flex w-full flex-col gap-2.5 md:flex-row md:flex-wrap">
                     {enable.like_tech && page.like && (
                         <Card
-                            className="group min-h-[230px] flex-1 !text-white"
+                            className="group min-h-[160px] w-full !text-white md:min-h-[230px] md:flex-1"
                             style={{
                                 backgroundImage: `url(${resolveAssetUrl(page.like.background) ?? ""})`,
                                 backgroundSize: "cover",
@@ -428,7 +436,7 @@ export default async function About() {
                     )}
                     {enable.music && page.music && (
                         <Card
-                            className="group min-h-[400px] flex-1 !text-white"
+                            className="group min-h-[220px] w-full !text-white md:min-h-[400px] md:flex-1"
                             style={{
                                 backgroundImage: `url(${resolveAssetUrl(page.music.background) ?? ""})`,
                                 backgroundSize: "cover",

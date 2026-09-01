@@ -187,6 +187,72 @@ export async function getAllPublicArticlesApi(maxPages = 20): Promise<PostItem[]
     return all;
 }
 
+// ===================== 全站搜索 =====================
+
+/** 搜索结果项（/public/search 返回的单个命中） */
+export interface SearchHit {
+    id: string;
+    /** 类型：post / doc / album / essay */
+    type?: string;
+    url?: string;
+    title: string;
+    snippet: string;
+    author: string;
+    category: string;
+    tags: string[];
+    publish_date: string;
+    cover_url: string;
+    abbrlink: string;
+    view_count: number;
+    word_count: number;
+    reading_time: number;
+    is_doc?: boolean;
+    doc_series_id?: string;
+}
+
+/** 搜索结果分页（/public/search 返回） */
+export interface SearchResultData {
+    pagination: {
+        total: number;
+        page: number;
+        size: number;
+        totalPages: number;
+    };
+    hits: SearchHit[];
+}
+
+/** GET /search 全站搜索文章/页面/相册等（公开；参数 q 必填，page/size 可选。注：线上版本无 /public 前缀） */
+export async function searchArticlesApi(params: {
+    q: string;
+    page?: number;
+    size?: number;
+}): Promise<SearchResultData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null && value !== "") {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<SearchResultData>(`/search?${query}`, { method: "GET" });
+}
+
+/** 客户端搜索（经 /api/search 同源代理；后端不开放 CORS，浏览器端需走代理） */
+export async function searchArticlesClientApi(params: {
+    q: string;
+    page?: number;
+    size?: number;
+}): Promise<SearchResultData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null && value !== "") {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<SearchResultData>(`/api/search${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
 // ===================== 友情链接 =====================
 
 /** GET /public/link-categories 公开友链分类列表（包含已批准友链的分类） */
@@ -258,13 +324,21 @@ export async function getAdminLinksApi(params: AdminLinkListParams = {}): Promis
 
 /** 友链申请提交数据（POST /public/links） */
 export interface LinkApplyPayload {
+    /** 申请类型：NEW-新增友链，UPDATE-修改友链（后端必填，仅允许 NEW/UPDATE） */
+    type: "NEW" | "UPDATE";
     name: string;
     url: string;
     logo: string;
     description: string;
     siteshot?: string;
-    email?: string;
-    rss?: string;
+    /** 联系邮箱（后端必填且须为邮箱格式） */
+    email: string;
+    /** RSS 地址（后端字段名 rss_url） */
+    rss_url?: string;
+    /** 修改类型时：原友链URL */
+    original_url?: string;
+    /** 修改类型时：修改原因说明 */
+    update_reason?: string;
 }
 
 /** POST /api/public/links 提交友链申请（本应用同源代理，客户端调用；等待管理员审核） */

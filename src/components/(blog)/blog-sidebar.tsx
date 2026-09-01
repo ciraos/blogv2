@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { ArrowRight, CalendarDays, FileText, Tag as TagIcon } from "lucide-react";
+import { ArrowRight, CalendarDays, FileText, MessageSquare, Tag as TagIcon } from "lucide-react";
 import { PostToc } from "@/components/(blog)/post-toc";
 import { AuthorGreeting } from "@/components/(blog)/author-greeting";
 import { collectTags } from "@/lib/articles";
-import { getAllPublicArticlesApi, getPublicArchivesApi } from "@/lib/api";
+import { getAllPublicArticlesApi, getLatestCommentsApi, getPublicArchivesApi, type RecentComment } from "@/lib/api";
 import { resolveAssetUrl } from "@/lib/utils";
 import type { SiteConfig } from "@/types/site-config";
+
+const GRAVATAR_URL = process.env.NEXT_PUBLIC_GRAVATAR_URL || "https://cravatar.cn/";
 
 /** 站点建站天数（按最新文章日期估算） */
 function daysSince(createdAt?: string): number {
@@ -111,7 +113,7 @@ async function TagsCard() {
                 {tags.map((tag) => (
                     <Link
                         key={tag.id}
-                        href={`/tags/${encodeURIComponent(tag.name)}`}
+                        href={`/tags?name=${encodeURIComponent(tag.name)}`}
                         className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
                     >
                         {tag.name}
@@ -147,7 +149,7 @@ async function ArchivesCard({ displayMonths = 6 }: { displayMonths?: number }) {
                 {shown.map((item) => (
                     <li key={`${item.year}-${item.month}`}>
                         <Link
-                            href={`/archives/${item.year}/${item.month}`}
+                            href={`/archives?year=${item.year}&month=${item.month}`}
                             className="flex items-center justify-between rounded-none p-0 text-sm transition-colors hover:bg-muted"
                         >
                             <span className="text-muted-foreground">{formatMonth(item.year, item.month)}</span>
@@ -160,6 +162,96 @@ async function ArchivesCard({ displayMonths = 6 }: { displayMonths?: number }) {
             </ul>
             <Link href="/archives" className="mt-2 flex items-center gap-0 text-xs text-primary hover:underline">
                 查看全部归档
+                <ArrowRight className="size-3" />
+            </Link>
+        </div>
+    );
+}
+
+/** 最近评论：左侧头像 + 右侧评论内容，点击跳转到对应文章评论区（#post-comment 锚点） */
+async function RecentCommentsCard({ limit = 5 }: { limit?: number }) {
+    let comments: RecentComment[] = [];
+    try {
+        const data = await getLatestCommentsApi({ page: 1, pageSize: limit });
+        comments = data.list ?? [];
+    } catch {
+        // 忽略，获取失败时隐藏卡片
+    }
+    if (comments.length === 0) return null;
+
+    /** content 为空时从 content_html 剥离标签取纯文本 */
+    const stripHtml = (html?: string): string => {
+        if (!html) return "";
+        return html
+            .replace(/<br\s*\/?>/gi, " ")
+            .replace(/<\/p>/gi, " ")
+            .replace(/<[^>]+>/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+    };
+
+    return (
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <MessageSquare className="size-4 text-primary" />
+                最近评论
+            </h3>
+            <ul className="mt-3 space-y-2.5">
+                {comments.map((comment) => {
+                    const avatar = comment.email_md5
+                        ? `${GRAVATAR_URL}avatar/${comment.email_md5}?d=identicon`
+                        : null;
+                    // 跳转到对应文章评论区（文章详情页评论区锚点为 #post-comment）
+                    const href = comment.target_path
+                        ? `${comment.target_path}#post-comment`
+                        : undefined;
+                    const content = comment.content || stripHtml(comment.content_html);
+
+                    return (
+                        <li key={comment.id}>
+                            <Link
+                                href={href ?? "#"}
+                                className="group flex items-start gap-2.5"
+                            >
+                                {/* 左侧头像 */}
+                                {avatar ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                        src={avatar}
+                                        alt={comment.nickname}
+                                        loading="lazy"
+                                        className="size-8 shrink-0 rounded-full border object-cover"
+                                    />
+                                ) : (
+                                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+                                        {(comment.nickname || "匿").charAt(0)}
+                                    </div>
+                                )}
+
+                                {/* 右侧评论内容 */}
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-baseline gap-1.5">
+                                        <span className="max-w-[45%] truncate text-xs font-medium">
+                                            {comment.nickname || "匿名"}
+                                            {comment.is_admin_comment && (
+                                                <span className="ml-1 rounded bg-primary px-1 py-px text-[10px] text-primary-foreground">站长</span>
+                                            )}
+                                        </span>
+                                        <span className="truncate text-[11px] text-muted-foreground">
+                                            {comment.target_title || comment.target_path}
+                                        </span>
+                                    </div>
+                                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-foreground/90 transition-colors group-hover:text-primary">
+                                        {content}
+                                    </p>
+                                </div>
+                            </Link>
+                        </li>
+                    );
+                })}
+            </ul>
+            <Link href="/recentcomments" className="mt-3 flex items-center gap-0 text-xs text-primary hover:underline">
+                查看全部评论
                 <ArrowRight className="size-3" />
             </Link>
         </div>
@@ -239,6 +331,8 @@ export async function BlogSidebar({ config }: { config?: SiteConfig }) {
                 <PostToc />
                 <TagsCard />
                 <ArchivesCard displayMonths={config?.sidebar?.archive?.displayMonths || 6} />
+                {/* 最近评论：位于网站信息上方 */}
+                <RecentCommentsCard />
                 {config && (
                     <SiteInfoCard
                         totalPostCount={siteinfo?.totalPostCount}

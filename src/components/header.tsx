@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Menu } from "lucide-react";
+import { useTheme } from "next-themes";
+import { ChevronDown, FileText, Menu, Moon, Sun, Tag as TagIcon } from "lucide-react";
 
 import {
     Sheet,
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/sheet";
 
 import { UserMenu } from "@/components/user-menu";
+import { SearchDialog } from "@/components/(blog)/search-dialog";
 import { cn } from "@/lib/utils";
 import type { HeaderMenuGroup, UserPanelConfig } from "@/types/site-config";
 
@@ -26,15 +28,33 @@ interface HeaderProps {
     isLoggedIn?: boolean;
     /** 用户面板开关（userpanel，登录态用户菜单按开关显示） */
     userpanel?: UserPanelConfig;
+    /** 已登录用户的头像 URL（服务端从用户信息获取后传入；空则用默认图标） */
+    userAvatar?: string | null;
+    /** 移动端汉堡菜单：标签云（服务端聚合后传入） */
+    mobileTags?: { id: string; name: string; count: number }[];
+    /** 移动端汉堡菜单：网站信息（文章数/字数/建站天数开关，与侧边栏一致） */
+    siteinfo?: { runtimeEnable: boolean; totalPostCount: number; totalWordCount: number };
+    /** 移动端汉堡菜单：建站起点（归档最早月份，用于计算建站天数） */
+    siteCreatedAt?: string;
 }
 
-export default function Header({ menu = [], appName = "博客", isLoggedIn = false, userpanel }: HeaderProps) {
+/** 站点建站天数（按最新文章日期估算，与侧边栏一致） */
+function daysSince(createdAt?: string): number {
+    if (!createdAt) return 0;
+    const start = new Date(createdAt).getTime();
+    if (Number.isNaN(start)) return 0;
+    return Math.max(1, Math.floor((Date.now() - start) / 86400000));
+}
+
+export default function Header({ menu = [], appName = "博客", isLoggedIn = false, userpanel, userAvatar, mobileTags = [], siteinfo, siteCreatedAt }: HeaderProps) {
     // 桌面端下拉：hover 展开，一次只开一个
     const [openGroup, setOpenGroup] = useState<string | null>(null);
     // 关闭宽限期：鼠标穿过触发器与面板之间的间隙时不误关
     const closeTimer = useRef<number | null>(null);
     // 下滑超过阈值时胶囊背景变半透明毛玻璃，回到顶部恢复
     const [scrolled, setScrolled] = useState(false);
+    // 深浅色切换（移动端汉堡菜单"功能"区块）
+    const { setTheme } = useTheme();
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 40);
@@ -66,7 +86,7 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
 
     return (
         <>
-            <div className="header w-full max-w-300 h-12 my-1 mx-auto p-0 sticky top-0 z-50 bg-none rounded-none flex items-center justify-between">
+            <div className="header w-full max-w-300 h-12 my-1 mx-auto px-2 sm:px-0 sticky top-0 z-50 bg-none rounded-none flex items-center justify-between">
                 <Link href="/" className={`h-11 py-1 px-3 rounded-[99px] ${pillCls} text-base text-center content-center font-bold tracking-tight hover:opacity-80 hover:shadow-xl`}>{appName}</Link>
 
                 {/* 桌面端导航（≥768px）：自研下拉，面板绝对定位在触发器正下方 */}
@@ -120,49 +140,130 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
                     </nav>
                 )}
 
-                <div className="flex items-center justify-around gap-1">
-                    {/* 移动端汉堡菜单（<768px） */}
-                    <Sheet>
-                        <SheetTrigger asChild>
-                            <button
-                                className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
-                                aria-label="打开菜单"
-                            >
-                                <Menu className="size-5" />
-                            </button>
-                        </SheetTrigger>
-                        <SheetContent side="right" className="w-72 sm:max-w-sm">
-                            <SheetHeader>
-                                <SheetTitle>{appName}</SheetTitle>
-                            </SheetHeader>
-                            <nav className="mt-6 space-y-6 overflow-y-auto px-1 pb-6">
-                                {menu.map((group) => (
-                                    <div key={group.title}>
-                                        <h3 className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                            {group.title}
-                                        </h3>
-                                        <ul className="mt-2 space-y-0.5">
-                                            {group.items.map((item) => (
-                                                <li key={item.path + item.title}>
-                                                    <SheetClose asChild>
+                <div className="flex items-center justify-around gap-1 md:gap-4">
+                    {/* 搜索 + 移动端汉堡：共用同一个白色胶囊背景（滚动时一起收缩）。
+                        桌面端汉堡隐藏、搜索保留；两个按钮无缝拼接，中间接缝不设圆角 */}
+                    <div className={`flex items-center rounded-full ${pillCls} hover:shadow-xl`}>
+                        {/* 站内搜索：点击放大镜弹出搜索对话框 */}
+                        <SearchDialog />
+
+                        {/* 移动端汉堡菜单（<768px），与搜索按钮共用胶囊背景 */}
+                        <Sheet>
+                            <SheetTrigger asChild>
+                                <button
+                                    className="inline-flex size-11 items-center justify-center rounded-l-none rounded-r-lg text-muted-foreground transition-colors hover:text-primary md:hidden"
+                                    aria-label="打开菜单"
+                                >
+                                    <Menu className="size-5" />
+                                </button>
+                            </SheetTrigger>
+                            <SheetContent side="right" className="w-72 mx-auto sm:max-w-sm">
+                                <SheetHeader className="items-center">
+                                    {/* 花哨渐变标题：粉紫渐变 + 背景流动动画（同关于页 about-gradient） */}
+                                    <SheetTitle className="animate-[about-gradient_8s_ease_infinite] bg-gradient-to-r from-pink-500 via-fuchsia-500 to-indigo-500 bg-clip-text bg-[length:200%_auto] text-center text-xl font-bold text-transparent">
+                                        {appName}
+                                    </SheetTitle>
+                                </SheetHeader>
+
+                                {/* 整个菜单内容一起滚动（功能/菜单/标签/网站信息），标题固定 */}
+                                <div className="no-scrollbar flex-1 space-y-6 overflow-y-auto px-3 pb-6">
+                                    <div>
+                                        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">功能</h3>
+                                        {/* 深浅色切换按钮（黑色细边框、无背景、圆角，与下方标签/网站信息风格一致） */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setTheme(document.documentElement.classList.contains("dark") ? "light" : "dark")}
+                                            className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-foreground/25 text-sm transition-colors hover:border-foreground"
+                                        >
+                                            <Sun className="size-4 dark:hidden" />
+                                            <Moon className="hidden size-4 dark:block" />
+                                            <span className="dark:hidden">切换到深色</span>
+                                            <span className="hidden dark:block">切换到浅色</span>
+                                        </button>
+                                    </div>
+                                    {menu.map((group) => (
+                                        <div key={group.title}>
+                                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                                {group.title}
+                                            </h3>
+                                            <ul className="mt-2 grid grid-cols-2 gap-2">
+                                                {group.items.map((item) => (
+                                                    <li key={item.path + item.title}>
+                                                        <SheetClose asChild>
+                                                            <Link
+                                                                href={item.path}
+                                                                target={item.isExternal ? "_blank" : undefined}
+                                                                rel={item.isExternal ? "noopener noreferrer nofollow" : undefined}
+                                                                className="flex items-center justify-center rounded-lg bg-muted px-3 py-2.5 text-center text-sm text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                                                            >
+                                                                {item.title}
+                                                            </Link>
+                                                        </SheetClose>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ))}
+
+                                    {/* 标签：黑色细边框 + 圆角，无背景色 */}
+                                    {mobileTags.length > 0 && (
+                                        <div>
+                                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                                <TagIcon className="mr-1 inline size-3.5" />
+                                                标签
+                                            </h3>
+                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                {mobileTags.map((tag) => (
+                                                    <SheetClose asChild key={tag.id}>
                                                         <Link
-                                                            href={item.path}
-                                                            target={item.isExternal ? "_blank" : undefined}
-                                                            rel={item.isExternal ? "noopener noreferrer nofollow" : undefined}
-                                                            className="flex items-center rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                                                            href={`/tags?name=${encodeURIComponent(tag.name)}`}
+                                                            className="rounded-lg border border-foreground/25 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
                                                         >
-                                                            {item.title}
+                                                            #{tag.name}
+                                                            <sup className="ml-0.5">{tag.count}</sup>
                                                         </Link>
                                                     </SheetClose>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                ))}
-                            </nav>
-                        </SheetContent>
-                    </Sheet>
-                    <UserMenu isLoggedIn={isLoggedIn} scrolled={scrolled} userpanel={userpanel} />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 网站信息：与侧边栏一致，每行一条、黑色细边框、无背景 */}
+                                    {(siteinfo?.totalPostCount != null ||
+                                        siteinfo?.totalWordCount != null ||
+                                        (siteinfo?.runtimeEnable && daysSince(siteCreatedAt) > 0)) && (
+                                            <div>
+                                                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                                    <FileText className="mr-1 inline size-3.5" />
+                                                    网站信息
+                                                </h3>
+                                                <div className="mt-2 space-y-2">
+                                                    {siteinfo.totalPostCount != null && (
+                                                        <div className="flex items-center justify-between rounded-lg border border-foreground/25 px-3 py-2 text-sm">
+                                                            <span className="text-muted-foreground">文章总数</span>
+                                                            <span className="font-medium">{siteinfo.totalPostCount}</span>
+                                                        </div>
+                                                    )}
+                                                    {siteinfo.totalWordCount != null && (
+                                                        <div className="flex items-center justify-between rounded-lg border border-foreground/25 px-3 py-2 text-sm">
+                                                            <span className="text-muted-foreground">全站字数</span>
+                                                            <span className="font-medium">{siteinfo.totalWordCount.toLocaleString()}</span>
+                                                        </div>
+                                                    )}
+                                                    {siteinfo.runtimeEnable && daysSince(siteCreatedAt) > 0 && (
+                                                        <div className="flex items-center justify-between rounded-lg border border-foreground/25 px-3 py-2 text-sm">
+                                                            <span className="text-muted-foreground">建站天数</span>
+                                                            <span className="font-medium">{daysSince(siteCreatedAt)} 天</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                </div>
+                            </SheetContent>
+                        </Sheet>
+                    </div>
+                    <UserMenu isLoggedIn={isLoggedIn} scrolled={scrolled} userpanel={userpanel} userAvatar={userAvatar} />
                 </div>
             </div>
         </>

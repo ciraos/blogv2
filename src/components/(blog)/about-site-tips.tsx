@@ -42,7 +42,7 @@ export function AboutSiteTips({ config }: { config: AboutSiteTipsConfig }) {
     const lastWord = config.word[config.word.length - 1];
 
     return (
-        <div className="flex min-h-[200px] flex-[3] flex-col items-start justify-center rounded-xl border bg-card p-4">
+        <div className="flex w-full flex-none flex-col items-start justify-center rounded-xl border bg-card p-4 md:min-h-[200px] md:flex-[3]">
             <div className="mb-2 text-xs opacity-80">{config.tips}</div>
             <h2 className="m-0 mr-auto text-3xl font-bold leading-snug tracking-tight text-foreground md:text-4xl">
                 {config.title1}
