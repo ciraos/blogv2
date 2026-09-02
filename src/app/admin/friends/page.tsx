@@ -12,6 +12,7 @@ import {
     TagIcon
 } from "lucide-react";
 import { FriendsManager } from "@/components/admin/friends-manager";
+import { CategorySortDialog } from "@/components/admin/category-sort-dialog";
 
 export function generateMetadata(): Promise<Metadata> {
     return generateBlogMetadata("友链管理")
@@ -34,6 +35,8 @@ export default function AdminFriends() {
                         <TagIcon size={4} />
                         分类标签
                     </Button>
+                    {/* 分类展示顺序拖拽排序（保存到 localStorage，前台 /link 页生效） */}
+                    <CategorySortDialog />
                     <Button>
                         <FolderDownIcon size={4} />
                         导入
