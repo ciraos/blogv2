@@ -1,134 +1,36 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { GripVertical, ListOrdered } from "lucide-react";
+import { Circle, ListOrdered } from "lucide-react";
 import { toast } from "sonner";
-import {
-    DndContext,
-    KeyboardSensor,
-    PointerSensor,
-    closestCenter,
-    useSensor,
-    useSensors,
-    type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-    SortableContext,
-    arrayMove,
-    sortableKeyboardCoordinates,
-    useSortable,
-    verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 
 import { Button } from "@/components/ui/button";
-import { getPublicLinkCategoriesApi } from "@/lib/api";
+import { getAdminLinkCategoriesApi } from "@/lib/api";
 import type { LinkCategory } from "@/types/links";
-
-const STORAGE_KEY = "link_category_order";
-
-/** 单个可拖拽分类行 */
-function SortableRow({ category }: { category: LinkCategory }) {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-        id: category.id,
-    });
-    return (
-        <div
-            ref={setNodeRef}
-            style={{ transform: CSS.Transform.toString(transform), transition }}
-            className={`flex items-center gap-2 rounded-lg border bg-card px-3 py-2.5 text-sm ${
-                isDragging ? "z-10 shadow-lg opacity-80" : ""
-            }`}
-        >
-            <button
-                type="button"
-                {...attributes}
-                {...listeners}
-                className="cursor-grab text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
-                aria-label={`拖动 ${category.name}`}
-            >
-                <GripVertical className="size-4" />
-            </button>
-            <span className="min-w-0 flex-1 truncate">{category.name}</span>
-            {category.description && (
-                <span className="truncate text-xs text-muted-foreground">{category.description}</span>
-            )}
-        </div>
-    );
-}
 
 /**
  * 友链分类排序对话框（管理端）：
- * 拖拽调整分类展示顺序，保存到 localStorage（link_category_order: 分类 id 数组）。
- * 前台 /link 页按此顺序渲染；未排序（新部署）时保持后端 API 返回顺序。
+ * 后端暂无分类排序字段，前台 /link 按分类 id 升序展示（创建顺序）。
+ * 此对话框仅用于查看全部分类；拖拽保存功能等后端支持排序 API 后再接入。
  */
 export function CategorySortDialog() {
     const [open, setOpen] = useState(false);
     const [categories, setCategories] = useState<LinkCategory[]>([]);
     const [loading, setLoading] = useState(false);
 
-    const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-    );
-
-    /** 打开对话框时：拉取分类 + 按已保存顺序排列 */
+    /** 打开对话框时：拉取全部分类（管理员接口），按 id 升序展示 */
     const handleOpenChange = (next: boolean) => {
         setOpen(next);
         if (!next) return;
         setLoading(true);
-        getPublicLinkCategoriesApi()
+        getAdminLinkCategoriesApi()
             .then((list) => {
-                // 按 localStorage 已有顺序重排（未保存过的保持 API 顺序）
-                let items = list;
-                try {
-                    const raw = localStorage.getItem(STORAGE_KEY);
-                    if (raw) {
-                        const ids: number[] = JSON.parse(raw);
-                        if (Array.isArray(ids) && ids.length > 0) {
-                            const byId = new Map(list.map((c) => [c.id, c]));
-                            const sorted: LinkCategory[] = [];
-                            for (const id of ids) {
-                                const c = byId.get(id);
-                                if (c) {
-                                    sorted.push(c);
-                                    byId.delete(id);
-                                }
-                            }
-                            for (const c of list) if (byId.has(c.id)) sorted.push(c);
-                            items = sorted;
-                        }
-                    }
-                } catch {
-                    // 忽略损坏的存储值
-                }
-                setCategories(items);
+                // 排序待后端 API 支持；当前展示按 id 升序（与前台 /link 一致）
+                setCategories([...list].sort((a, b) => a.id - b.id));
             })
             .catch(() => toast.error("获取分类列表失败"))
             .finally(() => setLoading(false));
-    };
-
-    const handleDragEnd = useCallback((event: DragEndEvent) => {
-        const { active, over } = event;
-        if (!over || active.id === over.id) return;
-        setCategories((prev) => {
-            const oldIndex = prev.findIndex((c) => c.id === active.id);
-            const newIndex = prev.findIndex((c) => c.id === over.id);
-            if (oldIndex < 0 || newIndex < 0) return prev;
-            return arrayMove(prev, oldIndex, newIndex);
-        });
-    }, []);
-
-    /** 保存排序到 localStorage */
-    const handleSave = () => {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(categories.map((c) => c.id)));
-            toast.success("分类排序已保存，刷新 /link 页生效");
-            setOpen(false);
-        } catch {
-            toast.error("保存失败（浏览器可能禁用了本地存储）");
-        }
     };
 
     return (
@@ -146,42 +48,47 @@ export function CategorySortDialog() {
                         分类排序
                     </DialogPrimitive.Title>
                     <DialogPrimitive.Description className="mt-1 text-xs text-muted-foreground">
-                        拖拽调整友链分类在前台 /link 页的展示顺序，保存后仅对当前浏览器生效。
+                        当前前台按分类 id 升序展示（创建顺序）。拖拽排序待后端支持后开放。
                     </DialogPrimitive.Description>
 
-                    <div className="mt-4">
+                    <div className="mt-4 max-h-80 overflow-y-auto">
                         {loading ? (
                             <p className="py-10 text-center text-sm text-muted-foreground">加载中…</p>
                         ) : categories.length === 0 ? (
                             <p className="py-10 text-center text-sm text-muted-foreground">暂无分类</p>
                         ) : (
-                            <DndContext
-                                sensors={sensors}
-                                collisionDetection={closestCenter}
-                                onDragEnd={handleDragEnd}
-                            >
-                                <SortableContext
-                                    items={categories.map((c) => c.id)}
-                                    strategy={verticalListSortingStrategy}
-                                >
-                                    <div className="space-y-2">
-                                        {categories.map((c) => (
-                                            <SortableRow key={c.id} category={c} />
-                                        ))}
+                            <div className="space-y-2">
+                                {categories.map((c, index) => (
+                                    <div
+                                        key={c.id}
+                                        className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2.5 text-sm"
+                                    >
+                                        <span className="flex w-5 items-center justify-center text-xs text-muted-foreground">
+                                            {index + 1}
+                                        </span>
+                                        <Circle className="size-1.5 fill-current text-muted-foreground" />
+                                        <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                                        {c.description && (
+                                            <span className="truncate text-xs text-muted-foreground">
+                                                {c.description}
+                                            </span>
+                                        )}
+                                        <span className="shrink-0 text-xs text-muted-foreground">#{c.id}</span>
                                     </div>
-                                </SortableContext>
-                            </DndContext>
+                                ))}
+                            </div>
                         )}
                     </div>
 
                     <div className="mt-5 flex justify-end gap-2">
                         <DialogPrimitive.Close asChild>
                             <Button variant="outline" size="sm">
-                                取消
+                                关闭
                             </Button>
                         </DialogPrimitive.Close>
-                        <Button size="sm" onClick={handleSave} disabled={loading || categories.length === 0}>
-                            保存
+                        {/* 保存功能待后端分类排序 API 支持后启用 */}
+                        <Button size="sm" disabled title="待后端支持后开放">
+                            保存排序
                         </Button>
                     </div>
                 </DialogPrimitive.Content>

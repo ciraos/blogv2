@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import { RefreshCcw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +10,20 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { getAdminLinkCategoriesApi, getAdminLinkTagsApi } from "@/lib/api";
+import type { LinkCategory, LinkTag } from "@/types/links";
 import type { FriendsFilterState } from "@/components/admin/friends-table";
 
-/** 友链管理筛选工具栏：搜索框 + 状态/分类/标签下拉 + 重置按钮（受控组件） */
+/** 状态选项（值与后端枚举一致：PENDING/APPROVED/REJECTED/INVALID） */
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+    { value: "APPROVED", label: "已通过" },
+    { value: "PENDING", label: "待审核" },
+    { value: "REJECTED", label: "已拒绝" },
+    { value: "INVALID", label: "已失效" },
+];
+
+/** 友链管理筛选工具栏：搜索框 + 状态/分类/标签下拉 + 重置按钮（受控组件）。
+ *  状态值与后端枚举一致；分类/标签值存后端数字 ID（动态拉取列表）。 */
 export function FriendsFilters({
     value,
     onChange,
@@ -19,6 +31,15 @@ export function FriendsFilters({
     value: FriendsFilterState;
     onChange: (v: FriendsFilterState) => void;
 }) {
+    // 分类/标签下拉选项（含 id，来自管理员接口；失败时降级为空）
+    const [categories, setCategories] = useState<LinkCategory[]>([]);
+    const [tags, setTags] = useState<LinkTag[]>([]);
+
+    useEffect(() => {
+        getAdminLinkCategoriesApi().then(setCategories).catch(() => setCategories([]));
+        getAdminLinkTagsApi().then(setTags).catch(() => setTags([]));
+    }, []);
+
     // 重置按钮：仅当三个下拉任一有值时可用（搜索框不计入）
     const hasFilter = value.status !== "" || value.category !== "" || value.tag !== "";
 
@@ -46,33 +67,39 @@ export function FriendsFilters({
                         <SelectValue placeholder="友链状态" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="approved">已通过</SelectItem>
-                        <SelectItem value="pending">待审核</SelectItem>
-                        <SelectItem value="rejected">已拒绝</SelectItem>
-                        <SelectItem value="expired">已失效</SelectItem>
+                        {STATUS_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                            </SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
 
-                {/* 分类 */}
+                {/* 分类（值 = 分类 id） */}
                 <Select value={value.category} onValueChange={(v) => onChange({ ...value, category: v })}>
                     <SelectTrigger className="h-8 w-26">
                         <SelectValue placeholder="分类" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="小伙伴">小伙伴</SelectItem>
-                        <SelectItem value="大佬们">大佬们</SelectItem>
-                        <SelectItem value="已失联">已失联</SelectItem>
-                        <SelectItem value="冰糖红茶">冰糖红茶</SelectItem>
+                        {categories.map((c) => (
+                            <SelectItem key={c.id} value={String(c.id)}>
+                                {c.name}
+                            </SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
 
-                {/* 标签 */}
+                {/* 标签（值 = 标签 id） */}
                 <Select value={value.tag} onValueChange={(v) => onChange({ ...value, tag: v })}>
                     <SelectTrigger className="h-8 w-26">
                         <SelectValue placeholder="标签" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="证书过期">证书过期</SelectItem>
+                        {tags.map((t) => (
+                            <SelectItem key={t.id} value={String(t.id)}>
+                                {t.name}
+                            </SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
             </div>

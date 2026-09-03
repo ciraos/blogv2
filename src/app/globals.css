@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "katex/dist/katex.min.css";
+@import "./iconfont.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -3141,5 +3142,96 @@ body {
 }
 
 *::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ===================== 页面顶部大图（OneImage） ===================== */
+/* scroll-down 按钮：上下浮动动画（模拟鼠标滚轮提示） */
+@keyframes one-image-scroll-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(6px);
+  }
+}
+
+.one-image-scroll-down {
+  animation: one-image-scroll-bounce 1.8s ease-in-out infinite;
+}
+
+.one-image-scroll-down:hover {
+  animation-play-state: paused;
+}
+
+/* 打字机光标闪烁 */
+@keyframes one-image-caret-blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+.one-image-caret {
+  animation: one-image-caret-blink 0.8s step-end infinite;
+}
+
+/* 大图标题入场：轻微上移淡入 */
+@keyframes one-image-title-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.one-image-title {
+  animation: one-image-title-in 0.9s ease-out both;
+}
+
+.one-image-subtitle {
+  animation: one-image-title-in 0.9s ease-out 0.25s both;
+}
+
+/* ===================== OneImage 整页固定背景（全端） =====================
+ * 大图 fixed 铺满视口作为整页背景（滚动不动），正文悬浮其上；
+ * footer 顶部以渐变过渡到页面背景色，避免图与 footer 生硬拼接。
+ */
+/* footer 自身落到页面背景色上（并盖在 z-0 固定背景图之上）。
+   用 body:has(.one-image-hero) 直接命中，不依赖 JS 挂载类，SSR 首帧即生效 */
+body:has(.one-image-hero) #footer.one-image-footer-fade,
+body:has(.one-image-hero) #footer {
+  position: relative;
+  z-index: 1;
+  background: var(--background);
+}
+
+/* footer 上方渐隐带：从透明 → 页面背景色，让背景图平滑淡出 */
+body:has(.one-image-hero) #footer::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 8rem;
+  background: linear-gradient(to top, var(--background), transparent);
+  pointer-events: none;
+}
+
+/* 正文悬浮在固定背景图上：main 提 z-index 盖住 z-0 背景，自身背景透明露出图 */
+body:has(.one-image-hero) .main {
+  position: relative;
+  z-index: 1;
   background: transparent;
 }

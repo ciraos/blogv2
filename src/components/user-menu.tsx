@@ -28,6 +28,8 @@ interface UserMenuProps {
     userpanel?: UserPanelConfig;
     /** 已登录用户的头像 URL（服务端传入；空则回退为默认图标） */
     userAvatar?: string | null;
+    /** 页面大图悬浮模式：true 时触发器透明（白字悬浮大图上，不显示白胶囊） */
+    overlay?: boolean;
 }
 
 /** 菜单项（图标 + 文案 + 链接/动作） */
@@ -40,7 +42,7 @@ interface MenuItem {
 }
 
 /** 导航栏最右侧的用户菜单 */
-export function UserMenu({ isLoggedIn, scrolled = false, userpanel, userAvatar }: UserMenuProps) {
+export function UserMenu({ isLoggedIn, scrolled = false, userpanel, userAvatar, overlay = false }: UserMenuProps) {
     /** 登出：清 cookie 后原地刷新，不跳转登录页 */
     async function handleLogout() {
         try {
@@ -97,9 +99,11 @@ export function UserMenu({ isLoggedIn, scrolled = false, userpanel, userAvatar }
         <DropdownMenu>
             <DropdownMenuTrigger
                 asChild
-                className={`transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] will-change-transform ${scrolled
-                    ? "scale-[0.94] bg-card/60 shadow-sm backdrop-blur-md"
-                    : "scale-100 bg-card shadow-md hover:shadow-xl"
+                className={`transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] will-change-transform ${overlay
+                    ? "scale-100 bg-transparent shadow-none [text-shadow:0_1px_3px_rgba(0,0,0,0.45)] [&_button]:text-white"
+                    : scrolled
+                        ? "scale-[0.94] bg-card/60 shadow-sm backdrop-blur-md"
+                        : "scale-100 bg-card shadow-md hover:shadow-xl"
                     }`}
             >
                 {isLoggedIn && userAvatar ? (

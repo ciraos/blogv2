@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { ArrowDownAZ, ArrowUpAZ, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +75,17 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<Set<number>>(new Set());
     const [jumpPage, setJumpPage] = useState("");
+    // 网站名称排序：""（默认/后端顺序）→ "asc"（A→Z）→ "desc"（Z→A），点击循环切换
+    const [nameSort, setNameSort] = useState<"" | "asc" | "desc">("");
+
+    // 排序只作用于当前页已拉取的数据；刷新/翻页后回到后端顺序
+    const sortedLinks = (() => {
+        if (!nameSort || links.length === 0) return links;
+        return [...links].sort((a, b) => {
+            const na = (a.name || "").localeCompare(b.name || "", "zh-CN");
+            return nameSort === "asc" ? na : -na;
+        });
+    })();
 
     // 筛选条件变化时回到第一页（setTimeout 规避 React Compiler 的 effect 内同步 setState 规则）
     useEffect(() => {
@@ -89,7 +100,7 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
         getAdminLinksApi({
             page,
             pageSize,
-            keyword: filters.keyword || undefined,
+            name: filters.keyword || undefined,
             status: filters.status || undefined,
             category_id: filters.category || undefined,
             tag_id: filters.tag || undefined,
@@ -154,7 +165,20 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                     aria-label="全选"
                     className="size-4 accent-primary"
                 />
-                <span className="flex-1">网站信息</span>
+                <span className="flex flex-1 items-center gap-1">
+                    网站信息
+                    {/* 网站名称首字母排序：点击循环 默认 → A→Z → Z→A */}
+                    <button
+                        type="button"
+                        onClick={() => setNameSort((v) => (v === "" ? "asc" : v === "asc" ? "desc" : ""))}
+                        title={nameSort === "asc" ? "按名称升序（点击切为降序）" : nameSort === "desc" ? "按名称降序（点击取消排序）" : "按名称首字母排序"}
+                        aria-label="按网站名称排序"
+                        className={`flex size-6 items-center justify-center rounded transition-colors ${nameSort ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                            }`}
+                    >
+                        {nameSort === "asc" ? <ArrowDownAZ className="size-3.5" /> : nameSort === "desc" ? <ArrowUpAZ className="size-3.5" /> : <ArrowDownAZ className="size-3.5 opacity-60" />}
+                    </button>
+                </span>
                 <span className="w-40 shrink-0 truncate">描述</span>
                 <span className="w-28 shrink-0">分类 / 标签</span>
                 <span className="w-20 shrink-0 text-center">状态</span>
@@ -165,10 +189,10 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
             <div className="max-h-120 overflow-y-auto">
                 {loading ? (
                     <div className="py-12 text-center text-sm text-muted-foreground">加载中…</div>
-                ) : links.length === 0 ? (
+                ) : sortedLinks.length === 0 ? (
                     <div className="py-12 text-center text-sm text-muted-foreground">暂无友链</div>
                 ) : (
-                    links.map((link) => {
+                    sortedLinks.map((link) => {
                         const badge = statusBadge(link.status);
                         return (
                             <div
@@ -187,7 +211,19 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                                     <LinkAvatarCell link={link} />
                                     <div className="min-w-0">
                                         <div className="truncate font-medium">{link.name}</div>
-                                        <div className="truncate text-xs text-muted-foreground">{link.url}</div>
+                                        {/* URL：可点击外链，鲜艳蓝色与文字区分（截断处 hover 可看全文） */}
+                                        {link.url && (
+                                            <a
+                                                href={link.url.startsWith("http") ? link.url : `https://${link.url}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer nofollow"
+                                                title={link.url}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="block truncate text-xs/2.5 font-medium text-sky-500 transition-colors hover:text-sky-600 hover:underline dark:text-sky-400 dark:hover:text-sky-300"
+                                            >
+                                                {link.url}
+                                            </a>
+                                        )}
                                     </div>
                                 </div>
                                 {/* 描述 */}

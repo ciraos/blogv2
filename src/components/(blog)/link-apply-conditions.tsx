@@ -37,9 +37,9 @@ export function LinkApplyConditions({ conditions }: LinkApplyConditionsProps) {
                         <li key={index}>
                             <label className="w-max flex cursor-pointer items-center gap-3 rounded-lg p-3 transition-colors hover:bg-muted/50">
                                 <span
-                                    className={`flex size-5 shrink-0 items-center justify-center rounded-md transition-colors ${checked[index]
+                                    className={`flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors ${checked[index]
                                         ? "border-primary bg-primary text-primary-foreground"
-                                        : "border-border bg-background"
+                                        : "border-foreground/30 bg-background"
                                         }`}
                                 >
                                     {checked[index] && <Check className="size-3.5" />}
@@ -50,9 +50,9 @@ export function LinkApplyConditions({ conditions }: LinkApplyConditionsProps) {
                                     onChange={() => toggle(index)}
                                     className="sr-only"
                                 />
-                                {/* 条件文案来自后端，可能含 <b> 等标签 */}
+                                {/* 条件文案来自后端，可能含 <b> 等标签（加重字纯加粗同色，不似链接） */}
                                 <span
-                                    className="text-sm leading-relaxed [&_b]:font-semibold [&_b]:text-primary"
+                                    className="text-sm leading-relaxed [&_b]:font-semibold [&_b]:text-foreground"
                                     dangerouslySetInnerHTML={{ __html: condition }}
                                 />
                             </label>

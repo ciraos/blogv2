@@ -16,8 +16,8 @@ export default async function Link() {
     const config = await getPublicSiteConfigApi().catch(() => null);
 
     // 获取分类列表，再按分类拉取友链。
-    // 空分类默认隐藏；「推荐」例外——即使暂无友链也保留分区，展示占位文案。
-    // 展示顺序：推荐永远最上、已失联永远最下，其余按管理员保存的排序（localStorage）或 API 顺序。
+    // 顺序：按分类 id 升序（创建越早越靠前，id 越大越往下）；
+    // 空分类（含推荐/已失联）一律隐藏不展示。
     const categories = await getPublicLinkCategoriesApi();
 
     const sections = await Promise.all(
@@ -26,10 +26,10 @@ export default async function Link() {
             links: await getLinksByCategoryApi(category.id),
         }))
     );
-    // 「推荐」空分类保留；其余空分类隐藏
-    const visible = sections.filter(
-        (section) => section.links.length > 0 || section.category.name === "推荐"
-    );
+    // 按 id 升序；过滤空分类
+    const visible = sections
+        .filter((section) => section.links.length > 0)
+        .sort((a, b) => a.category.id - b.category.id);
     const totalLinks = visible.reduce((sum, section) => sum + section.links.length, 0);
 
     // 页脚自定义内容（后端已渲染好的 HTML）

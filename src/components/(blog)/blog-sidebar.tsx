@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CalendarDays, FileText, MessageSquare, Tag as TagIcon } from "lucide-react";
 import { PostToc } from "@/components/(blog)/post-toc";
 import { AuthorGreeting } from "@/components/(blog)/author-greeting";
+import { Icon } from "@/components/ui/icon";
 import { collectTags } from "@/lib/articles";
 import { getAllPublicArticlesApi, getLatestCommentsApi, getPublicArchivesApi, type RecentComment } from "@/lib/api";
 import { resolveAssetUrl } from "@/lib/utils";
@@ -81,8 +82,9 @@ function AuthorCard({ config }: { config: SiteConfig }) {
                             target="_blank"
                             rel="noopener noreferrer nofollow"
                             title={name}
-                            className="w-14 rounded-full bg-white/15 px-3 py-1 text-xs text-center text-slate-300 transition-colors hover:bg-white/25"
+                            className="w-20 flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs text-slate-300 transition-colors hover:bg-white/25"
                         >
+                            <Icon name={item.icon} className="text-sm leading-none" />
                             {name}
                         </a>
                     ))}

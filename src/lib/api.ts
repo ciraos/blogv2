@@ -5,7 +5,7 @@
 // 由服务端转发到远端。服务端组件（Server Components）可直接调用远端接口。
 import type { ArchiveSummary, ArticleDetail, PostItem, PostListData } from "@/types/articles";
 import type { LoginData, LoginUserInfo } from "@/types/auth";
-import type { FriendLink, LinkCategory, LinkListData, LinkListParams } from "@/types/links";
+import type { FriendLink, LinkCategory, LinkListData, LinkListParams, LinkTag } from "@/types/links";
 import type { AdminEssayListParams, Essay, EssayListData } from "@/types/essays";
 import type { MomentsListData, MomentsListParams } from "@/types/moments";
 import type { SiteConfig } from "@/types/site-config";
@@ -304,7 +304,9 @@ export async function getPublicLinksRandomApi(num = 1): Promise<FriendLink[]> {
 export interface AdminLinkListParams {
     page?: number;
     pageSize?: number;
-    keyword?: string;
+    /** 网站名称模糊搜索（后端字段为 name；无 keyword 参数） */
+    name?: string;
+    /** 后端枚举：PENDING / APPROVED / REJECTED / INVALID */
     status?: string;
     category_id?: number | string;
     tag_id?: number | string;
@@ -320,6 +322,16 @@ export async function getAdminLinksApi(params: AdminLinkListParams = {}): Promis
     }
     const query = qs.toString();
     return request<LinkListData>(`/api/admin/links${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
+/** GET /api/admin/links/categories 管理员获取友链分类列表（含 id，供筛选下拉用） */
+export async function getAdminLinkCategoriesApi(): Promise<LinkCategory[]> {
+    return request<LinkCategory[]>("/api/admin/links/categories", { method: "GET" });
+}
+
+/** GET /api/admin/links/tags 管理员获取友链标签列表（含 id，供筛选下拉用） */
+export async function getAdminLinkTagsApi(): Promise<LinkTag[]> {
+    return request<LinkTag[]>("/api/admin/links/tags", { method: "GET" });
 }
 
 /** 友链申请提交数据（POST /public/links） */

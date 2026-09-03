@@ -6,7 +6,10 @@ import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import Header from "@/components/header";
 import { FloatingActions } from "@/components/(blog)/floating-actions";
+import { AuthExpiredNotifier } from "@/components/(blog)/auth-expired-notifier";
 import { FooterRandomLinks } from "@/components/(blog)/footer-random-links";
+import { FooterSocialBar } from "@/components/(blog)/footer-social-bar";
+import { OneImageHero } from "@/components/(blog)/one-image-hero";
 import { ScrollToTop } from "@/components/(blog)/scroll-to-top";
 // import Aside from "@/components/aside";
 
@@ -47,14 +50,22 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
   const token = cookieStore.get("token")?.value;
   const isLoggedIn = !!token;
 
-  // 已登录时获取用户信息（头像等），传给 Header 显示圆形头像
+  // 已登录时获取用户信息（头像等），传给 Header 显示圆形头像。
+  // token 过期/无效（401）：标记 authExpired，由客户端组件静默登出并提示
   let userAvatar: string | null = null;
+  let authExpired = false;
   if (token) {
     try {
       const userInfo = await getUserInfoApi(token);
       userAvatar = userInfo.avatar || null;
     } catch (error) {
-      console.error("获取用户信息失败", error);
+      // 注：不依赖 instanceof ApiError（RSC/浏览器边界类引用可能缺失），直接读 status
+      const status = (error as { status?: number } | null)?.status ?? 0;
+      if (status === 401) {
+        authExpired = true;
+      } else {
+        console.error("获取用户信息失败", error);
+      }
     }
   }
 
@@ -116,6 +127,9 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
           {/* 全局：路由切换时回到顶部（修复跨页面滚动位置残留） */}
           <ScrollToTop />
 
+          {/* Token 过期：静默登出并提示（不占 DOM） */}
+          <AuthExpiredNotifier expired={authExpired} />
+
           {/* flex 列布局 + min-h-dvh：内容不足一屏时 footer 吸附在视口底部 */}
           <div id="CIRAOS" className="flex min-h-dvh flex-col">
             <Header
@@ -127,7 +141,12 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
               mobileTags={mobileTags}
               siteinfo={siteinfo}
               siteCreatedAt={siteCreatedAt}
+              oneImage={config?.page?.one_image}
             />
+
+            {/* 页面顶部大图（OneImage）：home/archives/tags/categories 各自 enable 控制；
+                header 透明悬浮其上，滚动离开首屏后恢复 */}
+            <OneImageHero oneImage={config?.page?.one_image} appName={config?.APP_NAME ?? "博客"} />
 
             <div className="main w-full max-w-300 mx-auto mt-10 px-4 sm:px-0 flex flex-1 gap-6">
               {/* 主体内容区（container query 容器：收缩侧边栏时撑满，网格列数随宽度自适应） */}
@@ -137,36 +156,46 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
               {!isAbout && <BlogSidebar config={config} />}
             </div>
 
-            <div id="footer" className="footer w-full max-w-300 mx-auto mt-15 px-4 sm:px-0">
-              <div className="footer-project">
-                {config?.footer?.project?.list?.length ? (
-                  <div className="grid grid-cols-2 gap-6 border-t border-border pt-6 sm:grid-cols-4">
-                    {config.footer.project.list.map((group) => (
-                      <div key={group.title}>
-                        <h3 className="mb-3 text-sm font-semibold">{group.title}</h3>
-                        <ul className="space-y-2">
-                          {group.links.map((item) => {
-                            const isExternal = item.link.startsWith("http");
-                            return (
-                              <li key={item.title}>
-                                <Link
-                                  href={item.link}
-                                  {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                                  className="text-sm text-muted-foreground transition-colors hover:text-primary"
-                                >
-                                  {item.title}
-                                </Link>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                    ))}
-                    <FooterRandomLinks initialLinks={randomLinks} count={randomFriendsCount} />
-                  </div>
-                ) : null}
+            {/* footer 外层全宽：整页背景模式下承载 footer 背景色与顶部渐隐带（铺满屏幕），
+                非 hero 页无 .one-image-footer-fade 时等同透明，不影响常规布局 */}
+            <div id="footer" className="footer relative mt-15 w-full">
+              <div className="mx-auto w-full max-w-300 px-4 sm:px-0">
+                {/* 页脚社交栏：左右社交图标 + 中间头像（config.footer.socialBar），位于页脚顶部 */}
+                <FooterSocialBar
+                  left={config?.footer?.socialBar?.left}
+                  right={config?.footer?.socialBar?.right}
+                  centerImg={config?.footer?.socialBar?.centerImg}
+                />
+                <div className="footer-project">
+                  {config?.footer?.project?.list?.length ? (
+                    <div className="grid grid-cols-2 gap-6 pt-0 sm:grid-cols-4">
+                      {config.footer.project.list.map((group) => (
+                        <div key={group.title}>
+                          <h3 className="mb-3 text-sm font-semibold">{group.title}</h3>
+                          <ul className="space-y-2">
+                            {group.links.map((item) => {
+                              const isExternal = item.link.startsWith("http");
+                              return (
+                                <li key={item.title}>
+                                  <Link
+                                    href={item.link}
+                                    {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                                    className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                                  >
+                                    {item.title}
+                                  </Link>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      ))}
+                      <FooterRandomLinks initialLinks={randomLinks} count={randomFriendsCount} />
+                    </div>
+                  ) : null}
+                </div>
+                <Link href="https://beian.miit.gov.cn" target="_blank" rel="noopener external nofollow noreferrer" className="mt-6 flex items-center justify-center hover:underline">{config?.ICP_NUMBER}</Link>
               </div>
-              <Link href="https://beian.miit.gov.cn" target="_blank" rel="noopener external nofollow noreferrer" className="mt-6 flex items-center justify-center hover:underline">{config?.ICP_NUMBER}</Link>
             </div>
 
           </div>
