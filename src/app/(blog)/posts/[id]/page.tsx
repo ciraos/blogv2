@@ -23,9 +23,39 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
     try {
         const { id } = await params;
         const article = await getPublicArticleApi(id);
+        const description = article.summaries?.[0] || article.keywords || undefined;
+
+        // 分享图：文章封面优先；无封面时回退站点 LOGO/图标
+        let shareImage = resolveAssetUrl(article.cover_url || article.top_img_url);
+        let siteName: string | undefined;
+        if (!shareImage || !siteName) {
+            try {
+                const config = await getPublicSiteConfigApi();
+                if (!shareImage) shareImage = resolveAssetUrl(config.LOGO_URL_512x512 || config.LOGO_URL || config.ICON_URL);
+                siteName = config.APP_NAME || undefined;
+            } catch {
+                // 配置获取失败：省略分享图兜底
+            }
+        }
+
         return {
             title: article.title,
-            description: article.summaries?.[0] || article.keywords || undefined,
+            description,
+            openGraph: {
+                type: "article",
+                siteName,
+                title: article.title,
+                description,
+                publishedTime: article.created_at,
+                modifiedTime: article.updated_at,
+                ...(shareImage ? { images: [{ url: shareImage }] } : {}),
+            },
+            twitter: {
+                card: "summary_large_image",
+                title: article.title,
+                description,
+                ...(shareImage ? { images: [shareImage] } : {}),
+            },
         };
     } catch {
         return {};

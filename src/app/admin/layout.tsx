@@ -19,8 +19,13 @@ export async function generateMetadata(): Promise<Metadata> {
     const a = await fetch(`${api_url}/public/site-config`);
     const data: SiteConfigResponse = await a.json();
     // console.log(site_url + data.data.ICON_URL);
+    // apple-touch-icon：动态引用后端 logo（PNG 优先），无本地静态文件
+    const appleIcon = site_url + (data.data.LOGO_URL_192x192 || data.data.LOGO_URL || data.data.ICON_URL);
     return {
-        icons: site_url + data.data.ICON_URL
+        icons: {
+            icon: site_url + data.data.ICON_URL,
+            apple: appleIcon,
+        },
     };
 }
 
