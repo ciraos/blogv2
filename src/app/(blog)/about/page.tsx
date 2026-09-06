@@ -124,7 +124,7 @@ export default async function About() {
             )}
 
             {/* ===== 大标题 ===== */}
-            <div className="my-2.5 text-center text-4xl font-bold leading-none md:text-5xl">关于本站</div>
+            {/* <div className="my-2.5 text-center text-4xl font-bold leading-none md:text-5xl">关于本站</div> */}
 
             {/* ===== 自我介绍 + 关键词轮播 ===== */}
             {enable.page_content && page.name && (
