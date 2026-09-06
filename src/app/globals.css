@@ -174,13 +174,55 @@ body {
   transition: width 0.5s ease, opacity 0.4s ease;
   width: 300px;
   opacity: 1;
-  overflow: hidden;
+  /* overflow: hidden; */
+}
+
+/* 恢复侧边栏收缩状态时临时禁用过渡，避免页面加载/路由切换播放收起动画 */
+#blog-sidebar.no-transition {
+  transition: none !important;
 }
 
 #blog-sidebar[data-collapsed="1"] {
   width: 0 !important;
   opacity: 0;
   pointer-events: none;
+}
+
+/* 友链 Banner：logo 波浪墙无缝左滚（轨道内容为两段相同序列，位移 -50% 即回到起点） */
+@keyframes link-wall-scroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.link-tag-wall-track {
+  /* 轨道宽度 = 内容宽度（含复制两份），translateX(-50%) 才能精确回到序列起点实现无缝循环 */
+  width: max-content;
+  animation: link-wall-scroll 360s linear infinite;
+  will-change: transform;
+}
+
+.link-tag-wall-track:hover {
+  animation-play-state: paused;
+}
+
+/* 友链网格：主内容区随侧边栏收缩而变宽（容器查询，匹配布局的 @container/main 祖先），
+   内容宽度 ≥ 60rem(960px) 时由 lg 的 3 列升为 5 列；desc 超长由 LinkCard 的 line-clamp 省略 */
+@container (min-width: 60rem) {
+  .link-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+/* 朋友圈网格：同样按容器宽度 —— 侧边栏收缩后内容区变宽，由 3 列升为 4 列 */
+@container (min-width: 60rem) {
+  .fcircle-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 /*! */
@@ -709,6 +751,28 @@ body {
   display: none;
 }
 
+/* 后端 md-editor 直出的复制按钮（.copy-button，友链页等自定义 HTML）：
+   推送到标题栏最右；点击逻辑由 LinkCustomHtml 客户端组件重新绑定 */
+.article-body .md-editor-code .copy-button {
+  flex-shrink: 0;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #57606a;
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.article-body .md-editor-code .copy-button:hover {
+  color: #24292f;
+}
+
+.article-body .md-editor-code .copy-button.copied {
+  color: #1a7f37;
+}
+
 /* mac 三个圆圈（真实元素 .code-dots，排在展开/收缩按钮之后；mac_style=true 时由 JS 插入） */
 .article-body .code-dots {
   flex-shrink: 0;
@@ -782,6 +846,14 @@ body {
   letter-spacing: 0.02em;
   color: var(--primary);
   font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+/* 友链页自定义 HTML（FRIEND_LINK_APPLY_CUSTOM_CODE_HTML）直出的语言标识统一大写显示
+   （后端存的是小写 yaml，仅影响该页，不改变文章页代码块标签） */
+.FRIEND_LINK_APPLY_CUSTOM_CODE .md-editor-code .code-lang {
+  font-size: 15px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 /* 代码区：行号栏 + pre（横向滚动时行号固定） */
@@ -895,6 +967,18 @@ body {
 .dark .article-body .code-block-lang,
 .dark .article-body .md-editor-code .code-lang {
   color: var(--primary);
+}
+
+.dark .article-body .md-editor-code .copy-button {
+  color: var(--muted-foreground);
+}
+
+.dark .article-body .md-editor-code .copy-button:hover {
+  color: var(--foreground);
+}
+
+.dark .article-body .md-editor-code .copy-button.copied {
+  color: #3fb950;
 }
 
 .dark .article-body .line-numbers {
@@ -3148,6 +3232,7 @@ body {
 /* ===================== 页面顶部大图（OneImage） ===================== */
 /* scroll-down 按钮：上下浮动动画（模拟鼠标滚轮提示） */
 @keyframes one-image-scroll-bounce {
+
   0%,
   100% {
     transform: translateY(0);

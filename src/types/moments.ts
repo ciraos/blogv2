@@ -48,4 +48,20 @@ export interface MomentsListParams {
     sort_type?: "published_at" | "created_at";
 }
 
+// 随机一篇文章（GET /pro/moments/randompost 返回；友链鱼塘用）
+export interface RandomMomentPost {
+    /** 来源友链名 */
+    author: string;
+    /** 来源站点头像 */
+    avatar: string;
+    /** 原文链接 */
+    link: string;
+    /** 文章标题 */
+    title: string;
+    /** 创建时间（字符串，如 2026-03-11 02:46:25） */
+    created: string;
+    /** 更新时间 */
+    updated: string;
+}
+
 export type MomentsListResponse = ApiResponse<MomentsListData>;

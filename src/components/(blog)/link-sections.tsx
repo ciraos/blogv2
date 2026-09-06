@@ -28,7 +28,7 @@ export function LinkSections({ sections }: { sections: LinkSection[] }) {
                     {category.description && (
                         <p className="mt-0.5 text-sm text-muted-foreground">{category.description}</p>
                     )}
-                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="link-grid mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         {links.map((link) => (
                             <LinkCard key={link.id} link={link} />
                         ))}

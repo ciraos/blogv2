@@ -48,10 +48,10 @@ export function FriendsFilters({
     };
 
     return (
-        <div className="flex flex-wrap items-center justify-between gap-0">
-            <div className="flex items-center gap-1">
-                {/* 搜索框：网站名称 / 网址 */}
-                <div className="min-w-60 relative flex-1">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                {/* 搜索框：网站名称 / 网址（可收缩，窄屏换行） */}
+                <div className="relative min-w-40 flex-1">
                     <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                         value={value.keyword}
@@ -63,7 +63,7 @@ export function FriendsFilters({
 
                 {/* 友链状态 */}
                 <Select value={value.status} onValueChange={(v) => onChange({ ...value, status: v })}>
-                    <SelectTrigger className="h-8 w-30">
+                    <SelectTrigger className="h-8 w-30 shrink-0">
                         <SelectValue placeholder="友链状态" />
                     </SelectTrigger>
                     <SelectContent>
@@ -77,7 +77,7 @@ export function FriendsFilters({
 
                 {/* 分类（值 = 分类 id） */}
                 <Select value={value.category} onValueChange={(v) => onChange({ ...value, category: v })}>
-                    <SelectTrigger className="h-8 w-26">
+                    <SelectTrigger className="h-8 w-26 shrink-0">
                         <SelectValue placeholder="分类" />
                     </SelectTrigger>
                     <SelectContent>
@@ -91,7 +91,7 @@ export function FriendsFilters({
 
                 {/* 标签（值 = 标签 id） */}
                 <Select value={value.tag} onValueChange={(v) => onChange({ ...value, tag: v })}>
-                    <SelectTrigger className="h-8 w-26">
+                    <SelectTrigger className="h-8 w-26 shrink-0">
                         <SelectValue placeholder="标签" />
                     </SelectTrigger>
                     <SelectContent>
@@ -112,7 +112,7 @@ export function FriendsFilters({
                 disabled={!hasFilter}
                 title="重置筛选"
                 aria-label="重置筛选"
-                className="w-max py-1 px-2 bg-slate-200"
+                className="w-max py-1 px-2 bg-slate-200 shrink-0"
             >
                 <RefreshCcw className="size-4" />
                 重置状态

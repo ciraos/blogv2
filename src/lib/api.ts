@@ -7,7 +7,7 @@ import type { ArchiveSummary, ArticleDetail, PostItem, PostListData } from "@/ty
 import type { LoginData, LoginUserInfo } from "@/types/auth";
 import type { FriendLink, LinkCategory, LinkListData, LinkListParams, LinkTag } from "@/types/links";
 import type { AdminEssayListParams, Essay, EssayListData } from "@/types/essays";
-import type { MomentsListData, MomentsListParams } from "@/types/moments";
+import type { MomentsListData, MomentsListParams, RandomMomentPost } from "@/types/moments";
 import type { SiteConfig } from "@/types/site-config";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -406,6 +406,20 @@ export async function getPublicMomentsApi(params: MomentsListParams = {}): Promi
     }
     const query = qs.toString();
     return request<MomentsListData>(`/pro/moments${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
+/** GET /pro/moments/randompost 随机获取一篇朋友圈/友链聚合文章（公开；友链鱼塘用） */
+export function getRandomMomentPostApi(): Promise<RandomMomentPost> {
+    return request<RandomMomentPost>("/pro/moments/randompost", { method: "GET" });
+}
+
+/** 客户端随机获取一篇（经 /api/moments/randompost 同源代理；后端不开放 CORS，浏览器端需走代理） */
+export async function getRandomMomentPostClientApi(): Promise<RandomMomentPost | null> {
+    try {
+        return await request<RandomMomentPost>("/api/moments/randompost", { method: "GET" });
+    } catch {
+        return null;
+    }
 }
 
 /** GET /public/site-config 站点公开配置（服务端调用） */

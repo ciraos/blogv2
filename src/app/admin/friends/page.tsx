@@ -21,12 +21,12 @@ export function generateMetadata(): Promise<Metadata> {
 export default function AdminFriends() {
     return (
         <>
-            <div className="flex items-center justify-between space-y-1">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight">友链管理</h2>
                     <p className="text-slate-400 text-xs">管理友情链接，支持分类、标签和健康检查</p>
                 </div>
-                <div className="flex items-center">
+                <div className="flex flex-wrap items-center gap-2">
                     <Button>
                         <PlusIcon size={4} />
                         新建友链

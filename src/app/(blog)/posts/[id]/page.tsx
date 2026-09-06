@@ -7,6 +7,7 @@ import { PostActions } from "@/components/(blog)/post-actions";
 import { PostComments } from "@/components/(blog)/post-comments";
 
 import { ApiError, getCommentsWithChildrenApi, getPublicArticleApi, getPublicSiteConfigApi } from "@/lib/api";
+import { splitKeywords } from "@/lib/seo";
 import { resolveAssetUrl } from "@/lib/utils";
 
 interface PostPageProps {
@@ -25,22 +26,30 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
         const article = await getPublicArticleApi(id);
         const description = article.summaries?.[0] || article.keywords || undefined;
 
+        // 关键词：文章自带（中/英文逗号、分号分隔）优先；为空时回退站点 SITE_KEYWORDS
+        const articleKeywords = splitKeywords(article.keywords);
+
         // 分享图：文章封面优先；无封面时回退站点 LOGO/图标
         let shareImage = resolveAssetUrl(article.cover_url || article.top_img_url);
         let siteName: string | undefined;
-        if (!shareImage || !siteName) {
+        let keywords: string[] | undefined;
+        // 仅在「无封面」或「无文章关键词」时才拉站点配置（一次拿全回退数据）
+        if (!shareImage || articleKeywords.length === 0) {
             try {
                 const config = await getPublicSiteConfigApi();
                 if (!shareImage) shareImage = resolveAssetUrl(config.LOGO_URL_512x512 || config.LOGO_URL || config.ICON_URL);
                 siteName = config.APP_NAME || undefined;
+                if (articleKeywords.length === 0) keywords = splitKeywords(config.SITE_KEYWORDS);
             } catch {
-                // 配置获取失败：省略分享图兜底
+                // 配置获取失败：省略分享图/关键词兜底
             }
         }
+        if (keywords === undefined && articleKeywords.length > 0) keywords = articleKeywords;
 
         return {
             title: article.title,
             description,
+            keywords,
             openGraph: {
                 type: "article",
                 siteName,

@@ -155,122 +155,125 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
     };
 
     return (
-        <div className="mt-4 overflow-hidden rounded-lg border bg-card shadow-sm">
-            {/* 表头 */}
-            <div className="flex items-center gap-3 bg-slate-50 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground">
-                <input
-                    type="checkbox"
-                    checked={allChecked}
-                    onChange={toggleAll}
-                    aria-label="全选"
-                    className="size-4 accent-primary"
-                />
-                <span className="flex flex-1 items-center gap-1">
-                    网站信息
-                    {/* 网站名称首字母排序：点击循环 默认 → A→Z → Z→A */}
-                    <button
-                        type="button"
-                        onClick={() => setNameSort((v) => (v === "" ? "asc" : v === "asc" ? "desc" : ""))}
-                        title={nameSort === "asc" ? "按名称升序（点击切为降序）" : nameSort === "desc" ? "按名称降序（点击取消排序）" : "按名称首字母排序"}
-                        aria-label="按网站名称排序"
-                        className={`flex size-6 items-center justify-center rounded transition-colors ${nameSort ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                            }`}
-                    >
-                        {nameSort === "asc" ? <ArrowDownAZ className="size-3.5" /> : nameSort === "desc" ? <ArrowUpAZ className="size-3.5" /> : <ArrowDownAZ className="size-3.5 opacity-60" />}
-                    </button>
-                </span>
-                <span className="w-40 shrink-0 truncate">描述</span>
-                <span className="w-28 shrink-0">分类 / 标签</span>
-                <span className="w-20 shrink-0 text-center">状态</span>
-                <span className="w-24 shrink-0 text-right">操作</span>
-            </div>
+        <div className="mt-4 overflow-x-auto rounded-lg border bg-card shadow-sm">
+            {/* 固定最小宽度，窄屏时整体横向滚动，避免列被挤压换行 */}
+            <div className="min-w-[880px]">
+                {/* 表头 */}
+                <div className="flex items-center gap-3 whitespace-nowrap bg-slate-50 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground">
+                    <input
+                        type="checkbox"
+                        checked={allChecked}
+                        onChange={toggleAll}
+                        aria-label="全选"
+                        className="size-4 shrink-0 accent-primary"
+                    />
+                    <span className="flex flex-1 items-center gap-1 whitespace-nowrap">
+                        网站信息
+                        {/* 网站名称首字母排序：点击循环 默认 → A→Z → Z→A */}
+                        <button
+                            type="button"
+                            onClick={() => setNameSort((v) => (v === "" ? "asc" : v === "asc" ? "desc" : ""))}
+                            title={nameSort === "asc" ? "按名称升序（点击切为降序）" : nameSort === "desc" ? "按名称降序（点击取消排序）" : "按名称首字母排序"}
+                            aria-label="按网站名称排序"
+                            className={`flex size-6 shrink-0 items-center justify-center rounded transition-colors ${nameSort ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                }`}
+                        >
+                            {nameSort === "asc" ? <ArrowDownAZ className="size-3.5" /> : nameSort === "desc" ? <ArrowUpAZ className="size-3.5" /> : <ArrowDownAZ className="size-3.5 opacity-60" />}
+                        </button>
+                    </span>
+                    <span className="w-40 shrink-0 truncate">描述</span>
+                    <span className="w-28 shrink-0">分类 / 标签</span>
+                    <span className="w-20 shrink-0 text-center">状态</span>
+                    <span className="w-24 shrink-0 text-right">操作</span>
+                </div>
 
-            {/* 表体（可上下滚动） */}
-            <div className="max-h-120 overflow-y-auto">
-                {loading ? (
-                    <div className="py-12 text-center text-sm text-muted-foreground">加载中…</div>
-                ) : sortedLinks.length === 0 ? (
-                    <div className="py-12 text-center text-sm text-muted-foreground">暂无友链</div>
-                ) : (
-                    sortedLinks.map((link) => {
-                        const badge = statusBadge(link.status);
-                        return (
-                            <div
-                                key={link.id}
-                                className="flex items-center gap-3 border-b px-4 py-3 text-sm last:border-b-0 hover:bg-muted/40"
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={selected.has(link.id)}
-                                    onChange={() => toggleOne(link.id)}
-                                    aria-label={`选择 ${link.name}`}
-                                    className="size-4 accent-primary"
-                                />
-                                {/* 网站信息 */}
-                                <div className="flex flex-1 shrink-0 items-center gap-2.5">
-                                    <LinkAvatarCell link={link} />
-                                    <div className="min-w-0">
-                                        <div className="truncate font-medium">{link.name}</div>
-                                        {/* URL：可点击外链，鲜艳蓝色与文字区分（截断处 hover 可看全文） */}
-                                        {link.url && (
-                                            <a
-                                                href={link.url.startsWith("http") ? link.url : `https://${link.url}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer nofollow"
-                                                title={link.url}
-                                                onClick={(e) => e.stopPropagation()}
-                                                className="block truncate text-xs/2.5 font-medium text-sky-500 transition-colors hover:text-sky-600 hover:underline dark:text-sky-400 dark:hover:text-sky-300"
-                                            >
-                                                {link.url}
-                                            </a>
+                {/* 表体（可上下滚动） */}
+                <div className="max-h-120 overflow-y-auto">
+                    {loading ? (
+                        <div className="py-12 text-center text-sm text-muted-foreground">加载中…</div>
+                    ) : sortedLinks.length === 0 ? (
+                        <div className="py-12 text-center text-sm text-muted-foreground">暂无友链</div>
+                    ) : (
+                        sortedLinks.map((link) => {
+                            const badge = statusBadge(link.status);
+                            return (
+                                <div
+                                    key={link.id}
+                                    className="flex items-center gap-3 whitespace-nowrap border-b px-4 py-3 text-sm last:border-b-0 hover:bg-muted/40"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={selected.has(link.id)}
+                                        onChange={() => toggleOne(link.id)}
+                                        aria-label={`选择 ${link.name}`}
+                                        className="size-4 shrink-0 accent-primary"
+                                    />
+                                    {/* 网站信息 */}
+                                    <div className="flex min-w-0 flex-1 shrink-0 items-center gap-2.5">
+                                        <LinkAvatarCell link={link} />
+                                        <div className="min-w-0">
+                                            <div className="truncate font-medium">{link.name}</div>
+                                            {/* URL：可点击外链，鲜艳蓝色与文字区分（截断处 hover 可看全文） */}
+                                            {link.url && (
+                                                <a
+                                                    href={link.url.startsWith("http") ? link.url : `https://${link.url}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer nofollow"
+                                                    title={link.url}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="block truncate text-xs/2.5 font-medium text-sky-500 transition-colors hover:text-sky-600 hover:underline dark:text-sky-400 dark:hover:text-sky-300"
+                                                >
+                                                    {link.url}
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {/* 描述 */}
+                                    <div className="w-40 shrink-0 truncate text-xs text-muted-foreground" title={link.description}>
+                                        {link.description || "-"}
+                                    </div>
+                                    {/* 分类 / 标签 */}
+                                    <div className="w-28 shrink-0">
+                                        <div className="truncate text-xs">{link.category?.name || "-"}</div>
+                                        {link.tag && (
+                                            <span className="mt-0.5 inline-block rounded bg-accent px-1.5 py-px text-[10px] text-accent-foreground">
+                                                {link.tag.name}
+                                            </span>
                                         )}
                                     </div>
-                                </div>
-                                {/* 描述 */}
-                                <div className="w-40 shrink-0 truncate text-xs text-muted-foreground" title={link.description}>
-                                    {link.description || "-"}
-                                </div>
-                                {/* 分类 / 标签 */}
-                                <div className="w-28 shrink-0">
-                                    <div className="truncate text-xs">{link.category?.name || "-"}</div>
-                                    {link.tag && (
-                                        <span className="mt-0.5 inline-block rounded bg-accent px-1.5 py-px text-[10px] text-accent-foreground">
-                                            {link.tag.name}
+                                    {/* 状态 */}
+                                    <div className="w-20 shrink-0 text-center">
+                                        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
+                                            {badge.label}
                                         </span>
-                                    )}
+                                    </div>
+                                    {/* 操作 */}
+                                    <div className="flex w-24 shrink-0 items-center justify-end gap-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            aria-label="编辑"
+                                            title="编辑"
+                                            onClick={() => toast.info("编辑功能待接入")}
+                                        >
+                                            <Pencil className="size-4" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            aria-label="删除"
+                                            title="删除"
+                                            className="text-destructive hover:text-destructive"
+                                            onClick={() => toast.info("删除功能待接入")}
+                                        >
+                                            <Trash2 className="size-4" />
+                                        </Button>
+                                    </div>
                                 </div>
-                                {/* 状态 */}
-                                <div className="w-20 shrink-0 text-center">
-                                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
-                                        {badge.label}
-                                    </span>
-                                </div>
-                                {/* 操作 */}
-                                <div className="flex w-24 shrink-0 items-center justify-end gap-1">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon-sm"
-                                        aria-label="编辑"
-                                        title="编辑"
-                                        onClick={() => toast.info("编辑功能待接入")}
-                                    >
-                                        <Pencil className="size-4" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon-sm"
-                                        aria-label="删除"
-                                        title="删除"
-                                        className="text-destructive hover:text-destructive"
-                                        onClick={() => toast.info("删除功能待接入")}
-                                    >
-                                        <Trash2 className="size-4" />
-                                    </Button>
-                                </div>
-                            </div>
-                        );
-                    })
-                )}
+                            );
+                        })
+                    )}
+                </div>
             </div>
 
             {/* 底部：总数 + 每页条数 + 分页跳转 */}

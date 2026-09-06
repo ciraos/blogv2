@@ -25,7 +25,7 @@ export function LinkApplyConditions({ conditions }: LinkApplyConditionsProps) {
 
     return (
         <>
-            <section className="rounded-xl bg-card p-5 shadow-sm">
+            <section id="apply" className="rounded-xl bg-card p-5 shadow-sm">
                 <h2 className="flex items-center gap-2 text-lg font-semibold">
                     <ClipboardList className="size-4.5 text-primary" />
                     申请条件

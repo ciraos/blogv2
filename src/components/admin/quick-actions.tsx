@@ -13,7 +13,7 @@ const ACTIONS = [
 
 export function QuickActions() {
     return (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-3 gap-2 lg:grid-cols-6">
             {ACTIONS.map((action) => (
                 <Link
                     key={action.href}

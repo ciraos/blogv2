@@ -119,7 +119,6 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
       suppressHydrationWarning
     >
       <body>
-
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
@@ -202,13 +201,10 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
                 <Link href="https://beian.miit.gov.cn" target="_blank" rel="noopener external nofollow noreferrer" className="mt-6 flex items-center justify-center hover:underline">{config?.ICP_NUMBER}</Link>
               </div>
             </div>
-
           </div>
-
           {/* (blog) 全局右下角悬浮按钮组：外层展开 → 目录（仅文章页）+ 回到顶部 */}
           <FloatingActions />
         </ThemeProvider>
-
       </body>
     </html>
   );

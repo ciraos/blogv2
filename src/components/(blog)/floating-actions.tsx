@@ -32,15 +32,20 @@ export function FloatingActions() {
     const [groupOpen, setGroupOpen] = useState(false);
     const [tocOpen, setTocOpen] = useState(false);
     const [showTop, setShowTop] = useState(false);
-    // 侧边栏收缩状态（初始 false=展开；localStorage 持久化）
+    // 侧边栏收缩状态（初始 false=展开；按页面路径分开持久化，各页面独立记忆）
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
     // 繁简状态（仅按钮 UI，转换逻辑后续接入）
     const [lang, setLang] = useState<"cn" | "tw">("cn");
     const [tocItems, setTocItems] = useState<TocItem[]>([]);
     const [activeId, setActiveId] = useState<string>("");
     const tocRef = useRef<HTMLDivElement | null>(null);
 
-    /** 侧边栏收缩切换：宽度过渡（300↔0 平滑收起/展开，配合 aside 的 transition）+ 持久化 */
+    /** 侧边栏收缩 key：每页一个（非全局；旧版全局 key 作迁移来源） */
+    const sidebarKey = (path: string) => `blog-sidebar-collapsed:${path}`;
+    const LEGACY_SIDEBAR_KEY = "blog-sidebar-collapsed";
+
+    /** 侧边栏收缩切换：宽度过渡（300↔0 平滑收起/展开，配合 aside 的 transition）+ 按当前页持久化 */
     const toggleSidebar = useCallback(() => {
         const aside = document.getElementById("blog-sidebar");
         if (!aside) return;
@@ -48,20 +53,29 @@ export function FloatingActions() {
         aside.dataset.collapsed = collapsed ? "0" : "1";
         setSidebarCollapsed(!collapsed);
         try {
-            localStorage.setItem("blog-sidebar-collapsed", collapsed ? "0" : "1");
+            localStorage.setItem(sidebarKey(pathname), collapsed ? "0" : "1");
         } catch {
             // 忽略
         }
-    }, []);
+    }, [pathname]);
 
-    /** 初始 / 路由切换后：读取 localStorage 恢复侧边栏收缩状态 */
+    /** 初始 / 路由切换后：读取当前页记录恢复侧边栏收缩状态（无记录时沿用一次旧全局值并迁移）。
+     *  恢复收缩时临时禁用过渡（no-transition），设置完成后下一帧移除 —— 避免页面加载/路由切换播放收起动画。 */
     useEffect(() => {
         const timer = setTimeout(() => {
             try {
-                const saved = localStorage.getItem("blog-sidebar-collapsed");
+                let saved = localStorage.getItem(sidebarKey(pathname));
+                if (saved === null) {
+                    saved = localStorage.getItem(LEGACY_SIDEBAR_KEY);
+                    if (saved !== null) localStorage.setItem(sidebarKey(pathname), saved);
+                }
+                const aside = document.getElementById("blog-sidebar");
                 if (saved === "1") {
-                    const aside = document.getElementById("blog-sidebar");
-                    if (aside) aside.dataset.collapsed = "1";
+                    if (aside) {
+                        aside.classList.add("no-transition");
+                        aside.dataset.collapsed = "1";
+                        requestAnimationFrame(() => aside.classList.remove("no-transition"));
+                    }
                     setSidebarCollapsed(true);
                 } else {
                     setSidebarCollapsed(false);
