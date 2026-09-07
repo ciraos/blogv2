@@ -5,11 +5,14 @@ import { resolveAssetUrl } from "@/lib/utils";
 
 const GAP = 0;
 
+/** 列数更多 → 单列更窄，每张图更小（同时保持原图比例不裁切） */
 function getCols(vw: number): number {
-    if (vw >= 1280) return 4;
-    if (vw >= 1024) return 3;
-    if (vw >= 640) return 2;
-    return 1;
+    if (vw >= 1536) return 7;
+    if (vw >= 1280) return 6;
+    if (vw >= 1024) return 5;
+    if (vw >= 768) return 4;
+    if (vw >= 480) return 3;
+    return 2;
 }
 
 /**
@@ -64,7 +67,7 @@ export function AlbumWaterfall({ images }: { images: Album[] }) {
                         }}
                         className="left-0 top-0"
                     >
-                        <figure className="group overflow-hidden rounded-none border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+                        <figure className="group block overflow-hidden">
                             <div className="overflow-hidden">
                                 {src ? (
                                     // eslint-disable-next-line @next/next/no-img-element
@@ -72,10 +75,10 @@ export function AlbumWaterfall({ images }: { images: Album[] }) {
                                         src={src}
                                         alt={image.title || "相册图片"}
                                         loading="lazy"
-                                        className="w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                        className="block w-full object-cover transition-transform duration-300 group-hover:scale-105"
                                     />
                                 ) : (
-                                    <div className="flex h-40 items-center justify-center bg-muted text-sm text-muted-foreground">
+                                    <div className="flex h-32 items-center justify-center bg-muted text-sm text-muted-foreground">
                                         图片加载失败
                                     </div>
                                 )}
