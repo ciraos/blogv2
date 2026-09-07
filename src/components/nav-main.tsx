@@ -20,7 +20,26 @@ export interface NavMainItem {
   url?: string
   icon?: React.ReactNode
   /** 有子项时渲染为可展开菜单（手风琴：一次只展开一个） */
-  items?: { title: string; url: string }[]
+  items?: { title: string; url: string; pro?: boolean }[]
+}
+
+/** 子菜单 PRO 徽章（右侧，primary 浅底 + sparkles 图标） */
+function ProBadge() {
+  return (
+    <span className="ml-auto flex h-3.5 shrink-0 items-center gap-0.5 rounded bg-gradient-to-r from-violet-600 to-fuchsia-600 px-1.5 text-[10px] font-bold leading-none text-white shadow-sm">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+        role="img"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        className="size-2.5! shrink-0"
+      >
+        <path d="M14 4.438A2.437 2.437 0 0 0 16.438 2h1.125A2.437 2.437 0 0 0 20 4.438v1.125A2.437 2.437 0 0 0 17.563 8h-1.125A2.437 2.437 0 0 0 14 5.563zM1 11a6 6 0 0 0 6-6h2a6 6 0 0 0 6 6v2a6 6 0 0 0-6 6H7a6 6 0 0 0-6-6zm3.876 1A8.04 8.04 0 0 1 8 15.124A8.04 8.04 0 0 1 11.124 12A8.04 8.04 0 0 1 8 8.876A8.04 8.04 0 0 1 4.876 12m12.374 2A3.25 3.25 0 0 1 14 17.25v1.5A3.25 3.25 0 0 1 17.25 22h1.5A3.25 3.25 0 0 1 22 18.75v-1.5A3.25 3.25 0 0 1 18.75 14z" />
+      </svg>
+      PRO
+    </span>
+  )
 }
 
 /* 悬停：背景加重（比默认 sidebar-accent 更明显） */
@@ -91,6 +110,7 @@ export function NavMain({ items }: { items: NavMainItem[] }) {
                           >
                             <a href={sub.url}>
                               <span>{sub.title}</span>
+                              {sub.pro && <ProBadge />}
                             </a>
                           </SidebarMenuSubButton>
                         </SidebarMenuSubItem>

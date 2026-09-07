@@ -1,8 +1,6 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-
 import type { DateRangeStats, StatisticsSummary, URLStatistics, VisitorAnalytics } from "@/types/statistics";
 
 interface RankItem {
@@ -22,11 +20,12 @@ function toRank(items: { [k: string]: unknown }[] | null | undefined, nameKey: s
         .sort((a, b) => b.count - a.count);
 }
 
-/** 单个排行卡片 */
-function RankList({ title, items }: { title: string; items: RankItem[] }) {
+/** 单个排行卡片（bare：嵌入分组卡内时去边框与内边距） */
+function RankList({ title, items, bare = false }: { title: string; items: RankItem[]; bare?: boolean }) {
     const max = items[0]?.count || 1;
+    const cls = bare ? "" : "rounded-xl border bg-card p-4";
     return (
-        <div className="rounded-xl border bg-card p-4">
+        <div className={cls}>
             <h3 className="mb-3 text-sm font-semibold">{title}</h3>
             {items.length === 0 ? (
                 <p className="py-2 text-xs text-muted-foreground">暂无数据</p>
@@ -113,13 +112,12 @@ function StatChip({ label, value, yesterday }: { label: string; value: number; y
     return (
         <div className="rounded-xl border bg-card p-3">
             <div className="text-xs text-muted-foreground">{label}</div>
-            <div className="mt-1 flex items-baseline justify-between gap-1">
+            <div className="mt-1 flex items-baseline justify-start gap-1">
                 <span className="text-xl font-bold tabular-nums">{value ?? 0}</span>
                 {pct !== null && (
                     <span
-                        className={`text-xs font-semibold tabular-nums ${
-                            pct > 0 ? "text-red-500" : pct < 0 ? "text-green-500" : "text-muted-foreground"
-                        }`}
+                        className={`ml-0.5 text-xs font-semibold tabular-nums ${pct > 0 ? "text-red-500" : pct < 0 ? "text-green-500" : "text-muted-foreground"
+                            }`}
                     >
                         {pct > 0 ? `↑${pct}%` : pct < 0 ? `↓${Math.abs(pct)}%` : "0%"}
                     </span>
@@ -132,16 +130,46 @@ function StatChip({ label, value, yesterday }: { label: string; value: number; y
 /** 杂项：统计概览（基础统计 + 访客分析排行 + 热门页面 + 趋势） */
 export function StatisticsSummary() {
     const [data, setData] = useState<StatisticsSummary | null>(null);
+    // 三张趋势图单独拉取（summary 只返回 daily，weekly/monthly 需 GET /statistics/trend）
+    const [trend, setTrend] = useState<{
+        daily: DateRangeStats[] | null;
+        weekly: DateRangeStats[] | null;
+        monthly: DateRangeStats[] | null;
+    }>({ daily: null, weekly: null, monthly: null });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         let cancelled = false;
+
+        // 拉单个 period 的趋势（period=daily/weekly/monthly&days=30；返回 VisitorTrendData{daily,weekly,monthly}）
+        const fetchTrend = async (period: "daily" | "weekly" | "monthly") => {
+            try {
+                const res = await fetch(`/api/admin/statistics/trend?period=${period}&days=30`);
+                const json = (await res.json()) as {
+                    code: number;
+                    data: { daily?: DateRangeStats[] | null; weekly?: DateRangeStats[] | null; monthly?: DateRangeStats[] | null } | null;
+                };
+                if (!res.ok || json.code !== 200) return null;
+                return json.data?.[period] ?? null;
+            } catch {
+                return null;
+            }
+        };
+
         (async () => {
             try {
                 const res = await fetch("/api/admin/statistics/summary");
                 const json = (await res.json()) as { code: number; message: string; data: StatisticsSummary };
                 if (!res.ok || json.code !== 200) throw new Error(json.message || "获取统计概览失败");
                 if (!cancelled) setData(json.data);
+
+                // 三个 period 并行拉取
+                const [daily, weekly, monthly] = await Promise.all([
+                    fetchTrend("daily"),
+                    fetchTrend("weekly"),
+                    fetchTrend("monthly"),
+                ]);
+                if (!cancelled) setTrend({ daily, weekly, monthly });
             } catch (e) {
                 toast.error(e instanceof Error ? e.message : "获取统计概览失败");
             } finally {
@@ -170,22 +198,23 @@ export function StatisticsSummary() {
         top_referers: null,
     };
     const topPages: URLStatistics[] = data.top_pages ?? [];
-    const trend = data.trend_data;
 
-    const rankSections: { title: string; items: RankItem[] }[] = [
-        { title: "浏览器 TOP", items: toRank(analytics.top_browsers, "browser") },
-        { title: "设备 TOP", items: toRank(analytics.top_devices, "device") },
-        { title: "操作系统 TOP", items: toRank(analytics.top_os, "os") },
-        { title: "国家/地区 TOP", items: toRank(analytics.top_countries, "country") },
-        { title: "城市 TOP", items: toRank(analytics.top_cities, "city") },
-        { title: "来源 Referer TOP", items: toRank(analytics.top_referers, "referer") },
-        {
-            title: "热门页面 TOP",
-            items: topPages
-                .map((p) => ({ name: p.page_title || p.url_path || "未知页面", sub: p.url_path, count: p.total_views }))
-                .sort((a, b) => b.count - a.count),
-        },
+    // 访客画像：浏览器 / 设备 / 操作系统（同一行对比）
+    const deviceSections: { title: string; items: RankItem[] }[] = [
+        { title: "浏览器", items: toRank(analytics.top_browsers, "browser") },
+        { title: "设备", items: toRank(analytics.top_devices, "device") },
+        { title: "操作系统", items: toRank(analytics.top_os, "os") },
     ];
+    // 访客画像：国家 / 城市 与 来源（同一行，供横向对比）
+    const geoSections: { title: string; items: RankItem[] }[] = [
+        { title: "国家/地区", items: toRank(analytics.top_countries, "country") },
+        { title: "城市", items: toRank(analytics.top_cities, "city") },
+        { title: "来源 Referer", items: toRank(analytics.top_referers, "referer") },
+    ];
+    // 热门页面：独立卡片
+    const hotPages: RankItem[] = topPages
+        .map((p) => ({ name: p.page_title || p.url_path || "未知页面", sub: p.url_path, count: p.total_views }))
+        .sort((a, b) => b.count - a.count);
 
     return (
         <div className="space-y-4">
@@ -206,12 +235,32 @@ export function StatisticsSummary() {
                 <TrendCard data={trend?.monthly} mode="monthly" />
             </div>
 
-            {/* 排行 */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {rankSections.map((section) => (
-                    <RankList key={section.title} title={section.title} items={section.items} />
-                ))}
+            {/* 访客画像：浏览器 / 设备 / 操作系统 三组对比 */}
+            <div className="rounded-xl border bg-card p-4">
+                <h3 className="mb-3 text-sm font-semibold">访客画像 · 终端</h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {deviceSections.map((section, i) => (
+                        <div key={section.title} className={i > 0 ? "lg:border-l lg:pl-4" : ""}>
+                            <RankList bare title={section.title} items={section.items} />
+                        </div>
+                    ))}
+                </div>
             </div>
+
+            {/* 访客画像：国家 / 城市 / 来源（来源与访客分析放一起） */}
+            <div className="rounded-xl border bg-card p-4">
+                <h3 className="mb-3 text-sm font-semibold">访客画像 · 地域与来源</h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {geoSections.map((section, i) => (
+                        <div key={section.title} className={i > 0 ? "lg:border-l lg:pl-4" : ""}>
+                            <RankList bare title={section.title} items={section.items} />
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* 热门页面 */}
+            <RankList title="热门页面 TOP" items={hotPages} />
         </div>
     );
 }
