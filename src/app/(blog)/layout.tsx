@@ -58,11 +58,13 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
   // 已登录时获取用户信息（头像等），传给 Header 显示圆形头像。
   // token 过期/无效（401）：标记 authExpired，由客户端组件静默登出并提示
   let userAvatar: string | null = null;
+  let userName: string | null = null;
   let authExpired = false;
   if (token) {
     try {
       const userInfo = await getUserInfoApi(token);
       userAvatar = userInfo.avatar || null;
+      userName = userInfo.nickname || userInfo.username || null;
     } catch (error) {
       // 注：不依赖 instanceof ApiError（RSC/浏览器边界类引用可能缺失），直接读 status
       const status = (error as { status?: number } | null)?.status ?? 0;
@@ -142,6 +144,7 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
               isLoggedIn={isLoggedIn}
               userpanel={config?.userpanel}
               userAvatar={userAvatar}
+              userName={userName}
               mobileTags={mobileTags}
               siteinfo={siteinfo}
               siteCreatedAt={siteCreatedAt}

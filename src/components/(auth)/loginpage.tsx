@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 
 import {
@@ -105,6 +106,13 @@ export function LoginPage({ registered = false }: { registered?: boolean }) {
                 <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "登录中…" : "登 录"}
                 </Button>
+
+                <p className="mt-0 text-center text-sm text-muted-foreground">
+                    没有账号，{" "}
+                    <Link href="/register" className="text-foreground underline underline-offset-4 hover:text-primary">
+                        前去注册！
+                    </Link>
+                </p>
             </FieldSet>
         </form>
     )

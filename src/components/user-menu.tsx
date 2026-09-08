@@ -26,8 +26,10 @@ interface UserMenuProps {
     scrolled?: boolean;
     /** 用户面板开关（来自 site-config userpanel，登录态菜单项按开关显示） */
     userpanel?: UserPanelConfig;
-    /** 已登录用户的头像 URL（服务端传入；空则回退为默认图标） */
+    /** 已登录用户的头像 URL（服务端传入；登录态下改显示昵称首字） */
     userAvatar?: string | null;
+    /** 已登录用户的昵称（服务端传入；登录态下触发器显示首字） */
+    userName?: string | null;
     /** 页面大图悬浮模式：true 时触发器透明（白字悬浮大图上，不显示白胶囊） */
     overlay?: boolean;
 }
@@ -42,7 +44,7 @@ interface MenuItem {
 }
 
 /** 导航栏最右侧的用户菜单 */
-export function UserMenu({ isLoggedIn, scrolled = false, userpanel, userAvatar, overlay = false }: UserMenuProps) {
+export function UserMenu({ isLoggedIn, scrolled = false, userpanel, userName, overlay = false }: UserMenuProps) {
     /** 登出：清 cookie 后原地刷新，不跳转登录页 */
     async function handleLogout() {
         try {
@@ -106,21 +108,16 @@ export function UserMenu({ isLoggedIn, scrolled = false, userpanel, userAvatar, 
                         : "scale-100 bg-card shadow-md hover:shadow-xl"
                     }`}
             >
-                {isLoggedIn && userAvatar ? (
-                    /* 已登录且有头像：圆形头像（rounded-full），外圈胶囊样式保留 */
+                {isLoggedIn ? (
+                    /* 已登录：小号圆形徽标显示昵称首字（不放大头像） */
                     <button
-                        className="inline-flex size-11 items-center justify-center overflow-hidden rounded-full p-0.5"
+                        className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-500 text-sm font-medium text-white transition-colors hover:bg-slate-600"
                         aria-label="用户菜单"
                     >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                            src={userAvatar}
-                            alt="用户头像"
-                            className="size-full rounded-full object-cover"
-                        />
+                        {(userName || "用").charAt(0)}
                     </button>
                 ) : (
-                    /* 未登录或无头像：默认用户图标（44px 与搜索/汉堡按钮对齐） */
+                    /* 未登录：默认用户图标（44px 与搜索/汉堡按钮对齐） */
                     <button
                         className="inline-flex size-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                         aria-label="用户菜单"
