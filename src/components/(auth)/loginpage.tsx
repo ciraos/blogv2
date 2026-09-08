@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 
 import {
     Field,
@@ -18,6 +19,7 @@ export function LoginPage({ registered = false }: { registered?: boolean }) {
     const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -75,14 +77,26 @@ export function LoginPage({ registered = false }: { registered?: boolean }) {
                     </Field>
                     <Field>
                         <FieldLabel htmlFor="password">密码</FieldLabel>
-                        <Input
-                            id="password"
-                            type="password"
-                            autoComplete="current-password"
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={(event) => setPassword(event.target.value)}
-                        />
+                        <div className="relative">
+                            <Input
+                                id="password"
+                                type={showPassword ? "text" : "password"}
+                                autoComplete="current-password"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(event) => setPassword(event.target.value)}
+                                className="pr-9"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword((v) => !v)}
+                                aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                                title={showPassword ? "隐藏密码" : "显示密码"}
+                                className="absolute right-1.5 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                            </button>
+                        </div>
                     </Field>
                 </FieldGroup>
 
