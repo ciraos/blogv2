@@ -1,0 +1,35 @@
+# =============================================================================
+# blog-app 前台单容器编排
+#
+# 只运行前端容器；内容/数据来自现有的线上 pro 后端（anheyu/pro）。
+# NEXT_PUBLIC_SITE_URL / NEXT_PUBLIC_API_URL 已直接写死在下方 build.args，
+# 不从 .env 读取；要换后端时直接改这两行即可。
+#
+# 使用：
+#   docker compose up -d --build
+#
+# 注意：NEXT_PUBLIC_* 是浏览器端内联变量，改动后需重新构建（--build）。
+# 运行端口 3126 可按需映射（如改成 3000:3126）。
+# =============================================================================
+
+name: blog-app-frontend
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # 构建期内联的浏览器端变量（写死在 yml，不从 .env 读取）
+        NEXT_PUBLIC_SITE_URL: https://blog.example.com
+        NEXT_PUBLIC_API_URL: https://blog.example.com/api
+    image: blog-app:latest
+    container_name: blog-app-frontend
+    restart: unless-stopped
+    ports:
+      - "3126:3126"
+    environment:
+      # 运行时只需这些；NEXT_PUBLIC_* 已在构建期内联
+      PORT: 3126
+      HOSTNAME: 0.0.0.0
+      NODE_ENV: production

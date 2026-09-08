@@ -1,0 +1,26 @@
+# 依赖
+node_modules
+
+# Next 构建产物
+.next
+out
+tsconfig.tsbuildinfo
+
+# git
+.git
+.github
+
+# 环境 / 密钥（构建变量改用 --build-arg 注入）
+.env
+.env.*
+*.pem
+
+# 本地脚本与探测工具（不入镜像）
+scripts
+
+# 文档与编辑器
+README.md
+.vscode
+
+# 日志
+*.log
