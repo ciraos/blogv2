@@ -5,10 +5,11 @@
 // 由服务端转发到远端。服务端组件（Server Components）可直接调用远端接口。
 import type { ArchiveSummary, ArticleDetail, PostItem, PostListData } from "@/types/articles";
 import type { LoginData, LoginUserInfo } from "@/types/auth";
-import type { FriendLink, LinkCategory, LinkListData, LinkListParams, LinkTag } from "@/types/links";
+import type { AdminCreateLinkRequest, AdminUpdateLinkRequest, FriendLink, LinkCategory, LinkListData, LinkListParams, LinkTag } from "@/types/links";
 import type { AdminEssayListParams, Essay, EssayListData } from "@/types/essays";
 import type { MomentsListData, MomentsListParams, RandomMomentPost } from "@/types/moments";
 import type { SiteConfig } from "@/types/site-config";
+import type { AdminCreateUserRequest } from "@/types/users";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -332,6 +333,56 @@ export async function getAdminLinkCategoriesApi(): Promise<LinkCategory[]> {
 /** GET /api/admin/links/tags 管理员获取友链标签列表（含 id，供筛选下拉用） */
 export async function getAdminLinkTagsApi(): Promise<LinkTag[]> {
     return request<LinkTag[]>("/api/admin/links/tags", { method: "GET" });
+}
+
+/** POST /api/admin/links 管理员创建友链（同源代理，需登录） */
+export async function createAdminLinkApi(payload: AdminCreateLinkRequest): Promise<unknown> {
+    return request<unknown>("/api/admin/links", {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+}
+
+/** PUT /api/admin/links/{id} 管理员更新友链（同源代理，需登录） */
+export async function updateAdminLinkApi(id: number | string, payload: AdminUpdateLinkRequest): Promise<unknown> {
+    return request<unknown>(`/api/admin/links/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+    });
+}
+
+/** 友链健康检查状态（后端 POST /links/health-check 触发后，GET 其/status 返回的进度/结果） */
+export interface LinkHealthCheckStatus {
+    /** 是否仍在执行中（各字段按后端实际枚举/命名兜底读取） */
+    running?: boolean;
+    status?: string;
+    finished?: boolean;
+    /** 检查总数 / 结果计数（各字段可能为 total/count、ok/success、fail/failed/error） */
+    total?: number;
+    count?: number;
+    ok?: number;
+    success?: number;
+    failed?: number;
+    fail?: number;
+    error?: number;
+}
+
+/** POST /api/admin/links/health-check 触发后台执行友链健康检查（同源代理，需登录） */
+export async function triggerLinkHealthCheckApi(): Promise<unknown> {
+    return request<unknown>("/api/admin/links/health-check", { method: "POST" });
+}
+
+/** GET /api/admin/links/health-check/status 获取健康检查状态（同源代理，需登录） */
+export async function getLinkHealthCheckStatusApi(): Promise<LinkHealthCheckStatus> {
+    return request<LinkHealthCheckStatus>("/api/admin/links/health-check/status", { method: "GET" });
+}
+
+/** POST /api/admin/users 管理员创建用户（同源代理，需登录；浏览器自动携带登录 cookie） */
+export async function createAdminUserApi(payload: AdminCreateUserRequest): Promise<unknown> {
+    return request<unknown>("/api/admin/users", {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
 }
 
 /** 友链申请提交数据（POST /public/links） */

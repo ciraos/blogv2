@@ -7,11 +7,11 @@ import {
 import {
     FolderDownIcon,
     FolderOutputIcon,
-    HeartPulse,
-    PlusIcon,
     TagIcon
 } from "lucide-react";
 import { FriendsManager } from "@/components/admin/friends-manager";
+import { LinkCreateButton } from "@/components/admin/link-create-button";
+import { LinkHealthCheckButton } from "@/components/admin/link-health-check-button";
 import { CategorySortDialog } from "@/components/admin/category-sort-dialog";
 
 export function generateMetadata(): Promise<Metadata> {
@@ -27,10 +27,7 @@ export default function AdminFriends() {
                     <p className="text-slate-400 text-xs">管理友情链接，支持分类、标签和健康检查</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    <Button>
-                        <PlusIcon size={4} />
-                        新建友链
-                    </Button>
+                    <LinkCreateButton />
                     <Button>
                         <TagIcon size={4} />
                         分类标签
@@ -45,10 +42,7 @@ export default function AdminFriends() {
                         <FolderOutputIcon size={4} />
                         导出
                     </Button>
-                    <Button>
-                        <HeartPulse size={4} />
-                        健康检查
-                    </Button>
+                    <LinkHealthCheckButton />
                 </div>
             </div>
 

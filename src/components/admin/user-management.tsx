@@ -22,10 +22,14 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { createAdminUserApi } from "@/lib/api";
 import { resolveAssetUrl } from "@/lib/utils";
 import type { AdminUser, AdminUserListData, UserGroup } from "@/types/users";
 
 const PAGE_SIZE = 10;
+
+/** 新增/编辑表单初始值（新增弹窗打开时重置，避免残留上一人选中的用户数据；默认状态为「正常」） */
+const EMPTY_FORM = { username: "", email: "", nickname: "", password: "", userGroupID: "", status: "1" };
 
 interface Query {
     page: number;
@@ -43,6 +47,9 @@ const STATUS_OPTIONS = [
     { value: "2", label: "未激活" },
     { value: "3", label: "已封禁" },
 ];
+
+/** 表单里设置用户状态用的选项（去掉「全部状态」） */
+const FORM_STATUS_OPTIONS = STATUS_OPTIONS.filter((o) => o.value !== "");
 
 function formatTime(iso?: string): string {
     if (!iso) return "—";
@@ -125,7 +132,7 @@ export function UserManagement() {
     const [confirm, setConfirm] = useState<{ type: "ban" | "unban" | "delete"; user: AdminUser } | null>(null);
 
     // 新增/编辑/重置密码表单
-    const [form, setForm] = useState({ username: "", email: "", nickname: "", password: "", userGroupID: "" });
+    const [form, setForm] = useState(EMPTY_FORM);
     const [newPassword, setNewPassword] = useState("");
 
     /** 按条件加载用户列表（loading 由调用方控制） */
@@ -199,15 +206,21 @@ export function UserManagement() {
             toast.error("请填写用户名、邮箱、密码和用户组");
             return;
         }
-        const ok = await mutate(
-            "/api/admin/users",
-            { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) },
-            "创建成功"
-        );
-        if (ok) {
+        try {
+            await createAdminUserApi({
+                username: form.username,
+                email: form.email,
+                password: form.password,
+                nickname: form.nickname,
+                userGroupID: form.userGroupID,
+                status: Number(form.status) || 1,
+            });
+            toast.success("创建成功");
             setCreateOpen(false);
-            setForm({ username: "", email: "", nickname: "", password: "", userGroupID: "" });
+            setForm(EMPTY_FORM);
             refresh();
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "创建失败");
         }
     };
 
@@ -218,6 +231,7 @@ export function UserManagement() {
             email: form.email,
             nickname: form.nickname,
             userGroupID: form.userGroupID,
+            status: Number(form.status) || undefined,
         };
         const ok = await mutate(
             `/api/admin/users/${editUser.id}`,
@@ -278,6 +292,7 @@ export function UserManagement() {
             nickname: user.nickname || "",
             password: "",
             userGroupID: user.userGroupID || "",
+            status: String(user.status ?? 1),
         });
     };
 
@@ -334,7 +349,7 @@ export function UserManagement() {
                 </Select>
 
                 <div className="ml-auto flex items-center gap-2">
-                    <Button onClick={() => setCreateOpen(true)}>
+                    <Button onClick={() => { setForm(EMPTY_FORM); setCreateOpen(true); }}>
                         <Plus className="size-4" />
                         新增用户
                     </Button>
@@ -525,6 +540,20 @@ export function UserManagement() {
                             </SelectContent>
                         </Select>
                     </Field>
+                    <Field label="状态">
+                        <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="选择状态" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {FORM_STATUS_OPTIONS.map((opt) => (
+                                    <SelectItem key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </Field>
                     <div className="flex justify-end gap-2 pt-2">
                         <Button variant="outline" onClick={() => setCreateOpen(false)}>
                             取消
@@ -555,6 +584,20 @@ export function UserManagement() {
                                 {groups.map((g) => (
                                     <SelectItem key={g.id} value={g.id}>
                                         {g.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </Field>
+                    <Field label="状态">
+                        <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="选择状态" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {FORM_STATUS_OPTIONS.map((opt) => (
+                                    <SelectItem key={opt.value} value={opt.value}>
+                                        {opt.label}
                                     </SelectItem>
                                 ))}
                             </SelectContent>

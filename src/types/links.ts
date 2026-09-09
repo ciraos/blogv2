@@ -57,3 +57,33 @@ export interface LinkListParams {
 }
 
 export type LinkListResponse = ApiResponse<LinkListData>;
+
+/** 创建友链请求体（POST /links，管理员） */
+export interface AdminCreateLinkRequest {
+    name: string;
+    url: string;
+    logo?: string;
+    description?: string;
+    /** 后端枚举：PENDING / APPROVED / REJECTED / INVALID */
+    status?: string;
+    email?: string;
+    sort_order?: number;
+    skip_health_check?: boolean;
+    category_id?: number;
+    tag_id?: number;
+}
+
+/** 更新友链请求体（PUT /links/{id}，管理员） */
+export interface AdminUpdateLinkRequest {
+    name?: string;
+    url?: string;
+    logo?: string;
+    description?: string;
+    /** 后端枚举：PENDING / APPROVED / REJECTED / INVALID */
+    status?: string;
+    email?: string;
+    sort_order?: number;
+    skip_health_check?: boolean;
+    category_id?: number;
+    tag_id?: number;
+}

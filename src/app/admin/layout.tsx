@@ -70,7 +70,6 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
     return (
         <html data-theme="light" lang="zh-CN" suppressHydrationWarning>
             <body>
-
                 <ThemeProvider
                     attribute="class"
                     defaultTheme="light"
@@ -91,9 +90,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
                             </main>
                         </SidebarProvider>
                     </TooltipProvider>
-
                 </ThemeProvider>
-
             </body>
         </html>
     );

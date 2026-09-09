@@ -51,6 +51,8 @@ export interface AdminCreateUserRequest {
     userGroupID: string;
     username: string;
     nickname?: string;
+    /** 1=正常 2=未激活 3=已封禁（创建时可选设置） */
+    status?: number;
 }
 
 /** 更新用户请求体 */
