@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CalendarDays, FileText, MessageSquare, Tag as TagIcon } from "lucide-react";
+import { ArrowRight, CalendarDays, FileText, MegaphoneIcon, MessageSquare, Tag as TagIcon } from "lucide-react";
 import { PostToc } from "@/components/(blog)/post-toc";
 import { AuthorGreeting } from "@/components/(blog)/author-greeting";
 import { Icon } from "@/components/ui/icon";
@@ -326,10 +326,20 @@ export async function BlogSidebar({ config }: { config?: SiteConfig }) {
 
     return (
         <aside id="blog-sidebar" className="hidden w-75 shrink-0 self-stretch lg:block">
-            {/* self-stretch：aside 撑满正文高度 → sticky 的包含块足够长，长文章 TOC 全程固定；
-                不限高：侧边栏内容完整展示，不内部滚动 */}
-            <div className="sticky top-20 space-y-4">
+            {/* self-stretch：aside 撑满正文高度 → sticky 的包含块足够长，长文章 TOC 全程固定；不限高：侧边栏内容完整展示，不内部滚动 */}
+            <div className="top-20 space-y-4">
                 {author?.enable !== false && config && <AuthorCard config={config} />}
+                <div className="h-max space-y-4 p-5 bg-card rounded-xl border shadow-sm">
+                    <h3 className="flex items-center gap-2 text-sm font-semibold">
+                        <MegaphoneIcon className="size-4 text-primary" />
+                        公告
+                    </h3>
+                    <div className="mt-3 text-sm">
+                        欢迎来到
+                        <span className="font-semibold text-blue-400">&nbsp;{config?.APP_NAME || "站长"}&nbsp;</span>
+                        的博客啊！
+                    </div>
+                </div>
                 <PostToc />
                 <TagsCard />
                 <ArchivesCard displayMonths={config?.sidebar?.archive?.displayMonths || 6} />

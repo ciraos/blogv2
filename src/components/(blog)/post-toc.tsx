@@ -128,19 +128,16 @@ export function PostToc() {
                                 type="button"
                                 data-toc-id={item.id}
                                 onClick={() => scrollToHeading(item.id)}
-                                className={`relative block w-full truncate rounded-md py-1.5 pr-2 text-left transition-colors ${
-                                    item.level === 2 ? "pl-3 text-[13px] font-medium" : "pl-8 text-xs"
-                                } ${
-                                    activeId === item.id
+                                className={`relative block w-full truncate rounded-md py-1.5 pr-2 text-left transition-colors ${item.level === 2 ? "pl-3 text-[13px] font-medium" : "pl-8 text-xs"
+                                    } ${activeId === item.id
                                         ? "bg-linear-to-r from-primary/10 to-transparent text-primary"
                                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                }`}
+                                    }`}
                             >
                                 {/* 当前项左侧指示条 */}
                                 <span
-                                    className={`absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary transition-all duration-200 ${
-                                        activeId === item.id ? "opacity-100" : "opacity-0"
-                                    }`}
+                                    className={`absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary transition-all duration-200 ${activeId === item.id ? "opacity-100" : "opacity-0"
+                                        }`}
                                 />
                                 {item.text}
                             </button>

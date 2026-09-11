@@ -100,6 +100,24 @@ export interface ArticleDetail extends PostItem {
 export type PostListResponse = ApiResponse<PostListData>;
 export type ArticleDetailResponse = ApiResponse<ArticleDetail>;
 
+// ===================== 管理员 =====================
+
+/** 管理员文章列表请求参数（GET /articles，分页） */
+export interface AdminArticleListParams {
+    page?: number;
+    pageSize?: number;
+    /** 标题关键字搜索（后端字段名待确认，非必需时可省略） */
+    keyword?: string;
+    /** 文章状态：PUBLISHED / DRAFT / ARCHIVED；「定时发布」后端值待确认（暂用 SCHEDULED） */
+    status?: string;
+    /** 审核状态：PENDING / APPROVED / REJECTED（字段名/枚举待确认） */
+    review_status?: string;
+    /** 分类 ID 筛选 */
+    category_id?: number | string;
+    /** 标签 ID 筛选 */
+    tag_id?: number | string;
+}
+
 // ===================== 归档 =====================
 
 // 归档条目（按年月分组统计）

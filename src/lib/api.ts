@@ -3,7 +3,7 @@
 // 注意：后端不开放 CORS，浏览器不能直连远端 API。
 // 所有需要从客户端发起的请求（如登录）都必须走本应用同源的 /api/* 路由，
 // 由服务端转发到远端。服务端组件（Server Components）可直接调用远端接口。
-import type { ArchiveSummary, ArticleDetail, PostItem, PostListData } from "@/types/articles";
+import type { AdminArticleListParams, ArchiveSummary, ArticleDetail, PostCategory, PostItem, PostListData, PostTag } from "@/types/articles";
 import type { LoginData, LoginUserInfo } from "@/types/auth";
 import type { AdminCreateLinkRequest, AdminUpdateLinkRequest, FriendLink, LinkCategory, LinkListData, LinkListParams, LinkTag } from "@/types/links";
 import type { AdminEssayListParams, Essay, EssayListData } from "@/types/essays";
@@ -333,6 +333,28 @@ export async function getAdminLinkCategoriesApi(): Promise<LinkCategory[]> {
 /** GET /api/admin/links/tags 管理员获取友链标签列表（含 id，供筛选下拉用） */
 export async function getAdminLinkTagsApi(): Promise<LinkTag[]> {
     return request<LinkTag[]>("/api/admin/links/tags", { method: "GET" });
+}
+
+/** GET /api/admin/articles 管理员获取文章列表（分页，浏览器自动携带登录 cookie） */
+export async function getAdminArticlesApi(params: AdminArticleListParams = {}): Promise<PostListData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null && value !== "") {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<PostListData>(`/api/admin/articles${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
+/** GET /api/admin/article-categories 管理员获取文章分类列表（含 id，供筛选下拉） */
+export async function getAdminArticleCategoriesApi(): Promise<PostCategory[]> {
+    return request<PostCategory[]>("/api/admin/article-categories", { method: "GET" });
+}
+
+/** GET /api/admin/article-tags 管理员获取文章标签列表（含 id，供筛选下拉） */
+export async function getAdminArticleTagsApi(): Promise<PostTag[]> {
+    return request<PostTag[]>("/api/admin/article-tags", { method: "GET" });
 }
 
 /** POST /api/admin/links 管理员创建友链（同源代理，需登录） */

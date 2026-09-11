@@ -137,9 +137,44 @@ export default async function Post({ params }: PostPageProps) {
     return (
         /* 单栏文章正文；右侧目录（TOC）由全局侧边栏顶部的「文章目录」卡片接管 */
         <article className="min-w-0">
+            {cover ? (
+                /* 封面大图：文章信息叠加在图上，底部渐变遮罩保证文字清晰 */
+                <header className="relative overflow-hidden rounded-xl border">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={cover} alt={article.title} className="absolute inset-0 h-full w-full object-cover" />
+                    {/* 渐变遮罩：底部最暗 → 顶部渐明，确保标题/元信息在浅色图上也可读 */}
+                    <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-black/20" />
+                    <div className="relative flex min-h-60 flex-col justify-end p-5 md:min-h-76 md:p-8">
+                        <h1 className="text-2xl font-bold leading-snug tracking-tight text-white drop-shadow-sm md:text-3xl">
+                            {article.title}
+                        </h1>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/80">
+                            <span>发布于 {formatDate(article.created_at)}</span>
+                            {article.ip_location && <span>· {article.ip_location}</span>}
+                            <span>· 阅读 {article.view_count}</span>
+                            {article.reading_time > 0 && <span>· {article.reading_time} 分钟</span>}
+                            {article.word_count > 0 && <span>· {article.word_count} 字</span>}
+                        </div>
+                        {(article.post_tags.length > 0 || article.post_categories.length > 0) && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                {article.post_categories.map((c) => (
+                                    <span key={c.id} className="rounded-md bg-black/40 px-2 py-0.5 text-xs text-white backdrop-blur-sm">
+                                        {c.name}
+                                    </span>
+                                ))}
+                                {article.post_tags.map((t) => (
+                                    <span key={t.id} className="rounded-md bg-black/30 px-2 py-0.5 text-xs text-white/90 backdrop-blur-sm">
+                                        #{t.name}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </header>
+            ) : (
+                /* 无封面图：回退为普通文章头部 */
                 <header className="space-y-3 border-b pb-6">
                     <h1 className="text-2xl font-bold leading-snug tracking-tight md:text-3xl">{article.title}</h1>
-
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                         <span>发布于 {formatDate(article.created_at)}</span>
                         {article.ip_location && <span>· {article.ip_location}</span>}
@@ -147,7 +182,6 @@ export default async function Post({ params }: PostPageProps) {
                         {article.reading_time > 0 && <span>· {article.reading_time} 分钟</span>}
                         {article.word_count > 0 && <span>· {article.word_count} 字</span>}
                     </div>
-
                     {(article.post_tags.length > 0 || article.post_categories.length > 0) && (
                         <div className="flex flex-wrap gap-2 pt-1">
                             {article.post_categories.map((c) => (
@@ -163,61 +197,55 @@ export default async function Post({ params }: PostPageProps) {
                         </div>
                     )}
                 </header>
+            )}
 
-                {cover && (
-                    <div className="mt-6 h-52 overflow-hidden rounded-xl border md:h-72">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={cover} alt={article.title} className="h-full w-full object-cover" />
-                    </div>
-                )}
+            {/* 后端渲染好的正文 HTML，客户端组件负责代码块高亮 + 复制按钮；正文白底卡片，深浅色随主题切换 */}
+            <div className="mt-6 rounded-xl border border-border/60 bg-card p-5 shadow-sm md:p-8">
+                <ArticleBody html={article.content_html || ""} codeBlock={codeBlock} />
+            </div>
 
-                {/* 后端渲染好的正文 HTML，客户端组件负责代码块高亮 + 复制按钮；正文白底卡片，深浅色随主题切换 */}
-                <div className="mt-6 rounded-xl border border-border/60 bg-card p-5 shadow-sm md:p-8">
-                    <ArticleBody html={article.content_html || ""} codeBlock={codeBlock} />
-                </div>
+            {/* 文章末尾：版权信息 + 打赏 / 订阅 / 分享（配置由服务端从 site-config 获取） */}
+            {actionsConfig && (
+                <PostActions {...actionsConfig} title={article.title} url={`/posts/${article.id}`} />
+            )}
 
-                {/* 文章末尾：版权信息 + 打赏 / 订阅 / 分享（配置由服务端从 site-config 获取） */}
-                {actionsConfig && (
-                    <PostActions {...actionsConfig} title={article.title} url={`/posts/${article.id}`} />
-                )}
+            {/* 上一篇 / 下一篇（放在评论区上方） */}
+            {(prev || next) && (
+                <nav className="mt-10 grid grid-cols-1 gap-3 border-none pt-6 sm:grid-cols-2">
+                    {prev ? (
+                        <Link href={`/posts/${prev.id}`} className="group rounded-lg border p-3 transition-colors hover:border-primary">
+                            <div className="text-xs text-muted-foreground">← 上一篇</div>
+                            <div className="mt-1 line-clamp-1 text-sm font-medium group-hover:text-primary">{prev.title}</div>
+                        </Link>
+                    ) : (
+                        <span />
+                    )}
+                    {next && (
+                        <Link href={`/posts/${next.id}`} className="group rounded-lg border p-3 text-right transition-colors hover:border-primary">
+                            <div className="text-xs text-muted-foreground">下一篇 →</div>
+                            <div className="mt-1 line-clamp-1 text-sm font-medium group-hover:text-primary">{next.title}</div>
+                        </Link>
+                    )}
+                </nav>
+            )}
 
-                {/* 上一篇 / 下一篇（放在评论区上方） */}
-                {(prev || next) && (
-                    <nav className="mt-10 grid grid-cols-1 gap-3 border-none pt-6 sm:grid-cols-2">
-                        {prev ? (
-                            <Link href={`/posts/${prev.id}`} className="group rounded-lg border p-3 transition-colors hover:border-primary">
-                                <div className="text-xs text-muted-foreground">← 上一篇</div>
-                                <div className="mt-1 line-clamp-1 text-sm font-medium group-hover:text-primary">{prev.title}</div>
-                            </Link>
-                        ) : (
-                            <span />
-                        )}
-                        {next && (
-                            <Link href={`/posts/${next.id}`} className="group rounded-lg border p-3 text-right transition-colors hover:border-primary">
-                                <div className="text-xs text-muted-foreground">下一篇 →</div>
-                                <div className="mt-1 line-clamp-1 text-sm font-medium group-hover:text-primary">{next.title}</div>
-                            </Link>
-                        )}
-                    </nav>
-                )}
+            {/* 评论区（评论列表由服务端按 target_path 获取） */}
+            <PostComments targetPath={targetPath} comments={comments} />
 
-                {/* 评论区（评论列表由服务端按 target_path 获取） */}
-                <PostComments targetPath={targetPath} comments={comments} />
-
-                {article.related_articles.length > 0 && (
-                    <section className="mt-10 border-t pt-6">
-                        <h2 className="text-lg font-semibold">相关文章</h2>
-                        <ul className="mt-3 space-y-2">
-                            {article.related_articles.map((related) => (
-                                <li key={related.id}>
-                                    <Link href={`/posts/${related.id}`} className="text-sm text-primary hover:underline">
-                                        {related.title}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-                )}
+            {article.related_articles.length > 0 && (
+                <section className="mt-10 border-t pt-6">
+                    <h2 className="text-lg font-semibold">相关文章</h2>
+                    <ul className="mt-3 space-y-2">
+                        {article.related_articles.map((related) => (
+                            <li key={related.id}>
+                                <Link href={`/posts/${related.id}`} className="text-sm text-primary hover:underline">
+                                    {related.title}
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
         </article>
     );
 }

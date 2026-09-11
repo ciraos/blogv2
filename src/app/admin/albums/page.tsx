@@ -7,6 +7,11 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function Albums() {
     return (
-        <></>
+        <div className="space-y-4">
+            <div>
+                <h2 className="text-2xl font-bold tracking-tight">相册管理</h2>
+                <p className="text-slate-400 text-xs"></p>
+            </div>
+        </div>
     )
 }
