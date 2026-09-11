@@ -102,16 +102,18 @@ export function UserMenu({ isLoggedIn, scrolled = false, userpanel, userName, ov
             <DropdownMenuTrigger
                 asChild
                 className={`transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] will-change-transform ${overlay
-                    ? "scale-100 bg-transparent shadow-none [text-shadow:0_1px_3px_rgba(0,0,0,0.45)] [&_button]:text-white"
+                    ? "scale-100 bg-transparent shadow-none [text-shadow:0_1px_3px_rgba(0,0,0,0.45)] [&_button]:bg-black/40 [&_button]:text-white"
                     : scrolled
                         ? "scale-[0.94] bg-card/60 shadow-sm backdrop-blur-md"
                         : "scale-100 bg-card shadow-md hover:shadow-xl"
                     }`}
             >
                 {isLoggedIn ? (
-                    /* 已登录：小号圆形徽标显示昵称首字（不放大头像） */
+                    /* 已登录：小号圆形徽标显示昵称首字（不放大头像）；overlay（首页顶部）下用深底白字保证可读 */
                     <button
-                        className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-500 text-sm font-medium text-white transition-colors hover:bg-slate-600"
+                        className={`inline-flex size-11 shrink-0 items-center justify-center rounded-full text-base font-medium transition-colors ${
+                            overlay ? "bg-black/40 text-white" : "text-foreground"
+                        }`}
                         aria-label="用户菜单"
                     >
                         {(userName || "用").charAt(0)}

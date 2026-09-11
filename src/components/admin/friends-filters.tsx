@@ -51,7 +51,7 @@ export function FriendsFilters({
         <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                 {/* 搜索框：网站名称 / 网址（可收缩，窄屏换行） */}
-                <div className="relative min-w-40 flex-1">
+                <div className="relative w-64 shrink-0">
                     <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                         value={value.keyword}
