@@ -68,7 +68,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
     };
 
     return (
-        <html data-theme="light" lang="zh-CN" suppressHydrationWarning>
+        <html lang="zh-CN" suppressHydrationWarning>
             <body>
                 <ThemeProvider
                     attribute="class"

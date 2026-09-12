@@ -3,11 +3,7 @@ import { ThemeProvider } from "@/components/ui/theme-provider";
 
 export default function AlbumLayout({ children }: Readonly<{ children: React.ReactNode }>) {
     return (
-        <html
-            data-theme="light"
-            lang="zh-CN"
-            suppressHydrationWarning
-        >
+        <html lang="zh-CN" suppressHydrationWarning>
             <body>
                 <ThemeProvider
                     attribute="class"

@@ -35,7 +35,7 @@ export async function getSiteConfigs() {
 
 export default async function AuthLayout({ children }: Readonly<{ children: React.ReactNode; }>) {
     return (
-        <html data-theme="light" lang="zh-CN" suppressHydrationWarning>
+        <html lang="zh-CN" suppressHydrationWarning>
             <body className="">
 
                 <ThemeProvider

@@ -16,8 +16,17 @@ export default function GlobalError({
         console.error(error);
     }, [error]);
 
+    // global-error 会渲染自己全新的 <html>，丢掉了 next-themes 在应用 <html> 上打的 .dark class。
+    // 这里在挂载时读回主题（兼容 system），补上/移除 .dark，让深色用户出错时也按主题显示。
+    useEffect(() => {
+        const stored = localStorage.getItem("theme") || "light";
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const isDark = stored === "dark" || (stored === "system" && prefersDark);
+        document.documentElement.classList.toggle("dark", isDark);
+    }, []);
+
     return (
-        <html lang="zh-CN" data-theme="light">
+        <html lang="zh-CN">
             <body className="bg-background text-foreground">
                 <div className="flex min-h-screen items-center justify-center p-6">
                     <div className="flex w-full max-w-md flex-col items-center gap-5 rounded-xl border bg-card p-10 text-center shadow-sm">
