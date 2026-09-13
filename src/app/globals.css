@@ -169,9 +169,8 @@ body {
   }
 }
 
-/* 侧边栏收缩/展开：宽度 + 透明度平滑过渡（按钮通过 data-collapsed 切换） */
+/* 侧边栏收缩/展开：无动画，立即切换（按钮通过 data-collapsed 切换） */
 #blog-sidebar {
-  transition: width 0.5s ease, opacity 0.4s ease;
   width: 300px;
   opacity: 1;
   /* overflow: hidden; */
@@ -182,10 +181,10 @@ body {
   transition: none !important;
 }
 
+/* 侧边栏收缩：display:none 彻底退出布局 —— 只压宽度/透明度会保留内容高度，
+   仍把 main 这一 flex 行撑高，导致正文下方残留与侧边栏等高的空白、footer 无法上移 */
 #blog-sidebar[data-collapsed="1"] {
-  width: 0 !important;
-  opacity: 0;
-  pointer-events: none;
+  display: none !important;
 }
 
 /* 友链 Banner：logo 波浪墙无缝左滚（轨道内容为两段相同序列，位移 -50% 即回到起点） */

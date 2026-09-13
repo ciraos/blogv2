@@ -531,6 +531,10 @@ export interface RecentComment {
     is_admin_comment: boolean;
     is_anonymous: boolean;
     ip_location: string;
+    /** 访客 UA（Windows / macOS / 浏览器及版本据此解析，后台可能为空） */
+    user_agent?: string;
+    /** QQ 号（后端返回，可为空） */
+    qq_number?: string;
     target_path: string;
     target_title: string;
     like_count: number;

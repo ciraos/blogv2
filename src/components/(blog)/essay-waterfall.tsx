@@ -10,9 +10,10 @@ import { EssayLightbox } from "./essay-lightbox";
 
 const GAP = 16;
 
-function getCols(vw: number): number {
-    if (vw >= 1024) return 3;
-    if (vw >= 640) return 2;
+/** 列数按内容容器实际宽度决定（非视口宽），保证带右侧栏/收缩栏时卡片始终落在内容区内，不与侧边栏重叠 */
+function getCols(cw: number): number {
+    if (cw >= 920) return 3;
+    if (cw >= 560) return 2;
     return 1;
 }
 
@@ -48,8 +49,9 @@ export function EssayWaterfall({ essays }: { essays: Essay[] }) {
     const layout = useCallback(() => {
         const container = containerRef.current;
         if (!container) return;
-        const cols = getCols(window.innerWidth);
-        const colW = (container.clientWidth - GAP * (cols - 1)) / cols;
+        const cw = container.clientWidth;
+        const cols = getCols(cw);
+        const colW = (cw - GAP * (cols - 1)) / cols;
         const colHeights = new Array(cols).fill(0);
         cardRefs.current.forEach((card) => {
             if (!card) return;
@@ -64,9 +66,13 @@ export function EssayWaterfall({ essays }: { essays: Essay[] }) {
     }, []);
 
     useLayoutEffect(() => {
+        const container = containerRef.current;
         layout();
-        // 图片/字体加载导致高度变化时重新布局
+        // 重新布局触发源：
+        //  1) 容器宽度变化（侧边栏展开/收起、窗口尺寸变化）—— 必须监听容器本身，否则宽度变了列宽不更新，卡片会压到侧边栏上
+        //  2) 卡片高度变化（图片/字体加载完成）
         const ro = new ResizeObserver(() => layout());
+        if (container) ro.observe(container);
         cardRefs.current.forEach((card) => card && ro.observe(card));
         window.addEventListener("resize", layout);
         return () => {

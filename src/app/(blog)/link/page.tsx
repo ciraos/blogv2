@@ -4,8 +4,7 @@ import { LinkApplyConditions } from "@/components/(blog)/link-apply-conditions";
 import { LinkCustomHtml } from "@/components/(blog)/link-custom-html";
 import { LinkPond } from "@/components/(blog)/link-pond";
 import { LinkSections } from "@/components/(blog)/link-sections";
-import { PostComments } from "@/components/(blog)/post-comments";
-import { getCommentsWithChildrenApi, getLinksByCategoryApi, getPublicLinkCategoriesApi, getPublicSiteConfigApi, getRandomMomentPostApi } from "@/lib/api";
+import { getLinksByCategoryApi, getPublicLinkCategoriesApi, getPublicSiteConfigApi, getRandomMomentPostApi } from "@/lib/api";
 import { generateBlogMetadata } from "@/lib/seo";
 
 // 友链来自远端实时数据，不做构建期静态预渲染
@@ -40,9 +39,6 @@ export default async function Link() {
     // 友链申请条件（勾选全部后可申请）
     const applyConditions = config?.FRIEND_LINK_APPLY_CONDITION || [];
 
-    // 友链页评论：挂载路径 /link（后端 target_path 支持任意路径；失败降级为空列表）
-    const comments = await getCommentsWithChildrenApi("/link");
-
     // 友链鱼塘：随机一篇友链朋友圈文章（失败降级 null，组件内显示空态 + 可重试）
     let randomPost = null;
     try {
@@ -74,9 +70,6 @@ export default async function Link() {
 
             {/* 申请条件：放在 yaml 示例框下方，全部勾选后可申请友链 */}
             <LinkApplyConditions conditions={applyConditions} />
-
-            {/* 友链页评论区：展示该路径下的评论（发送接口待接入） */}
-            <PostComments targetPath="/link" comments={comments} />
         </div>
     );
 }

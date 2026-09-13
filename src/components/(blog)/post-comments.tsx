@@ -1,6 +1,8 @@
 "use client";
 
-import { ImagePlus, Send, Sparkles } from "lucide-react";
+import { Globe, ImagePlus, MapPin, MessageCircle, Monitor, Send, Sparkles, ThumbsUp } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { toast } from "sonner";
 
 import type { RecentComment } from "@/lib/api";
 
@@ -33,6 +35,29 @@ function formatTime(iso: string): string {
     });
 }
 
+/** 从 user_agent 解析操作系统 + 浏览器及版本（后端只有原始 UA，主题端解析展示） */
+function parseUserAgent(ua?: string): { os?: string; browser: string } {
+    if (!ua) return { browser: "其他" };
+    let os: string | undefined;
+    if (/Windows/.test(ua)) os = "Windows";
+    else if (/Macintosh|Mac OS/.test(ua)) os = "macOS";
+    else if (/Android/.test(ua)) os = "Android";
+    else if (/iPhone|iPad|iPod/.test(ua)) os = "iOS";
+    else if (/Linux/.test(ua)) os = "Linux";
+
+    let browser = "其他";
+    const edge = /Edg\/([\d.]+)/.exec(ua);
+    const wv = /Chrome\/([\d.]+)/.exec(ua);
+    const firefox = /Firefox\/([\d.]+)/.exec(ua);
+    const safari = /Version\/([\d.]+).*Safari/.exec(ua);
+    if (edge) browser = `Edge ${edge[1]}`;
+    else if (/Edg/.test(ua)) browser = "Edge";
+    else if (firefox) browser = `Firefox ${firefox[1]}`;
+    else if (wv) browser = `Chrome ${wv[1]}`;
+    else if (safari) browser = `Safari ${safari[1]}`;
+    return { os, browser };
+}
+
 /** 单条评论内容行（父评论/子评论共用；reverse 时头像在右、内容在左；背景由外层组容器提供） */
 function CommentRow({ comment, reverse = false }: { comment: RecentComment; reverse?: boolean }) {
     const avatarUrl = resolveAvatar(comment);
@@ -50,9 +75,8 @@ function CommentRow({ comment, reverse = false }: { comment: RecentComment; reve
             )}
             <div className={`min-w-0 flex-1 ${reverse ? "flex flex-col items-end" : ""}`}>
                 <div
-                    className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground ${
-                        reverse ? "flex-row-reverse" : ""
-                    }`}
+                    className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground ${reverse ? "flex-row-reverse" : ""
+                        }`}
                 >
                     <span className="font-medium text-foreground">{comment.nickname}</span>
                     {comment.is_admin_comment && (
@@ -67,29 +91,71 @@ function CommentRow({ comment, reverse = false }: { comment: RecentComment; reve
                     {comment.ip_location && comment.ip_location !== "未知" && (
                         <span>· {comment.ip_location}</span>
                     )}
+                    {/* 昵称最右侧：点赞 / 回复评论（后端接口待接入，暂为占位提示） */}
+                    <span className="ml-auto flex items-center gap-0.5">
+                        <button
+                            type="button"
+                            onClick={() => toast.info("点赞功能待接入")}
+                            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
+                            title="点赞"
+                            aria-label="点赞"
+                        >
+                            <ThumbsUp className="size-3.5" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => toast.info("回复评论功能待接入")}
+                            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
+                            title="回复评论"
+                            aria-label="回复评论"
+                        >
+                            <MessageCircle className="size-3.5" />
+                        </button>
+                    </span>
                 </div>
                 {/* 内容气泡：relative 供尾巴定位；双三角描边尾巴指向头像一侧 */}
                 <div className="relative mt-1.5 w-max py-2 px-3 border rounded-md bg-card text-sm leading-relaxed [&_p]:my-1">
                     {/* 外层三角：边框色描边，与气泡边框连续 */}
                     <span
                         aria-hidden
-                        className={`absolute top-[9px] h-0 w-0 border-y-[9px] border-y-transparent ${
-                            reverse
+                        className={`absolute top-[9px] h-0 w-0 border-y-[9px] border-y-transparent ${reverse
                                 ? "-right-[10px] border-l-[10px] border-l-border"
                                 : "-left-[10px] border-r-[10px] border-r-border"
-                        }`}
+                            }`}
                     />
                     {/* 内层三角：卡片色填充，形成箭头 */}
                     <span
                         aria-hidden
-                        className={`absolute top-[10px] h-0 w-0 border-y-[8px] border-y-transparent ${
-                            reverse
+                        className={`absolute top-[10px] h-0 w-0 border-y-[8px] border-y-transparent ${reverse
                                 ? "-right-[8px] border-l-[8px] border-l-card"
                                 : "-left-[8px] border-r-[8px] border-r-card"
-                        }`}
+                            }`}
                     />
                     <div dangerouslySetInnerHTML={{ __html: comment.content_html || "" }} />
                 </div>
+                {/* 评论最下方：位置（未知也显示）/ 系统 / 浏览器版本，均带图标 */}
+                {(comment.ip_location || comment.user_agent) && (() => {
+                    const { os, browser } = parseUserAgent(comment.user_agent);
+                    const items = [
+                        { icon: MapPin, text: comment.ip_location || "位置" },
+                        os ? { icon: Monitor, text: os } : null,
+                        browser !== "其他" ? { icon: Globe, text: browser } : null,
+                    ].filter((item): item is { icon: LucideIcon; text: string } => Boolean(item));
+                    if (items.length === 0) return null;
+                    return (
+                        <div
+                            className={`mt-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground ${reverse ? "justify-end" : ""
+                                }`}
+                        >
+                            {items.map((item, i) => (
+                                <span key={i} className="inline-flex items-center gap-1">
+                                    <item.icon className="size-3" />
+                                    {item.text}
+                                </span>
+                            ))}
+                        </div>
+                    );
+                })()}
             </div>
         </div>
     );
@@ -204,14 +270,14 @@ export function PostComments({ targetPath, comments = [] }: PostCommentsProps) {
                     <div className="space-y-3">
                         {comments.map((comment) => (
                             /* 每组评论（父评论 + 其博主回复）共用一个背景色（淡色，尽量不抢眼） */
-                            <div key={comment.id} className="rounded-lg border border-border/40 bg-card/40 p-3.5">
+                            <div key={comment.id} className="rounded-lg border border-border/40 bg-card/80 p-3.5">
                                 <CommentRow comment={comment} />
                                 {/* 子评论（博主回复等）：头像在右、内容在左 */}
-                                {comment.children && comment.children.length > 0 && (                                    <div className="mt-3 space-y-3 pl-3 sm:ml-4 sm:pl-4">
-                                        {comment.children.map((child) => (
-                                            <CommentRow key={child.id} comment={child} reverse />
-                                        ))}
-                                    </div>
+                                {comment.children && comment.children.length > 0 && (<div className="mt-3 space-y-3 pl-3 sm:ml-4 sm:pl-4">
+                                    {comment.children.map((child) => (
+                                        <CommentRow key={child.id} comment={child} reverse />
+                                    ))}
+                                </div>
                                 )}
                             </div>
                         ))}

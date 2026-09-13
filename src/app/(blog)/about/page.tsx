@@ -151,7 +151,7 @@ export default async function About() {
             {(enable.skills || enable.careers) && (
                 <div className="flex w-full flex-col gap-2.5 md:flex-row md:flex-wrap">
                     {enable.skills && page.skills_tips && (
-                        <Card className="about-skills-card flex w-full flex-col items-start justify-center md:min-h-[450px] md:w-1/2">
+                        <Card className="about-skills-card flex w-full flex-col items-start justify-start md:min-h-[340px] md:flex-1">
                             <ItemTips>{page.skills_tips.tips}</ItemTips>
                             <span className="text-4xl font-bold leading-none">{page.skills_tips.title}</span>
 
@@ -204,7 +204,7 @@ export default async function About() {
 
                     {enable.careers && page.careers && (
                         <Card
-                            className="flex min-h-[260px] w-full flex-col justify-center md:min-h-[400px] md:flex-1"
+                            className="flex min-h-[260px] w-full flex-col justify-start md:min-h-[340px] md:flex-1"
                             style={{
                                 backgroundImage: page.careers.img ? `url(${resolveAssetUrl(page.careers.img)})` : undefined,
                                 backgroundRepeat: "no-repeat",
@@ -240,7 +240,7 @@ export default async function About() {
                         <AboutStatisticCard stats={stats} cover={resolveAssetUrl(page.statistics_background) ?? ""} />
                     )}
                     {enable.map_and_info && page.map && page.self_info && (
-                        <div className="item-group flex w-full flex-col justify-between self-start md:min-w-0 md:flex-1">
+                        <div className="item-group flex w-full flex-col justify-between self-start md:min-w-0 md:flex-[61]">
                             <div
                                 className="about-map relative mb-2 h-60 overflow-hidden rounded-xl border bg-card"
                                 style={{ backgroundImage: `url(${resolveAssetUrl(page.map.background) ?? ""})`, backgroundPosition: "center", backgroundSize: "100%", transition: "all 1s ease-in-out" }}
@@ -277,7 +277,7 @@ export default async function About() {
             {(enable.personality || enable.photo) && (
                 <div className="flex w-full flex-col gap-2.5 md:flex-row md:flex-wrap">
                     {enable.personality && page.personalities && (
-                        <Card className="w-full md:min-h-[200px] md:w-[59%]">
+                        <Card className="w-full md:min-h-[200px] md:flex-[59]">
                             <ItemTips>{page.personalities.tips}</ItemTips>
                             <div className="mb-1 text-xl leading-none">{page.personalities.authorName}</div>
                             <div className="text-4xl font-bold leading-tight" style={{ color: page.personalities.personalityTypeColor || "#ac899c" }}>
@@ -305,7 +305,7 @@ export default async function About() {
                         </Card>
                     )}
                     {enable.photo && page.personalities?.photoUrl && (
-                        <Card className="group flex min-h-[200px] w-full items-center justify-center overflow-hidden md:min-h-[240px] md:w-[39%]">
+                        <Card className="group flex min-h-[200px] w-full items-center justify-center overflow-hidden md:min-h-[240px] md:flex-[39]">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 src={resolveAssetUrl(page.personalities.photoUrl) ?? ""}
@@ -321,7 +321,7 @@ export default async function About() {
             {(enable.maxim || enable.buff) && (
                 <div className="flex w-full flex-col gap-2.5 md:flex-row md:flex-wrap">
                     {enable.maxim && page.maxim && (
-                        <Card className="flex w-full flex-col items-start justify-center text-4xl font-bold leading-tight md:min-h-[200px] md:w-[39%]">
+                        <Card className="flex w-full flex-col items-start justify-center text-4xl font-bold leading-tight md:min-h-[200px] md:flex-[39]">
                             <ItemTips>{page.maxim.tips}</ItemTips>
                             <div className="flex flex-col">
                                 <span className="mb-2 opacity-60">{page.maxim.top}</span>
@@ -331,7 +331,7 @@ export default async function About() {
                     )}
                     {enable.buff && page.buff && (
                         <Card
-                            className="group flex min-h-[200px] w-full flex-col items-start justify-center !border-transparent !text-white md:min-h-[200px] md:w-[59%] md:flex-[2]"
+                            className="group flex min-h-[200px] w-full flex-col items-start justify-center !border-transparent !text-white md:min-h-[200px] md:flex-[61]"
                             style={{
                                 background: "linear-gradient(120deg, #ff27e8 0%, #ff8000 100%)",
                                 backgroundSize: "200%",
@@ -364,7 +364,7 @@ export default async function About() {
                 <div className="flex w-full flex-col gap-2.5 md:flex-row md:flex-wrap">
                     {enable.game && page.game && (
                         <Card
-                            className="group min-h-[200px] w-full !text-white md:min-h-[300px] md:w-[59%] md:flex-[1.5]"
+                            className="group min-h-[200px] w-full !text-white md:min-h-[300px] md:flex-[1.5]"
                             style={{
                                 backgroundImage: `url(${resolveAssetUrl(page.game.background) ?? ""})`,
                                 backgroundSize: "cover",
@@ -387,7 +387,7 @@ export default async function About() {
                         </Card>
                     )}
                     {enable.comic && page.comic?.list.length ? (
-                        <Card className="group relative min-h-[200px] w-full overflow-hidden md:min-h-[300px] md:w-[39%] md:flex-1">
+                        <Card className="group relative min-h-[200px] w-full overflow-hidden md:min-h-[300px] md:flex-1">
                             <div className="absolute left-0 top-0 z-[4] p-2.5 text-white">
                                 <div className="mb-2.5 text-xs opacity-80">{page.comic.tips}</div>
                                 <div className="text-4xl font-bold leading-none">{page.comic.title}</div>

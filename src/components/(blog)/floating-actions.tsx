@@ -40,6 +40,7 @@ export function FloatingActions() {
     const [tocItems, setTocItems] = useState<TocItem[]>([]);
     const [activeId, setActiveId] = useState<string>("");
     const tocRef = useRef<HTMLDivElement | null>(null);
+    const rootRef = useRef<HTMLDivElement | null>(null);
 
     /** 侧边栏收缩 key：每页一个（非全局；旧版全局 key 作迁移来源） */
     const sidebarKey = (path: string) => `blog-sidebar-collapsed:${path}`;
@@ -78,6 +79,13 @@ export function FloatingActions() {
                     }
                     setSidebarCollapsed(true);
                 } else {
+                    // 展开态：必须把 DOM 上的 data-collapsed 复位为 0，否则 SPA 路由切换时
+                    // 上一页留下的 data-collapsed="1" 会让所有页面都视觉收缩
+                    if (aside) {
+                        aside.classList.add("no-transition");
+                        aside.dataset.collapsed = "0";
+                        requestAnimationFrame(() => aside.classList.remove("no-transition"));
+                    }
                     setSidebarCollapsed(false);
                 }
             } catch {
@@ -166,6 +174,18 @@ export function FloatingActions() {
         return () => document.removeEventListener("pointerdown", onPointerDown);
     }, [tocOpen]);
 
+    /** 点击其它区域自动收起操作组（按 + 展开后，点屏幕其它处即缩回） */
+    useEffect(() => {
+        if (!groupOpen) return;
+        const onPointerDown = (e: PointerEvent) => {
+            const target = e.target as Node;
+            if (rootRef.current?.contains(target)) return;
+            setGroupOpen(false);
+        };
+        document.addEventListener("pointerdown", onPointerDown);
+        return () => document.removeEventListener("pointerdown", onPointerDown);
+    }, [groupOpen]);
+
     /** 切换路由时重置状态（延迟到渲染后，避免 effect 内同步 setState） */
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -181,7 +201,7 @@ export function FloatingActions() {
     };
 
     return (
-        <div className="fixed bottom-4 right-5 z-50 flex flex-col items-end gap-3">
+        <div ref={rootRef} className="fixed bottom-4 right-5 z-50 flex flex-col items-end gap-3">
 
             {/* 操作组（藏在触发器展开组里，全端）：深浅色切换 + 繁简转换；absolute 不占位，触发器位置恒定 */}
             <div
@@ -194,8 +214,8 @@ export function FloatingActions() {
                     onClick={toggleSidebar}
                     aria-label={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
                     title={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
-                    className={`flex size-10 items-center justify-center rounded-full border shadow-lg backdrop-blur transition-colors ${sidebarCollapsed
-                        ? "border-primary bg-primary text-primary-foreground"
+                    className={`hidden size-10 items-center justify-center rounded-full border shadow-lg backdrop-blur transition-colors lg:flex ${sidebarCollapsed
+                        ? "border-foreground bg-black text-white"
                         : "border-border bg-card text-foreground hover:border-primary hover:text-primary"
                         }`}
                 >
