@@ -32,7 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 # .env*
-.env.local
+# 个人配置（含真实域名）不入库；如需提交模板用 .env.example
+.env
 
 # vercel
 .vercel

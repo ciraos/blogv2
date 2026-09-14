@@ -3,11 +3,12 @@ import Link from "next/link";
 
 import { EssayWaterfall } from "@/components/(blog)/essay-waterfall";
 import { NumberedPagination } from "@/components/(blog)/numbered-pagination";
+import { PostComments } from "@/components/(blog)/post-comments";
 import {
     LinkIcon
 } from "lucide-react";
 
-import { ApiError, getPublicEssaysApi } from "@/lib/api";
+import { ApiError, getCommentsWithChildrenApi, getPublicEssaysApi } from "@/lib/api";
 import { generateBlogMetadata } from "@/lib/seo";
 import { resolveAssetUrl } from "@/lib/utils";
 import { SiteConfigResponse } from "@/types/site-config";
@@ -66,6 +67,10 @@ export default async function Essay({ searchParams }: { searchParams: Promise<Es
 
     const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
 
+    // 评论区：target_path 用本页路由路径（后端字面匹配）
+    const targetPath = "/essay";
+    const comments = await getCommentsWithChildrenApi(targetPath);
+
     return (
         <div className="w-full space-y-6">
 
@@ -110,6 +115,9 @@ export default async function Essay({ searchParams }: { searchParams: Promise<Es
                 totalPages={totalPages}
                 makePageHref={(p) => `/essay?page=${p}`}
             />
+
+            {/* 评论区 */}
+            <PostComments targetPath={targetPath} comments={comments} />
         </div>
     );
 }

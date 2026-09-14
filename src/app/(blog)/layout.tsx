@@ -119,7 +119,7 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
       <body>
         <ThemeProvider
           attribute="class"
-          defaultTheme="light"
+          defaultTheme={config?.DEFAULT_THEME_MODE ?? "light"}
           disableTransitionOnChange
           enableSystem
           enableColorScheme

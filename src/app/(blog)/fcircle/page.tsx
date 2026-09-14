@@ -6,8 +6,9 @@ import { ArrowUpDown } from "lucide-react";
 import { MomentCard } from "@/components/(blog)/moment-card";
 import { MomentsRefreshButton } from "@/components/(blog)/moments-refresh-button";
 import { NumberedPagination } from "@/components/(blog)/numbered-pagination";
+import { PostComments } from "@/components/(blog)/post-comments";
 
-import { ApiError, getPublicMomentsApi } from "@/lib/api";
+import { ApiError, getCommentsWithChildrenApi, getPublicMomentsApi } from "@/lib/api";
 import { generateBlogMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -54,6 +55,9 @@ export default async function Fcircle({ searchParams }: { searchParams: Promise<
 
     const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
     const stats = data.statistics;
+    // 评论区：target_path 用本页路由路径（后端字面匹配）
+    const targetPath = "/fcircle";
+    const comments = await getCommentsWithChildrenApi(targetPath);
     // 分页链接保留排序参数
     const pageHref = (p: number) =>
         `/fcircle?${sortType !== "published_at" ? `sort_type=${sortType}&` : ""}page=${p}`;
@@ -95,6 +99,9 @@ export default async function Fcircle({ searchParams }: { searchParams: Promise<
                     <MomentsRefreshButton isLoggedIn={isLoggedIn} />
                 </p>
             )}
+
+            {/* 评论区 */}
+            <PostComments targetPath={targetPath} comments={comments} />
         </div>
     );
 }

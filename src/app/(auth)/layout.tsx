@@ -34,13 +34,15 @@ export async function getSiteConfigs() {
 }
 
 export default async function AuthLayout({ children }: Readonly<{ children: React.ReactNode; }>) {
+    const config = await getSiteConfigs();
+
     return (
         <html lang="zh-CN" suppressHydrationWarning>
             <body className="">
 
                 <ThemeProvider
                     attribute="class"
-                    defaultTheme="light"
+                    defaultTheme={config?.DEFAULT_THEME_MODE ?? "light"}
                     disableTransitionOnChange
                     enableSystem
                     enableColorScheme

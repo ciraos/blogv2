@@ -1,7 +1,9 @@
 import "../globals.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
+import { getSiteConfigs } from "@/lib/site-config";
 
-export default function MusicLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function MusicLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+    const config = await getSiteConfigs();
     return (
         <html
             lang="zh-CN"
@@ -10,7 +12,7 @@ export default function MusicLayout({ children }: Readonly<{ children: React.Rea
             <body>
                 <ThemeProvider
                     attribute="class"
-                    defaultTheme="light"
+                    defaultTheme={config?.DEFAULT_THEME_MODE ?? "light"}
                     disableTransitionOnChange
                     enableSystem
                     enableColorScheme

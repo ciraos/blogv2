@@ -18,7 +18,7 @@ export function generateMetadata(): Promise<Metadata> {
     return generateBlogMetadata("友链管理")
 };
 
-export default function AdminFriends() {
+export default function Friends() {
     return (
         <>
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

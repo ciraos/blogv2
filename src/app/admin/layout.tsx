@@ -72,7 +72,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
             <body>
                 <ThemeProvider
                     attribute="class"
-                    defaultTheme="light"
+                    defaultTheme={config?.DEFAULT_THEME_MODE ?? "light"}
                     disableTransitionOnChange
                     enableSystem
                     enableColorScheme

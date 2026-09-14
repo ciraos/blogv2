@@ -62,6 +62,15 @@ function daysSince(createdAt?: string): number {
     return Math.max(1, Math.floor((Date.now() - start) / 86400000));
 }
 
+/** 需要新标签页打开的站内菜单路径：这些路由服务端会 302 跳到外站（/travelling 随机友链），
+ *  同标签打开会直接离开本站，故按外链处理 */
+const NEW_TAB_PATHS = new Set(["/travelling"]);
+
+/** 是否新标签页打开：外链（isExternal）或跳转外站的站内路由 */
+function opensInNewTab(isExternal: boolean | undefined, path: string): boolean {
+    return !!isExternal || NEW_TAB_PATHS.has(path.replace(/\/+$/, ""));
+}
+
 export default function Header({ menu = [], appName = "博客", isLoggedIn = false, userpanel, userAvatar, userName, mobileTags = [], siteinfo, siteCreatedAt, oneImage }: HeaderProps) {
     // 桌面端下拉：hover 展开，一次只开一个
     const [openGroup, setOpenGroup] = useState<string | null>(null);
@@ -158,8 +167,8 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
                                                     <li key={item.path + item.title}>
                                                         <Link
                                                             href={item.path}
-                                                            target={item.isExternal ? "_blank" : undefined}
-                                                            rel={item.isExternal ? "noopener noreferrer nofollow" : undefined}
+                                                            target={opensInNewTab(item.isExternal, item.path) ? "_blank" : undefined}
+                                                            rel={item.isExternal ? "noopener noreferrer nofollow" : opensInNewTab(item.isExternal, item.path) ? "noopener noreferrer" : undefined}
                                                             className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent px-3 py-2.5 text-center text-sm transition-colors hover:border-foreground/40 hover:bg-muted"
                                                         >
                                                             <Icon name={item.icon} className="text-sm" />
@@ -228,8 +237,8 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
                                                         <SheetClose asChild>
                                                             <Link
                                                                 href={item.path}
-                                                                target={item.isExternal ? "_blank" : undefined}
-                                                                rel={item.isExternal ? "noopener noreferrer nofollow" : undefined}
+                                                                target={opensInNewTab(item.isExternal, item.path) ? "_blank" : undefined}
+                                                                rel={item.isExternal ? "noopener noreferrer nofollow" : opensInNewTab(item.isExternal, item.path) ? "noopener noreferrer" : undefined}
                                                                 className="flex flex-col items-center justify-center gap-1 rounded-lg bg-muted px-2 py-2.5 text-center text-sm text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
                                                             >
                                                                 <Icon name={item.icon} className="text-base leading-none" />

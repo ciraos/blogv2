@@ -1,0 +1,25 @@
+feat: 评论区完整实现 + 评论图片上传 & 部署/环境配置重构
+
+评论功能（前端对齐线上）：
+- post-comments.tsx 完整接入：提交评论（POST 同源代理）、发表后自动 refetch 刷新列表、
+  匿名评论（随机昵称 + 锁定邮箱）、评论图片上传
+- 新增 /api/public/comments/upload 同源上传代理（后端 JWTAuthOptional，登录时带 Bearer）
+- api.ts 增补评论 typed 客户端：submitCommentApi / getCommentsByPathApi /
+  getCommentsWithChildrenApi / uploadCommentImageApi
+- 头像解析：QQ 邮箱用 avatar_url、非 QQ 用 email_md5 拼 Cravatar；位置/系统/浏览器从 UA 展示
+
+部署与环境配置重构：
+- next.config.ts rewrites：去掉 blanket /api/* 代理（避免抢占 src/app/api/* 同源代理路由，
+  防止客户端拿到后端原始分页形状而渲染错乱），保留 /f /needcache /static 媒体代理；
+  后端基址回退链 BACKEND_URL/API_URL > NEXT_PUBLIC_SITE_URL > 本地兜底，不写死个人域名
+- .env.local 改名 .env（单一来源，同时服务 Next 与 docker compose）；.gitignore 忽略 .env
+- docker-compose.yml build.args 改为 ${VAR:-缺省} 从 .env 插值
+- .env.example 补全注释模板
+
+后台管理与布局/主题：
+- 新增各 admin 页面（users/friends/post-management/doc-series/donations/essays/file-management/
+  knowledge/memberships/moments/orders/page-management/plugins/products/seo-push/settings/
+  storage/supports/themes/image-styles）及 /api/public/site-config 代理与 src/lib/site-config.ts
+- 布局 DEFAULT_THEME_MODE 对齐、header/nav 用户头像调整
+
+验证：lint 通过、next build（standalone）通过；PC/移动布局、浅色/深色切换检查通过。

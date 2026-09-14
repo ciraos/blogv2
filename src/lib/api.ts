@@ -603,6 +603,54 @@ export async function getCommentChildrenApi(
     });
 }
 
+/** 提交评论的请求体（POST /public/comments，经同源代理 /api/public/comments 转发） */
+export interface CommentCreatePayload {
+    target_path: string;
+    target_title?: string;
+    parent_id?: string;
+    reply_to_id?: string;
+    nickname: string;
+    email?: string;
+    website?: string;
+    content: string;
+    is_anonymous: boolean;
+}
+
+/** POST /api/public/comments 提交评论（本应用同源路由，服务端转发到远端 /public/comments） */
+export async function submitCommentApi(payload: CommentCreatePayload): Promise<unknown> {
+    return request<unknown>("/api/public/comments", {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+}
+
+/**
+ * POST /api/public/comments/upload 上传评论图片（经同源代理转发）。
+ * 返回文件的公开 ID（字符串）；前端用 `![](anzhiyu://file/{id})` 的形式拼进评论正文，
+ * 后端在返回评论列表时会把内部 URI 解析成真实访问 URL。
+ */
+export async function uploadCommentImageApi(file: File): Promise<string> {
+    const form = new FormData();
+    form.append("file", file);
+    let res: Response;
+    try {
+        // 不能走 request() 帮助函数（它会为 body 设置 JSON Content-Type，破坏 multipart boundary）
+        res = await fetch("/api/public/comments/upload", { method: "POST", body: form });
+    } catch {
+        throw new ApiError("网络请求失败，请检查网络连接", 0, 0);
+    }
+    let json: ApiResponse<{ id: string }> | null = null;
+    try {
+        json = (await res.json()) as ApiResponse<{ id: string }>;
+    } catch {
+        // 非 JSON 响应
+    }
+    if (res.ok && json && typeof json.data?.id === "string") {
+        return json.data.id;
+    }
+    throw new ApiError(json?.message || `图片上传失败（HTTP ${res.status}）`, res.status, json?.code ?? res.status);
+}
+
 /** 带子评论的评论（父评论 + 博主回复等） */
 export interface CommentWithChildren extends RecentComment {
     children: RecentComment[];

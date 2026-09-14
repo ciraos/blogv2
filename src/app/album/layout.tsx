@@ -1,13 +1,15 @@
 import "../globals.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
+import { getSiteConfigs } from "@/lib/site-config";
 
-export default function AlbumLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function AlbumLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+    const config = await getSiteConfigs();
     return (
         <html lang="zh-CN" suppressHydrationWarning>
             <body>
                 <ThemeProvider
                     attribute="class"
-                    defaultTheme="light"
+                    defaultTheme={config?.DEFAULT_THEME_MODE ?? "light"}
                     disableTransitionOnChange
                     enableSystem
                     enableColorScheme
