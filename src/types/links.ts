@@ -32,6 +32,8 @@ export interface FriendLink {
     logo: string;
     description: string;
     status: string;
+    /** RSS 订阅地址（可选，后端可能不返回该字段） */
+    rss?: string;
     siteshot: string;
     email: string;
     sort_order: number;
@@ -64,6 +66,10 @@ export interface AdminCreateLinkRequest {
     url: string;
     logo?: string;
     description?: string;
+    /** RSS 订阅地址（可选） */
+    rss?: string;
+    /** 网站快照地址（可选，后端若自动生成快照可忽略此字段） */
+    siteshot?: string;
     /** 后端枚举：PENDING / APPROVED / REJECTED / INVALID */
     status?: string;
     email?: string;
@@ -81,6 +87,10 @@ export interface AdminUpdateLinkRequest {
     description?: string;
     /** 后端枚举：PENDING / APPROVED / REJECTED / INVALID */
     status?: string;
+    /** RSS 订阅地址（可选） */
+    rss?: string;
+    /** 网站快照地址（可选，后端若自动生成快照可忽略此字段） */
+    siteshot?: string;
     email?: string;
     sort_order?: number;
     skip_health_check?: boolean;

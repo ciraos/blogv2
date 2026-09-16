@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Ban, ChevronLeft, ChevronRight, KeyRound, Pencil, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
+import { BadgeCheck, Ban, ChevronLeft, ChevronRight, KeyRound, Pencil, Plus, RotateCcw, Search, Trash2, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -575,34 +575,44 @@ export function UserManagement() {
                     <Field label="昵称">
                         <Input value={form.nickname} onChange={(e) => setForm({ ...form, nickname: e.target.value })} />
                     </Field>
-                    <Field label="用户组">
-                        <Select value={form.userGroupID} onValueChange={(v) => setForm({ ...form, userGroupID: v })}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="选择用户组" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {groups.map((g) => (
-                                    <SelectItem key={g.id} value={g.id}>
-                                        {g.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </Field>
-                    <Field label="状态">
-                        <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="选择状态" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {FORM_STATUS_OPTIONS.map((opt) => (
-                                    <SelectItem key={opt.value} value={opt.value}>
-                                        {opt.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </Field>
+                    <div className="grid grid-cols-2 gap-3">
+                        <label className="block">
+                            <span className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                                <Users className="size-3.5" />
+                                用户组
+                            </span>
+                            <Select value={form.userGroupID} onValueChange={(v) => setForm({ ...form, userGroupID: v })}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="选择用户组" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {groups.map((g) => (
+                                        <SelectItem key={g.id} value={g.id}>
+                                            {g.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </label>
+                        <label className="block">
+                            <span className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                                <BadgeCheck className="size-3.5" />
+                                状态
+                            </span>
+                            <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="选择状态" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {FORM_STATUS_OPTIONS.map((opt) => (
+                                        <SelectItem key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </label>
+                    </div>
                     <div className="flex justify-end gap-2 pt-2">
                         <Button variant="outline" onClick={() => setEditUser(null)}>
                             取消
