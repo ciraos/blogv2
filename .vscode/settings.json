@@ -1,4 +1,6 @@
 {
+    "containers.containerClient": "com.microsoft.visualstudio.containers.docker",
+    "containers.orchestratorClient": "com.microsoft.visualstudio.orchestrators.dockercompose",
     "editor.fontFamily": "Maple Mono NF CN, Fira Code, monospace, Arial, sans-serif",
     "editor.fontLigatures": true,
     "editor.fontSize": 13,
