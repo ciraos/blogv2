@@ -46,3 +46,6 @@ package-lock.json
 
 # 本地开发验证/探测脚本（不进版本库）
 /scripts/
+
+# 本地提交说明草稿（不进版本库）
+commit-msg.txt
