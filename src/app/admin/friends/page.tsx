@@ -28,17 +28,17 @@ export default function Friends() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <LinkCreateButton />
-                    <Button>
+                    <Button variant="outline" className="bg-white hover:bg-white/90">
                         <TagIcon size={4} />
                         分类标签
                     </Button>
                     {/* 分类展示顺序拖拽排序（保存到 localStorage，前台 /link 页生效） */}
                     <CategorySortDialog />
-                    <Button>
+                    <Button variant="outline" className="bg-white hover:bg-white/90">
                         <FolderDownIcon size={4} />
                         导入
                     </Button>
-                    <Button>
+                    <Button variant="outline" className="bg-white hover:bg-white/90">
                         <FolderOutputIcon size={4} />
                         导出
                     </Button>

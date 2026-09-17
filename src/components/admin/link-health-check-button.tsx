@@ -48,6 +48,7 @@ function isFinished(st: LinkHealthCheckStatus): boolean {
 /** 友链健康检查按钮：点击触发后端后台执行 → 提示执行中 → 轮询状态 → 结果 toast */
 export function LinkHealthCheckButton() {
     const [running, setRunning] = useState(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
     const intervalRef = useRef<number | null>(null);
 
     const stopPolling = () => {
@@ -113,9 +114,42 @@ export function LinkHealthCheckButton() {
     }
 
     return (
-        <Button onClick={handleClick} disabled={running}>
-            {running ? <LoaderCircle className="size-4 animate-spin" /> : <HeartPulse className="size-4" />}
-            {running ? "检查中…" : "健康检查"}
-        </Button>
+        <>
+            <Button className="bg-purple-600 text-white hover:bg-purple-600/90" onClick={() => setConfirmOpen(true)} disabled={running}>
+                {running ? <LoaderCircle className="size-4 animate-spin" /> : <HeartPulse className="size-4" />}
+                {running ? "检查中…" : "健康检查"}
+            </Button>
+
+            {/* 确认对话框：无右上角关闭按钮，仅 取消 / 确认 */}
+            {confirmOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                    onMouseDown={() => setConfirmOpen(false)}
+                >
+                    <div
+                        className="w-full max-w-sm rounded-xl border bg-card p-5 shadow-xl"
+                        onMouseDown={(e) => e.stopPropagation()}
+                    >
+                        <div className="mb-4 text-base font-semibold">健康检查确认</div>
+                        <p className="text-sm text-muted-foreground">即将对全部友链执行健康检查，是否继续？</p>
+                        <div className="mt-5 flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+                                取消
+                            </Button>
+                            <Button
+                                className="bg-purple-600 text-white hover:bg-purple-600/90"
+                                disabled={running}
+                                onClick={() => {
+                                    setConfirmOpen(false);
+                                    handleClick();
+                                }}
+                            >
+                                确认
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 }

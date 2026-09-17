@@ -30,6 +30,8 @@ export interface Essay {
     link?: string;
     /** 音乐播放器配置（可选，结构未文档化） */
     aplayer?: Record<string, unknown>;
+    /** 视频（可选；后端视情况返回，媒体列据此展示「视频」） */
+    video?: string | { url?: string } | null;
     /** 排序（可选） */
     sort_order?: number;
     status: number;
@@ -54,3 +56,37 @@ export interface AdminEssayListParams {
 }
 
 export type EssayListResponse = ApiResponse<EssayListData>;
+
+/** 新增说说请求体（POST /pro/admin/essays，管理员） */
+export interface AdminCreateEssayRequest {
+    content: string;
+    /** 图片列表（可选） */
+    image?: string[];
+    /** 定位地址（可选） */
+    address?: string;
+    /** 来源（可选） */
+    from?: string;
+    /** 关联链接（可选） */
+    link?: string;
+    /** 排序（可选） */
+    sort_order?: number;
+    /** 状态：1=发布 2=草稿 3=隐藏 */
+    status?: number;
+}
+
+/** 更新说说请求体（PUT /pro/admin/essays/{id}，管理员） */
+export interface AdminUpdateEssayRequest {
+    content?: string;
+    /** 图片列表（可选） */
+    image?: string[];
+    /** 定位地址（可选） */
+    address?: string;
+    /** 来源（可选） */
+    from?: string;
+    /** 关联链接（可选） */
+    link?: string;
+    /** 排序（可选） */
+    sort_order?: number;
+    /** 状态：1=发布 2=草稿 3=隐藏 */
+    status?: number;
+}

@@ -296,7 +296,7 @@ export function ArticleList() {
                         <FolderTree size={14} />
                         分类标签
                     </Button>
-                    <Button size="sm" className="h-8 bg-[#FFFDD0] text-stone-800 hover:bg-[#FFF6C0]" onClick={() => toast.info("新增文章待接入")}>
+                    <Button size="sm" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => toast.info("新增文章待接入")}>
                         <Plus size={14} />
                         新增文章
                     </Button>

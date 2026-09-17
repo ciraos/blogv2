@@ -68,7 +68,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
     };
 
     return (
-        <html lang="zh-CN" suppressHydrationWarning>
+        <html lang="zh-CN" suppressHydrationWarning data-skin={config?.APPEARANCE_SKIN}>
             <body>
                 <ThemeProvider
                     attribute="class"

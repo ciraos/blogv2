@@ -115,7 +115,7 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
   }
 
   return (
-    <html lang="zh-CN" suppressHydrationWarning>
+    <html lang="zh-CN" suppressHydrationWarning data-skin={config?.APPEARANCE_SKIN}>
       <body>
         <ThemeProvider
           attribute="class"
@@ -183,7 +183,7 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
                                   <Link
                                     href={item.link}
                                     {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                                    className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                                    className="rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
                                   >
                                     {item.title}
                                   </Link>

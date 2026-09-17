@@ -6,7 +6,7 @@
 import type { AdminArticleListParams, ArchiveSummary, ArticleDetail, PostCategory, PostItem, PostListData, PostTag } from "@/types/articles";
 import type { LoginData, LoginUserInfo } from "@/types/auth";
 import type { AdminCreateLinkRequest, AdminUpdateLinkRequest, FriendLink, LinkCategory, LinkListData, LinkListParams, LinkTag } from "@/types/links";
-import type { AdminEssayListParams, Essay, EssayListData } from "@/types/essays";
+import type { AdminCreateEssayRequest, AdminEssayListParams, AdminUpdateEssayRequest, Essay, EssayListData } from "@/types/essays";
 import type { MomentsListData, MomentsListParams, RandomMomentPost } from "@/types/moments";
 import type { SiteConfig } from "@/types/site-config";
 import type { AdminCreateUserRequest } from "@/types/users";
@@ -455,6 +455,33 @@ export async function getAdminEssaysApi(token: string, params: AdminEssayListPar
 /** GET /pro/admin/essays/{id} 即刻详情（需鉴权） */
 export function getAdminEssayApi(token: string, id: number): Promise<Essay> {
     return request<Essay>(`/pro/admin/essays/${id}`, { method: "GET" }, token);
+}
+
+/** GET /api/admin/essays 管理后台说说列表（同源代理，浏览器带 cookie，无需显式 token） */
+export async function getAdminEssaysListApi(params: AdminEssayListParams = {}): Promise<EssayListData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<EssayListData>(`/api/admin/essays${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
+/** PUT /api/admin/essays/{id} 管理员更新说说（同源代理） */
+export async function updateAdminEssayApi(id: number | string, payload: AdminUpdateEssayRequest): Promise<unknown> {
+    return request<unknown>(`/api/admin/essays/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+/** POST /api/admin/essays 管理后台新增说说（同源代理） */
+export async function createAdminEssayApi(payload: AdminCreateEssayRequest): Promise<unknown> {
+    return request<unknown>("/api/admin/essays", { method: "POST", body: JSON.stringify(payload) });
+}
+
+/** DELETE /api/admin/essays/{id} 管理员删除说说（同源代理） */
+export async function deleteAdminEssayApi(id: number | string): Promise<unknown> {
+    return request<unknown>(`/api/admin/essays/${id}`, { method: "DELETE" });
 }
 
 /** GET /pro/essays 前台即刻列表（公开，无需鉴权；实测路径，文档中的 /pro/public/essays 在本部署为 404） */

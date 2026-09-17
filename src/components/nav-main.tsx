@@ -46,12 +46,12 @@ function ProBadge() {
 const HOVER_CLS =
   "hover:bg-[color-mix(in_oklch,var(--sidebar-accent),var(--sidebar-foreground)_8%)] hover:text-sidebar-accent-foreground"
 
-/* 当前页主菜单项：实心主题色高亮 */
+/* 当前页主菜单项：实心主题色高亮（跟随 --primary 主题色） */
 const ACTIVE_CLS =
-  "bg-sidebar-primary text-sidebar-primary-foreground font-medium hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground"
+  "bg-primary text-primary-foreground font-medium hover:bg-primary/90 hover:text-primary-foreground"
 
-/* 当前页子菜单项：浅色主题填充高亮 */
-const SUB_ACTIVE_CLS = "bg-sidebar-primary/10 text-sidebar-primary font-medium"
+/* 当前页子菜单项：浅色主题填充高亮（跟随主题色） */
+const SUB_ACTIVE_CLS = "bg-primary/10 text-primary font-medium"
 
 /* 所在分组（子项命中当前页）的主菜单：浅灰 + 加粗 */
 const PARENT_ACTIVE_CLS = "bg-sidebar-accent font-medium"
@@ -63,6 +63,19 @@ export function NavMain({ items }: { items: NavMainItem[] }) {
   const [openKey, setOpenKey] = useState<string | null>(
     () => items.find((item) => item.items?.some((sub) => sub.url === pathname))?.title ?? null
   )
+
+  // 客户端软导航（next/link）时 pathname 变化但组件不会重挂载，导致分组不跟随展开。
+  // 用 React 推荐的「渲染期派生状态调整」（对比上一次 pathname）让页面所在分组跟随展开，
+  // 避免在副作用里同步 setState（满足 React Compiler 的 lint：set-state-in-effect）。
+  const [prevPathname, setPrevPathname] = useState(pathname)
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname)
+    const activeTitle =
+      items.find((item) => item.items?.some((sub) => sub.url === pathname))?.title ?? null
+    if (activeTitle) {
+      setOpenKey((prev) => (prev === activeTitle ? prev : activeTitle))
+    }
+  }
 
   const groupActive = (item: NavMainItem) =>
     item.items?.some((sub) => sub.url === pathname) ?? false

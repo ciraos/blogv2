@@ -169,7 +169,7 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
                                                             href={item.path}
                                                             target={opensInNewTab(item.isExternal, item.path) ? "_blank" : undefined}
                                                             rel={item.isExternal ? "noopener noreferrer nofollow" : opensInNewTab(item.isExternal, item.path) ? "noopener noreferrer" : undefined}
-                                                            className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent px-3 py-2.5 text-center text-sm transition-colors hover:border-foreground/40 hover:bg-muted"
+                                                            className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent px-3 py-2.5 text-center text-sm transition-colors hover:bg-primary hover:text-primary-foreground"
                                                         >
                                                             <Icon name={item.icon} className="text-sm" />
                                                             <span>{item.title}</span>

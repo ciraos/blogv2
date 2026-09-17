@@ -3319,3 +3319,14 @@ body:has(.one-image-hero) .main {
   z-index: 1;
   background: transparent;
 }
+
+/* ===================== 主题色（APPEARANCE_SKIN） =====================
+   博客 / 后台的 <html> 依据站点配置 APPEARANCE_SKIN 挂上 data-skin，
+   这里按皮肤覆盖主题主色 token（--primary / --ring），让按钮、链接、强调等
+   primary 控件跟随站点主题色，即“博客部分地方用上主题色”。
+   当前线上皮肤为 amber（琥珀橙），以此为例；其余皮肤可仿照此块按
+   APPEARANCE_TOKENS 补写。 */
+html[data-skin="amber"] {
+  --primary: #d97706;
+  --ring: #f59e0b;
+}

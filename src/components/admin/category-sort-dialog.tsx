@@ -36,7 +36,7 @@ export function CategorySortDialog() {
     return (
         <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange}>
             <DialogPrimitive.Trigger asChild>
-                <Button>
+                <Button variant="outline" className="bg-white hover:bg-white/90">
                     <ListOrdered size={4} />
                     分类排序
                 </Button>
