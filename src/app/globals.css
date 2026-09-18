@@ -458,12 +458,66 @@ body {
   overflow-x: auto;
   border-radius: 0.5rem;
   background: var(--muted);
+  /* 代码不换行：长行横向滚动（覆盖 .article-body 基类继承下来的 break-word） */
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 .article-body pre code {
   padding: 0;
   border: none;
   background: transparent;
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+/* ============ 评论区代码框 ============
+   评论正文里的 <pre> 由 CommentContent 用与文章正文同一套增强逻辑处理
+   （语言标签 / mac 圆点 / 行号栏 / 行数折叠 / 收缩 / 复制按钮），
+   容器皮肤共用下方「代码块（macOS 窗口风格）」规则（选择器同时匹配 .article-body 与 .comment-content）。
+   这里只保留未增强时的兜底样式与行内代码样式，评论区的尺寸微调见该节之后的「评论区代码框尺寸」 */
+.comment-content code {
+  padding: 0.15em 0.4em;
+  border: 1px solid var(--border);
+  border-radius: 0.35em;
+  background: var(--muted);
+  font-size: 0.88em;
+}
+
+.comment-content pre {
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  /* 描边 + 底色：未增强时也要能看出「代码框」 */
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--muted);
+  overflow-x: auto;
+  /* 代码不换行：长行横向滚动 */
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.comment-content pre code {
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: 0.8125rem;
+}
+
+/* ============ 评论气泡（无边框） ============
+   气泡自身不描边（层次由外层评论卡片提供），只保留指向头像的卡片色小尾巴；
+   回复别人的评论（头像在右，.comment-bubble-reverse）正文靠右显示，
+   代码框内部重新左对齐，避免代码、行号、展开按钮被一起右对齐。 */
+.comment-bubble-reverse {
+  text-align: right;
+}
+
+.comment-bubble-reverse pre,
+.comment-bubble-reverse .code-block {
+  text-align: left;
 }
 
 /* ============ 强调 / 标记 / 键盘 ============ */
@@ -719,8 +773,8 @@ body {
 /* ===================== 代码块（macOS 窗口风格 · 浅色） ===================== */
 
 /* 容器：普通 pre 的 .code-block 与后端 md-editor 的 .md-editor-code 共用 */
-.article-body .code-block,
-.article-body .md-editor-code {
+:is(.article-body, .comment-content) .code-block,
+:is(.article-body, .comment-content) .md-editor-code {
   position: relative;
   margin: 1em 0;
   border-radius: 0.5rem;
@@ -730,8 +784,8 @@ body {
 }
 
 /* macOS 标题栏（两种结构共用）：三个圆点 + 语言标签 + 复制按钮 */
-.article-body .code-block-head,
-.article-body .md-editor-code>summary {
+:is(.article-body, .comment-content) .code-block-head,
+:is(.article-body, .comment-content) .md-editor-code>summary {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -741,18 +795,18 @@ body {
   user-select: none;
 }
 
-.article-body .md-editor-code>summary {
+:is(.article-body, .comment-content) .md-editor-code>summary {
   cursor: pointer;
   list-style: none;
 }
 
-.article-body .md-editor-code>summary::-webkit-details-marker {
+:is(.article-body, .comment-content) .md-editor-code>summary::-webkit-details-marker {
   display: none;
 }
 
 /* 后端 md-editor 直出的复制按钮（.copy-button，友链页等自定义 HTML）：
    推送到标题栏最右；点击逻辑由 LinkCustomHtml 客户端组件重新绑定 */
-.article-body .md-editor-code .copy-button {
+:is(.article-body, .comment-content) .md-editor-code .copy-button {
   flex-shrink: 0;
   margin-left: auto;
   display: inline-flex;
@@ -764,16 +818,16 @@ body {
   transition: color 0.15s;
 }
 
-.article-body .md-editor-code .copy-button:hover {
+:is(.article-body, .comment-content) .md-editor-code .copy-button:hover {
   color: #24292f;
 }
 
-.article-body .md-editor-code .copy-button.copied {
+:is(.article-body, .comment-content) .md-editor-code .copy-button.copied {
   color: #1a7f37;
 }
 
 /* mac 三个圆圈（真实元素 .code-dots，排在展开/收缩按钮之后；mac_style=true 时由 JS 插入） */
-.article-body .code-dots {
+:is(.article-body, .comment-content) .code-dots {
   flex-shrink: 0;
   width: 42px;
   height: 12px;
@@ -784,17 +838,17 @@ body {
 }
 
 /* 行数折叠：超过 code_max_lines 行时截断（高度由 JS 按行高设置） */
-.article-body .code-block-body.code-collapsed {
+:is(.article-body, .comment-content) .code-block-body.code-collapsed {
   overflow: hidden;
 }
 
 /* 完全收缩：代码区隐藏，只留头部语言标签一行 */
-.article-body .code-block-body.code-hidden {
+:is(.article-body, .comment-content) .code-block-body.code-hidden {
   display: none;
 }
 
 /* 底部「展开 / 收起」按钮 */
-.article-body .code-expand-btn {
+:is(.article-body, .comment-content) .code-expand-btn {
   display: block;
   width: 100%;
   padding: 6px 0;
@@ -808,13 +862,13 @@ body {
   transition: color 0.15s, background-color 0.15s;
 }
 
-.article-body .code-expand-btn:hover {
+:is(.article-body, .comment-content) .code-expand-btn:hover {
   color: var(--foreground);
   background: var(--muted);
 }
 
 /* 左上角「展开 / 收缩」按钮 */
-.article-body .code-collapse-btn {
+:is(.article-body, .comment-content) .code-collapse-btn {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -832,37 +886,37 @@ body {
   transition: color 0.15s, background-color 0.15s;
 }
 
-.article-body .code-collapse-btn:hover {
+:is(.article-body, .comment-content) .code-collapse-btn:hover {
   color: var(--foreground);
   background: var(--muted);
 }
 
-/* 语言标签（无衬线字体，稍大、轻加粗、主题色） */
-.article-body .code-block-lang,
-.article-body .md-editor-code .code-lang {
+/* 语言标签（无衬线字体，稍大、轻加粗、主题色；语言来自 markdown 围栏，显示统一大写） */
+:is(.article-body, .comment-content) .code-block-lang,
+:is(.article-body, .comment-content) .md-editor-code .code-lang {
   font-size: 0.75rem;
   font-weight: 500;
   letter-spacing: 0.02em;
+  text-transform: uppercase;
   color: var(--primary);
   font-family: var(--font-sans, system-ui, sans-serif);
 }
 
-/* 友链页自定义 HTML（FRIEND_LINK_APPLY_CUSTOM_CODE_HTML）直出的语言标识统一大写显示
-   （后端存的是小写 yaml，仅影响该页，不改变文章页代码块标签） */
+/* 友链页自定义 HTML（FRIEND_LINK_APPLY_CUSTOM_CODE_HTML）直出的语言标识：更大更粗
+   （大写已由上面的通用规则统一处理） */
 .FRIEND_LINK_APPLY_CUSTOM_CODE .md-editor-code .code-lang {
   font-size: 15px;
   font-weight: 600;
-  text-transform: uppercase;
 }
 
 /* 代码区：行号栏 + pre（横向滚动时行号固定） */
-.article-body .code-block-body {
+:is(.article-body, .comment-content) .code-block-body {
   display: flex;
   align-items: stretch;
   max-width: 100%;
 }
 
-.article-body .code-block-body pre {
+:is(.article-body, .comment-content) .code-block-body pre {
   flex: 1 1 auto;
   min-width: 0;
   margin: 0;
@@ -872,7 +926,7 @@ body {
   overflow-x: auto;
 }
 
-.article-body .code-block-body code.hljs {
+:is(.article-body, .comment-content) .code-block-body code.hljs {
   background: transparent;
   padding: 0;
 }
@@ -880,182 +934,182 @@ body {
 /* ============ hljs 语法高亮 token 配色（浅色，移植 atom-one-light） ============
    作用域限定 .article-body 内所有代码块（含后端 _HTML 直出的 yaml 等），
    不依赖 atom-one-light.css 独立 chunk（link 页等未渲染 ArticleBody 的页面也能高亮） */
-.article-body .hljs-comment,
-.article-body .hljs-quote {
+:is(.article-body, .comment-content) .hljs-comment,
+:is(.article-body, .comment-content) .hljs-quote {
   color: #a0a1a7;
   font-style: italic;
 }
 
-.article-body .hljs-doctag,
-.article-body .hljs-keyword,
-.article-body .hljs-formula {
+:is(.article-body, .comment-content) .hljs-doctag,
+:is(.article-body, .comment-content) .hljs-keyword,
+:is(.article-body, .comment-content) .hljs-formula {
   color: #a626a4;
 }
 
-.article-body .hljs-section,
-.article-body .hljs-name,
-.article-body .hljs-selector-tag,
-.article-body .hljs-deletion,
-.article-body .hljs-subst {
+:is(.article-body, .comment-content) .hljs-section,
+:is(.article-body, .comment-content) .hljs-name,
+:is(.article-body, .comment-content) .hljs-selector-tag,
+:is(.article-body, .comment-content) .hljs-deletion,
+:is(.article-body, .comment-content) .hljs-subst {
   color: #e45649;
 }
 
-.article-body .hljs-literal {
+:is(.article-body, .comment-content) .hljs-literal {
   color: #0184bb;
 }
 
-.article-body .hljs-string,
-.article-body .hljs-regexp,
-.article-body .hljs-addition,
-.article-body .hljs-attribute,
-.article-body .hljs-meta .hljs-string {
+:is(.article-body, .comment-content) .hljs-string,
+:is(.article-body, .comment-content) .hljs-regexp,
+:is(.article-body, .comment-content) .hljs-addition,
+:is(.article-body, .comment-content) .hljs-attribute,
+:is(.article-body, .comment-content) .hljs-meta .hljs-string {
   color: #50a14f;
 }
 
-.article-body .hljs-attr,
-.article-body .hljs-variable,
-.article-body .hljs-template-variable,
-.article-body .hljs-type,
-.article-body .hljs-selector-class,
-.article-body .hljs-selector-attr,
-.article-body .hljs-selector-pseudo,
-.article-body .hljs-number {
+:is(.article-body, .comment-content) .hljs-attr,
+:is(.article-body, .comment-content) .hljs-variable,
+:is(.article-body, .comment-content) .hljs-template-variable,
+:is(.article-body, .comment-content) .hljs-type,
+:is(.article-body, .comment-content) .hljs-selector-class,
+:is(.article-body, .comment-content) .hljs-selector-attr,
+:is(.article-body, .comment-content) .hljs-selector-pseudo,
+:is(.article-body, .comment-content) .hljs-number {
   color: #986801;
 }
 
-.article-body .hljs-symbol,
-.article-body .hljs-bullet,
-.article-body .hljs-link,
-.article-body .hljs-meta,
-.article-body .hljs-selector-id,
-.article-body .hljs-title {
+:is(.article-body, .comment-content) .hljs-symbol,
+:is(.article-body, .comment-content) .hljs-bullet,
+:is(.article-body, .comment-content) .hljs-link,
+:is(.article-body, .comment-content) .hljs-meta,
+:is(.article-body, .comment-content) .hljs-selector-id,
+:is(.article-body, .comment-content) .hljs-title {
   color: #4078f2;
 }
 
-.article-body .hljs-built_in,
-.article-body .hljs-title.class_,
-.article-body .hljs-class .hljs-title {
+:is(.article-body, .comment-content) .hljs-built_in,
+:is(.article-body, .comment-content) .hljs-title.class_,
+:is(.article-body, .comment-content) .hljs-class .hljs-title {
   color: #c18401;
 }
 
-.article-body .hljs-emphasis {
+:is(.article-body, .comment-content) .hljs-emphasis {
   font-style: italic;
 }
 
-.article-body .hljs-strong {
+:is(.article-body, .comment-content) .hljs-strong {
   font-weight: bold;
 }
 
-.article-body .hljs-link {
+:is(.article-body, .comment-content) .hljs-link {
   text-decoration: underline;
 }
 
 /* ============ 深色模式：代码块容器 + hljs token 深色配色（atom-one-dark） ============ */
-.dark .article-body .code-block,
-.dark .article-body .md-editor-code {
+.dark :is(.article-body, .comment-content) .code-block,
+.dark :is(.article-body, .comment-content) .md-editor-code {
   background: var(--muted);
   border-color: var(--border);
 }
 
-.dark .article-body .code-block-head,
-.dark .article-body .md-editor-code>summary {
+.dark :is(.article-body, .comment-content) .code-block-head,
+.dark :is(.article-body, .comment-content) .md-editor-code>summary {
   background: var(--muted);
   border-bottom-color: var(--border);
 }
 
-.dark .article-body .code-block-lang,
-.dark .article-body .md-editor-code .code-lang {
+.dark :is(.article-body, .comment-content) .code-block-lang,
+.dark :is(.article-body, .comment-content) .md-editor-code .code-lang {
   color: var(--primary);
 }
 
-.dark .article-body .md-editor-code .copy-button {
+.dark :is(.article-body, .comment-content) .md-editor-code .copy-button {
   color: var(--muted-foreground);
 }
 
-.dark .article-body .md-editor-code .copy-button:hover {
+.dark :is(.article-body, .comment-content) .md-editor-code .copy-button:hover {
   color: var(--foreground);
 }
 
-.dark .article-body .md-editor-code .copy-button.copied {
+.dark :is(.article-body, .comment-content) .md-editor-code .copy-button.copied {
   color: #3fb950;
 }
 
-.dark .article-body .line-numbers {
+.dark :is(.article-body, .comment-content) .line-numbers {
   background: var(--muted);
   color: var(--muted-foreground);
   border-right-color: var(--border);
 }
 
-.dark .article-body .hljs {
+.dark :is(.article-body, .comment-content) .hljs {
   color: var(--foreground);
 }
 
-.dark .article-body .hljs-comment,
-.dark .article-body .hljs-quote {
+.dark :is(.article-body, .comment-content) .hljs-comment,
+.dark :is(.article-body, .comment-content) .hljs-quote {
   color: #7f848e;
 }
 
-.dark .article-body .hljs-doctag,
-.dark .article-body .hljs-keyword,
-.dark .article-body .hljs-formula {
+.dark :is(.article-body, .comment-content) .hljs-doctag,
+.dark :is(.article-body, .comment-content) .hljs-keyword,
+.dark :is(.article-body, .comment-content) .hljs-formula {
   color: #c678dd;
 }
 
-.dark .article-body .hljs-section,
-.dark .article-body .hljs-name,
-.dark .article-body .hljs-selector-tag,
-.dark .article-body .hljs-deletion,
-.dark .article-body .hljs-subst {
+.dark :is(.article-body, .comment-content) .hljs-section,
+.dark :is(.article-body, .comment-content) .hljs-name,
+.dark :is(.article-body, .comment-content) .hljs-selector-tag,
+.dark :is(.article-body, .comment-content) .hljs-deletion,
+.dark :is(.article-body, .comment-content) .hljs-subst {
   color: #e06c75;
 }
 
-.dark .article-body .hljs-literal {
+.dark :is(.article-body, .comment-content) .hljs-literal {
   color: #56b6c2;
 }
 
-.dark .article-body .hljs-string,
-.dark .article-body .hljs-regexp,
-.dark .article-body .hljs-addition,
-.dark .article-body .hljs-attribute,
-.dark .article-body .hljs-meta .hljs-string {
+.dark :is(.article-body, .comment-content) .hljs-string,
+.dark :is(.article-body, .comment-content) .hljs-regexp,
+.dark :is(.article-body, .comment-content) .hljs-addition,
+.dark :is(.article-body, .comment-content) .hljs-attribute,
+.dark :is(.article-body, .comment-content) .hljs-meta .hljs-string {
   color: #98c379;
 }
 
-.dark .article-body .hljs-attr,
-.dark .article-body .hljs-variable,
-.dark .article-body .hljs-template-variable,
-.dark .article-body .hljs-type,
-.dark .article-body .hljs-selector-class,
-.dark .article-body .hljs-selector-attr,
-.dark .article-body .hljs-selector-pseudo,
-.dark .article-body .hljs-number {
+.dark :is(.article-body, .comment-content) .hljs-attr,
+.dark :is(.article-body, .comment-content) .hljs-variable,
+.dark :is(.article-body, .comment-content) .hljs-template-variable,
+.dark :is(.article-body, .comment-content) .hljs-type,
+.dark :is(.article-body, .comment-content) .hljs-selector-class,
+.dark :is(.article-body, .comment-content) .hljs-selector-attr,
+.dark :is(.article-body, .comment-content) .hljs-selector-pseudo,
+.dark :is(.article-body, .comment-content) .hljs-number {
   color: #d19a66;
 }
 
-.dark .article-body .hljs-symbol,
-.dark .article-body .hljs-bullet,
-.dark .article-body .hljs-link,
-.dark .article-body .hljs-meta,
-.dark .article-body .hljs-selector-id,
-.dark .article-body .hljs-title {
+.dark :is(.article-body, .comment-content) .hljs-symbol,
+.dark :is(.article-body, .comment-content) .hljs-bullet,
+.dark :is(.article-body, .comment-content) .hljs-link,
+.dark :is(.article-body, .comment-content) .hljs-meta,
+.dark :is(.article-body, .comment-content) .hljs-selector-id,
+.dark :is(.article-body, .comment-content) .hljs-title {
   color: #61aeee;
 }
 
-.dark .article-body .hljs-built_in,
-.dark .article-body .hljs-title.class_,
-.dark .article-body .hljs-class .hljs-title {
+.dark :is(.article-body, .comment-content) .hljs-built_in,
+.dark :is(.article-body, .comment-content) .hljs-title.class_,
+.dark :is(.article-body, .comment-content) .hljs-class .hljs-title {
   color: #e6c07b;
 }
 
-.article-body .code-block-body pre,
-.article-body .code-block-body .line-numbers div {
+:is(.article-body, .comment-content) .code-block-body pre,
+:is(.article-body, .comment-content) .code-block-body .line-numbers div {
   font-family: var(--font-mono, monospace);
   font-size: 0.9em;
   line-height: 1.7;
 }
 
 /* 行号栏 */
-.article-body .line-numbers {
+:is(.article-body, .comment-content) .line-numbers {
   flex-shrink: 0;
   padding: 0.9rem 0.6rem 0.9rem 0.75rem;
   text-align: right;
@@ -1066,7 +1120,7 @@ body {
 }
 
 /* 复制按钮：图标按钮，无背景无边框 */
-.article-body .code-copy-btn {
+:is(.article-body, .comment-content) .code-copy-btn {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -1081,18 +1135,40 @@ body {
   transition: color 0.15s;
 }
 
-.article-body .code-copy-btn svg {
+:is(.article-body, .comment-content) .code-copy-btn svg {
   display: block;
 }
 
-.article-body .code-copy-btn:hover {
+:is(.article-body, .comment-content) .code-copy-btn:hover {
   color: #24292f;
   background: transparent;
 }
 
-.article-body .code-copy-btn.copied {
+:is(.article-body, .comment-content) .code-copy-btn.copied {
   color: #1a7f37;
   border-color: #1a7f37;
+}
+
+/* ===================== 评论区代码框尺寸（覆盖上面共用皮肤，放后面才能生效） =====================
+   评论气泡比文章正文窄，代码框整体收小一档；行号栏与代码行必须同字号、同 line-height 才能对齐。 */
+.comment-content .code-block {
+  margin: 0.6rem 0;
+}
+
+.comment-content .code-block-body pre,
+.comment-content .line-numbers,
+.comment-content .code-block-body .line-numbers div {
+  font-size: 0.8125rem;
+}
+
+.comment-content .code-block-body pre {
+  padding: 0.7rem 0.75rem;
+  /* 兜底的 .comment-content pre 自带 1px 描边，增强后外层 .code-block 已有描边 → 内层去掉，避免双边框 */
+  border: none;
+}
+
+.comment-content .line-numbers {
+  padding: 0.7rem 0.5rem 0.7rem 0.6rem;
 }
 
 /* ===================== 关于页（复刻 anheyu-app） ===================== */
@@ -3321,12 +3397,6 @@ body:has(.one-image-hero) .main {
 }
 
 /* ===================== 主题色（APPEARANCE_SKIN） =====================
-   博客 / 后台的 <html> 依据站点配置 APPEARANCE_SKIN 挂上 data-skin，
-   这里按皮肤覆盖主题主色 token（--primary / --ring），让按钮、链接、强调等
-   primary 控件跟随站点主题色，即“博客部分地方用上主题色”。
-   当前线上皮肤为 amber（琥珀橙），以此为例；其余皮肤可仿照此块按
-   APPEARANCE_TOKENS 补写。 */
-html[data-skin="amber"] {
-  --primary: #d97706;
-  --ring: #f59e0b;
-}
+   主色不再按皮肤写死在这里，而由 src/lib/appearance.ts 依据后端
+   APPEARANCE_SKIN / APPEARANCE_TOKENS 生成 CSS 变量，内联到 <html> 的 style 上，
+   从而支持任意皮肤值（amber / violet / blue ...），未知皮肤则回退本文件默认主题色。 */

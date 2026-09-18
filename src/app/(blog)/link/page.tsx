@@ -4,7 +4,8 @@ import { LinkApplyConditions } from "@/components/(blog)/link-apply-conditions";
 import { LinkCustomHtml } from "@/components/(blog)/link-custom-html";
 import { LinkPond } from "@/components/(blog)/link-pond";
 import { LinkSections } from "@/components/(blog)/link-sections";
-import { getLinksByCategoryApi, getPublicLinkCategoriesApi, getPublicSiteConfigApi, getRandomMomentPostApi } from "@/lib/api";
+import { PostComments } from "@/components/(blog)/post-comments";
+import { getCommentsWithChildrenApi, getLinksByCategoryApi, getPublicLinkCategoriesApi, getPublicSiteConfigApi, getRandomMomentPostApi } from "@/lib/api";
 import { generateBlogMetadata } from "@/lib/seo";
 
 // 友链来自远端实时数据，不做构建期静态预渲染
@@ -50,6 +51,14 @@ export default async function Link() {
     // 顶部 Banner 用友链 logo 墙：收集所有分区下的友链（不重复）
     const allLinks = [...new Map(visible.flatMap((s) => s.links).map((l) => [l.id, l])).values()];
 
+    // 友链页评论区：target_path 用页面自身路径（/link），失败降级为空列表
+    let comments: Awaited<ReturnType<typeof getCommentsWithChildrenApi>> = [];
+    try {
+        comments = await getCommentsWithChildrenApi("/link");
+    } catch {
+        // 忽略，评论区显示空态
+    }
+
     return (
         <div className="linksetcion w-full space-y-4">
             {/* 顶部 Banner：与数百名博主无限进步 + 随机访问/申请友链 + logo 波浪墙 */}
@@ -70,6 +79,9 @@ export default async function Link() {
 
             {/* 申请条件：放在 yaml 示例框下方，全部勾选后可申请友链 */}
             <LinkApplyConditions conditions={applyConditions} />
+
+            {/* 评论区：与页面评论一致，target_path = /link */}
+            <PostComments targetPath="/link" comments={comments} />
         </div>
     );
 }

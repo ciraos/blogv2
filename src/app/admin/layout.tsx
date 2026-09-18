@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ApiError, getUserInfoApi } from "@/lib/api";
 import { resolveAssetUrl } from "@/lib/utils";
+import { resolveAppearance } from "@/lib/appearance";
 import { SiteConfigResponse } from "@/types/site-config";
 
 const site_url = process.env.NEXT_PUBLIC_SITE_URL;
@@ -44,6 +45,8 @@ export async function getSiteConfigs() {
 
 export default async function AdminLayout({ children }: Readonly<{ children: React.ReactNode; }>) {
     const config = await getSiteConfigs();
+    // 站点外观：按后端 APPEARANCE_SKIN / APPEARANCE_TOKENS 生成主题变量（浅/深各一套）
+    const appearance = resolveAppearance(config?.APPEARANCE_SKIN, config?.APPEARANCE_TOKENS);
 
     // 读取登录 token，获取当前登录用户信息（proxy 已拦截未登录，这里兜底）
     const cookieStore = await cookies();
@@ -68,7 +71,10 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
     };
 
     return (
-        <html lang="zh-CN" suppressHydrationWarning data-skin={config?.APPEARANCE_SKIN}>
+        <html lang="zh-CN" suppressHydrationWarning data-skin={appearance.skinId}>
+            <head>
+                <style dangerouslySetInnerHTML={{ __html: appearance.css }} />
+            </head>
             <body>
                 <ThemeProvider
                     attribute="class"

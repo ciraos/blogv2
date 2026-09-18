@@ -4,6 +4,12 @@
 // 所有需要从客户端发起的请求（如登录）都必须走本应用同源的 /api/* 路由，
 // 由服务端转发到远端。服务端组件（Server Components）可直接调用远端接口。
 import type { AdminArticleListParams, ArchiveSummary, ArticleDetail, PostCategory, PostItem, PostListData, PostTag } from "@/types/articles";
+import type {
+    AdminCommentListData,
+    AdminCommentListParams,
+    AdminUpdateCommentRequest,
+    CommentStatus,
+} from "@/types/comments";
 import type { LoginData, LoginUserInfo } from "@/types/auth";
 import type { AdminCreateLinkRequest, AdminUpdateLinkRequest, FriendLink, LinkCategory, LinkListData, LinkListParams, LinkTag } from "@/types/links";
 import type { AdminCreateEssayRequest, AdminEssayListParams, AdminUpdateEssayRequest, Essay, EssayListData } from "@/types/essays";
@@ -711,6 +717,53 @@ export async function getCommentsWithChildrenApi(
     } catch {
         return [];
     }
+}
+
+// ===================== 管理端评论（/comments） =====================
+//
+// 官方 swagger「评论管理」标签：与公开的 /public/comments 不同，
+// 这里返回 email / ip_address / status / pinned_at 等管理字段，且需要 Bearer token。
+// 全部经同源代理 /api/admin/comments/* 转发（浏览器带 httpOnly cookie）。
+
+/** GET /api/admin/comments 管理端评论列表（分页 + 昵称/邮箱/内容/路径/IP/状态筛选） */
+export async function getAdminCommentsApi(params: AdminCommentListParams = {}): Promise<AdminCommentListData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null && value !== "") {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<AdminCommentListData>(`/api/admin/comments${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
+/** DELETE /api/admin/comments 批量删除评论（请求体 { ids }） */
+export function deleteAdminCommentsApi(ids: string[]): Promise<unknown> {
+    return request<unknown>("/api/admin/comments", { method: "DELETE", body: JSON.stringify({ ids }) });
+}
+
+/** PUT /api/admin/comments/{id}/info 更新评论内容 / 昵称 / 邮箱 / 网站（同源代理） */
+export function updateAdminCommentInfoApi(id: string, payload: AdminUpdateCommentRequest): Promise<unknown> {
+    return request<unknown>(`/api/admin/comments/${encodeURIComponent(id)}/info`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+    });
+}
+
+/** PUT /api/admin/comments/{id}/status 更新评论状态（1=已发布 2=待审核） */
+export function updateAdminCommentStatusApi(id: string, status: CommentStatus): Promise<unknown> {
+    return request<unknown>(`/api/admin/comments/${encodeURIComponent(id)}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ status }),
+    });
+}
+
+/** PUT /api/admin/comments/{id}/pin 置顶 / 取消置顶评论 */
+export function toggleAdminCommentPinApi(id: string, pinned: boolean): Promise<unknown> {
+    return request<unknown>(`/api/admin/comments/${encodeURIComponent(id)}/pin`, {
+        method: "PUT",
+        body: JSON.stringify({ pinned }),
+    });
 }
 
 // ===================== 公开页面 =====================

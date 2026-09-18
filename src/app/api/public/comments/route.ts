@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
+import { cookies } from "next/headers"
+
 import { API_URL, getCommentsWithChildrenApi } from "@/lib/api"
 
 interface CommentCreateResponse {
@@ -11,6 +13,11 @@ interface CommentCreateResponse {
 
 // 提交评论：本应用同源路由，服务端转发到远端 /public/comments（公开，可选登录）。
 // 后端不开放 CORS，浏览器端不能直连，须经本路由转发。
+//
+// 必须转发登录态：后端该接口是 JWTAuthOptional（可选登录），
+// 只有带上 Authorization 后端才知道「用管理员邮箱评论的是管理员本人」；
+// 不带就被当作游客，一旦邮箱命中管理员邮箱会被直接拒绝（constant.ErrAdminEmailUsedByGuest
+// → 403「此邮箱为管理员专属」），即使用户在本站已登录。
 export async function POST(request: NextRequest) {
     let body: Record<string, unknown>
     try {
@@ -19,11 +26,19 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ code: 400, message: "请求体格式错误", data: null }, { status: 400 })
     }
 
+    const cookieStore = await cookies()
+    const token = cookieStore.get("token")?.value
+
+    const headers = new Headers({ "Content-Type": "application/json" })
+    if (token) {
+        headers.set("Authorization", `Bearer ${token}`)
+    }
+
     let res: Response
     try {
         res = await fetch(`${API_URL}/public/comments`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify(body),
             cache: "no-store",
         })

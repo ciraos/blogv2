@@ -15,6 +15,7 @@ import { ScrollToTop } from "@/components/(blog)/scroll-to-top";
 
 import { getPublicLinksRandomApi, getAllPublicArticlesApi, getPublicArchivesApi, getUserInfoApi } from "@/lib/api";
 import { collectTags } from "@/lib/articles";
+import { resolveAppearance } from "@/lib/appearance";
 import { SiteConfigResponse } from "@/types/site-config";
 import { BlogSidebar } from "@/components/(blog)/blog-sidebar";
 
@@ -50,6 +51,8 @@ export async function getSiteConfigs() {
 
 export default async function BlogLayout({ children }: Readonly<{ children: React.ReactNode; }>) {
   const config = await getSiteConfigs();
+  // 站点外观：按后端 APPEARANCE_SKIN / APPEARANCE_TOKENS 生成主题变量（浅/深各一套）
+  const appearance = resolveAppearance(config?.APPEARANCE_SKIN, config?.APPEARANCE_TOKENS);
   // httpOnly token 由服务端读取，判断登录态传给 Header
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
@@ -115,7 +118,10 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
   }
 
   return (
-    <html lang="zh-CN" suppressHydrationWarning data-skin={config?.APPEARANCE_SKIN}>
+    <html lang="zh-CN" suppressHydrationWarning data-skin={appearance.skinId}>
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: appearance.css }} />
+      </head>
       <body>
         <ThemeProvider
           attribute="class"

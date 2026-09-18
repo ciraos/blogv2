@@ -6,6 +6,7 @@ import { Globe, ImagePlus, MapPin, MessageCircle, Monitor, Send, Sparkles, Thumb
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { CommentContent } from "@/components/(blog)/comment-content";
 import type { RecentComment } from "@/lib/api";
 import { ApiError, submitCommentApi, uploadCommentImageApi } from "@/lib/api";
 
@@ -30,7 +31,9 @@ function resolveAvatar(comment: RecentComment): string | null {
 function formatTime(iso: string): string {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "";
+    // 固定时区：服务端（容器时区）与浏览器（用户本机时区）渲染结果一致，避免水合不匹配
     return d.toLocaleString("zh-CN", {
+        timeZone: "Asia/Shanghai",
         month: "2-digit",
         day: "2-digit",
         hour: "2-digit",
@@ -38,17 +41,17 @@ function formatTime(iso: string): string {
     });
 }
 
-/** 从 user_agent 解析操作系统 + 浏览器及版本（后端只有原始 UA，主题端解析展示） */
-function parseUserAgent(ua?: string): { os?: string; browser: string } {
-    if (!ua) return { browser: "其他" };
-    let os: string | undefined;
+/** 从 user_agent 解析操作系统 + 浏览器及版本（后端只有原始 UA，解析不出来时统一显示「未知」） */
+function parseUserAgent(ua?: string): { os: string; browser: string } {
+    if (!ua) return { os: "未知", browser: "未知" };
+    let os = "未知";
     if (/Windows/.test(ua)) os = "Windows";
     else if (/Macintosh|Mac OS/.test(ua)) os = "macOS";
     else if (/Android/.test(ua)) os = "Android";
     else if (/iPhone|iPad|iPod/.test(ua)) os = "iOS";
     else if (/Linux/.test(ua)) os = "Linux";
 
-    let browser = "其他";
+    let browser = "未知";
     const edge = /Edg\/([\d.]+)/.exec(ua);
     const wv = /Chrome\/([\d.]+)/.exec(ua);
     const firefox = /Firefox\/([\d.]+)/.exec(ua);
@@ -61,8 +64,11 @@ function parseUserAgent(ua?: string): { os?: string; browser: string } {
     return { os, browser };
 }
 
+/** 代码块配置（site-config post.code_block，与文章正文共用） */
+type CodeBlockConfig = { codeMaxLines?: number; macStyle?: boolean };
+
 /** 单条评论内容行（父评论/子评论共用；reverse 时头像在右、内容在左；背景由外层组容器提供） */
-function CommentRow({ comment, reverse = false }: { comment: RecentComment; reverse?: boolean }) {
+function CommentRow({ comment, reverse = false, codeBlock }: { comment: RecentComment; reverse?: boolean; codeBlock?: CodeBlockConfig }) {
     const avatarUrl = resolveAvatar(comment);
 
     return (
@@ -116,17 +122,13 @@ function CommentRow({ comment, reverse = false }: { comment: RecentComment; reve
                         </button>
                     </span>
                 </div>
-                {/* 内容气泡：relative 供尾巴定位；双三角描边尾巴指向头像一侧 */}
-                <div className="relative mt-1.5 w-max py-2 px-3 border rounded-md bg-card text-sm leading-relaxed [&_p]:my-1">
-                    {/* 外层三角：边框色描边，与气泡边框连续 */}
-                    <span
-                        aria-hidden
-                        className={`absolute top-[9px] h-0 w-0 border-y-[9px] border-y-transparent ${reverse
-                                ? "-right-[10px] border-l-[10px] border-l-border"
-                                : "-left-[10px] border-r-[10px] border-r-border"
-                            }`}
-                    />
-                    {/* 内层三角：卡片色填充，形成箭头 */}
+                {/* 内容气泡：铺满评论列、无边框（层次由外层的评论卡片提供）；
+                    回复别人的评论（reverse，头像在右）正文靠右显示，代码框内部由 CSS 复位为左对齐 */}
+                <div
+                    className={`comment-bubble relative mt-1.5 w-full min-w-0 break-words py-2 px-3 rounded-md bg-card text-sm leading-relaxed [&_p]:my-1 ${reverse ? "comment-bubble-reverse" : ""
+                        }`}
+                >
+                    {/* 气泡尾巴：卡片色三角，指向头像一侧（去掉边框后不再需要外层描边三角） */}
                     <span
                         aria-hidden
                         className={`absolute top-[10px] h-0 w-0 border-y-[8px] border-y-transparent ${reverse
@@ -134,17 +136,17 @@ function CommentRow({ comment, reverse = false }: { comment: RecentComment; reve
                                 : "-left-[8px] border-r-[8px] border-r-card"
                             }`}
                     />
-                    <div dangerouslySetInnerHTML={{ __html: comment.content_html || "" }} />
+                    {/* 评论正文：由 CommentContent 渲染，代码块增强成与文章一致的代码框 */}
+                    <CommentContent html={comment.content_html || ""} codeBlock={codeBlock} />
                 </div>
-                {/* 评论最下方：位置（未知也显示）/ 系统 / 浏览器版本，均带图标 */}
+                {/* 评论最下方：位置 / 系统 / 浏览器版本，均带图标；解析不出来也照样显示「未知」 */}
                 {(comment.ip_location || comment.user_agent) && (() => {
                     const { os, browser } = parseUserAgent(comment.user_agent);
-                    const items = [
-                        { icon: MapPin, text: comment.ip_location || "位置" },
-                        os ? { icon: Monitor, text: os } : null,
-                        browser !== "其他" ? { icon: Globe, text: browser } : null,
-                    ].filter((item): item is { icon: LucideIcon; text: string } => Boolean(item));
-                    if (items.length === 0) return null;
+                    const items: { icon: LucideIcon; text: string }[] = [
+                        { icon: MapPin, text: comment.ip_location || "未知" },
+                        { icon: Monitor, text: os },
+                        { icon: Globe, text: browser },
+                    ];
                     return (
                         <div
                             className={`mt-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground ${reverse ? "justify-end" : ""
@@ -178,6 +180,34 @@ function randomAnonymousNickname(): string {
     return name;
 }
 
+/** 评论者信息本地缓存：发表过一次后写入，进入任意评论区自动回填 */
+const AUTHOR_STORAGE_KEY = "blog:comment-author";
+
+function readStoredAuthor(): { nickname: string; email: string; website: string } {
+    if (typeof window === "undefined") return { nickname: "", email: "", website: "" };
+    try {
+        const raw = window.localStorage.getItem(AUTHOR_STORAGE_KEY);
+        if (!raw) return { nickname: "", email: "", website: "" };
+        const obj = JSON.parse(raw) as { nickname?: unknown; email?: unknown; website?: unknown };
+        return {
+            nickname: typeof obj.nickname === "string" ? obj.nickname : "",
+            email: typeof obj.email === "string" ? obj.email : "",
+            website: typeof obj.website === "string" ? obj.website : "",
+        };
+    } catch {
+        return { nickname: "", email: "", website: "" };
+    }
+}
+
+function saveStoredAuthor(nickname: string, email: string, website: string) {
+    if (typeof window === "undefined") return;
+    try {
+        window.localStorage.setItem(AUTHOR_STORAGE_KEY, JSON.stringify({ nickname, email, website }));
+    } catch {
+        // 隐私模式 / 存储禁用时写入失败：忽略
+    }
+}
+
 export function PostComments({ targetPath, comments = [] }: PostCommentsProps) {
     // 昵称 / 邮箱（受控，匿名时锁定不可编辑）
     const [nickname, setNickname] = useState("");
@@ -196,6 +226,8 @@ export function PostComments({ targetPath, comments = [] }: PostCommentsProps) {
     /** 评论配置里是否允许传图；null 表示尚未加载到配置（仍显示按钮） */
     const [allowImageUpload, setAllowImageUpload] = useState<boolean | null>(null);
     const [commentPlaceholder, setCommentPlaceholder] = useState("欢迎留下宝贵的建议啦～");
+    /** 代码块配置（site-config post.code_block）：让评论里的代码框与文章正文一致 */
+    const [codeBlock, setCodeBlock] = useState<CodeBlockConfig | undefined>(undefined);
 
     // 挂载时拉一次评论配置：决定是否显示传图按钮、用后端占位文案
     useEffect(() => {
@@ -204,10 +236,17 @@ export function PostComments({ targetPath, comments = [] }: PostCommentsProps) {
             try {
                 const res = await fetch("/api/public/site-config", { cache: "no-store" });
                 const json = (await res.json()) as {
-                    data?: { comment?: { allow_image_upload?: boolean; placeholder?: string } };
+                    data?: {
+                        comment?: { allow_image_upload?: boolean; placeholder?: string };
+                        post?: { code_block?: { code_max_lines?: number; mac_style?: boolean } };
+                    };
                 };
+                if (cancelled) return;
+                // 代码块配置：评论区代码框与文章正文共用同一套（mac 圆点 / 折叠行数）
+                const cb = json?.data?.post?.code_block;
+                if (cb) setCodeBlock({ codeMaxLines: cb.code_max_lines, macStyle: cb.mac_style });
                 const commentCfg = json?.data?.comment;
-                if (cancelled || !commentCfg) return;
+                if (!commentCfg) return;
                 if (typeof commentCfg.allow_image_upload === "boolean") {
                     setAllowImageUpload(commentCfg.allow_image_upload);
                 }
@@ -221,6 +260,19 @@ export function PostComments({ targetPath, comments = [] }: PostCommentsProps) {
         return () => {
             cancelled = true;
         };
+    }, []);
+
+    // 进入评论区时回填上次发表评论用的昵称 / 邮箱 / 网址（仅客户端执行，避免水合不匹配）
+    useEffect(() => {
+        const stored = readStoredAuthor();
+        if (!stored.nickname && !stored.email && !stored.website) return;
+        // 放到下一个 tick 再回填：effect 内同步 setState 会造成级联渲染（react-hooks/set-state-in-effect）
+        const timer = setTimeout(() => {
+            setNickname((prev) => prev || stored.nickname);
+            setEmail((prev) => prev || stored.email);
+            setWebsite((prev) => prev || stored.website);
+        }, 0);
+        return () => clearTimeout(timer);
     }, []);
 
     /** 退出匿名：解除锁定，昵称 / 邮箱恢复可编辑 */
@@ -265,6 +317,8 @@ export function PostComments({ targetPath, comments = [] }: PostCommentsProps) {
                 is_anonymous: anonActive,
             });
             toast.success("评论发表成功");
+            // 记住昵称 / 邮箱 / 网址：下次在任意评论区自动回填（匿名评论为随机身份，不覆盖已存信息）
+            if (!anonActive) saveStoredAuthor(nickname.trim(), email.trim(), website.trim());
             setContent("");
             setWebsite("");
             // 重新拉取评论列表，让新评论出现在评论区
@@ -468,11 +522,11 @@ export function PostComments({ targetPath, comments = [] }: PostCommentsProps) {
                         {commentList.map((comment) => (
                             /* 每组评论（父评论 + 其博主回复）共用一个背景色（淡色，尽量不抢眼） */
                             <div key={comment.id} className="rounded-lg border border-border/40 bg-card/80 p-3.5">
-                                <CommentRow comment={comment} />
+                                <CommentRow comment={comment} codeBlock={codeBlock} />
                                 {/* 子评论（博主回复等）：头像在右、内容在左 */}
                                 {comment.children && comment.children.length > 0 && (<div className="mt-3 space-y-3 pl-3 sm:ml-4 sm:pl-4">
                                     {comment.children.map((child) => (
-                                        <CommentRow key={child.id} comment={child} reverse />
+                                        <CommentRow key={child.id} comment={child} reverse codeBlock={codeBlock} />
                                     ))}
                                 </div>
                                 )}
