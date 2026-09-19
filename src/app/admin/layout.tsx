@@ -11,6 +11,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ApiError, getUserInfoApi } from "@/lib/api";
 import { resolveAssetUrl } from "@/lib/utils";
 import { resolveAppearance } from "@/lib/appearance";
+import { isAdminUser } from "@/lib/auth";
 import { SiteConfigResponse } from "@/types/site-config";
 
 const site_url = process.env.NEXT_PUBLIC_SITE_URL;
@@ -69,6 +70,9 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
         email: user.email,
         avatar: resolveAssetUrl(user.avatar) ?? "",
     };
+
+    // 角色守卫：非管理员直接跳回主页（与官方后台 router.replace("/") 行为一致，不再显示无权限提示页）
+    if (!isAdminUser(user)) redirect("/");
 
     return (
         <html lang="zh-CN" suppressHydrationWarning data-skin={appearance.skinId}>

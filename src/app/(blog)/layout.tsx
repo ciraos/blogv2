@@ -16,6 +16,7 @@ import { ScrollToTop } from "@/components/(blog)/scroll-to-top";
 import { getPublicLinksRandomApi, getAllPublicArticlesApi, getPublicArchivesApi, getUserInfoApi } from "@/lib/api";
 import { collectTags } from "@/lib/articles";
 import { resolveAppearance } from "@/lib/appearance";
+import { isAdminUser } from "@/lib/auth";
 import { SiteConfigResponse } from "@/types/site-config";
 import { BlogSidebar } from "@/components/(blog)/blog-sidebar";
 
@@ -62,12 +63,15 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
   // token 过期/无效（401）：标记 authExpired，由客户端组件静默登出并提示
   let userAvatar: string | null = null;
   let userName: string | null = null;
+  let isAdmin = false;
   let authExpired = false;
   if (token) {
     try {
       const userInfo = await getUserInfoApi(token);
       userAvatar = userInfo.avatar || null;
       userName = userInfo.nickname || userInfo.username || null;
+      // 管理员判据（用户组 1）：决定用户菜单里是否显示后台 / 发布入口
+      isAdmin = isAdminUser(userInfo);
     } catch (error) {
       // 注：不依赖 instanceof ApiError（RSC/浏览器边界类引用可能缺失），直接读 status
       const status = (error as { status?: number } | null)?.status ?? 0;
@@ -147,6 +151,7 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
               userpanel={config?.userpanel}
               userAvatar={userAvatar}
               userName={userName}
+              isAdmin={isAdmin}
               mobileTags={mobileTags}
               siteinfo={siteinfo}
               siteCreatedAt={siteCreatedAt}

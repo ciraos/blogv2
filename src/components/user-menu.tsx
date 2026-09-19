@@ -30,6 +30,8 @@ interface UserMenuProps {
     userAvatar?: string | null;
     /** 已登录用户的昵称（服务端传入；登录态下触发器显示首字） */
     userName?: string | null;
+    /** 是否管理员（服务端按用户组判断）：仅管理员显示「发布文章 / 发布说说 / 后台管理」 */
+    isAdmin?: boolean;
     /** 页面大图悬浮模式：true 时触发器透明（白字悬浮大图上，不显示白胶囊） */
     overlay?: boolean;
 }
@@ -44,7 +46,7 @@ interface MenuItem {
 }
 
 /** 导航栏最右侧的用户菜单 */
-export function UserMenu({ isLoggedIn, scrolled = false, userpanel, userName, overlay = false }: UserMenuProps) {
+export function UserMenu({ isLoggedIn, scrolled = false, userpanel, userName, isAdmin = false, overlay = false }: UserMenuProps) {
     /** 登出：清 cookie 后原地刷新，不跳转登录页 */
     async function handleLogout() {
         try {
@@ -54,46 +56,49 @@ export function UserMenu({ isLoggedIn, scrolled = false, userpanel, userName, ov
         }
     }
 
-    // 登录态菜单项（按 userpanel 开关过滤；页面未就绪的暂用 toast 提示）
+    // 登录态菜单项：
+    // - 用户中心 / 全部通知：所有登录用户可见（走前台路由 /user-center、/notifications）
+    // - 发布文章 / 发布说说 / 后台管理：仅管理员可见（与官方 HeaderRight 一致）
+    // 各项仍受 site-config userpanel 开关控制
     const loggedInItems: MenuItem[] = [];
-    if (userpanel?.show_admin_dashboard) {
+    if (userpanel?.show_user_center) {
         loggedInItems.push({
-            key: "dashboard",
-            label: "后台管理",
-            icon: <LayoutDashboard className="size-4 text-muted-foreground" />,
-            href: "/admin/dashboard",
-        });
-    }
-    if (userpanel?.show_publish_article) {
-        loggedInItems.push({
-            key: "publish-article",
-            label: "发布文章",
-            icon: <PenLine className="size-4 text-muted-foreground" />,
-            href: "/admin/posts/new",
-        });
-    }
-    if (userpanel?.show_publish_essay) {
-        loggedInItems.push({
-            key: "publish-essay",
-            label: "发布说说",
-            icon: <Quote className="size-4 text-muted-foreground" />,
-            href: "/admin/essay/new",
+            key: "user-center",
+            label: "用户中心",
+            icon: <User className="size-4 text-muted-foreground" />,
+            href: "/user-center",
         });
     }
     if (userpanel?.show_notifications) {
         loggedInItems.push({
             key: "notifications",
-            label: "通知",
+            label: "全部通知",
             icon: <Bell className="size-4 text-muted-foreground" />,
-            href: "/admin/notifications",
+            href: "/notifications",
         });
     }
-    if (userpanel?.show_user_center) {
+    if (isAdmin && userpanel?.show_publish_article) {
         loggedInItems.push({
-            key: "user-center",
-            label: "个人中心",
-            icon: <User className="size-4 text-muted-foreground" />,
-            href: "/admin/profile",
+            key: "publish-article",
+            label: "发布文章",
+            icon: <PenLine className="size-4 text-muted-foreground" />,
+            href: "/admin/post-management",
+        });
+    }
+    if (isAdmin && userpanel?.show_publish_essay) {
+        loggedInItems.push({
+            key: "publish-essay",
+            label: "发布说说",
+            icon: <Quote className="size-4 text-muted-foreground" />,
+            href: "/admin/essays",
+        });
+    }
+    if (isAdmin && userpanel?.show_admin_dashboard) {
+        loggedInItems.push({
+            key: "dashboard",
+            label: "后台管理",
+            icon: <LayoutDashboard className="size-4 text-muted-foreground" />,
+            href: "/admin/dashboard",
         });
     }
 
@@ -142,7 +147,8 @@ export function UserMenu({ isLoggedIn, scrolled = false, userpanel, userName, ov
                             <div className="text-xs text-muted-foreground">欢迎回来</div>
                         </div>
 
-                        {/* 图标网格：从左往右排列，每个图标在上、文字在下 */}
+                        {/* 图标网格：从左往右排列，每个图标在上、文字在下；
+                            退出登录也是同款网格项，仅配色用警示色 */}
                         <div className="mt-2 grid grid-cols-3 gap-1">
                             {loggedInItems.map((item) =>
                                 item.href ? (
@@ -165,19 +171,15 @@ export function UserMenu({ isLoggedIn, scrolled = false, userpanel, userName, ov
                                     </button>
                                 ),
                             )}
+                            <button
+                                type="button"
+                                onClick={handleLogout}
+                                className="flex w-full flex-col items-center gap-1.5 rounded-lg px-1 py-3 text-xs font-medium text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                            >
+                                <LogOut className="size-4" />
+                                退出登录
+                            </button>
                         </div>
-
-                        {/* 虚线分隔 */}
-                        <hr className="my-2 border-t border-dashed border-border/60" />
-
-                        {/* 退出登录：单独一行 */}
-                        <button
-                            onClick={handleLogout}
-                            className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10"
-                        >
-                            <LogOut className="size-4" />
-                            退出登录
-                        </button>
                     </div>
                 ) : (
                     /* ===== 未登录 ===== */

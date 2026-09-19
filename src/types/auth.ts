@@ -39,6 +39,8 @@ export interface LoginUserInfo {
     updated_at: string;
     userGroupID: number;
     userGroup: UserGroup;
+    /** 个人网站（/user/info 返回，可能为空；用户中心「编辑资料」里可改） */
+    website?: string;
 }
 
 // 登录 / 刷新令牌返回的 data

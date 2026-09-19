@@ -1,16 +1,18 @@
-// 管理员接口同源代理：读取 httpOnly token cookie，转发到远端 /admin/* 接口。
-// 后端不开放 CORS，浏览器端管理页面的所有 /admin/* 请求都走这里的 /api/admin/* 路由。
+// 需要登录的接口同源代理：读取 httpOnly token cookie，带上 Bearer 转发到远端。
+// 后端不开放 CORS，浏览器端的管理端（/admin/*）与用户中心（/user/*）请求都走同源路由转发。
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { API_URL } from "./api";
 
 /**
- * 转发一个管理员请求到远端（自动带上 token）。
+ * 转发一个需要登录的请求到远端（自动带上 token）。
+ * 注意：body 为 FormData 时不要用它（这里会补 JSON Content-Type，破坏 multipart boundary），
+ * 那种情况直接用 fetch 透传（见 /api/user/avatar、/api/public/comments/upload）。
  * @param path 远端路径，如 /admin/users
  * @param init fetch 参数（method/body/headers）
  */
-export async function adminProxyFetch(path: string, init?: RequestInit): Promise<NextResponse> {
+export async function authedProxyFetch(path: string, init?: RequestInit): Promise<NextResponse> {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
     if (!token) {
@@ -42,3 +44,6 @@ export async function adminProxyFetch(path: string, init?: RequestInit): Promise
         { status: res.ok ? 200 : res.status }
     );
 }
+
+/** 管理端路由沿用的旧名字（实现与 authedProxyFetch 完全相同） */
+export const adminProxyFetch = authedProxyFetch;

@@ -766,6 +766,60 @@ export function toggleAdminCommentPinApi(id: string, pinned: boolean): Promise<u
     });
 }
 
+// ===================== 用户中心（/user/*，需登录） =====================
+//
+// 官方对应实现：anheyu-app-frontend 的 src/lib/api/user-center.ts。
+// 后端不开放 CORS，全部经同源代理 /api/user/* 转发（浏览器带 httpOnly cookie 里的 token）。
+
+/** 通知设置（后端 SimpleUserNotificationSettings） */
+export interface UserNotificationSettings {
+    /** 是否接收评论回复通知 */
+    allowCommentReplyNotification: boolean;
+}
+
+/** PUT /api/user/profile 更新资料（昵称 / 个人网站） */
+export function updateUserProfileApi(payload: { nickname?: string; website?: string }): Promise<unknown> {
+    return request<unknown>("/api/user/profile", { method: "PUT", body: JSON.stringify(payload) });
+}
+
+/** POST /api/user/update-password 修改密码（成功后需重新登录） */
+export function updateUserPasswordApi(payload: { oldPassword: string; newPassword: string }): Promise<unknown> {
+    return request<unknown>("/api/user/update-password", { method: "POST", body: JSON.stringify(payload) });
+}
+
+/** POST /api/user/avatar 上传头像（multipart）；返回后端给出的新头像 URL */
+export async function uploadUserAvatarApi(file: File): Promise<string | null> {
+    const form = new FormData();
+    form.append("file", file);
+    let res: Response;
+    try {
+        // 不能走 request() 帮助函数（它会为 body 设置 JSON Content-Type，破坏 multipart boundary）
+        res = await fetch("/api/user/avatar", { method: "POST", body: form });
+    } catch {
+        throw new ApiError("网络请求失败，请检查网络连接", 0, 0);
+    }
+    let json: ApiResponse<{ url?: string }> | null = null;
+    try {
+        json = (await res.json()) as ApiResponse<{ url?: string }>;
+    } catch {
+        // 非 JSON 响应
+    }
+    if (res.ok && json?.code === 200) {
+        return json.data?.url ?? null;
+    }
+    throw new ApiError(json?.message || `头像上传失败（HTTP ${res.status}）`, res.status, json?.code ?? res.status);
+}
+
+/** GET /api/user/notification-settings 读取通知设置 */
+export function getNotificationSettingsApi(): Promise<UserNotificationSettings> {
+    return request<UserNotificationSettings>("/api/user/notification-settings", { method: "GET" });
+}
+
+/** PUT /api/user/notification-settings 保存通知设置 */
+export function updateNotificationSettingsApi(payload: UserNotificationSettings): Promise<unknown> {
+    return request<unknown>("/api/user/notification-settings", { method: "PUT", body: JSON.stringify(payload) });
+}
+
 // ===================== 公开页面 =====================
 
 export interface PublicPage {

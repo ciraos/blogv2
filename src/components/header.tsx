@@ -44,6 +44,8 @@ interface HeaderProps {
     userAvatar?: string | null;
     /** 已登录用户的昵称（服务端从用户信息获取；登录态下触发器改显示首字） */
     userName?: string | null;
+    /** 是否管理员（服务端按用户组判断）：决定用户菜单里是否显示后台 / 发布入口 */
+    isAdmin?: boolean;
     /** 移动端汉堡菜单：标签云（服务端聚合后传入） */
     mobileTags?: { id: string; name: string; count: number }[];
     /** 移动端汉堡菜单：网站信息（文章数/字数/建站天数开关，与侧边栏一致） */
@@ -71,7 +73,7 @@ function opensInNewTab(isExternal: boolean | undefined, path: string): boolean {
     return !!isExternal || NEW_TAB_PATHS.has(path.replace(/\/+$/, ""));
 }
 
-export default function Header({ menu = [], appName = "博客", isLoggedIn = false, userpanel, userAvatar, userName, mobileTags = [], siteinfo, siteCreatedAt, oneImage }: HeaderProps) {
+export default function Header({ menu = [], appName = "博客", isLoggedIn = false, userpanel, userAvatar, userName, isAdmin = false, mobileTags = [], siteinfo, siteCreatedAt, oneImage }: HeaderProps) {
     // 桌面端下拉：hover 展开，一次只开一个
     const [openGroup, setOpenGroup] = useState<string | null>(null);
     // 关闭宽限期：鼠标穿过触发器与面板之间的间隙时不误关
@@ -309,7 +311,7 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
                             </SheetContent>
                         </Sheet>
                     </div>
-                    <UserMenu isLoggedIn={isLoggedIn} scrolled={scrolled} overlay={heroOverlay} userpanel={userpanel} userAvatar={userAvatar} userName={userName} />
+                    <UserMenu isLoggedIn={isLoggedIn} scrolled={scrolled} overlay={heroOverlay} userpanel={userpanel} userAvatar={userAvatar} userName={userName} isAdmin={isAdmin} />
                 </div>
             </div>
         </>
