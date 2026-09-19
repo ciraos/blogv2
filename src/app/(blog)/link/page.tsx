@@ -6,6 +6,7 @@ import { LinkPond } from "@/components/(blog)/link-pond";
 import { LinkSections } from "@/components/(blog)/link-sections";
 import { PostComments } from "@/components/(blog)/post-comments";
 import { getCommentsWithChildrenApi, getLinksByCategoryApi, getPublicLinkCategoriesApi, getPublicSiteConfigApi, getRandomMomentPostApi } from "@/lib/api";
+import { pickFishLine } from "@/lib/fish-lines";
 import { generateBlogMetadata } from "@/lib/seo";
 
 // 友链来自远端实时数据，不做构建期静态预渲染
@@ -64,8 +65,8 @@ export default async function Link() {
             {/* 顶部 Banner：与数百名博主无限进步 + 随机访问/申请友链 + logo 波浪墙 */}
             <FlinkBanner links={allLinks} />
 
-            {/* 友链鱼塘：随机一篇友链朋友圈文章 */}
-            <LinkPond initial={randomPost} />
+            {/* 友链鱼塘：随机一篇友链朋友圈文章（首屏趣味前缀在服务端抽签，避免水合文本不一致） */}
+            <LinkPond initial={randomPost} initialPrefix={pickFishLine()} />
 
             {visible.length === 0 ? (
                 <p className="py-16 text-center text-muted-foreground">暂无友情链接</p>

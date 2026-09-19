@@ -4,27 +4,25 @@ import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 
 import { getRandomMomentPostClientApi } from "@/lib/api";
+import { pickFishLine } from "@/lib/fish-lines";
 import type { RandomMomentPost } from "@/types/moments";
-
-/** 线上「钓鱼」趣味前缀，每次随机一句（换一篇时重新抽） */
-const FISH_LINES = [
-    "外星人降临地球学习地球文化，落地时被你塞了",
-    "考古学家发现了一篇沉睡千年的文章，来自友链",
-    "你在深海里打捞起一份宝藏，来自友链",
-    "有一只信鸽穿越山海送来一篇文章，来自友链",
-];
-
-function pick<T>(arr: T[]): T {
-    return arr[Math.floor(Math.random() * arr.length)];
-}
 
 /**
  * 钓鱼：随机展示一篇朋友圈/友链聚合文章（GET /pro/moments/randompost）。
  * 标题头「🎣 钓鱼」+ 右上旋转刷新按钮 + 一行可点击文字（来自友链 XX 的文章：title）。
+ *
+ * 首屏那句趣味前缀由服务端抽签后经 `initialPrefix` 传入（保证 SSR 与客户端水合文本一致，
+ * 见 lib/fish-lines.ts）；点「换一篇」时在客户端重新抽。
  */
-export function LinkPond({ initial }: { initial: RandomMomentPost | null }) {
+export function LinkPond({
+    initial,
+    initialPrefix,
+}: {
+    initial: RandomMomentPost | null;
+    initialPrefix: string;
+}) {
     const [post, setPost] = useState<RandomMomentPost | null>(initial);
-    const [prefix, setPrefix] = useState<string>(() => pick(FISH_LINES));
+    const [prefix, setPrefix] = useState<string>(initialPrefix);
     const [loading, setLoading] = useState(false);
 
     async function shuffle() {
@@ -34,7 +32,7 @@ export function LinkPond({ initial }: { initial: RandomMomentPost | null }) {
         setLoading(false);
         if (next) {
             setPost(next);
-            setPrefix(pick(FISH_LINES));
+            setPrefix(pickFishLine());
         }
     }
 
