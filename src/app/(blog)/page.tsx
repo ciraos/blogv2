@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { PagedArticleList } from "@/components/(blog)/paged-article-list";
+import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
 import { getPublicArticlesApi } from "@/lib/api";
 import { generateBlogMetadata } from "@/lib/seo";
@@ -18,14 +19,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
     const { list, total } = await getPublicArticlesApi({ page, pageSize: PAGE_SIZE });
 
     return (
-        <div className="w-full space-y-12">
-            <PagedArticleList
-                articles={list}
-                total={total}
-                page={page}
-                pageSize={PAGE_SIZE}
-                makePageHref={(p) => `/?page=${p}`}
-            />
-        </div>
+        <PageWithSidebar>
+            <div className="w-full space-y-12">
+                <PagedArticleList
+                    articles={list}
+                    total={total}
+                    page={page}
+                    pageSize={PAGE_SIZE}
+                    makePageHref={(p) => `/?page=${p}`}
+                />
+            </div>
+        </PageWithSidebar>
     );
 }

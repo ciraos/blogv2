@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { NumberedPagination } from "@/components/(blog)/numbered-pagination";
+import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
 import { ApiError, searchArticlesApi, type SearchHit } from "@/lib/api";
 import { generateBlogMetadata } from "@/lib/seo";
@@ -82,12 +83,14 @@ export default async function Search({ searchParams }: { searchParams: Promise<S
     // 无关键词：展示搜索提示
     if (!q) {
         return (
-            <div className="w-full space-y-6">
-                <h1 className="text-2xl font-bold tracking-tight">搜索</h1>
-                <p className="py-16 text-center text-sm text-muted-foreground">
-                    输入关键词搜索站内文章、页面等内容。
-                </p>
-            </div>
+            <PageWithSidebar>
+                <div className="w-full space-y-6">
+                    <h1 className="text-2xl font-bold tracking-tight">搜索</h1>
+                    <p className="py-16 text-center text-sm text-muted-foreground">
+                        输入关键词搜索站内文章、页面等内容。
+                    </p>
+                </div>
+            </PageWithSidebar>
         );
     }
 
@@ -106,36 +109,38 @@ export default async function Search({ searchParams }: { searchParams: Promise<S
     const totalPages = Math.max(1, pagination?.totalPages ?? 1);
 
     return (
-        <div className="w-full space-y-6">
-            <header>
-                <h1 className="text-2xl font-bold tracking-tight">搜索</h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    关键词「{q}」共找到 {total} 条结果
-                </p>
-            </header>
+        <PageWithSidebar>
+            <div className="w-full space-y-6">
+                <header>
+                    <h1 className="text-2xl font-bold tracking-tight">搜索</h1>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        关键词「{q}」共找到 {total} 条结果
+                    </p>
+                </header>
 
-            {errorMessage ? (
-                <p className="py-16 text-center text-sm text-muted-foreground">
-                    搜索失败：{errorMessage}
-                </p>
-            ) : hits.length === 0 ? (
-                <p className="py-16 text-center text-sm text-muted-foreground">
-                    没有找到与「{q}」相关的内容，换个关键词试试吧。
-                </p>
-            ) : (
-                <>
-                    <div className="space-y-3">
-                        {hits.map((hit) => (
-                            <SearchResultItem key={hit.id} hit={hit} />
-                        ))}
-                    </div>
-                    <NumberedPagination
-                        page={page}
-                        totalPages={totalPages}
-                        makePageHref={(p) => `/search?q=${encodeURIComponent(q)}&page=${p}`}
-                    />
-                </>
-            )}
-        </div>
+                {errorMessage ? (
+                    <p className="py-16 text-center text-sm text-muted-foreground">
+                        搜索失败：{errorMessage}
+                    </p>
+                ) : hits.length === 0 ? (
+                    <p className="py-16 text-center text-sm text-muted-foreground">
+                        没有找到与「{q}」相关的内容，换个关键词试试吧。
+                    </p>
+                ) : (
+                    <>
+                        <div className="space-y-3">
+                            {hits.map((hit) => (
+                                <SearchResultItem key={hit.id} hit={hit} />
+                            ))}
+                        </div>
+                        <NumberedPagination
+                            page={page}
+                            totalPages={totalPages}
+                            makePageHref={(p) => `/search?q=${encodeURIComponent(q)}&page=${p}`}
+                        />
+                    </>
+                )}
+            </div>
+        </PageWithSidebar>
     );
 }

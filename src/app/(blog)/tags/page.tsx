@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PagedArticleList } from "@/components/(blog)/paged-article-list";
+import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
 import { getAllPublicArticlesApi, getPublicArticlesApi } from "@/lib/api";
 import { collectTags } from "@/lib/articles";
@@ -27,22 +28,24 @@ export default async function Tags({ searchParams }: { searchParams: Promise<Tag
     if (name) {
         const { list, total } = await getPublicArticlesApi({ page, pageSize: PAGE_SIZE, tag: name });
         return (
-            <div className="w-full space-y-4">
-                <div className="flex items-baseline justify-between gap-4">
-                    <h1 className="text-2xl font-bold tracking-tight">标签：# {name}</h1>
-                    <Link href="/tags" className="shrink-0 text-sm text-muted-foreground hover:underline">
-                        ← 全部标签
-                    </Link>
+            <PageWithSidebar>
+                <div className="w-full space-y-4">
+                    <div className="flex items-baseline justify-between gap-4">
+                        <h1 className="text-2xl font-bold tracking-tight">标签：# {name}</h1>
+                        <Link href="/tags" className="shrink-0 text-sm text-muted-foreground hover:underline">
+                            ← 全部标签
+                        </Link>
+                    </div>
+                    <PagedArticleList
+                        articles={list}
+                        total={total}
+                        page={page}
+                        pageSize={PAGE_SIZE}
+                        makePageHref={(p) => `/tags?name=${encodeURIComponent(name)}&page=${p}`}
+                        emptyText="该标签暂无文章"
+                    />
                 </div>
-                <PagedArticleList
-                    articles={list}
-                    total={total}
-                    page={page}
-                    pageSize={PAGE_SIZE}
-                    makePageHref={(p) => `/tags?name=${encodeURIComponent(name)}&page=${p}`}
-                    emptyText="该标签暂无文章"
-                />
-            </div>
+            </PageWithSidebar>
         );
     }
 

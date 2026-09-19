@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import "../globals.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -18,7 +18,6 @@ import { collectTags } from "@/lib/articles";
 import { resolveAppearance } from "@/lib/appearance";
 import { isAdminUser } from "@/lib/auth";
 import { SiteConfigResponse } from "@/types/site-config";
-import { BlogSidebar } from "@/components/(blog)/blog-sidebar";
 
 const site_url = process.env.NEXT_PUBLIC_SITE_URL;
 const api_url = process.env.NEXT_PUBLIC_API_URL;
@@ -82,12 +81,6 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
       }
     }
   }
-
-  // 文章详情页：目录（TOC）移入全局侧边栏顶部，正文不再单独双栏
-  const headerList = await headers();
-  const pathname = headerList.get("x-pathname") ?? "";
-  // 关于页：内容自带丰富布局（头像/技能/信息），不显示全局侧边栏
-  const isAbout = pathname === "/about";
 
   // 页脚随机友链：数量取配置 footer.list.randomFriends（默认 3）
   const randomFriendsCount = config?.footer?.list?.randomFriends ?? 3;
@@ -162,13 +155,9 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
                 header 透明悬浮其上，滚动离开首屏后恢复 */}
             <OneImageHero oneImage={config?.page?.one_image} appName={config?.APP_NAME ?? "博客"} />
 
-            <div className="main w-full max-w-300 mx-auto mt-10 px-4 sm:px-0 flex flex-1 gap-6">
-              {/* 主体内容区（container query 容器：收缩侧边栏时撑满，网格列数随宽度自适应） */}
-              <div className="min-w-0 flex-1 @container/main">{children}</div>
-
-              {/* 右侧边栏（300px，桌面端显示；移动端隐藏；关于页不显示） */}
-              {!isAbout && <BlogSidebar config={config} />}
-            </div>
+            {/* 页面容器：只负责居中 / 最大宽度 / 内边距。
+                右侧边栏改由「页面」按需渲染（对齐官方做法，见 components/(blog)/page-with-sidebar.tsx） */}
+            <div className="main w-full max-w-300 mx-auto mt-10 px-4 sm:px-0 flex-1">{children}</div>
 
             {/* footer 外层全宽：整页背景模式下承载 footer 背景色与顶部渐隐带（铺满屏幕），
                 非 hero 页无 .one-image-footer-fade 时等同透明，不影响常规布局 */}

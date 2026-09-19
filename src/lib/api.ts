@@ -820,6 +820,57 @@ export function updateNotificationSettingsApi(payload: UserNotificationSettings)
     return request<unknown>("/api/user/notification-settings", { method: "PUT", body: JSON.stringify(payload) });
 }
 
+// ===================== 消息通知（/pro/notifications，需登录） =====================
+//
+// 官方对应实现：anheyu-app-frontend 的 (frontend)/notifications（客户端调 /api/pro/notifications）。
+// 后端不开放 CORS，这里经同源代理 /api/pro/notifications* 转发。
+
+/** 通知类型（官方分类：文章评论 / 购买通知 / 会员服务 / 工单 / 系统通知） */
+export type NotificationType = "COMMENT" | "PURCHASE" | "MEMBERSHIP" | "TICKET" | "SYSTEM";
+
+/** 单条通知 */
+export interface NotificationItem {
+    id: string;
+    type: NotificationType | string;
+    is_read: boolean;
+    title: string;
+    /** 通知正文（后端返回的可能含 HTML） */
+    content: string;
+    created_at: string;
+    /** 关联链接：有值时详情页显示「查看详情 →」 */
+    link?: string | null;
+}
+
+/** GET /pro/notifications 返回的 data */
+export interface NotificationListData {
+    list: NotificationItem[];
+    unread_count: number;
+}
+
+/** GET /api/pro/notifications 通知列表（page / page_size / unread_only 原样透传给后端） */
+export async function getNotificationsApi(
+    params: { page?: number; page_size?: number; unread_only?: boolean } = {},
+): Promise<NotificationListData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<NotificationListData>(`/api/pro/notifications${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
+/** POST /api/pro/notifications/{id}/read 标记单条通知已读 */
+export function markNotificationReadApi(id: string): Promise<unknown> {
+    return request<unknown>(`/api/pro/notifications/${encodeURIComponent(id)}/read`, { method: "POST" });
+}
+
+/** POST /api/pro/notifications/read-all 全部标为已读 */
+export function markAllNotificationsReadApi(): Promise<unknown> {
+    return request<unknown>("/api/pro/notifications/read-all", { method: "POST" });
+}
+
 // ===================== 公开页面 =====================
 
 export interface PublicPage {

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PagedArticleList } from "@/components/(blog)/paged-article-list";
+import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
 import { getPublicArchivesApi, getPublicArticlesApi } from "@/lib/api";
 import { generateBlogMetadata } from "@/lib/seo";
@@ -60,51 +61,53 @@ export default async function Archives({ searchParams }: { searchParams: Promise
         const years = [...byYear.values()];
 
         return (
-            <div className="w-full space-y-8">
-                <h1 className="text-2xl font-bold tracking-tight">归档</h1>
-                {years.length === 0 ? (
-                    <p className="py-16 text-center text-muted-foreground">暂无归档</p>
-                ) : (
-                    <div className="space-y-8">
-                        {years.map((group) => (
-                            <section key={group.year}>
-                                {/* 年份节点 */}
-                                <h2 className="flex items-center gap-2.5 text-lg font-semibold">
-                                    <span className="size-2.5 shrink-0 rounded-full bg-primary" aria-hidden="true" />
-                                    {group.year} 年
-                                </h2>
+            <PageWithSidebar>
+                <div className="w-full space-y-8">
+                    <h1 className="text-2xl font-bold tracking-tight">归档</h1>
+                    {years.length === 0 ? (
+                        <p className="py-16 text-center text-muted-foreground">暂无归档</p>
+                    ) : (
+                        <div className="space-y-8">
+                            {years.map((group) => (
+                                <section key={group.year}>
+                                    {/* 年份节点 */}
+                                    <h2 className="flex items-center gap-2.5 text-lg font-semibold">
+                                        <span className="size-2.5 shrink-0 rounded-full bg-primary" aria-hidden="true" />
+                                        {group.year} 年
+                                    </h2>
 
-                                {/* 月份 + 文章（缩进 + 时间线） */}
-                                <div className="ml-1.5 mt-4 space-y-5 border-l border-border pl-6">
-                                    {group.months.map((m) => (
-                                        <div key={m.month}>
-                                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                                                <span className="size-2 shrink-0 rounded-full border-2 border-primary bg-background" aria-hidden="true" />
-                                                {m.month} 月（{m.articles.length} 篇）
+                                    {/* 月份 + 文章（缩进 + 时间线） */}
+                                    <div className="ml-1.5 mt-4 space-y-5 border-l border-border pl-6">
+                                        {group.months.map((m) => (
+                                            <div key={m.month}>
+                                                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                                                    <span className="size-2 shrink-0 rounded-full border-2 border-primary bg-background" aria-hidden="true" />
+                                                    {m.month} 月（{m.articles.length} 篇）
+                                                </div>
+                                                <ul className="mt-2 space-y-2">
+                                                    {m.articles.map((article) => (
+                                                        <li key={article.id} className="flex items-baseline gap-2.5">
+                                                            <span className="w-11 shrink-0 text-xs tabular-nums text-muted-foreground">
+                                                                {formatDay(article.created_at)}
+                                                            </span>
+                                                            <Link
+                                                                href={`/posts/${article.id}`}
+                                                                className="truncate text-sm transition-colors hover:text-primary hover:underline"
+                                                            >
+                                                                {article.title}
+                                                            </Link>
+                                                        </li>
+                                                    ))}
+                                                </ul>
                                             </div>
-                                            <ul className="mt-2 space-y-2">
-                                                {m.articles.map((article) => (
-                                                    <li key={article.id} className="flex items-baseline gap-2.5">
-                                                        <span className="w-11 shrink-0 text-xs tabular-nums text-muted-foreground">
-                                                            {formatDay(article.created_at)}
-                                                        </span>
-                                                        <Link
-                                                            href={`/posts/${article.id}`}
-                                                            className="truncate text-sm transition-colors hover:text-primary hover:underline"
-                                                        >
-                                                            {article.title}
-                                                        </Link>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    ))}
-                                </div>
-                            </section>
-                        ))}
-                    </div>
-                )}
-            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </PageWithSidebar>
         );
     }
 
@@ -119,23 +122,25 @@ export default async function Archives({ searchParams }: { searchParams: Promise
     const title = `${year} 年${validMonth ? ` ${validMonth} 月` : ""}`;
 
     return (
-        <div className="w-full space-y-4">
-            <div className="flex items-baseline justify-between gap-4">
-                <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-                <Link href="/archives" className="shrink-0 text-sm text-muted-foreground hover:underline">
-                    ← 全部归档
-                </Link>
+        <PageWithSidebar>
+            <div className="w-full space-y-4">
+                <div className="flex items-baseline justify-between gap-4">
+                    <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+                    <Link href="/archives" className="shrink-0 text-sm text-muted-foreground hover:underline">
+                        ← 全部归档
+                    </Link>
+                </div>
+                <PagedArticleList
+                    articles={list}
+                    total={total}
+                    page={page}
+                    pageSize={PAGE_SIZE}
+                    makePageHref={(p) =>
+                        `/archives?year=${year}${validMonth ? `&month=${validMonth}` : ""}&page=${p}`
+                    }
+                    emptyText="该时间段暂无文章"
+                />
             </div>
-            <PagedArticleList
-                articles={list}
-                total={total}
-                page={page}
-                pageSize={PAGE_SIZE}
-                makePageHref={(p) =>
-                    `/archives?year=${year}${validMonth ? `&month=${validMonth}` : ""}&page=${p}`
-                }
-                emptyText="该时间段暂无文章"
-            />
-        </div>
+        </PageWithSidebar>
     );
 }

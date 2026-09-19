@@ -7,6 +7,7 @@ import { MomentCard } from "@/components/(blog)/moment-card";
 import { MomentsRefreshButton } from "@/components/(blog)/moments-refresh-button";
 import { NumberedPagination } from "@/components/(blog)/numbered-pagination";
 import { PostComments } from "@/components/(blog)/post-comments";
+import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
 import { ApiError, getCommentsWithChildrenApi, getPublicMomentsApi } from "@/lib/api";
 import { generateBlogMetadata } from "@/lib/seo";
@@ -44,12 +45,14 @@ export default async function Fcircle({ searchParams }: { searchParams: Promise<
     // 空态 / 错误态
     if (!data || data.list.length === 0) {
         return (
-            <div className="w-full space-y-6">
-                <h1 className="text-2xl font-bold tracking-tight">朋友圈</h1>
-                <p className="py-16 text-center text-sm text-muted-foreground">
-                    {errorMessage ? `暂时无法获取内容：${errorMessage}` : "暂无内容，敬请期待"}
-                </p>
-            </div>
+            <PageWithSidebar>
+                <div className="w-full space-y-6">
+                    <h1 className="text-2xl font-bold tracking-tight">朋友圈</h1>
+                    <p className="py-16 text-center text-sm text-muted-foreground">
+                        {errorMessage ? `暂时无法获取内容：${errorMessage}` : "暂无内容，敬请期待"}
+                    </p>
+                </div>
+            </PageWithSidebar>
         );
     }
 
@@ -63,45 +66,47 @@ export default async function Fcircle({ searchParams }: { searchParams: Promise<
         `/fcircle?${sortType !== "published_at" ? `sort_type=${sortType}&` : ""}page=${p}`;
 
     return (
-        <div className="w-full space-y-6">
-            <header>
-                <h1 className="text-2xl font-bold tracking-tight">朋友圈</h1>
-                {/* 统计 + 排序按钮（移动端纵向堆叠，桌面端同行） */}
-                <div className="mt-1 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
-                    <p className="text-sm text-muted-foreground">
-                        {stats
-                            ? `${stats.active_links} 个活跃友链 · ${stats.total_moments} 篇动态`
-                            : `共 ${data.total} 篇动态`}
-                    </p>
-                    <Link
-                        href={sortType === "published_at" ? "/fcircle?sort_type=created_at" : "/fcircle?sort_type=published_at"}
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
-                    >
-                        <ArrowUpDown className="size-3.5" />
-                        {sortType === "published_at" ? "按发布时间" : "按抓取时间"}
-                    </Link>
+        <PageWithSidebar>
+            <div className="w-full space-y-6">
+                <header>
+                    <h1 className="text-2xl font-bold tracking-tight">朋友圈</h1>
+                    {/* 统计 + 排序按钮（移动端纵向堆叠，桌面端同行） */}
+                    <div className="mt-1 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
+                        <p className="text-sm text-muted-foreground">
+                            {stats
+                                ? `${stats.active_links} 个活跃友链 · ${stats.total_moments} 篇动态`
+                                : `共 ${data.total} 篇动态`}
+                        </p>
+                        <Link
+                            href={sortType === "published_at" ? "/fcircle?sort_type=created_at" : "/fcircle?sort_type=published_at"}
+                            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
+                        >
+                            <ArrowUpDown className="size-3.5" />
+                            {sortType === "published_at" ? "按发布时间" : "按抓取时间"}
+                        </Link>
+                    </div>
+                </header>
+
+                {/* 网格：严格从左到右、逐行排列（最新在前）。grid-cols-1 保证移动端单列不按内容撑宽 */}
+                <div className="fcircle-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {data.list.map((moment) => (
+                        <MomentCard key={moment.id} moment={moment} />
+                    ))}
                 </div>
-            </header>
 
-            {/* 网格：严格从左到右、逐行排列（最新在前）。grid-cols-1 保证移动端单列不按内容撑宽 */}
-            <div className="fcircle-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {data.list.map((moment) => (
-                    <MomentCard key={moment.id} moment={moment} />
-                ))}
+                <NumberedPagination page={page} totalPages={totalPages} makePageHref={pageHref} />
+
+                {/* 上次抓取时间 + 刷新按钮（右下角） */}
+                {stats?.last_updated_time && (
+                    <p className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
+                        上次抓取更新：{stats.last_updated_time}
+                        <MomentsRefreshButton isLoggedIn={isLoggedIn} />
+                    </p>
+                )}
+
+                {/* 评论区 */}
+                <PostComments targetPath={targetPath} comments={comments} />
             </div>
-
-            <NumberedPagination page={page} totalPages={totalPages} makePageHref={pageHref} />
-
-            {/* 上次抓取时间 + 刷新按钮（右下角） */}
-            {stats?.last_updated_time && (
-                <p className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
-                    上次抓取更新：{stats.last_updated_time}
-                    <MomentsRefreshButton isLoggedIn={isLoggedIn} />
-                </p>
-            )}
-
-            {/* 评论区 */}
-            <PostComments targetPath={targetPath} comments={comments} />
-        </div>
+        </PageWithSidebar>
     );
 }

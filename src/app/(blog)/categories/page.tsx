@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PagedArticleList } from "@/components/(blog)/paged-article-list";
+import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
 import { getAllPublicArticlesApi, getPublicArticlesApi } from "@/lib/api";
 import { collectCategories } from "@/lib/articles";
@@ -27,22 +28,24 @@ export default async function Categories({ searchParams }: { searchParams: Promi
     if (name) {
         const { list, total } = await getPublicArticlesApi({ page, pageSize: PAGE_SIZE, category: name });
         return (
-            <div className="w-full space-y-4">
-                <div className="flex items-baseline justify-between gap-4">
-                    <h1 className="text-2xl font-bold tracking-tight">分类：{name}</h1>
-                    <Link href="/categories" className="shrink-0 text-sm text-muted-foreground hover:underline">
-                        ← 全部分类
-                    </Link>
+            <PageWithSidebar>
+                <div className="w-full space-y-4">
+                    <div className="flex items-baseline justify-between gap-4">
+                        <h1 className="text-2xl font-bold tracking-tight">分类：{name}</h1>
+                        <Link href="/categories" className="shrink-0 text-sm text-muted-foreground hover:underline">
+                            ← 全部分类
+                        </Link>
+                    </div>
+                    <PagedArticleList
+                        articles={list}
+                        total={total}
+                        page={page}
+                        pageSize={PAGE_SIZE}
+                        makePageHref={(p) => `/categories?name=${encodeURIComponent(name)}&page=${p}`}
+                        emptyText="该分类暂无文章"
+                    />
                 </div>
-                <PagedArticleList
-                    articles={list}
-                    total={total}
-                    page={page}
-                    pageSize={PAGE_SIZE}
-                    makePageHref={(p) => `/categories?name=${encodeURIComponent(name)}&page=${p}`}
-                    emptyText="该分类暂无文章"
-                />
-            </div>
+            </PageWithSidebar>
         );
     }
 
