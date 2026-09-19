@@ -209,11 +209,12 @@ body {
   animation-play-state: paused;
 }
 
-/* 友链网格：主内容区随侧边栏收缩而变宽（容器查询，匹配布局的 @container/main 祖先），
-   内容宽度 ≥ 60rem(960px) 时由 lg 的 3 列升为 5 列；desc 超长由 LinkCard 的 line-clamp 省略 */
+/* 友链网格：桌面端一行 4 个（友链页无侧边栏，基础列数已由 lg:grid-cols-4 给出）。
+   这条容器查询用于「万一友链网格又落进带侧边栏的容器」时：内容区 ≥ 60rem(960px) 才升到 4 列，
+   否则维持 Tailwind 的 2/3 列，避免在 876px 的窄内容区里挤 4 列；desc 超长由 LinkCard 的 line-clamp 省略 */
 @container (min-width: 60rem) {
   .link-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
