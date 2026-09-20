@@ -50,6 +50,16 @@ export interface LinkListData {
     pageSize: number;
 }
 
+/**
+ * 友链页分区：一个分类 + 该分类下的友链。
+ * 配合「按分类展示全部友链」的口径 —— links 含状态为 INVALID（已失联）的友链，
+ * 因此计数等于该分类的总条数，而不是其中「已通过」的条数。
+ */
+export interface LinkCategoryGroup {
+    category: LinkCategory;
+    links: FriendLink[];
+}
+
 // 友链列表请求参数
 export interface LinkListParams {
     category_id?: number | string;

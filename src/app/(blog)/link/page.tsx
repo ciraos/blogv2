@@ -5,7 +5,7 @@ import { LinkCustomHtml } from "@/components/(blog)/link-custom-html";
 import { LinkPond } from "@/components/(blog)/link-pond";
 import { LinkSections } from "@/components/(blog)/link-sections";
 import { PostComments } from "@/components/(blog)/post-comments";
-import { getCommentsWithChildrenApi, getLinksByCategoryApi, getPublicLinkCategoriesApi, getPublicSiteConfigApi, getRandomMomentPostApi } from "@/lib/api";
+import { getCommentsWithChildrenApi, getLinksByCategoryApi, getLinksGroupedByCategoryApi, getPublicLinkCategoriesApi, getPublicSiteConfigApi, getRandomMomentPostApi } from "@/lib/api";
 import { pickFishLine } from "@/lib/fish-lines";
 import { generateBlogMetadata } from "@/lib/seo";
 
@@ -20,21 +20,23 @@ export default async function Link() {
     // 站点配置（用于页脚自定义内容）
     const config = await getPublicSiteConfigApi().catch(() => null);
 
-    // 获取分类列表，再按分类拉取友链。
-    // 顺序：按分类 id 升序（创建越早越靠前，id 越大越往下）；
-    // 空分类（含推荐/已失联）一律隐藏不展示。
-    const categories = await getPublicLinkCategoriesApi();
-
-    const sections = await Promise.all(
-        categories.map(async (category) => ({
-            category,
-            links: await getLinksByCategoryApi(category.id),
-        }))
-    );
-    // 按 id 升序；过滤空分类
-    const visible = sections
-        .filter((section) => section.links.length > 0)
-        .sort((a, b) => a.category.id - b.category.id);
+    // 友链分区：按分类展示该分类下的「全部友链」——包含状态为 INVALID 的已失联友链，
+    // 所以分区标题里的计数是该分类的总条数（不是其中「已通过」的条数）。
+    // 全状态公开接口不可用时回退到「仅已通过」的旧路径（/public/link-categories + /public/links）。
+    let sections = await getLinksGroupedByCategoryApi();
+    if (!sections) {
+        const categories = await getPublicLinkCategoriesApi();
+        sections = (
+            await Promise.all(
+                categories.map(async (category) => ({
+                    category,
+                    links: await getLinksByCategoryApi(category.id),
+                }))
+            )
+        ).sort((a, b) => a.category.id - b.category.id);
+    }
+    // 顺序：按分类 id 升序（创建越早越靠前，id 越大越往下）；空分类一律隐藏不展示。
+    const visible = sections.filter((section) => section.links.length > 0);
 
     // 页脚自定义内容（后端已渲染好的 HTML）
     const customHtml = config?.FRIEND_LINK_APPLY_CUSTOM_CODE_HTML || "";
@@ -71,7 +73,7 @@ export default async function Link() {
             {visible.length === 0 ? (
                 <p className="py-16 text-center text-muted-foreground">暂无友情链接</p>
             ) : (
-                /* 分区渲染：按管理员保存的分类顺序（LinkSections 内部读取 localStorage 重排） */
+                /* 分区渲染：按分类 id 升序，分区内按友链 id 降序（新友链在前） */
                 <LinkSections sections={visible} />
             )}
 

@@ -27,13 +27,19 @@ export function LinkCard({ link }: { link: FriendLink }) {
     const [avatarFailed, setAvatarFailed] = useState(false);
     // 数据里直接填了占位图（如 404_1.avif）的视为无头像
     const isPlaceholderLogo = !!logo && /404|placeholder|default/i.test(logo);
+    // 已失联：健康检查判定站点无法访问后由后端标为 INVALID（友链页按分类展示，这类友链仍会列出），
+    // 所以要给出视觉区分 —— 整卡降透明度 + 去饱和，右下角「已失联」角标；鼠标悬浮恢复原样，仍可点击。
+    const isLost = link.status === "INVALID";
 
     return (
         <a
             href={siteUrl}
             target="_blank"
             rel="noopener noreferrer nofollow"
-            className="group flex items-center gap-3 rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md"
+            title={isLost ? "该友链站点已无法访问（已失联）" : undefined}
+            className={`group relative flex items-center gap-3 rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md${
+                isLost ? " opacity-60 saturate-50 hover:opacity-100 hover:saturate-100" : ""
+            }`}
         >
             {logo && !avatarFailed && !isPlaceholderLogo ? (
                 <LinkAvatar src={logo} alt={link.name} onError={() => setAvatarFailed(true)} />
@@ -47,6 +53,14 @@ export function LinkCard({ link }: { link: FriendLink }) {
                     <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{link.description}</div>
                 )}
             </div>
+
+            {isLost && (
+                /* 右下角角标：落在卡片 padding 区内（正文块下方），与站名/描述留出 3px 间隙、不重叠；
+                   pointer-events-none 不挡点击。leading-3 与 bottom-0.5 一起保证"正文块下沿 → 角标上沿"始终有空隙 */
+                <span className="pointer-events-none absolute bottom-0.5 right-2 rounded-full border border-border bg-muted px-1.5 py-px text-[10px] leading-3 font-medium text-muted-foreground">
+                    已失联
+                </span>
+            )}
         </a>
     );
 }

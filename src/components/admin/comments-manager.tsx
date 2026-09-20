@@ -123,126 +123,129 @@ function CommentRow({
 
     return (
         <div
-            className={`flex items-start gap-3 border-b py-3 pr-4 text-sm last:border-b-0 hover:bg-muted/40 ${
-                depth > 0 ? "border-l-2 border-l-primary/20 bg-muted/20 pl-10" : "pl-4"
+            className={`flex flex-wrap items-start gap-x-3 gap-y-2 border-b py-3 pr-4 text-sm last:border-b-0 hover:bg-muted/40 xl:flex-nowrap ${
+                depth > 0 ? "border-l-2 border-l-primary/20 bg-muted/20 pl-6 xl:pl-10" : "pl-4"
             }`}
         >
-            <Checkbox
-                className="mt-0.5"
-                checked={selected}
-                onCheckedChange={() => onSelect(comment.id)}
-                aria-label="选择评论"
-            />
+            {/* 移动端：勾选框 + 内容独占整行（w-full）；桌面端用 xl:contents 让这层包装消失，
+                勾选框与内容恢复成两个独立列（保持原有 1000px 表格排布） */}
+            <div className="flex w-full min-w-0 items-start gap-x-3 xl:contents">
+                <Checkbox
+                    className="mt-0.5"
+                    checked={selected}
+                    onCheckedChange={() => onSelect(comment.id)}
+                    aria-label="选择评论"
+                />
 
-            {/* 内容 */}
-            <div className="min-w-0 flex-1 max-w-[420px]">
-                <div className="line-clamp-2 whitespace-pre-line break-words text-foreground">
-                    {oneLine(comment.content) || "—"}
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    {comment.is_admin_comment && (
-                        <span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary">博主</span>
-                    )}
-                    {comment.is_anonymous && <span className="rounded bg-muted px-1.5 py-0.5">匿名</span>}
-                    {pinned && (
-                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
-                            已置顶
-                        </span>
-                    )}
-                    {depth > 0 && comment.reply_to_nick && <span>回复 @{comment.reply_to_nick}</span>}
-                    {childCount > 0 &&
-                        (children.length > 0 ? (
-                            <button
-                                type="button"
-                                onClick={() => onToggleExpand(comment.id)}
-                                className="inline-flex items-center gap-0.5 transition-colors hover:text-foreground"
-                            >
-                                {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
-                                {expanded ? "收起回复" : `展开 ${childCount} 条回复`}
-                            </button>
-                        ) : (
-                            <span>{childCount} 条回复</span>
-                        ))}
+                {/* 内容：移动端占满整行（最多 3 行），桌面端限宽 420px、2 行 */}
+                <div className="min-w-0 flex-1 max-w-none xl:max-w-[420px]">
+                    <div className="line-clamp-3 whitespace-pre-line break-words text-foreground xl:line-clamp-2">
+                        {oneLine(comment.content) || "—"}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        {comment.is_admin_comment && (
+                            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary">博主</span>
+                        )}
+                        {comment.is_anonymous && <span className="rounded bg-muted px-1.5 py-0.5">匿名</span>}
+                        {pinned && (
+                            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
+                                已置顶
+                            </span>
+                        )}
+                        {depth > 0 && comment.reply_to_nick && <span>回复 @{comment.reply_to_nick}</span>}
+                        {childCount > 0 &&
+                            (children.length > 0 ? (
+                                <button
+                                    type="button"
+                                    onClick={() => onToggleExpand(comment.id)}
+                                    className="inline-flex items-center gap-0.5 transition-colors hover:text-foreground"
+                                >
+                                    {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                                    {expanded ? "收起回复" : `展开 ${childCount} 条回复`}
+                                </button>
+                            ) : (
+                                <span>{childCount} 条回复</span>
+                            ))}
+                    </div>
                 </div>
             </div>
 
-            {/* 右列组：评论者 / 目标 / 状态 / IP / 时间 / 操作 */}
-            <div className="ml-auto flex shrink-0 items-start gap-3">
-                <div className="w-36 min-w-0">
-                    <div className="truncate font-medium" title={comment.nickname}>
-                        {comment.nickname || "—"}
-                    </div>
-                    <div className="truncate text-xs text-muted-foreground" title={comment.email}>
-                        {comment.email || "—"}
-                    </div>
+            {/* 元信息 + 操作：桌面端靠右成组（xl:ml-auto），移动端自动换行到内容下方（不再横向溢出）。
+                移动端每列宽度收窄，评论者/目标各占一半宽度，其余按内容自适应换行 */}
+            <div className="w-32 min-w-0 xl:ml-auto xl:w-36">
+                <div className="truncate font-medium" title={comment.nickname}>
+                    {comment.nickname || "—"}
                 </div>
-                <div className="w-36 min-w-0">
-                    <div className="truncate" title={comment.target_title || comment.target_path}>
-                        {comment.target_title || "—"}
-                    </div>
-                    <div className="truncate text-xs text-muted-foreground" title={comment.target_path}>
-                        {comment.target_path || "—"}
-                    </div>
+                <div className="truncate text-xs text-muted-foreground" title={comment.email}>
+                    {comment.email || "—"}
                 </div>
-                <div className="w-16 shrink-0 text-center">
-                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
-                        {badge.label}
-                    </span>
+            </div>
+            <div className="w-32 min-w-0 xl:w-36">
+                <div className="truncate" title={comment.target_title || comment.target_path}>
+                    {comment.target_title || "—"}
                 </div>
-                <div className="w-24 min-w-0 text-xs text-muted-foreground">
-                    <div className="truncate" title={comment.ip_address}>
-                        {comment.ip_location || comment.ip_address || "—"}
-                    </div>
+                <div className="truncate text-xs text-muted-foreground" title={comment.target_path}>
+                    {comment.target_path || "—"}
                 </div>
-                <div className="w-28 shrink-0 text-xs text-muted-foreground">
-                    <div>{formatDate(comment.created_at)}</div>
-                    <div>{formatTime(comment.created_at)}</div>
+            </div>
+            <div className="w-16 shrink-0 text-center">
+                <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
+                    {badge.label}
+                </span>
+            </div>
+            <div className="w-24 min-w-0 text-xs text-muted-foreground">
+                <div className="truncate" title={comment.ip_address}>
+                    {comment.ip_location || comment.ip_address || "—"}
                 </div>
-                <div className="flex w-24 shrink-0 items-center justify-end gap-0.5">
-                    <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        disabled={busy}
-                        aria-label={comment.status === 2 ? "通过审核" : "转为待审核"}
-                        title={comment.status === 2 ? "通过审核" : "转为待审核"}
-                        className={comment.status === 2 ? "text-green-600 hover:text-green-600" : ""}
-                        onClick={() => onToggleStatus(comment)}
-                    >
-                        {comment.status === 2 ? <Check className="size-4" /> : <Clock className="size-4" />}
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        disabled={busy}
-                        aria-label={pinned ? "取消置顶" : "置顶"}
-                        title={pinned ? "取消置顶" : "置顶"}
-                        className={pinned ? "text-amber-600 hover:text-amber-600" : ""}
-                        onClick={() => onTogglePin(comment)}
-                    >
-                        <Pin className="size-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        disabled={busy}
-                        aria-label="编辑"
-                        title="编辑"
-                        onClick={() => onEdit(comment)}
-                    >
-                        <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        disabled={busy}
-                        aria-label="删除"
-                        title="删除"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => onDelete(comment)}
-                    >
-                        <Trash2 className="size-4" />
-                    </Button>
-                </div>
+            </div>
+            <div className="w-20 shrink-0 text-xs text-muted-foreground xl:w-28">
+                <div>{formatDate(comment.created_at)}</div>
+                <div>{formatTime(comment.created_at)}</div>
+            </div>
+            <div className="ml-auto flex w-28 shrink-0 items-center justify-end gap-0.5 xl:ml-0">
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={busy}
+                    aria-label={comment.status === 2 ? "通过审核" : "转为待审核"}
+                    title={comment.status === 2 ? "通过审核" : "转为待审核"}
+                    className={comment.status === 2 ? "text-green-600 hover:text-green-600" : ""}
+                    onClick={() => onToggleStatus(comment)}
+                >
+                    {comment.status === 2 ? <Check className="size-4" /> : <Clock className="size-4" />}
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={busy}
+                    aria-label={pinned ? "取消置顶" : "置顶"}
+                    title={pinned ? "取消置顶" : "置顶"}
+                    className={pinned ? "text-amber-600 hover:text-amber-600" : ""}
+                    onClick={() => onTogglePin(comment)}
+                >
+                    <Pin className="size-4" />
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={busy}
+                    aria-label="编辑"
+                    title="编辑"
+                    onClick={() => onEdit(comment)}
+                >
+                    <Pencil className="size-4" />
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={busy}
+                    aria-label="删除"
+                    title="删除"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => onDelete(comment)}
+                >
+                    <Trash2 className="size-4" />
+                </Button>
             </div>
         </div>
     );
@@ -436,34 +439,34 @@ export function CommentsManager() {
 
     return (
         <div className="mt-4 overflow-x-auto rounded-lg border bg-card shadow-sm">
-            {/* ===== 筛选栏 ===== */}
+            {/* ===== 筛选栏（移动端两列换行，桌面端单行 1000px） ===== */}
             <form
                 onSubmit={submitFilters}
-                className="flex min-w-[1000px] flex-wrap items-center gap-2 border-b bg-slate-50 px-4 py-2.5"
+                className="flex flex-wrap items-center gap-2 border-b bg-muted/40 px-4 py-2.5 xl:min-w-[980px]"
             >
                 <Input
                     value={filters.nickname}
                     onChange={(e) => setFilters({ ...filters, nickname: e.target.value })}
                     placeholder="昵称"
-                    className="h-7 w-28 text-xs"
+                    className="h-7 w-[calc(50%-0.25rem)] text-xs xl:w-28"
                 />
                 <Input
                     value={filters.email}
                     onChange={(e) => setFilters({ ...filters, email: e.target.value })}
                     placeholder="邮箱"
-                    className="h-7 w-40 text-xs"
+                    className="h-7 w-[calc(50%-0.25rem)] text-xs xl:w-40"
                 />
                 <Input
                     value={filters.content}
                     onChange={(e) => setFilters({ ...filters, content: e.target.value })}
                     placeholder="评论内容"
-                    className="h-7 w-40 text-xs"
+                    className="h-7 w-[calc(50%-0.25rem)] text-xs xl:w-40"
                 />
                 <Input
                     value={filters.target_path}
                     onChange={(e) => setFilters({ ...filters, target_path: e.target.value })}
                     placeholder="目标路径 /post/xxx"
-                    className="h-7 w-40 text-xs"
+                    className="h-7 w-[calc(50%-0.25rem)] text-xs xl:w-40"
                 />
                 <Select value={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })}>
                     <SelectTrigger className="h-7 w-max text-xs">
@@ -507,8 +510,8 @@ export function CommentsManager() {
                 </div>
             </form>
 
-            {/* ===== 表头 ===== */}
-            <div className="flex min-w-[1000px] items-center gap-3 whitespace-nowrap border-b bg-slate-50 px-4 py-2.5 text-xs font-medium text-muted-foreground">
+            {/* ===== 表头（仅桌面端；移动端是卡片式布局，不需要表头） ===== */}
+            <div className="hidden min-w-[980px] items-center gap-3 whitespace-nowrap border-b bg-muted/40 px-4 py-2.5 text-xs font-medium text-muted-foreground xl:flex">
                 <Checkbox
                     checked={allSelected ? true : someSelected ? "indeterminate" : false}
                     onCheckedChange={toggleSelectAll}
@@ -521,7 +524,7 @@ export function CommentsManager() {
                     <span className="w-16 shrink-0 text-center">状态</span>
                     <span className="w-24 shrink-0">IP 归属地</span>
                     <span className="w-28 shrink-0">时间</span>
-                    <span className="w-24 shrink-0 text-right">操作</span>
+                    <span className="w-28 shrink-0 text-right">操作</span>
                 </div>
             </div>
 
@@ -530,7 +533,7 @@ export function CommentsManager() {
             ) : list.length === 0 ? (
                 <div className="py-12 text-center text-sm text-muted-foreground">暂无评论</div>
             ) : (
-                <div className="min-w-[1000px]">
+                <div className="xl:min-w-[980px]">
                     {list.map((comment) => (
                         <div key={comment.id}>
                             <CommentRow
@@ -569,7 +572,7 @@ export function CommentsManager() {
             )}
 
             {/* ===== 分页 ===== */}
-            <div className="flex items-center justify-between gap-3 border-t bg-slate-50 px-4 py-2.5 text-xs text-muted-foreground">
+            <div className="flex items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
                 <span>
                     第 {page} / {totalPages} 页
                 </span>

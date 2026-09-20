@@ -1,18 +1,14 @@
 import { LinkCard } from "@/components/(blog)/link-card";
-import type { FriendLink, LinkCategory } from "@/types/links";
-
-export interface LinkSection {
-    category: LinkCategory;
-    links: FriendLink[];
-}
+import type { LinkCategoryGroup } from "@/types/links";
 
 /**
  * 友链分区列表（纯展示）：
- * 服务端已按分类 id 升序排列并过滤空分类，此处直接渲染。
- * 排序规则：分类按创建顺序（id 升序，id 越大越往下）；
- * 后端暂无分类排序字段，等 API 支持后再扩展。
+ * 服务端已按分类 id 升序分组、分类内按 id 降序排好，此处直接渲染。
+ *
+ * 注意：每个分区的 links 含状态为 INVALID（已失联）的友链 —— 友链页按「分类」而非
+ * 「状态」展示，标题里的计数就是该分类的总条数（不是其中「已通过」的条数）。
  */
-export function LinkSections({ sections }: { sections: LinkSection[] }) {
+export function LinkSections({ sections }: { sections: LinkCategoryGroup[] }) {
     if (sections.length === 0) {
         return <p className="py-16 text-center text-muted-foreground">暂无友情链接</p>;
     }

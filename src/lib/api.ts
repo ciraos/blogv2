@@ -11,7 +11,7 @@ import type {
     CommentStatus,
 } from "@/types/comments";
 import type { LoginData, LoginUserInfo } from "@/types/auth";
-import type { AdminCreateLinkRequest, AdminUpdateLinkRequest, FriendLink, LinkCategory, LinkListData, LinkListParams, LinkTag } from "@/types/links";
+import type { AdminCreateLinkRequest, AdminUpdateLinkRequest, FriendLink, LinkCategory, LinkCategoryGroup, LinkListData, LinkListParams, LinkTag } from "@/types/links";
 import type { AdminCreateEssayRequest, AdminEssayListParams, AdminUpdateEssayRequest, Essay, EssayListData } from "@/types/essays";
 import type { MomentsListData, MomentsListParams, RandomMomentPost } from "@/types/moments";
 import type { SiteConfig } from "@/types/site-config";
@@ -305,6 +305,87 @@ export async function getLinksByCategoryApi(categoryId: number): Promise<FriendL
 /** GET /public/links/random 随机获取友链（num=0 表示全部） */
 export async function getPublicLinksRandomApi(num = 1): Promise<FriendLink[]> {
     return request<FriendLink[]>(`/public/links/random?num=${num}`, { method: "GET" });
+}
+
+/** 公开友链申请列表请求参数（GET /public/links/applications） */
+export interface PublicLinkApplicationsParams {
+    page?: number;
+    pageSize?: number;
+    /** 审核状态：PENDING / APPROVED / REJECTED / INVALID */
+    status?: string;
+    category_id?: number;
+    /** 名称模糊搜索 */
+    name?: string;
+}
+
+/**
+ * GET /public/links/applications 公开的全状态友链列表（官方公开接口、无需鉴权）。
+ * 与 /public/links 的关键差别：这里**不按状态过滤**，能拿到 INVALID（已失联）的友链。
+ */
+export function getPublicLinkApplicationsApi(params: PublicLinkApplicationsParams = {}): Promise<LinkListData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null && value !== "") {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<LinkListData>(`/public/links/applications${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
+/** 友链页对外展示的状态：已通过 + 已失联（健康检查自动标记）。
+ *  未审核（PENDING）与被拒绝（REJECTED）的申请不对访客展示。 */
+const PUBLIC_LINK_STATUSES: readonly string[] = ["APPROVED", "INVALID"];
+
+/**
+ * 友链页数据源：拉全量友链后**按分类分组**，每个分类带该分类下的全部友链
+ * （含状态为 INVALID 的已失联友链），供友链页「按分类展示全部友链」使用。
+ *
+ * 为什么不用 getLinksByCategoryApi：它走 /public/links，而该接口服务端写死
+ * `WHERE status = 'APPROVED'`（link_repo.go ListPublic），已失联的友链会被整体过滤掉，
+ * 分类里就只剩活着的那些。改用官方的全状态公开接口 /public/links/applications。
+ *
+ * 只保留 APPROVED / INVALID：未审核与被拒绝的申请不对外展示。
+ * 全量拉取失败时返回 null，由调用方回退到「仅已通过」的旧路径。
+ */
+export async function getLinksGroupedByCategoryApi(): Promise<LinkCategoryGroup[] | null> {
+    const pageSize = 50;
+    const maxPages = 20; // 安全上限：最多 1000 条
+    const all: FriendLink[] = [];
+    const seen = new Set<number>();
+
+    try {
+        for (let page = 1; page <= maxPages; page++) {
+            const data = await getPublicLinkApplicationsApi({ page, pageSize });
+            const list = data.list ?? [];
+            for (const link of list) {
+                if (!seen.has(link.id) && PUBLIC_LINK_STATUSES.includes(link.status)) {
+                    seen.add(link.id);
+                    all.push(link);
+                }
+            }
+            if (list.length === 0 || page * pageSize >= (data.total ?? 0)) {
+                break;
+            }
+        }
+    } catch {
+        return null;
+    }
+
+    // 按分类分组：分类按 id 升序（保持原有展示顺序），分类内按 id 降序（新加的排前面）
+    const grouped = new Map<number, LinkCategoryGroup>();
+    for (const link of all) {
+        const category = link.category;
+        // 没有分类的友链无处安放，不展示（与「空分类隐藏」口径一致）
+        if (!category) continue;
+        const group = grouped.get(category.id) ?? { category, links: [] };
+        group.links.push(link);
+        grouped.set(category.id, group);
+    }
+
+    return [...grouped.values()]
+        .map((group) => ({ ...group, links: group.links.sort((a, b) => b.id - a.id) }))
+        .sort((a, b) => a.category.id - b.category.id);
 }
 
 /** 管理员友链列表请求参数（GET /api/admin/links，客户端经同源代理） */
