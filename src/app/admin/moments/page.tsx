@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { generateBlogMetadata } from "@/lib/seo";
+import { AdminUnderConstruction } from "@/components/admin/under-construction";
 
 export async function generateMetadata(): Promise<Metadata> {
     return generateBlogMetadata("朋友圈");
@@ -10,8 +11,8 @@ export default function Moments() {
         <div className="space-y-4">
             <div>
                 <h2 className="text-2xl font-bold tracking-tight">朋友圈</h2>
-                <p className="text-slate-400 text-xs"></p>
             </div>
+            <AdminUnderConstruction feature="朋友圈" />
         </div>
     )
 }

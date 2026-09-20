@@ -8,6 +8,7 @@ import { PostComments } from "@/components/(blog)/post-comments";
 import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
 import { ApiError, getCommentsWithChildrenApi, getPublicArticleApi, getPublicSiteConfigApi } from "@/lib/api";
+import { getCommentAuthor } from "@/lib/comment-author";
 import { splitKeywords } from "@/lib/seo";
 import { resolveAssetUrl } from "@/lib/utils";
 
@@ -231,8 +232,8 @@ export default async function Post({ params }: PostPageProps) {
                     </nav>
                 )}
 
-                {/* 评论区（评论列表由服务端按 target_path 获取） */}
-                <PostComments targetPath={targetPath} comments={comments} />
+                {/* 评论区（评论列表由服务端按 target_path 获取；已登录时作者信息取自账号） */}
+                <PostComments targetPath={targetPath} comments={comments} author={await getCommentAuthor()} />
 
                 {article.related_articles.length > 0 && (
                     <section className="mt-10 border-t pt-6">

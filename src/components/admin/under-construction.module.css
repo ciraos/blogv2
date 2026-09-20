@@ -1,0 +1,319 @@
+/* 后台「功能开发中」占位：纯 CSS/SVG 插画 + 动画，深浅色跟随主题变量 */
+
+.wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(120% 120% at 50% 0%, color-mix(in oklab, var(--primary) 12%, transparent) 0%, transparent 60%),
+    var(--card);
+  padding: 3rem 1.5rem 2.5rem;
+  text-align: center;
+  /* 铺满后台内容区剩余高度：视口高 −（页面标题区 84px + 底部 footer 56px + 内边距 16px）＝ 100dvh − 156px；
+     视口很矮时保底 320px，内容更高时自然撑开 */
+  min-height: max(320px, calc(100dvh - 156px));
+  /* 内部纵向居中，让插画+文案+按钮整体落在中间而不是贴着顶部 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.tape {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 6px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--primary) 0 14px,
+    color-mix(in oklab, var(--primary) 25%, transparent) 14px 28px
+  );
+  opacity: 0.85;
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(color-mix(in oklab, var(--border) 70%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--border) 70%, transparent) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(62% 62% at 50% 40%, #000 0%, transparent 100%);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.glow {
+  position: absolute;
+  left: 50%;
+  top: 36%;
+  width: min(460px, 76%);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 999px;
+  background: radial-gradient(circle, color-mix(in oklab, var(--primary) 42%, transparent) 0%, transparent 62%);
+  filter: blur(26px);
+  animation: auc-breathe 5.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 220px;
+  margin-bottom: 0.25rem;
+}
+
+.orbit {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 999px;
+  border: 1.5px dashed color-mix(in oklab, var(--primary) 45%, transparent);
+  animation: auc-spin 26s linear infinite;
+}
+
+.orbit::before,
+.orbit::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: 0 0 12px color-mix(in oklab, var(--primary) 70%, transparent);
+}
+
+.orbit::before {
+  top: -5px;
+  translate: -50% 0;
+}
+
+.orbit::after {
+  bottom: -5px;
+  translate: -50% 0;
+}
+
+.rocket {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  animation: auc-float 3.6s ease-in-out infinite;
+  filter: drop-shadow(0 14px 24px color-mix(in oklab, var(--primary) 30%, transparent));
+}
+
+.flame {
+  transform-origin: 50% 0%;
+  animation: auc-flame 0.7s ease-in-out infinite alternate;
+}
+
+.dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--primary) 70%, transparent);
+  animation: auc-drift 6s ease-in-out infinite;
+}
+
+.dot1 {
+  left: 18%;
+  top: 26%;
+  animation-delay: -0.4s;
+}
+
+.dot2 {
+  right: 20%;
+  top: 32%;
+  width: 6px;
+  height: 6px;
+  animation-delay: -1.6s;
+}
+
+.dot3 {
+  left: 28%;
+  bottom: 20%;
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  opacity: 0.6;
+  animation-delay: -2.4s;
+}
+
+.dot4 {
+  right: 26%;
+  bottom: 16%;
+  opacity: 0.5;
+  animation-delay: -3.1s;
+}
+
+.title {
+  position: relative;
+  font-size: clamp(1.35rem, 3.4vw, 1.9rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  background: linear-gradient(
+    92deg,
+    color-mix(in oklab, var(--primary) 92%, transparent) 0%,
+    var(--foreground) 38%,
+    color-mix(in oklab, var(--primary) 92%, transparent) 72%,
+    var(--foreground) 100%
+  );
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: auc-shine 6s linear infinite;
+}
+
+.subtitle {
+  position: relative;
+  margin: 0.7rem auto 0;
+  max-width: 32rem;
+  font-size: 0.875rem;
+  line-height: 1.75;
+  color: var(--muted-foreground);
+}
+
+.actions {
+  position: relative;
+  margin-top: 1.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+}
+
+.primaryBtn,
+.ghostBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 40px;
+  padding: 0 1.15rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition:
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.25s ease,
+    background-color 0.25s ease;
+}
+
+.primaryBtn {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 6px 18px -6px color-mix(in oklab, var(--primary) 70%, transparent);
+}
+
+.primaryBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -8px color-mix(in oklab, var(--primary) 80%, transparent);
+}
+
+.ghostBtn {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.ghostBtn:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+@keyframes auc-float {
+  0%,
+  100% {
+    transform: translateY(-6px) rotate(-2deg);
+  }
+
+  50% {
+    transform: translateY(6px) rotate(2deg);
+  }
+}
+
+@keyframes auc-flame {
+  from {
+    transform: scaleY(0.82) scaleX(0.94);
+    opacity: 0.75;
+  }
+
+  to {
+    transform: scaleY(1.12) scaleX(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes auc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes auc-breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: translate(-50%, -50%) scale(0.94);
+  }
+
+  50% {
+    opacity: 0.75;
+    transform: translate(-50%, -50%) scale(1.06);
+  }
+}
+
+@keyframes auc-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+
+  50% {
+    transform: translate3d(6px, -14px, 0) rotate(24deg);
+  }
+}
+
+@keyframes auc-shine {
+  to {
+    background-position: 220% center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rocket,
+  .orbit,
+  .glow,
+  .dot,
+  .flame,
+  .title {
+    animation: none;
+  }
+}
+
+@media (width <= 640px) {
+  .wrap {
+    padding: 2.25rem 1rem 2rem;
+  }
+
+  .stage {
+    height: 180px;
+  }
+
+  .orbit {
+    width: 156px;
+    height: 156px;
+  }
+
+  .rocket {
+    width: 108px;
+    height: 108px;
+  }
+}

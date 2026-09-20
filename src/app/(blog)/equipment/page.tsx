@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 
 import { generateBlogMetadata } from "@/lib/seo";
 import { getCommentsWithChildrenApi } from "@/lib/api";
+import { getCommentAuthor } from "@/lib/comment-author";
 import { PostComments } from "@/components/(blog)/post-comments";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -16,7 +17,7 @@ export default async function Equipment() {
     return (
         <div className="w-full">
             <h1 className="text-2xl font-bold tracking-tight">我的装备</h1>
-            <PostComments targetPath={targetPath} comments={comments} />
+            <PostComments targetPath={targetPath} comments={comments}  author={await getCommentAuthor()} />
         </div>
     )
 }

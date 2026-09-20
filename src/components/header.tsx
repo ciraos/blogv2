@@ -241,7 +241,7 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
                                                                 href={item.path}
                                                                 target={opensInNewTab(item.isExternal, item.path) ? "_blank" : undefined}
                                                                 rel={item.isExternal ? "noopener noreferrer nofollow" : opensInNewTab(item.isExternal, item.path) ? "noopener noreferrer" : undefined}
-                                                                className="flex flex-col items-center justify-center gap-1 rounded-lg bg-muted px-2 py-2.5 text-center text-sm text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                                                                className="flex min-h-15 flex-col items-center justify-center gap-1 rounded-lg bg-muted px-2 py-2.5 text-center text-sm text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
                                                             >
                                                                 <Icon name={item.icon} className="text-base leading-none" />
                                                                 <span>{item.title}</span>

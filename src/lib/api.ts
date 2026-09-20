@@ -974,6 +974,82 @@ export async function getPublicPageApi(path: string): Promise<PublicPage> {
     return request<PublicPage>(`/public/pages/${encodeURIComponent(clean)}`, { method: "GET" });
 }
 
+// ===================== 页面管理（后台）PAGES =====================
+
+/** 后台页面条目（比公开的 PublicPage 多了自定义脚本/样式） */
+export interface AdminPage {
+    id: number;
+    title: string;
+    /** 页面路径，如 /privacy、/message */
+    path: string;
+    /** HTML 内容（前台渲染的就是这个） */
+    content: string;
+    /** Markdown 原始内容 */
+    markdown_content: string;
+    custom_js: string;
+    custom_css: string;
+    description: string;
+    is_published: boolean;
+    show_comment: boolean;
+    sort: number;
+    created_at: string;
+    updated_at: string;
+}
+
+/** 新建/更新页面的请求体（更新时字段可只传改动项） */
+export interface AdminPagePayload {
+    title?: string;
+    path?: string;
+    content?: string;
+    markdown_content?: string;
+    custom_js?: string;
+    custom_css?: string;
+    description?: string;
+    is_published?: boolean;
+    show_comment?: boolean;
+    sort?: number;
+}
+
+/** GET /pages 的列表数据（注意：分页字段是 page/size/total） */
+export interface AdminPageListData {
+    page: number;
+    size: number;
+    total: number;
+    pages: AdminPage[];
+}
+
+/** GET /api/admin/pages 后台页面列表（同源代理 → 远端 GET /pages，需管理员） */
+export async function getAdminPagesApi(
+    params: { page?: number; page_size?: number; search?: string; is_published?: boolean } = {}
+): Promise<AdminPageListData> {
+    const qs = new URLSearchParams();
+    qs.set("page", String(params.page ?? 1));
+    qs.set("page_size", String(params.page_size ?? 10));
+    if (params.search) qs.set("search", params.search);
+    if (typeof params.is_published === "boolean") qs.set("is_published", String(params.is_published));
+    return request<AdminPageListData>(`/api/admin/pages?${qs.toString()}`, { method: "GET" });
+}
+
+/** POST /api/admin/pages 新建页面（远端 create 要求 title / path / content 必填） */
+export function createAdminPageApi(body: AdminPagePayload): Promise<AdminPage> {
+    return request<AdminPage>("/api/admin/pages", { method: "POST", body: JSON.stringify(body) });
+}
+
+/** PUT /api/admin/pages/[id] 更新页面（只传要改的字段） */
+export function updateAdminPageApi(id: number, body: AdminPagePayload): Promise<AdminPage> {
+    return request<AdminPage>(`/api/admin/pages/${id}`, { method: "PUT", body: JSON.stringify(body) });
+}
+
+/** DELETE /api/admin/pages/[id] 删除页面 */
+export function deleteAdminPageApi(id: number): Promise<unknown> {
+    return request(`/api/admin/pages/${id}`, { method: "DELETE" });
+}
+
+/** POST /api/admin/pages/initialize 初始化默认页面（/privacy、/cookies、/copyright 等） */
+export function initializeAdminPagesApi(): Promise<unknown> {
+    return request("/api/admin/pages/initialize", { method: "POST" });
+}
+
 // ===================== 相册 ALBUM =====================
 
 /** 公开相册分类 */
@@ -1035,4 +1111,324 @@ export async function getPublicAlbumsApi(params: { page?: number; pageSize?: num
     }
     const query = qs.toString();
     return request<AlbumListData>(`/public/albums${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
+// ===================== 相册管理（后台）ALBUMS =====================
+
+/** 后台相册分类（远端 AlbumCategoryDTO：排序字段叫 displayOrder） */
+export interface AdminAlbumCategory {
+    id: number;
+    name: string;
+    description?: string;
+    displayOrder: number;
+}
+
+/** 后台相册图片：比公开接口多一个 widthAndHeight 展示字段 */
+export interface AdminAlbum extends Album {
+    widthAndHeight?: string;
+}
+
+/** GET /albums/get 的列表数据 */
+export interface AdminAlbumListData {
+    list: AdminAlbum[];
+    total: number;
+    pageNum: number;
+    pageSize: number;
+}
+
+/** 相册排序方式（远端 album_repo 支持的取值） */
+export const ALBUM_SORT_OPTIONS = [
+    { value: "display_order_asc", label: "自定义排序" },
+    { value: "created_at_desc", label: "最新优先" },
+    { value: "created_at_asc", label: "最早优先" },
+    { value: "view_count_desc", label: "浏览最多" },
+] as const;
+
+/** 批量导入结果（远端 /albums/batch-import） */
+export interface AdminAlbumImportResult {
+    successCount: number;
+    failCount: number;
+    skipCount: number;
+    total: number;
+    errors?: { url: string; reason: string }[];
+    duplicates?: string[];
+}
+
+/** GET /api/admin/albums/get 后台图片列表（远端 GET /albums/get，需管理员） */
+export async function getAdminAlbumsApi(
+    params: { page?: number; pageSize?: number; categoryId?: number | string; tag?: string; sort?: string } = {}
+): Promise<AdminAlbumListData> {
+    const qs = new URLSearchParams();
+    qs.set("page", String(params.page ?? 1));
+    qs.set("pageSize", String(params.pageSize ?? 12));
+    if (params.categoryId !== undefined && params.categoryId !== "") qs.set("categoryId", String(params.categoryId));
+    if (params.tag) qs.set("tag", params.tag);
+    if (params.sort) qs.set("sort", params.sort);
+    return request<AdminAlbumListData>(`/api/admin/albums/get?${qs.toString()}`, { method: "GET" });
+}
+
+/** 新增图片请求体（远端 imageUrl / fileHash 必填） */
+export interface AdminAlbumPayload {
+    categoryId?: number | null;
+    imageUrl: string;
+    bigImageUrl?: string;
+    downloadUrl?: string;
+    thumbParam?: string;
+    bigParam?: string;
+    tags?: string[];
+    width?: number;
+    height?: number;
+    fileSize?: number;
+    format?: string;
+    fileHash?: string;
+    displayOrder?: number;
+    title?: string;
+    description?: string;
+    location?: string;
+    published_at?: string | null;
+}
+
+/** POST /api/admin/albums/add 新增单张图片（需 imageUrl + fileHash） */
+export function addAdminAlbumApi(body: AdminAlbumPayload): Promise<AdminAlbum> {
+    return request<AdminAlbum>("/api/admin/albums/add", { method: "POST", body: JSON.stringify(body) });
+}
+
+/** PUT /api/admin/albums/update/[id] 更新图片信息（远端 imageUrl 必填，需带上原图地址） */
+export function updateAdminAlbumApi(id: number, body: AdminAlbumPayload): Promise<unknown> {
+    return request(`/api/admin/albums/update/${id}`, { method: "PUT", body: JSON.stringify(body) });
+}
+
+/** DELETE /api/admin/albums/delete/[id] 删除单张图片 */
+export function deleteAdminAlbumApi(id: number): Promise<unknown> {
+    return request(`/api/admin/albums/delete/${id}`, { method: "DELETE" });
+}
+
+/** DELETE /api/admin/albums/batch-delete 批量删除图片 */
+export function batchDeleteAdminAlbumsApi(ids: number[]): Promise<unknown> {
+    return request("/api/admin/albums/batch-delete", { method: "DELETE", body: JSON.stringify({ ids }) });
+}
+
+/** POST /api/admin/albums/batch-import 按 URL 批量导入（后端自动抓取并解析尺寸/大小/哈希） */
+export function batchImportAdminAlbumsApi(body: {
+    urls: string[];
+    categoryId?: number | null;
+    tags?: string[];
+    thumbParam?: string;
+    bigParam?: string;
+    displayOrder?: number;
+}): Promise<AdminAlbumImportResult> {
+    return request<AdminAlbumImportResult>("/api/admin/albums/batch-import", {
+        method: "POST",
+        body: JSON.stringify(body),
+    });
+}
+
+/** GET /api/admin/album-categories 相册分类列表 */
+export function getAdminAlbumCategoriesApi(): Promise<AdminAlbumCategory[]> {
+    return request<AdminAlbumCategory[]>("/api/admin/album-categories", { method: "GET" });
+}
+
+/** POST /api/admin/album-categories 新建相册分类（name 必填） */
+export function createAdminAlbumCategoryApi(body: {
+    name: string;
+    description?: string;
+    displayOrder?: number;
+}): Promise<AdminAlbumCategory> {
+    return request<AdminAlbumCategory>("/api/admin/album-categories", { method: "POST", body: JSON.stringify(body) });
+}
+
+/** PUT /api/admin/album-categories/[id] 更新相册分类 */
+export function updateAdminAlbumCategoryApi(
+    id: number,
+    body: { name: string; description?: string; displayOrder?: number }
+): Promise<AdminAlbumCategory> {
+    return request<AdminAlbumCategory>(`/api/admin/album-categories/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(body),
+    });
+}
+
+/** DELETE /api/admin/album-categories/[id] 删除相册分类 */
+export function deleteAdminAlbumCategoryApi(id: number): Promise<unknown> {
+    return request(`/api/admin/album-categories/${id}`, { method: "DELETE" });
+}
+
+// ===================== 文件管理 FILE =====================
+
+/** 文件管理根路径（后端虚拟路径 URI，默认「我的文件」） */
+export const FILE_ROOT_URI = "anzhiyu://my/";
+
+/** 文件/目录条目（后端 GET /files 的 FileItem） */
+export interface AdminFileItem {
+    id: string;
+    name: string;
+    /** 1=文件 2=目录 */
+    type: number;
+    size: number;
+    created_at: string;
+    updated_at: string;
+    /** 图片等可预览文件的缩略图地址（可能缺失） */
+    thumbnail_url?: string;
+    /** 完整虚拟路径，如 anzhiyu://my/images/a.jpg */
+    path: string;
+    owned: boolean;
+    shared: boolean;
+    /** 物理直链（部分文件才有） */
+    url?: string;
+    metadata?: Record<string, string>;
+    capability?: string;
+    primary_entity_public_id?: string;
+}
+
+/** 游标分页信息（后端不返回总数） */
+export interface AdminFilePagination {
+    page: number;
+    page_size: number;
+    /** 为空表示没有下一页 */
+    next_token?: string;
+    is_cursor: boolean;
+}
+
+/** GET /files 的响应数据 */
+export interface AdminFileListData {
+    files: AdminFileItem[];
+    /** 当前目录本身（根目录时可能为 null） */
+    parent: AdminFileItem | null;
+    pagination: AdminFilePagination;
+    props?: { order_by_options?: string[]; order_direction_options?: string[] };
+    context_hint?: string;
+    storage_policy?: unknown;
+}
+
+/**
+ * GET /api/admin/file 文件/目录列表（同源代理 → 远端 GET /file，需登录）。
+ * 传 next_token 拉下一页（游标分页，返回的 pagination.next_token 为空即到底）。
+ *
+ * 注意：线上后端是**单数** /file（实测 GET /files 为 404，Apifox 文档写的是复数）。
+ */
+export async function getAdminFilesApi(
+    params: { uri?: string; next_token?: string } = {}
+): Promise<AdminFileListData> {
+    const qs = new URLSearchParams();
+    qs.set("uri", params.uri || FILE_ROOT_URI);
+    if (params.next_token) qs.set("next_token", params.next_token);
+    return request<AdminFileListData>(`/api/admin/file?${qs.toString()}`, { method: "GET" });
+}
+
+/** GET /api/admin/file/[id] 单个文件/目录详情 → 远端 GET /file/:id */
+export function getAdminFileInfoApi(id: string): Promise<{ file?: AdminFileItem } & Record<string, unknown>> {
+    return request(`/api/admin/file/${encodeURIComponent(id)}`, { method: "GET" });
+}
+
+/** DELETE /api/admin/file?ids=… 删除一个或多个文件/目录（远端按 ids 批量删） */
+export function deleteAdminFilesApi(ids: string[]): Promise<unknown> {
+    const params = new URLSearchParams();
+    for (const id of ids) params.append("ids", id);
+    return request(`/api/admin/file?${params.toString()}`, { method: "DELETE" });
+}
+
+/** POST /api/admin/file/create 新建空文件或目录（type: 1=文件 2=目录，uri 为含新名称的完整虚拟路径） */
+export function createAdminFileApi(body: {
+    uri: string;
+    type: 1 | 2;
+    err_on_conflict?: boolean;
+}): Promise<unknown> {
+    return request("/api/admin/file/create", { method: "POST", body: JSON.stringify(body) });
+}
+
+/** PUT /api/admin/file/rename 重命名文件或目录 */
+export function renameAdminFileApi(id: string, newName: string): Promise<unknown> {
+    return request("/api/admin/file/rename", { method: "PUT", body: JSON.stringify({ id, new_name: newName }) });
+}
+
+/** POST /api/admin/folder/move 移动文件/目录到目标目录 */
+export function moveAdminFilesApi(sourceIDs: string[], destinationID: string): Promise<unknown> {
+    return request("/api/admin/folder/move", {
+        method: "POST",
+        body: JSON.stringify({ sourceIDs, destinationID }),
+    });
+}
+
+/** POST /api/admin/folder/copy 复制文件/目录到目标目录 */
+export function copyAdminFilesApi(sourceIDs: string[], destinationID: string): Promise<unknown> {
+    return request("/api/admin/folder/copy", {
+        method: "POST",
+        body: JSON.stringify({ sourceIDs, destinationID }),
+    });
+}
+
+/** 目录树节点（远端 GET /folder/tree/:id；字段以实测为准，这里只取用到的） */
+export interface AdminFolderTreeNode {
+    id: string;
+    name: string;
+    path?: string;
+    children?: AdminFolderTreeNode[];
+}
+
+/** GET /api/admin/folder/tree/[id] 目录树（「移动/复制」选目标目录用） */
+export function getAdminFolderTreeApi(id: string): Promise<AdminFolderTreeNode[]> {
+    return request(`/api/admin/folder/tree/${encodeURIComponent(id)}`, { method: "GET" });
+}
+
+/** 目录大小统计（远端 GET /folder/size/:id） */
+export interface AdminFolderSize {
+    logicalSize: number;
+    storageConsumption: number;
+    fileCount: number;
+}
+
+/** GET /api/admin/folder/size/[id] 计算目录大小（逻辑大小 / 占用空间 / 文件数） */
+export function getAdminFolderSizeApi(id: string): Promise<AdminFolderSize> {
+    return request(`/api/admin/folder/size/${encodeURIComponent(id)}`, { method: "GET" });
+}
+
+/** 下载地址（同源代理透传二进制，浏览器直接打开即下载） */
+export function adminFileDownloadUrl(id: string): string {
+    return `/api/admin/file/download/${encodeURIComponent(id)}`;
+}
+
+/**
+ * GET /api/admin/thumbnail/[id] 取缩略图签名（远端 GET /thumbnail/:publicID，需登录）。
+ * 后端不直接给缩略图地址，而是给一个签名 `sign`，再用 `${API_URL}/t/${sign}` 取图（该路径公开）。
+ * 三种可能：200 就绪（有 sign）；202 正在生成；404 没有/已失败。
+ */
+export async function getAdminThumbnailSignApi(
+    id: string
+): Promise<{ sign: string; expires?: string } | null> {
+    const data = await request<{ sign?: string; expires?: string } | null>(
+        `/api/admin/thumbnail/${encodeURIComponent(id)}`,
+        { method: "GET" }
+    );
+    return data?.sign ? { sign: data.sign, expires: data.expires } : null;
+}
+
+/** 缩略图/预览图地址（sign 来自 getAdminThumbnailSignApi） */
+export function adminThumbnailUrl(sign: string): string {
+    return `${API_URL}/t/${sign}`;
+}
+
+/** 缩略图签名按文件 id 缓存（同一文件不必重复请求；null 表示确认没有缩略图） */
+const thumbSignCache = new Map<string, string | null>();
+const thumbSignInflight = new Map<string, Promise<string | null>>();
+
+/** 取缩略图签名（带进程内缓存 + 并发去重）；没有缩略图时返回 null */
+export async function getCachedThumbnailSignApi(id: string): Promise<string | null> {
+    if (thumbSignCache.has(id)) return thumbSignCache.get(id) ?? null;
+    const inflight = thumbSignInflight.get(id);
+    if (inflight) return inflight;
+
+    const task = (async () => {
+        try {
+            const res = await getAdminThumbnailSignApi(id);
+            thumbSignCache.set(id, res?.sign ?? null);
+            return res?.sign ?? null;
+        } catch {
+            // 404/202/网络异常：都按「暂时没有缩略图」处理，下次挂载可再试
+            return null;
+        } finally {
+            thumbSignInflight.delete(id);
+        }
+    })();
+    thumbSignInflight.set(id, task);
+    return task;
 }

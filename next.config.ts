@@ -1,7 +1,41 @@
 import type { NextConfig } from "next";
+import fs from "node:fs";
+import path from "node:path";
 import createMDX from "@next/mdx";
 
 const isDev = process.env.NODE_ENV === "development";
+
+/**
+ * 扫描 src/app，收集所有「字面量路由的第一段 URL」，构建时通过 env 注入给 src/proxy.ts。
+ *
+ * 用途：中间件判断某个路径是否可能是「后端自定义页面」（后台页面管理里建的页面）。
+ * 只有不在这份名单里的路径才会去问后端 /public/pages/{path}，页面不存在时直接返回真 404。
+ *
+ * 为什么构建时生成而不是手写：手写名单一旦漏了新增路由，新页面会被误判成 404 —— 生成式
+ * 永远与路由同步（中间件跑在 Edge 运行时，拿不到文件系统，所以只能构建时注入）。
+ */
+function collectStaticRouteSegments(appDir: string): string[] {
+  const segments = new Set<string>();
+  const walk = (dir: string, isRoot: boolean) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const name = entry.name;
+      // 路由组 (blog)/(auth)：不占 URL 段，继续往下看
+      if (/^\(.+\)$/.test(name)) {
+        walk(path.join(dir, name), isRoot);
+        continue;
+      }
+      // 动态段 [id]/[...slug]：不可能是自定义页面的字面量路径
+      if (name.startsWith("[")) continue;
+      if (isRoot) segments.add(name);
+      walk(path.join(dir, name), false);
+    }
+  };
+  walk(appDir, true);
+  return [...segments].sort();
+}
+
+const staticRouteSegments = collectStaticRouteSegments(path.join(process.cwd(), "src", "app"));
 
 const nextConfig: NextConfig = {
 
@@ -11,6 +45,11 @@ const nextConfig: NextConfig = {
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
   reactCompiler: true,
   reactStrictMode: false,
+
+  // 供 src/proxy.ts 使用的「本站静态路由第一段」名单（构建时扫描 src/app 生成）
+  env: {
+    APP_STATIC_ROUTE_SEGMENTS: staticRouteSegments.join(","),
+  },
 
   // 代理配置 - 客户端请求代理到 Go 后端
   async rewrites() {

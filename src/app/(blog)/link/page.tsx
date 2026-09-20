@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { FlinkBanner } from "@/components/(blog)/flink-banner";
 import { LinkApplyConditions } from "@/components/(blog)/link-apply-conditions";
 import { LinkCustomHtml } from "@/components/(blog)/link-custom-html";
@@ -6,6 +6,7 @@ import { LinkPond } from "@/components/(blog)/link-pond";
 import { LinkSections } from "@/components/(blog)/link-sections";
 import { PostComments } from "@/components/(blog)/post-comments";
 import { getCommentsWithChildrenApi, getLinksByCategoryApi, getLinksGroupedByCategoryApi, getPublicLinkCategoriesApi, getPublicSiteConfigApi, getRandomMomentPostApi } from "@/lib/api";
+import { getCommentAuthor } from "@/lib/comment-author";
 import { pickFishLine } from "@/lib/fish-lines";
 import { generateBlogMetadata } from "@/lib/seo";
 
@@ -84,7 +85,7 @@ export default async function Link() {
             <LinkApplyConditions conditions={applyConditions} />
 
             {/* 评论区：与页面评论一致，target_path = /link */}
-            <PostComments targetPath="/link" comments={comments} />
+            <PostComments targetPath="/link" comments={comments}  author={await getCommentAuthor()} />
         </div>
     );
 }

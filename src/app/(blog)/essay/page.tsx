@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 
 import { EssayWaterfall } from "@/components/(blog)/essay-waterfall";
@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { ApiError, getCommentsWithChildrenApi, getPublicEssaysApi } from "@/lib/api";
+import { getCommentAuthor } from "@/lib/comment-author";
 import { generateBlogMetadata } from "@/lib/seo";
 import { resolveAssetUrl } from "@/lib/utils";
 import { SiteConfigResponse } from "@/types/site-config";
@@ -121,7 +122,7 @@ export default async function Essay({ searchParams }: { searchParams: Promise<Es
                 />
 
                 {/* 评论区 */}
-                <PostComments targetPath={targetPath} comments={comments} />
+                <PostComments targetPath={targetPath} comments={comments}  author={await getCommentAuthor()} />
             </div>
         </PageWithSidebar>
     );

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { ArrowUpDown } from "lucide-react";
@@ -10,6 +10,7 @@ import { PostComments } from "@/components/(blog)/post-comments";
 import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
 import { ApiError, getCommentsWithChildrenApi, getPublicMomentsApi } from "@/lib/api";
+import { getCommentAuthor } from "@/lib/comment-author";
 import { generateBlogMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -105,7 +106,7 @@ export default async function Fcircle({ searchParams }: { searchParams: Promise<
                 )}
 
                 {/* 评论区 */}
-                <PostComments targetPath={targetPath} comments={comments} />
+                <PostComments targetPath={targetPath} comments={comments}  author={await getCommentAuthor()} />
             </div>
         </PageWithSidebar>
     );

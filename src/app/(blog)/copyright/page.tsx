@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { getCommentsWithChildrenApi, getPublicPageApi } from "@/lib/api";
+import { getCommentAuthor } from "@/lib/comment-author";
 import { generateBlogMetadata } from "@/lib/seo";
 import { PostComments } from "@/components/(blog)/post-comments";
 
@@ -47,7 +48,7 @@ export default async function Copyright() {
                 dangerouslySetInnerHTML={{ __html: page.content || "" }}
             />
 
-            {page.show_comment && <PostComments targetPath={page.path} comments={comments} />}
+            {page.show_comment && <PostComments targetPath={page.path} comments={comments}  author={await getCommentAuthor()} />}
         </div>
     );
 }

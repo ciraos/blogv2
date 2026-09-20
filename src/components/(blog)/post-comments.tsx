@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import Link from "next/link";
 
 import { Globe, ImagePlus, MapPin, MessageCircle, Monitor, Send, Sparkles, ThumbsUp, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -9,6 +10,7 @@ import { toast } from "sonner";
 import { CommentContent } from "@/components/(blog)/comment-content";
 import type { RecentComment } from "@/lib/api";
 import { ApiError, submitCommentApi, uploadCommentImageApi } from "@/lib/api";
+import type { CommentAuthor } from "@/lib/comment-author";
 
 interface CommentWithChildren extends RecentComment {
     children?: RecentComment[];
@@ -19,6 +21,12 @@ interface PostCommentsProps {
     targetPath: string;
     /** 评论列表（由服务端组件通过 GET /public/comments + children 获取后传入） */
     comments: CommentWithChildren[];
+    /**
+     * 已登录用户（服务端读取 httpOnly token 后取回）：有值时评论区不再显示昵称 / 邮箱 / 网址输入框，
+     * 提交直接用账号里的这三项（后端 nickname 必填，且会据此把评论关联到账号）。
+     * 为空 = 游客态，照旧显示三项并支持本地记忆回填。
+     */
+    author?: CommentAuthor | null;
 }
 
 function resolveAvatar(comment: RecentComment): string | null {
@@ -208,11 +216,13 @@ function saveStoredAuthor(nickname: string, email: string, website: string) {
     }
 }
 
-export function PostComments({ targetPath, comments = [] }: PostCommentsProps) {
-    // 昵称 / 邮箱（受控，匿名时锁定不可编辑）
-    const [nickname, setNickname] = useState("");
-    const [email, setEmail] = useState("");
-    const [website, setWebsite] = useState("");
+export function PostComments({ targetPath, comments = [], author = null }: PostCommentsProps) {
+    // 已登录：昵称 / 邮箱 / 网址取自账号，三项输入框不显示，直接用它提交
+    const loggedIn = Boolean(author);
+    // 昵称 / 邮箱 / 网址（受控，匿名时锁定不可编辑）：登录态用账号里的值初始化
+    const [nickname, setNickname] = useState(author?.nickname ?? "");
+    const [email, setEmail] = useState(author?.email ?? "");
+    const [website, setWebsite] = useState(author?.website ?? "");
     const [content, setContent] = useState("");
     const [submitting, setSubmitting] = useState(false);
     // 评论列表：本地副本（可被提交成功后刷新），由服务端传入的 comments 初始化
@@ -263,7 +273,9 @@ export function PostComments({ targetPath, comments = [] }: PostCommentsProps) {
     }, []);
 
     // 进入评论区时回填上次发表评论用的昵称 / 邮箱 / 网址（仅客户端执行，避免水合不匹配）
+    // 登录态已用账号信息初始化，不需要也不应该再被本地记忆覆盖
     useEffect(() => {
+        if (loggedIn) return;
         const stored = readStoredAuthor();
         if (!stored.nickname && !stored.email && !stored.website) return;
         // 放到下一个 tick 再回填：effect 内同步 setState 会造成级联渲染（react-hooks/set-state-in-effect）
@@ -273,7 +285,7 @@ export function PostComments({ targetPath, comments = [] }: PostCommentsProps) {
             setWebsite((prev) => prev || stored.website);
         }, 0);
         return () => clearTimeout(timer);
-    }, []);
+    }, [loggedIn]);
 
     /** 退出匿名：解除锁定，昵称 / 邮箱恢复可编辑 */
     function confirmExitAnon() {
@@ -318,7 +330,8 @@ export function PostComments({ targetPath, comments = [] }: PostCommentsProps) {
             });
             toast.success("评论发表成功");
             // 记住昵称 / 邮箱 / 网址：下次在任意评论区自动回填（匿名评论为随机身份，不覆盖已存信息）
-            if (!anonActive) saveStoredAuthor(nickname.trim(), email.trim(), website.trim());
+            // 登录态的三项来自账号，不写入本地记忆（避免账号邮箱留痕到未登录的表单里）
+            if (!anonActive && !loggedIn) saveStoredAuthor(nickname.trim(), email.trim(), website.trim());
             setContent("");
             setWebsite("");
             // 重新拉取评论列表，让新评论出现在评论区
@@ -416,9 +429,9 @@ export function PostComments({ targetPath, comments = [] }: PostCommentsProps) {
                                 匿名评论
                             </button>
                         )}
-                        <a href="/privacy" className="rounded-md px-2 py-1 transition-colors hover:bg-muted hover:text-foreground">
+                        <Link href="/privacy" className="rounded-md px-2 py-1 transition-colors hover:bg-muted hover:text-foreground">
                             隐私政策
-                        </a>
+                        </Link>
                     </div>
                 </div>
 
@@ -464,50 +477,59 @@ export function PostComments({ targetPath, comments = [] }: PostCommentsProps) {
                     </div>
                 </div>
 
-                {/* 表单信息行：昵称 / 邮箱 / 网址 + 发送 */}
-                <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
-                    <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-3">
-                        <label className="block">
-                            <span className="mb-1 block text-xs text-muted-foreground">昵称</span>
-                            <input
-                                type="text"
-                                autoComplete="nickname"
-                                placeholder="必填"
-                                value={nickname}
-                                readOnly={anonActive}
-                                onChange={(event) => setNickname(event.target.value)}
-                                className="h-9 w-full rounded-lg border bg-card px-3 text-sm outline-none transition-colors focus:border-primary read-only:cursor-not-allowed read-only:opacity-70"
-                            />
-                        </label>
-                        <label className="block">
-                            <span className="mb-1 block text-xs text-muted-foreground">邮箱</span>
-                            <input
-                                type="email"
-                                autoComplete="email"
-                                placeholder="必填"
-                                value={email}
-                                readOnly={anonActive}
-                                onChange={(event) => setEmail(event.target.value)}
-                                className="h-9 w-full rounded-lg border bg-card px-3 text-sm outline-none transition-colors focus:border-primary read-only:cursor-not-allowed read-only:opacity-70"
-                            />
-                        </label>
-                        <label className="block">
-                            <span className="mb-1 block text-xs text-muted-foreground">网址</span>
-                            <input
-                                type="url"
-                                autoComplete="url"
-                                placeholder="选填"
-                                value={website}
-                                onChange={(event) => setWebsite(event.target.value)}
-                                className="h-9 w-full rounded-lg border bg-card px-3 text-sm outline-none transition-colors focus:border-primary"
-                            />
-                        </label>
-                    </div>
+                {/* 表单信息行：昵称 / 邮箱 / 网址 + 发送（登录态下这三项取自账号，不再显示输入框）。
+                    移动端：三框在左上下排列，发送按钮独占右列并把高度撑满这三行（items-stretch，
+                    按钮自身不设固定高，min-h-9 只保底）；≥sm：三框一行，按钮回到右侧底部对齐 */}
+                <div className={`mt-3 flex gap-3 ${loggedIn ? "flex-wrap items-end justify-between" : "items-stretch sm:items-end"}`}>
+                    {loggedIn ? (
+                        <p className="flex-1 text-xs text-muted-foreground">
+                            已登录，将以你的账号身份发表评论（昵称 / 邮箱 / 网址取自账号，无需填写）
+                        </p>
+                    ) : (
+                        <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-3">
+                            <label className="flex items-center gap-2 sm:block">
+                                <span className="block shrink-0 text-xs text-muted-foreground sm:mb-1">昵称</span>
+                                <input
+                                    type="text"
+                                    autoComplete="nickname"
+                                    placeholder="必填"
+                                    value={nickname}
+                                    readOnly={anonActive}
+                                    onChange={(event) => setNickname(event.target.value)}
+                                    className="h-9 w-full min-w-0 flex-1 rounded-lg border bg-card px-3 text-sm outline-none transition-colors focus:border-primary read-only:cursor-not-allowed read-only:opacity-70 sm:flex-none"
+                                />
+                            </label>
+                            <label className="flex items-center gap-2 sm:block">
+                                <span className="block shrink-0 text-xs text-muted-foreground sm:mb-1">邮箱</span>
+                                <input
+                                    type="email"
+                                    autoComplete="email"
+                                    placeholder="必填"
+                                    value={email}
+                                    readOnly={anonActive}
+                                    onChange={(event) => setEmail(event.target.value)}
+                                    className="h-9 w-full min-w-0 flex-1 rounded-lg border bg-card px-3 text-sm outline-none transition-colors focus:border-primary read-only:cursor-not-allowed read-only:opacity-70 sm:flex-none"
+                                />
+                            </label>
+                            <label className="flex items-center gap-2 sm:block">
+                                <span className="block shrink-0 text-xs text-muted-foreground sm:mb-1">网址</span>
+                                <input
+                                    type="url"
+                                    autoComplete="url"
+                                    placeholder="选填"
+                                    value={website}
+                                    onChange={(event) => setWebsite(event.target.value)}
+                                    className="h-9 w-full min-w-0 flex-1 rounded-lg border bg-card px-3 text-sm outline-none transition-colors focus:border-primary sm:flex-none"
+                                />
+                            </label>
+                        </div>
+                    )}
+                    {/* 移动端：发送按钮独占右列、高度撑满左侧三行；≥sm 回到右侧底部（原样） */}
                     <button
                         type="button"
                         disabled={submitting}
                         onClick={handleSubmit}
-                        className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         <Send className="size-3.5" />
                         {submitting ? "发送中…" : "发送"}
