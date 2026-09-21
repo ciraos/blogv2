@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ExternalLink } from "lucide-react";
+import { useTheme } from "next-themes";
+import { ChevronDown, ExternalLink, Moon, Sun } from "lucide-react";
 
 import { AlbumWaterfall } from "@/components/(blog)/album-waterfall";
 import { PaginationControls } from "@/components/pagination-controls";
@@ -112,6 +113,8 @@ export function AlbumExplorer({ albums, categories, pageSize, footer }: AlbumExp
     const [categoryId, setCategoryId] = useState<number | null>(null); // null = 全部
     const [sort, setSort] = useState<SortMode>("default");
     const [page, setPage] = useState(1);
+    // 相册页是独立布局、没有前台的浮动操作栏，所以深浅色切换按钮放在底部工具条里
+    const { setTheme } = useTheme();
 
     // 分类过滤 + 排序
     const filtered = useMemo(() => {
@@ -272,12 +275,24 @@ export function AlbumExplorer({ albums, categories, pageSize, footer }: AlbumExp
                             )}
                         </FooterDropdown>
 
+                        {/* 深浅色切换（图标用 CSS dark: 变体切换，避免 useTheme 造成 SSR/客户端水合不一致） */}
+                        <button
+                            type="button"
+                            onClick={() => setTheme(document.documentElement.classList.contains("dark") ? "light" : "dark")}
+                            aria-label="深浅色切换"
+                            title="深浅色切换"
+                            className="flex size-7 shrink-0 items-center justify-center rounded transition-colors hover:bg-muted"
+                        >
+                            <Sun className="size-4 dark:hidden" />
+                            <Moon className="hidden size-4 dark:block" />
+                        </button>
+
                         {/* 关于：anheyu-app GitHub */}
                         <a
                             href="https://github.com/anzhiyu-c/anheyu-app"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1 rounded px-2 py-1 text-sm transition-colors hover:bg-muted"
+                            className="hidden items-center gap-1 rounded px-2 py-1 text-sm transition-colors hover:bg-muted sm:flex"
                         >
                             关于
                             <ExternalLink className="size-3.5 opacity-60" />
