@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { PaginationControls } from "@/components/pagination-controls";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     createAdminPageApi,
@@ -18,6 +19,7 @@ import {
 } from "@/lib/api";
 import type { AdminPage, AdminPagePayload } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { ACTION_TONE } from "@/lib/action-tones";
 
 const PAGE_SIZE = 10;
 
@@ -246,12 +248,13 @@ export function PageManager() {
                                 </span>
                                 <span className="text-center text-xs tabular-nums text-muted-foreground">{item.sort}</span>
                                 <span className="text-xs text-muted-foreground">{formatTime(item.updated_at)}</span>
-                                <span className="flex justify-end gap-0.5">
+                                <span className="flex justify-end gap-1">
                                     <Button
                                         variant="ghost"
                                         size="icon-sm"
                                         aria-label="打开页面"
                                         title="打开前台页面"
+                                        className={ACTION_TONE.view}
                                         onClick={() => window.open(item.path, "_blank", "noopener")}
                                     >
                                         <ExternalLink className="size-3.5" />
@@ -261,6 +264,7 @@ export function PageManager() {
                                         size="icon-sm"
                                         aria-label="编辑"
                                         title="编辑"
+                                        className={ACTION_TONE.edit}
                                         onClick={() => setEditing(item)}
                                     >
                                         <Pencil className="size-3.5" />
@@ -270,7 +274,7 @@ export function PageManager() {
                                         size="icon-sm"
                                         aria-label="删除"
                                         title="删除"
-                                        className="text-destructive hover:text-destructive"
+                                        className={ACTION_TONE.delete}
                                         disabled={busy}
                                         onClick={() => void handleDelete(item)}
                                     >
@@ -288,26 +292,12 @@ export function PageManager() {
                 <span>
                     共 <span className="font-medium text-foreground">{total}</span> 个页面 · 第 {page} / {totalPages} 页
                 </span>
-                <div className="flex items-center gap-1">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 rounded-lg text-xs"
-                        disabled={page <= 1 || loading}
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    >
-                        上一页
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 rounded-lg text-xs"
-                        disabled={page >= totalPages || loading}
-                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    >
-                        下一页
-                    </Button>
-                </div>
+                <PaginationControls
+                    page={page}
+                    totalPages={totalPages}
+                    disabled={loading}
+                    onPageChange={setPage}
+                />
             </div>
 
             {/* ===== 新建 / 编辑 ===== */}

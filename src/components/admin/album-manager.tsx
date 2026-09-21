@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PaginationControls } from "@/components/pagination-controls";
 import {
     ALBUM_SORT_OPTIONS,
     batchDeleteAdminAlbumsApi,
@@ -36,6 +37,7 @@ import {
 } from "@/lib/api";
 import type { AdminAlbum, AdminAlbumCategory } from "@/lib/api";
 import { cn, resolveAssetUrl } from "@/lib/utils";
+import { ACTION_TONE } from "@/lib/action-tones";
 
 const PAGE_SIZE = 12;
 
@@ -354,7 +356,7 @@ export function AlbumManager() {
                                                 aria-label="编辑"
                                                 title="编辑"
                                                 onClick={() => setEditing(album)}
-                                                className="rounded-md border bg-card/90 p-1 text-muted-foreground shadow-sm transition-colors hover:text-primary"
+                                                className="rounded-md bg-orange-500 p-1 text-white shadow-sm transition-colors hover:bg-orange-600"
                                             >
                                                 <Pencil className="size-3.5" />
                                             </button>
@@ -363,7 +365,7 @@ export function AlbumManager() {
                                                 aria-label="删除"
                                                 title="删除"
                                                 onClick={() => removeAlbum(album)}
-                                                className="rounded-md border bg-card/90 p-1 text-destructive shadow-sm transition-colors"
+                                                className="rounded-md bg-red-500 p-1 text-white shadow-sm transition-colors hover:bg-red-600"
                                             >
                                                 <Trash2 className="size-3.5" />
                                             </button>
@@ -422,26 +424,12 @@ export function AlbumManager() {
                         <span>
                             共 <span className="font-medium text-foreground">{total}</span> 张图片 · 第 {page} / {totalPages} 页
                         </span>
-                        <div className="flex items-center gap-1">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 rounded-lg text-xs"
-                                disabled={page <= 1 || loading}
-                                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                            >
-                                上一页
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 rounded-lg text-xs"
-                                disabled={page >= totalPages || loading}
-                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                            >
-                                下一页
-                            </Button>
-                        </div>
+                        <PaginationControls
+                            page={page}
+                            totalPages={totalPages}
+                            disabled={loading}
+                            onPageChange={setPage}
+                        />
                     </div>
                 </>
             )}
@@ -473,12 +461,13 @@ export function AlbumManager() {
                                     <span className="text-center text-xs tabular-nums text-muted-foreground">
                                         {c.displayOrder}
                                     </span>
-                                    <span className="flex justify-end gap-0.5">
+                                    <span className="flex justify-end gap-1">
                                         <Button
                                             variant="ghost"
                                             size="icon-sm"
                                             aria-label="编辑分类"
                                             title="编辑"
+                                            className={ACTION_TONE.edit}
                                             onClick={() => setCategoryDialog(c)}
                                         >
                                             <Pencil className="size-3.5" />
@@ -488,7 +477,7 @@ export function AlbumManager() {
                                             size="icon-sm"
                                             aria-label="删除分类"
                                             title="删除"
-                                            className="text-destructive hover:text-destructive"
+                                            className={ACTION_TONE.delete}
                                             disabled={busy}
                                             onClick={() => {
                                                 if (!window.confirm(`确定删除分类「${c.name}」吗？该分类下的图片会变成未分类。`)) return;

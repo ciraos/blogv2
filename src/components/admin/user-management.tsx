@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { BadgeCheck, Ban, ChevronLeft, ChevronRight, KeyRound, Pencil, Plus, RotateCcw, Search, Trash2, Users } from "lucide-react";
+import { BadgeCheck, Ban, KeyRound, Pencil, Plus, RotateCcw, Search, Trash2, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PaginationControls } from "@/components/pagination-controls";
 import {
     Select,
     SelectContent,
@@ -23,7 +24,8 @@ import {
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { createAdminUserApi } from "@/lib/api";
-import { resolveAssetUrl } from "@/lib/utils";
+import { resolveAssetUrl, cn } from "@/lib/utils";
+import { ACTION_TONE } from "@/lib/action-tones";
 import type { AdminUser, AdminUserListData, UserGroup } from "@/types/users";
 
 const PAGE_SIZE = 10;
@@ -430,10 +432,10 @@ export function UserManagement() {
                                         {formatTime(user.created_at)}
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex items-center justify-end gap-0.5">
+                                        <div className="flex items-center justify-end gap-1">
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="size-8" onClick={() => openEdit(user)}>
+                                                    <Button variant="ghost" size="icon" aria-label="编辑" className={cn("size-8", ACTION_TONE.edit)} onClick={() => openEdit(user)}>
                                                         <Pencil className="size-4" />
                                                     </Button>
                                                 </TooltipTrigger>
@@ -441,7 +443,7 @@ export function UserManagement() {
                                             </Tooltip>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="size-8" onClick={() => setResetUser(user)}>
+                                                    <Button variant="ghost" size="icon" aria-label="重置密码" className={cn("size-8", ACTION_TONE.key)} onClick={() => setResetUser(user)}>
                                                         <KeyRound className="size-4" />
                                                     </Button>
                                                 </TooltipTrigger>
@@ -452,7 +454,8 @@ export function UserManagement() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="size-8 text-amber-600 hover:text-amber-600"
+                                                        aria-label={user.status === 3 ? "解封" : "封禁"}
+                                                        className={cn("size-8", user.status === 3 ? ACTION_TONE.approve : ACTION_TONE.block)}
                                                         onClick={() => setConfirm({ type: user.status === 3 ? "unban" : "ban", user })}
                                                     >
                                                         <Ban className="size-4" />
@@ -465,7 +468,8 @@ export function UserManagement() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="size-8 text-destructive hover:text-destructive"
+                                                        aria-label="删除"
+                                                        className={cn("size-8", ACTION_TONE.delete)}
                                                         onClick={() => setConfirm({ type: "delete", user })}
                                                     >
                                                         <Trash2 className="size-4" />
@@ -488,26 +492,11 @@ export function UserManagement() {
                     <span>
                         共 {data.total} 条 · 第 {data.page} / {totalPages} 页
                     </span>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={query.page <= 1}
-                            onClick={() => applyFilters({ ...query, page: query.page - 1 })}
-                        >
-                            <ChevronLeft className="size-4" />
-                            上一页
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={query.page >= totalPages}
-                            onClick={() => applyFilters({ ...query, page: query.page + 1 })}
-                        >
-                            下一页
-                            <ChevronRight className="size-4" />
-                        </Button>
-                    </div>
+                    <PaginationControls
+                        page={query.page}
+                        totalPages={totalPages}
+                        onPageChange={(p) => applyFilters({ ...query, page: p })}
+                    />
                 </div>
             )}
 

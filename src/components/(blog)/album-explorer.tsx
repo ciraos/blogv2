@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { ChevronDown, ExternalLink } from "lucide-react";
 
 import { AlbumWaterfall } from "@/components/(blog)/album-waterfall";
+import { PaginationControls } from "@/components/pagination-controls";
 import type { Album, AlbumCategory } from "@/lib/api";
 import { resolveAssetUrl } from "@/lib/utils";
 
@@ -167,32 +168,12 @@ export function AlbumExplorer({ albums, categories, pageSize, footer }: AlbumExp
                 {/* 分页条：居中（左侧页码、右侧「共 N 张」） */}
                 {totalPages > 1 || filtered.length > 0 ? (
                     <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-                        {/* 左侧：页码按钮组 */}
-                        <div className="flex items-center gap-1.5">
-                            <button
-                                type="button"
-                                disabled={safePage <= 1}
-                                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                aria-label="上一页"
-                                title="上一页"
-                                className="flex size-8 items-center justify-center rounded-md border transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                                <ChevronLeft className="size-4" />
-                            </button>
-                            <span className="px-1 text-sm tabular-nums">
-                                {safePage} / {totalPages}
-                            </span>
-                            <button
-                                type="button"
-                                disabled={safePage >= totalPages}
-                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                                aria-label="下一页"
-                                title="下一页"
-                                className="flex size-8 items-center justify-center rounded-md border transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                                <ChevronRight className="size-4" />
-                            </button>
-                        </div>
+                        {/* 左侧：页码块 + 上一页 / 下一页 */}
+                        <PaginationControls
+                            page={safePage}
+                            totalPages={totalPages}
+                            onPageChange={setPage}
+                        />
                         {/* 右侧：共 N 张（相册数） */}
                         <span className="text-xs text-muted-foreground">共 {filtered.length} 张</span>
                     </div>

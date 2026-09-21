@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import {
     AlignJustify,
-    ChevronLeft,
-    ChevronRight,
     Eye,
     FileText,
     FolderTree,
@@ -19,6 +17,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
+import { PaginationControls } from "@/components/pagination-controls";
+import { ACTION_TONE } from "@/lib/action-tones";
 import {
     Select,
     SelectContent,
@@ -386,13 +386,13 @@ export function ArticleList() {
                                     <td className="px-3 py-2 text-xs text-muted-foreground">{formatDate(article.created_at)}</td>
                                     {/* 操作列：预览 / 编辑 / 删除 */}
                                     <td className="w-full whitespace-nowrap px-3 py-2">
-                                        <div className="flex items-center justify-center gap-0.5">
+                                        <div className="flex items-center justify-center gap-1">
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
                                                 aria-label="预览"
                                                 title="预览"
-                                                className="bg-orange-100 text-orange-700 hover:bg-orange-200"
+                                                className={ACTION_TONE.view}
                                                 asChild
                                             >
                                                 <Link href={`/posts/${article.abbrlink || article.id}`}>
@@ -404,7 +404,7 @@ export function ArticleList() {
                                                 size="sm"
                                                 aria-label="编辑"
                                                 title="编辑"
-                                                className="bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                                className={ACTION_TONE.edit}
                                                 onClick={() => toast.info("编辑功能待接入")}
                                             >
                                                 <Pencil className="size-4" />编辑
@@ -414,7 +414,7 @@ export function ArticleList() {
                                                 size="sm"
                                                 aria-label="删除"
                                                 title="删除"
-                                                className="bg-destructive/10 text-destructive hover:bg-destructive/20"
+                                                className={ACTION_TONE.delete}
                                                 onClick={() => toast.info("删除功能待接入")}
                                             >
                                                 <Trash2 className="size-4" />删除
@@ -436,15 +436,11 @@ export function ArticleList() {
                         第 {page} / {totalPages} 页
                     </span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon-sm" disabled={page <= 1} onClick={() => goPage(page - 1)} aria-label="上一页">
-                        <ChevronLeft className="size-4" />
-                    </Button>
-                    <span className="text-xs text-muted-foreground">{page}</span>
-                    <Button variant="outline" size="icon-sm" disabled={page >= totalPages} onClick={() => goPage(page + 1)} aria-label="下一页">
-                        <ChevronRight className="size-4" />
-                    </Button>
-                </div>
+                <PaginationControls
+                    page={page}
+                    totalPages={totalPages}
+                    onPageChange={goPage}
+                />
             </div>
         </div>
     );

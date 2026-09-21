@@ -13,7 +13,18 @@ import type {
 import type { LoginData, LoginUserInfo } from "@/types/auth";
 import type { AdminCreateLinkRequest, AdminUpdateLinkRequest, FriendLink, LinkCategory, LinkCategoryGroup, LinkListData, LinkListParams, LinkTag } from "@/types/links";
 import type { AdminCreateEssayRequest, AdminEssayListParams, AdminUpdateEssayRequest, Essay, EssayListData } from "@/types/essays";
-import type { MomentsListData, MomentsListParams, RandomMomentPost } from "@/types/moments";
+import type {
+    AdminMomentItem,
+    AdminMomentsListData,
+    AdminMomentsListParams,
+    AdminMomentUpdatePayload,
+    MomentFetchStatus,
+    MomentSortBy,
+    MomentSortOrder,
+    MomentsListData,
+    MomentsListParams,
+    RandomMomentPost,
+} from "@/types/moments";
 import type { SiteConfig } from "@/types/site-config";
 import type { AdminCreateUserRequest } from "@/types/users";
 
@@ -1251,6 +1262,80 @@ export function updateAdminAlbumCategoryApi(
 /** DELETE /api/admin/album-categories/[id] 删除相册分类 */
 export function deleteAdminAlbumCategoryApi(id: number): Promise<unknown> {
     return request(`/api/admin/album-categories/${id}`, { method: "DELETE" });
+}
+
+// ===================== 朋友圈管理（后台 · PRO） =====================
+// 远端路径：/pro/admin/moments 系列（全部需登录 + 管理员，无 CORS → 一律走同源代理）
+// 依据：线上官方后台 /admin/moments 的前端实现
+
+/** 管理端排序字段（与官方后台下拉框一致） */
+export const MOMENT_SORT_OPTIONS = [
+    { value: "published_at", label: "发布时间" },
+    { value: "created_at", label: "入库时间" },
+    { value: "fetched_at", label: "抓取时间" },
+    { value: "link_name", label: "友链名称" },
+    { value: "post_title", label: "文章标题" },
+] as const;
+
+/** 管理端排序方向 */
+export const MOMENT_SORT_ORDER_OPTIONS = [
+    { value: "desc", label: "降序" },
+    { value: "asc", label: "升序" },
+] as const;
+
+/** 官方默认排序：按发布时间降序 */
+export const MOMENT_DEFAULT_SORT_BY: MomentSortBy = "published_at";
+export const MOMENT_DEFAULT_SORT_ORDER: MomentSortOrder = "desc";
+
+/**
+ * GET /api/admin/moments 后台朋友圈列表（同源代理 → 远端 GET /pro/admin/moments，需管理员）
+ * 注意：keyword 空串不传、link_id 仅 > 0 时传（与官方前端一致）。
+ */
+export async function getAdminMomentsApi(params: AdminMomentsListParams = {}): Promise<AdminMomentsListData> {
+    const qs = new URLSearchParams();
+    qs.set("page", String(params.page ?? 1));
+    qs.set("page_size", String(params.page_size ?? 10));
+    const keyword = params.keyword?.trim();
+    if (keyword) qs.set("keyword", keyword);
+    if (params.link_id && params.link_id > 0) qs.set("link_id", String(params.link_id));
+    if (params.sort_by) qs.set("sort_by", params.sort_by);
+    if (params.sort_order) qs.set("sort_order", params.sort_order);
+    return request<AdminMomentsListData>(`/api/admin/moments?${qs.toString()}`, { method: "GET" });
+}
+
+/** GET /api/admin/moments/[id] 朋友圈详情（同源代理） */
+export function getAdminMomentDetailApi(id: number): Promise<AdminMomentItem> {
+    return request<AdminMomentItem>(`/api/admin/moments/${id}`, { method: "GET" });
+}
+
+/** PUT /api/admin/moments/[id] 更新朋友圈（同源代理） */
+export function updateAdminMomentApi(id: number, body: AdminMomentUpdatePayload): Promise<AdminMomentItem> {
+    return request<AdminMomentItem>(`/api/admin/moments/${id}`, { method: "PUT", body: JSON.stringify(body) });
+}
+
+/** DELETE /api/admin/moments/[id] 删除单条朋友圈（同源代理） */
+export function deleteAdminMomentApi(id: number): Promise<unknown> {
+    return request(`/api/admin/moments/${id}`, { method: "DELETE" });
+}
+
+/** POST /api/admin/moments/batch-delete 批量删除朋友圈（body 为 { ids }） */
+export function batchDeleteAdminMomentsApi(ids: number[]): Promise<unknown> {
+    return request("/api/admin/moments/batch-delete", { method: "POST", body: JSON.stringify({ ids }) });
+}
+
+/** POST /api/admin/moments/fetch 触发一次 RSS 抓取（异步，需再轮询 fetch-status） */
+export function triggerAdminMomentsFetchApi(): Promise<unknown> {
+    return request("/api/admin/moments/fetch", { method: "POST" });
+}
+
+/** GET /api/admin/moments/fetch-status 获取 RSS 抓取状态 */
+export function getAdminMomentsFetchStatusApi(): Promise<MomentFetchStatus> {
+    return request<MomentFetchStatus>("/api/admin/moments/fetch-status", { method: "GET" });
+}
+
+/** POST /api/admin/moments/clear-cache 清理朋友圈缓存 */
+export function clearAdminMomentsCacheApi(): Promise<unknown> {
+    return request("/api/admin/moments/clear-cache", { method: "POST" });
 }
 
 // ===================== 文件管理 FILE =====================

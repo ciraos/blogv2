@@ -5,8 +5,6 @@ import { toast } from "sonner";
 import {
     Check,
     ChevronDown,
-    ChevronLeft,
-    ChevronRight,
     ChevronUp,
     Clock,
     Pencil,
@@ -20,6 +18,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { PaginationControls } from "@/components/pagination-controls";
+import { ACTION_TONE } from "@/lib/action-tones";
 import {
     Select,
     SelectContent,
@@ -202,14 +202,14 @@ function CommentRow({
                 <div>{formatDate(comment.created_at)}</div>
                 <div>{formatTime(comment.created_at)}</div>
             </div>
-            <div className="ml-auto flex w-28 shrink-0 items-center justify-end gap-0.5 xl:ml-0">
+            <div className="ml-auto flex w-28 shrink-0 items-center justify-end gap-1 xl:ml-0">
                 <Button
                     variant="ghost"
                     size="icon-sm"
                     disabled={busy}
                     aria-label={comment.status === 2 ? "通过审核" : "转为待审核"}
                     title={comment.status === 2 ? "通过审核" : "转为待审核"}
-                    className={comment.status === 2 ? "text-green-600 hover:text-green-600" : ""}
+                    className={comment.status === 2 ? ACTION_TONE.approve : ACTION_TONE.neutral}
                     onClick={() => onToggleStatus(comment)}
                 >
                     {comment.status === 2 ? <Check className="size-4" /> : <Clock className="size-4" />}
@@ -220,7 +220,7 @@ function CommentRow({
                     disabled={busy}
                     aria-label={pinned ? "取消置顶" : "置顶"}
                     title={pinned ? "取消置顶" : "置顶"}
-                    className={pinned ? "text-amber-600 hover:text-amber-600" : ""}
+                    className={pinned ? ACTION_TONE.pin : ACTION_TONE.neutral}
                     onClick={() => onTogglePin(comment)}
                 >
                     <Pin className="size-4" />
@@ -231,6 +231,7 @@ function CommentRow({
                     disabled={busy}
                     aria-label="编辑"
                     title="编辑"
+                    className={ACTION_TONE.edit}
                     onClick={() => onEdit(comment)}
                 >
                     <Pencil className="size-4" />
@@ -241,7 +242,7 @@ function CommentRow({
                     disabled={busy}
                     aria-label="删除"
                     title="删除"
-                    className="text-destructive hover:text-destructive"
+                    className={ACTION_TONE.delete}
                     onClick={() => onDelete(comment)}
                 >
                     <Trash2 className="size-4" />
@@ -576,26 +577,11 @@ export function CommentsManager() {
                 <span>
                     第 {page} / {totalPages} 页
                 </span>
-                <div className="flex items-center gap-1">
-                    <Button
-                        variant="outline"
-                        size="icon-sm"
-                        disabled={page <= 1}
-                        onClick={() => setPage((p) => p - 1)}
-                        aria-label="上一页"
-                    >
-                        <ChevronLeft className="size-4" />
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="icon-sm"
-                        disabled={page >= totalPages}
-                        onClick={() => setPage((p) => p + 1)}
-                        aria-label="下一页"
-                    >
-                        <ChevronRight className="size-4" />
-                    </Button>
-                </div>
+                <PaginationControls
+                    page={page}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                />
             </div>
 
             {/* ===== 编辑评论弹窗 ===== */}

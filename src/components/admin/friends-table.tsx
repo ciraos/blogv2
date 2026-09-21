@@ -7,8 +7,6 @@ import {
     ArrowUpDown,
     BadgeCheck,
     Camera,
-    ChevronLeft,
-    ChevronRight,
     FolderOpen,
     Globe,
     Image as ImageIcon,
@@ -22,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PaginationControls } from "@/components/pagination-controls";
 import {
     Select,
     SelectContent,
@@ -36,6 +35,7 @@ import {
     updateAdminLinkApi,
 } from "@/lib/api";
 import { resolveAssetUrl } from "@/lib/utils";
+import { ACTION_TONE } from "@/lib/action-tones";
 import type { FriendLink, LinkCategory, LinkTag } from "@/types/links";
 
 /** 与 FriendsFilters 联动的筛选条件 */
@@ -386,6 +386,7 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                                             size="icon-sm"
                                             aria-label="编辑"
                                             title="编辑"
+                                            className={ACTION_TONE.edit}
                                             onClick={() => openEdit(link)}
                                         >
                                             <Pencil className="size-4" />
@@ -395,7 +396,7 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                                             size="icon-sm"
                                             aria-label="删除"
                                             title="删除"
-                                            className="text-destructive hover:text-destructive"
+                                            className={ACTION_TONE.delete}
                                             onClick={() => toast.info("删除功能待接入")}
                                         >
                                             <Trash2 className="size-4" />
@@ -436,17 +437,13 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                         </div>
                     </div>
                 </div>
-                {/* 页数跳转 */}
-                <div className="flex items-center gap-1">
-                    <Button variant="outline" size="icon-sm" disabled={page <= 1} onClick={() => goPage(page - 1)} aria-label="上一页">
-                        <ChevronLeft className="size-4" />
-                    </Button>
-                    <span className="px-1 tabular-nums">
-                        {page} / {totalPages}
-                    </span>
-                    <Button variant="outline" size="icon-sm" disabled={page >= totalPages} onClick={() => goPage(page + 1)} aria-label="下一页">
-                        <ChevronRight className="size-4" />
-                    </Button>
+                {/* 页码块 + 上一页 / 下一页，再跟上页码跳转 */}
+                <div className="flex flex-wrap items-center gap-1">
+                    <PaginationControls
+                        page={page}
+                        totalPages={totalPages}
+                        onPageChange={goPage}
+                    />
                     <Input
                         value={jumpPage}
                         onChange={(e) => setJumpPage(e.target.value.replace(/\D/g, ""))}

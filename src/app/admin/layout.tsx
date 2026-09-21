@@ -4,7 +4,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import "../globals.css";
 import { AppSidebar } from "@/components/app-sidebar";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTriggerFallback } from "@/components/sidebar-trigger-fallback";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -92,9 +93,11 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
                         <SidebarProvider>
                             <AppSidebar user={navUser} />
                             <main className="flex min-h-screen w-full flex-1 min-w-0 flex-col py-2 px-5">
-                                <SidebarTrigger />
+                                <SidebarTriggerFallback />
                                 <div className="dsh-main flex-1 space-y-6">{children}</div>
-                                <footer className="mt-auto flex h-14 shrink-0 items-center justify-center border-t">
+                                {/* dsh-main 是 flex-1，内容不足一屏时会把页脚顶到底部；
+                                    mt-10 保证内容超出一屏时，页脚横线也不会贴着页面内容（分页等） */}
+                                <footer className="mt-10 flex h-14 shrink-0 items-center justify-center border-t">
                                     <Link href="https://beian.miit.gov.cn" target="_blank" rel="noopener external nofollow noreferrer" className="text-xs text-muted-foreground hover:underline">{config?.ICP_NUMBER}</Link>
                                 </footer>
                             </main>

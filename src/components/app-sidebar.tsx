@@ -8,9 +8,7 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
+  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import {
   LayoutDashboardIcon,
@@ -128,19 +126,14 @@ export function AppSidebar({
     <Sidebar collapsible="offcanvas" {...props}>
 
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
-            >
-              <div className="flex items-center justify-center">
-                <CommandIcon className="size-5!" />
-                <span className="text-base font-semibold">{config?.APP_NAME}</span>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        {/* 站名 + 折叠按钮同一行：折叠按钮放在站名右侧 */}
+        <div className="flex items-center justify-between gap-1 px-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <CommandIcon className="size-5! shrink-0" />
+            <span className="truncate text-base font-semibold">{config?.APP_NAME}</span>
+          </div>
+          <SidebarTrigger aria-label="收起侧边栏" title="收起侧边栏" className="shrink-0" />
+        </div>
       </SidebarHeader>
 
       <SidebarContent>
