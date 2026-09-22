@@ -65,6 +65,19 @@ const nextConfig: NextConfig = {
         // 注意：/api/* 不在这里代理——它由本应用的 src/app/api/*/route.ts 同源路由处理
         // （服务端转发到远端并合并数据、返回统一形状；浏览器端不能直连后端）。
         // 若这里加 /api/:path* 会抢占路由，导致客户端拿到后端原始分页形状而渲染错乱。
+        //
+        // 但后端「文件直链」是例外：站点配置里存的就是站内相对路径
+        // （USER_AVATAR / footer.socialBar.centerImg = /api/f/…，PRO 图片 = /api/pro/images/…），
+        // 本应用没有 /api/f、/api/pro 路由，不代理的话会被 (blog)/[...slug] 兜底页接走，
+        // 返回 HTML 导致图片挂掉，所以这两组必须代理。
+        {
+          source: "/api/f/:path*",
+          destination: `${backendUrl}/api/f/:path*`,
+        },
+        {
+          source: "/api/pro/images/:path*",
+          destination: `${backendUrl}/api/pro/images/:path*`,
+        },
         // 文件直链代理（后端路由在 /api/f/ 下，需带 /api 前缀）
         {
           source: "/f/:path*",

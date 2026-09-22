@@ -477,15 +477,11 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                     </div>
                 </div>
 
-                {/* 表单信息行：昵称 / 邮箱 / 网址 + 发送（登录态下这三项取自账号，不再显示输入框）。
+                {/* 表单信息行：未登录时显示昵称 / 邮箱 / 网址输入（登录态下这三项取自账号，无输入框、也不再显示提示文案）。
                     移动端：三框在左上下排列，发送按钮独占右列并把高度撑满这三行（items-stretch，
                     按钮自身不设固定高，min-h-9 只保底）；≥sm：三框一行，按钮回到右侧底部对齐 */}
-                <div className={`mt-3 flex gap-3 ${loggedIn ? "flex-wrap items-end justify-between" : "items-stretch sm:items-end"}`}>
-                    {loggedIn ? (
-                        <p className="flex-1 text-xs text-muted-foreground">
-                            已登录，将以你的账号身份发表评论（昵称 / 邮箱 / 网址取自账号，无需填写）
-                        </p>
-                    ) : (
+                <div className={`mt-3 flex gap-3 ${loggedIn ? "flex-wrap items-end justify-end" : "items-stretch sm:items-end"}`}>
+                    {loggedIn ? null : (
                         <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-3">
                             <label className="flex items-center gap-2 sm:block">
                                 <span className="block shrink-0 text-xs text-muted-foreground sm:mb-1">昵称</span>

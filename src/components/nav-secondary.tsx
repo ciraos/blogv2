@@ -27,14 +27,15 @@ export function NavSecondary({
         <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild>
+              {/* 收成图标栏时只留图标（hover 有 tooltip） */}
+              <SidebarMenuButton asChild tooltip={item.title} className="group-data-[collapsible=icon]:justify-center">
                 <a
                   href={item.url}
                   target={item.target}
                   rel={item.target === "_blank" ? "noopener noreferrer" : undefined}
                 >
                   {item.icon}
-                  <span>{item.title}</span>
+                  <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
                 </a>
               </SidebarMenuButton>
             </SidebarMenuItem>

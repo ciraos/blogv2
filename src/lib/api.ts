@@ -50,7 +50,14 @@ interface ApiResponse<T> {
 
 async function request<T>(path: string, options: RequestInit = {}, token?: string | null): Promise<T> {
     const headers = new Headers(options.headers);
-    if (options.body && !headers.has("Content-Type")) {
+    // FormData / Blob 不能手动设 Content-Type：前者要让 fetch 自己带 multipart boundary，
+    // 后者是原始二进制（如上传分片，由调用方显式指定 application/octet-stream）。
+    if (
+        options.body &&
+        !(options.body instanceof FormData) &&
+        !(options.body instanceof Blob) &&
+        !headers.has("Content-Type")
+    ) {
         headers.set("Content-Type", "application/json");
     }
     if (token) {
@@ -1358,6 +1365,21 @@ export function updateAdminSettingsApi(payload: Record<string, string>): Promise
     });
 }
 
+/**
+ * POST /api/admin/articles/upload 后台上传图片（同源代理 → 远端 POST /articles/upload，需管理员）。
+ * 官方后台所有图片字段（站点头像、Logo、页脚图片…）都用这一个接口；
+ * 返回本站托管的图片地址与文件 ID。
+ */
+export async function uploadAdminImageApi(file: File): Promise<{ url: string; file_id?: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    // FormData 交给 fetch 自动带 boundary，不能手动设 Content-Type
+    return request<{ url: string; file_id?: string }>("/api/admin/articles/upload", {
+        method: "POST",
+        body: formData,
+    });
+}
+
 // ===================== 文件管理 FILE =====================
 
 /** 文件管理根路径（后端虚拟路径 URI，默认「我的文件」） */
@@ -1439,6 +1461,48 @@ export function createAdminFileApi(body: {
     err_on_conflict?: boolean;
 }): Promise<unknown> {
     return request("/api/admin/file/create", { method: "POST", body: JSON.stringify(body) });
+}
+
+/** 创建上传会话的返回（远端 PUT /file/upload） */
+export interface AdminUploadSession {
+    expires: number;
+    /** server = 分片传给后端；client = 浏览器直传云存储（本应用暂不支持） */
+    upload_method: "server" | "client";
+    session_id?: string;
+    chunk_size?: number;
+    upload_url?: string;
+    content_type?: string;
+    storage_policy?: { id: string; name: string; type: string; max_size: number };
+}
+
+/**
+ * PUT /api/admin/file/upload 创建分片上传会话 → 远端 PUT /file/upload。
+ * 返回 server 方式时用 session_id + chunk_size 逐块 POST。
+ */
+export function createAdminUploadSessionApi(body: {
+    uri: string;
+    size: number;
+    policy_id: string;
+    overwrite?: boolean;
+}): Promise<AdminUploadSession> {
+    return request<AdminUploadSession>("/api/admin/file/upload", { method: "PUT", body: JSON.stringify(body) });
+}
+
+/** POST /api/admin/file/upload/[sessionId]/[index] 上传一个分片（原始二进制） */
+export function uploadAdminFileChunkApi(sessionId: string, index: number, chunk: Blob): Promise<unknown> {
+    return request<unknown>(`/api/admin/file/upload/${encodeURIComponent(sessionId)}/${index}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/octet-stream" },
+        body: chunk,
+    });
+}
+
+/** POST /api/admin/direct-links 为文件生成公开直链，返回 [{ link, file_url }] */
+export function createAdminDirectLinkApi(fileIds: string[]): Promise<{ link: string; file_url: string }[]> {
+    return request<{ link: string; file_url: string }[]>("/api/admin/direct-links", {
+        method: "POST",
+        body: JSON.stringify({ file_ids: fileIds }),
+    });
 }
 
 /** PUT /api/admin/file/rename 重命名文件或目录 */

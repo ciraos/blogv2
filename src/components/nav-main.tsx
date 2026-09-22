@@ -4,6 +4,12 @@ import { useState } from "react"
 import { usePathname } from "next/navigation"
 import { ChevronRight } from "lucide-react"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
@@ -12,6 +18,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 
@@ -58,6 +65,9 @@ const PARENT_ACTIVE_CLS = "bg-sidebar-accent font-medium"
 
 export function NavMain({ items }: { items: NavMainItem[] }) {
   const pathname = usePathname()
+  const { state, isMobile } = useSidebar()
+  // 桌面端把侧边栏收成「图标栏」时：目录项点击在右侧弹出子菜单
+  const iconMode = state === "collapsed" && !isMobile
 
   // 初始展开包含当前页面的分组
   const [openKey, setOpenKey] = useState<string | null>(
@@ -85,24 +95,66 @@ export function NavMain({ items }: { items: NavMainItem[] }) {
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
         <SidebarMenu className="gap-1.5">
-          {items.map((item) =>
-            item.items && item.items.length > 0 ? (
-              /* ===== 可展开菜单项 ===== */
+          {items.map((item) => {
+            const hasChildren = Boolean(item.items && item.items.length > 0)
+
+            /* ===== 图标栏模式下的目录项：点击图标 → 右侧弹出子菜单 ===== */
+            if (hasChildren && iconMode) {
+              return (
+                <SidebarMenuItem key={item.title}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <SidebarMenuButton
+                        aria-label={item.title}
+                        className={cn(
+                          "min-h-10 w-full px-2.5 transition-colors group-data-[collapsible=icon]:justify-center",
+                          groupActive(item) && PARENT_ACTIVE_CLS,
+                          HOVER_CLS
+                        )}
+                      >
+                        {item.icon}
+                        <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
+                        <ChevronRight className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+                      </SidebarMenuButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="right" align="start" sideOffset={8} className="w-48">
+                      {item.items!.map((sub) => (
+                        <DropdownMenuItem key={sub.url} asChild>
+                          <a
+                            href={sub.url}
+                            className={cn(
+                              "flex w-full cursor-pointer items-center gap-2",
+                              sub.url === pathname && SUB_ACTIVE_CLS
+                            )}
+                          >
+                            <span className="truncate">{sub.title}</span>
+                            {sub.pro && <ProBadge />}
+                          </a>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </SidebarMenuItem>
+              )
+            }
+
+            return hasChildren ? (
+              /* ===== 展开态的可展开菜单项（手风琴：一次只展开一个） ===== */
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton
                   tooltip={item.title}
                   onClick={() => setOpenKey((prev) => (prev === item.title ? null : item.title))}
                   className={cn(
-                    "min-h-10 w-full px-2.5 transition-colors",
+                    "min-h-10 w-full px-2.5 transition-colors group-data-[collapsible=icon]:justify-center",
                     groupActive(item) && PARENT_ACTIVE_CLS,
                     HOVER_CLS
                   )}
                 >
                   {item.icon}
-                  <span>{item.title}</span>
+                  <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
                   <ChevronRight
                     className={cn(
-                      "ml-auto size-4 transition-transform duration-200",
+                      "ml-auto size-4 transition-transform duration-200 group-data-[collapsible=icon]:hidden",
                       openKey === item.title && "rotate-90"
                     )}
                   />
@@ -110,7 +162,7 @@ export function NavMain({ items }: { items: NavMainItem[] }) {
 
                 {openKey === item.title && (
                   <SidebarMenuSub className="gap-1 pt-1">
-                    {item.items.map((sub) => {
+                    {item.items!.map((sub) => {
                       const active = sub.url === pathname
                       return (
                         <SidebarMenuSubItem key={sub.title}>
@@ -139,18 +191,18 @@ export function NavMain({ items }: { items: NavMainItem[] }) {
                   asChild
                   tooltip={item.title}
                   className={cn(
-                    "min-h-10 px-2.5 transition-colors",
+                    "min-h-10 px-2.5 transition-colors group-data-[collapsible=icon]:justify-center",
                     itemActive(item) ? ACTIVE_CLS : HOVER_CLS
                   )}
                 >
                   <a href={item.url}>
                     {item.icon}
-                    <span>{item.title}</span>
+                    <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
                   </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )
-          )}
+          })}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

@@ -8,6 +8,9 @@
 //
 // 第一批只做 4 个分区：站点信息、Logo 与图标、外观、页脚。
 
+import type { LucideIcon } from "lucide-react";
+import { Globe, Image as ImageIcon, Paintbrush, PanelBottom } from "lucide-react";
+
 import { BUILT_IN_SKINS } from "@/lib/appearance";
 
 export type SettingsFieldType = "text" | "textarea" | "number" | "boolean" | "select" | "image" | "list" | "tokens";
@@ -38,14 +41,20 @@ export interface SettingsField {
 export interface SettingsGroup {
     id: string;
     label: string;
-    /** 组级说明（例如「前端暂未渲染」） */
+    /** 组级说明（短句） */
     note?: string;
+    /** 该组字段后端/官方前端在用，但本站前台暂未渲染（页面上只显示一个小标记） */
+    notRendered?: boolean;
     fields: SettingsField[];
 }
 
 export interface SettingsSection {
     id: string;
     label: string;
+    /** 左侧导航图标（对齐官方后台一栏一项带图标） */
+    icon: LucideIcon;
+    /** 搜索用关键词（分区级；分组/字段名也会参与匹配） */
+    keywords?: string[];
     desc?: string;
     groups: SettingsGroup[];
 }
@@ -89,12 +98,14 @@ export const APPEARANCE_TOKEN_FIELDS = [
     { name: "info", label: "信息" },
 ] as const;
 
-const NOT_RENDERED = "这些字段后端/官方前端在用，本站前台暂未渲染，先保证可配置。";
+const NOT_RENDERED_DESC = "带「前台暂未渲染」标记的分组：后端与官方前端在用，本站前台还没渲染，先保证可配置。";
 
 export const SETTINGS_SECTIONS: SettingsSection[] = [
     {
         id: "site",
         label: "站点信息",
+        icon: Globe,
+        keywords: ["站点", "名称", "标题", "描述", "关键词", "地址", "备案", "头像", "gravatar", "关于"],
         desc: "站点名称、描述、备案与站长信息；前台标题、页脚备案、评论头像都读这里。",
         groups: [
             {
@@ -132,6 +143,8 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     {
         id: "logo",
         label: "Logo 与图标",
+        icon: ImageIcon,
+        keywords: ["logo", "图标", "favicon", "pwa", "横版"],
         desc: "站点 Logo 与浏览器/PWA 图标；改完刷新页面即可看到。",
         groups: [
             {
@@ -157,6 +170,8 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     {
         id: "appearance",
         label: "外观",
+        icon: Paintbrush,
+        keywords: ["换肤", "皮肤", "主题", "配色", "颜色", "明暗", "深色", "浅色", "动效"],
         desc: "换肤与默认明暗模式；皮肤只影响主色与语义色，可再按令牌微调。",
         groups: [
             {
@@ -188,7 +203,9 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     {
         id: "footer",
         label: "页脚",
-        desc: "页脚社交栏、项目链接、底部信息条、运行时间与徽章。",
+        icon: PanelBottom,
+        keywords: ["页脚", "footer", "社交", "图标", "项目", "友链", "运行时间", "徽章", "kuma", "备案"],
+        desc: `页脚社交栏、项目链接、底部信息条、运行时间与徽章。${NOT_RENDERED_DESC}`,
         groups: [
             {
                 id: "social",
@@ -239,7 +256,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
             {
                 id: "bar",
                 label: "底部信息条",
-                note: NOT_RENDERED,
+                notRendered: true,
                 fields: [
                     { key: "footer.owner.name", label: "站长名称", type: "text" },
                     { key: "footer.owner.since", label: "建站年份", type: "number", placeholder: "2024" },
@@ -261,7 +278,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
             {
                 id: "runtime",
                 label: "运行时间",
-                note: NOT_RENDERED,
+                notRendered: true,
                 fields: [
                     { key: "footer.runtime.enable", label: "显示运行时间", type: "boolean" },
                     { key: "footer.runtime.launch_time", label: "建站时间", type: "text", placeholder: "2024-01-01T00:00:00+08:00" },
@@ -274,7 +291,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
             {
                 id: "badge",
                 label: "徽章",
-                note: NOT_RENDERED,
+                notRendered: true,
                 fields: [
                     { key: "footer.badge.enable", label: "显示徽章", type: "boolean" },
                     {
@@ -293,7 +310,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
             {
                 id: "kuma",
                 label: "Uptime Kuma",
-                note: NOT_RENDERED,
+                notRendered: true,
                 fields: [
                     { key: "footer.uptime_kuma.enable", label: "显示监控", type: "boolean" },
                     { key: "footer.uptime_kuma.page_url", label: "监控页地址", type: "text", placeholder: "https://status.example.com" },

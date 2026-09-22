@@ -15,3 +15,33 @@ export function resolveAssetUrl(url?: string | null): string | null {
   if (!url) return null
   return url.startsWith("http") ? url : `${site_url}${url}`
 }
+
+/**
+ * 把后端返回的「本站托管媒体」绝对地址转成同源相对路径（pathname + search）。
+ *
+ * 场景：本地开发时后端可能按生产站点配置返回 `https://blog.ciraos.top/api/f/...`，
+ * 转成 `/api/f/...` 后由当前域名 + next.config 的 rewrites 代理到当前环境后端，
+ * 也便于直接存进站点配置（与既有配置里的相对路径口径一致）。
+ * Gravatar、第三方 OSS 等非本站路径保持原样。
+ */
+export function toSameOriginMediaUrl(url?: string | null): string {
+  if (!url) return ""
+  const trimmed = url.trim()
+  if (trimmed.startsWith("/")) return trimmed
+  try {
+    const parsed = new URL(trimmed)
+    const path = parsed.pathname + parsed.search
+    if (
+      path.startsWith("/api/f/") ||
+      path.startsWith("/api/pro/images/") ||
+      path.startsWith("/static/") ||
+      path.startsWith("/needcache/")
+    ) {
+      return path
+    }
+  } catch {
+    // 非绝对 URL（或畸形）：原样返回
+    return trimmed
+  }
+  return trimmed
+}

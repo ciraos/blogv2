@@ -123,16 +123,16 @@ export function AppSidebar({
   user: { name: string; email: string; avatar: string }
 }) {
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
+    <Sidebar collapsible="icon" {...props}>
 
       <SidebarHeader>
-        {/* 站名 + 折叠按钮同一行：折叠按钮放在站名右侧 */}
-        <div className="flex items-center justify-between gap-1 px-1">
-          <div className="flex min-w-0 items-center gap-2">
+        {/* 展开：站名 + 折叠按钮同一行；收起（icon 模式）：只剩图标，折叠按钮移到它下面 */}
+        <div className="flex items-center justify-between gap-1 px-1 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-1.5 group-data-[collapsible=icon]:px-0">
+          <div className="flex min-w-0 items-center gap-2 group-data-[collapsible=icon]:justify-center">
             <CommandIcon className="size-5! shrink-0" />
-            <span className="truncate text-base font-semibold">{config?.APP_NAME}</span>
+            <span className="truncate text-base font-semibold group-data-[collapsible=icon]:hidden">{config?.APP_NAME}</span>
           </div>
-          <SidebarTrigger aria-label="收起侧边栏" title="收起侧边栏" className="shrink-0" />
+          <SidebarTrigger aria-label="折叠 / 展开侧边栏" title="折叠 / 展开侧边栏" className="shrink-0" />
         </div>
       </SidebarHeader>
 
