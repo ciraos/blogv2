@@ -1338,6 +1338,26 @@ export function clearAdminMomentsCacheApi(): Promise<unknown> {
     return request("/api/admin/moments/clear-cache", { method: "POST" });
 }
 
+// ===================== 系统设置（后台）SETTINGS =====================
+// 远端：/settings/get-by-keys（按需读）、/settings/update（只提交改动项）
+// 后端键是点号路径（如 footer.socialBar.left）；值一律以字符串提交（JSON 用 JSON.stringify）。
+
+/** POST /api/admin/settings/get-by-keys 按需读取设置（同源代理，需管理员） */
+export function getAdminSettingsByKeysApi(keys: string[]): Promise<Record<string, unknown>> {
+    return request<Record<string, unknown>>("/api/admin/settings/get-by-keys", {
+        method: "POST",
+        body: JSON.stringify({ keys }),
+    });
+}
+
+/** POST /api/admin/settings/update 保存设置改动（同源代理，只传改动项） */
+export function updateAdminSettingsApi(payload: Record<string, string>): Promise<unknown> {
+    return request<unknown>("/api/admin/settings/update", {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+}
+
 // ===================== 文件管理 FILE =====================
 
 /** 文件管理根路径（后端虚拟路径 URI，默认「我的文件」） */
