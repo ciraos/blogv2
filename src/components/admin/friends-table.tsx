@@ -10,6 +10,7 @@ import {
     FolderOpen,
     Globe,
     Image as ImageIcon,
+    Loader2,
     Mail,
     Pencil,
     Rss,
@@ -29,6 +30,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import {
+    batchDeleteAdminLinksApi,
+    deleteAdminLinkApi,
     getAdminLinkCategoriesApi,
     getAdminLinkTagsApi,
     getAdminLinksApi,
@@ -106,6 +109,10 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
     const [categories, setCategories] = useState<LinkCategory[]>([]);
     const [tags, setTags] = useState<LinkTag[]>([]);
     const [saving, setSaving] = useState(false);
+    /** 正在删除的友链 id（单条删除时禁用该行按钮，避免重复提交） */
+    const [deletingId, setDeletingId] = useState<number | null>(null);
+    /** 批量删除进行中 */
+    const [batchDeleting, setBatchDeleting] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const [form, setForm] = useState({
         name: "",
@@ -207,6 +214,59 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
             toast.error(e instanceof Error ? e.message : "保存失败");
         } finally {
             setSaving(false);
+        }
+    };
+
+    /**
+     * 删除单条友链：DELETE /api/admin/links/{id}（远端 /links/:id）。
+     * 删除的是当前页最后一条且不在第一页时，往前翻一页，避免停在空页上。
+     */
+    const handleDelete = async (link: FriendLink) => {
+        if (!window.confirm(`确定删除友链「${link.name}」吗？\n${link.url}\n删除后不可恢复。`)) return;
+        setDeletingId(link.id);
+        try {
+            await deleteAdminLinkApi(link.id);
+            toast.success("友链已删除");
+            if (links.length === 1 && page > 1) setPage((p) => p - 1);
+            else setRefreshKey((k) => k + 1);
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "删除失败");
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
+    /**
+     * 批量删除：DELETE /api/admin/links/batch-delete（body { ids }，远端限制 1~100 条）。
+     * 后端返回逐项结果（success/failed），失败项列出原因，不是全有全无。
+     */
+    const handleBatchDelete = async () => {
+        const ids = [...selected];
+        if (ids.length === 0) return;
+        if (ids.length > 100) {
+            toast.error("一次最多删除 100 条友链");
+            return;
+        }
+        if (!window.confirm(`确定删除选中的 ${ids.length} 条友链吗？删除后不可恢复。`)) return;
+        setBatchDeleting(true);
+        try {
+            const result = await batchDeleteAdminLinksApi(ids);
+            const success = result?.success ?? ids.length;
+            const failed = result?.failed ?? 0;
+            if (failed > 0) {
+                const reason = result?.failed_list?.[0]?.reason;
+                toast.warning(`已删除 ${success} 条，${failed} 条失败`, {
+                    description: reason ? `失败原因：${reason}` : undefined,
+                });
+            } else {
+                toast.success(`已删除 ${success} 条友链`);
+            }
+            setSelected(new Set());
+            setRefreshKey((k) => k + 1);
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "批量删除失败");
+        } finally {
+            setBatchDeleting(false);
         }
     };
 
@@ -394,12 +454,17 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                                         <Button
                                             variant="ghost"
                                             size="icon-sm"
-                                            aria-label="删除"
+                                            aria-label={`删除 ${link.name}`}
                                             title="删除"
                                             className={ACTION_TONE.delete}
-                                            onClick={() => toast.info("删除功能待接入")}
+                                            disabled={deletingId === link.id}
+                                            onClick={() => void handleDelete(link)}
                                         >
-                                            <Trash2 className="size-4" />
+                                            {deletingId === link.id ? (
+                                                <Loader2 className="size-4 animate-spin" />
+                                            ) : (
+                                                <Trash2 className="size-4" />
+                                            )}
                                         </Button>
                                     </div>
                                 </div>
@@ -418,6 +483,23 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                             <span className="ml-2 text-primary">已选 {selected.size} 条</span>
                         )}
                     </div>
+                    {/* 批量删除：勾选后才可用（远端 /links/batch-delete，一次最多 100 条） */}
+                    {selected.size > 0 && (
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            className="h-7 gap-1 rounded-lg px-2 text-xs"
+                            disabled={batchDeleting}
+                            onClick={() => void handleBatchDelete()}
+                        >
+                            {batchDeleting ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                                <Trash2 className="size-3.5" />
+                            )}
+                            批量删除{selected.size > 0 ? `（${selected.size}）` : ""}
+                        </Button>
+                    )}
                     <div className="flex flex-wrap items-center gap-3">
                         {/* 每页条数 */}
                         <div className="flex items-center gap-1.5">

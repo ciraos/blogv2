@@ -478,6 +478,33 @@ export async function updateAdminLinkApi(id: number | string, payload: AdminUpda
     });
 }
 
+/**
+ * DELETE /api/admin/links/{id} 管理员删除单条友链（同源代理 → 远端 DELETE /links/:id，需登录）。
+ * 远端成功返回 { code: 200, message: "删除成功", data: null }。
+ */
+export function deleteAdminLinkApi(id: number | string): Promise<unknown> {
+    return request<unknown>(`/api/admin/links/${encodeURIComponent(String(id))}`, { method: "DELETE" });
+}
+
+/** 批量删除友链的返回（远端 /links/batch-delete）：逐项结果，失败项带原因 */
+export interface AdminBatchDeleteLinksResult {
+    total: number;
+    success: number;
+    failed: number;
+    failed_list?: { id: number; reason: string }[];
+}
+
+/**
+ * DELETE /api/admin/links/batch-delete 管理员批量删除友链（同源代理，需登录）。
+ * 远端限制一次 1~100 条；返回每条的成败统计，不是全有全无，调用方按 success/failed 提示。
+ */
+export function batchDeleteAdminLinksApi(ids: number[]): Promise<AdminBatchDeleteLinksResult> {
+    return request<AdminBatchDeleteLinksResult>("/api/admin/links/batch-delete", {
+        method: "DELETE",
+        body: JSON.stringify({ ids }),
+    });
+}
+
 /** 友链健康检查状态（后端 POST /links/health-check 触发后，GET 其/status 返回的进度/结果） */
 export interface LinkHealthCheckStatus {
     /** 是否仍在执行中（各字段按后端实际枚举/命名兜底读取） */
