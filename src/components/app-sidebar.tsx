@@ -22,6 +22,7 @@ import {
   Settings
 } from "lucide-react"
 import { SiteConfigResponse } from "@/types/site-config";
+import { APP_VERSION_LABEL } from "@/lib/version";
 
 const api_url = process.env.NEXT_PUBLIC_API_URL;
 
@@ -143,6 +144,11 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter>
+        {/* 前端版本号（package.json → 构建时注入，与后端版本无关）。
+            收起为图标模式时隐藏，避免挤压用户卡片 */}
+        <div className="px-2 pb-1 text-center text-[11px] tabular-nums text-muted-foreground/60 group-data-[collapsible=icon]:hidden">
+          {APP_VERSION_LABEL}
+        </div>
         <NavUser user={user} />
       </SidebarFooter>
 

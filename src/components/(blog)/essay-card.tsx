@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Clock3, MapPin, MessageCircle, UserRound } from "lucide-react";
-import { toast } from "sonner";
 
 import type { Essay } from "@/types/essays";
 import { resolveAssetUrl } from "@/lib/utils";
@@ -36,10 +35,12 @@ function formatRelative(iso: string, now: number): string {
 interface EssayCardProps {
     essay: Essay;
     onImageClick: (index: number) => void;
+    /** 点击右下角「评论」：把该条说说作为引用带到页面底部的评论区 */
+    onComment: (essay: Essay) => void;
 }
 
 /** 即刻 / 说说卡片（对齐线上格式：文字 + 方形缩略图 + 虚线 + 底部信息条） */
-export function EssayCard({ essay, onImageClick }: EssayCardProps) {
+export function EssayCard({ essay, onImageClick, onComment }: EssayCardProps) {
     const images = (essay.image ?? [])
         .map((url) => resolveAssetUrl(url))
         .filter((url): url is string => url !== null);
@@ -122,10 +123,10 @@ export function EssayCard({ essay, onImageClick }: EssayCardProps) {
                 </div>
                 <button
                     type="button"
-                    onClick={() => toast.info("评论功能暂未开放")}
+                    onClick={() => onComment(essay)}
                     className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    aria-label="回复"
-                    title="回复"
+                    aria-label="评论这条说说"
+                    title="评论这条说说"
                 >
                     <MessageCircle className="size-4" />
                 </button>

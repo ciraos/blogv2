@@ -37,6 +37,15 @@ function collectStaticRouteSegments(appDir: string): string[] {
 
 const staticRouteSegments = collectStaticRouteSegments(path.join(process.cwd(), "src", "app"));
 
+/**
+ * 前端自己的版本号：以 package.json 的 version 为唯一来源，构建时注入给前后端代码。
+ * 与后端程序版本（/api/version）和站点配置里的 APP_VERSION 无关，互不影响。
+ * 浏览器端也会内联，所以在客户端组件里读 process.env.APP_VERSION 同样有效。
+ */
+const appVersion = (
+  JSON.parse(fs.readFileSync(path.join(process.cwd(), "package.json"), "utf8")) as { version?: string }
+).version ?? "0.0.0";
+
 const nextConfig: NextConfig = {
 
   /* config options here */
@@ -49,6 +58,7 @@ const nextConfig: NextConfig = {
   // 供 src/proxy.ts 使用的「本站静态路由第一段」名单（构建时扫描 src/app 生成）
   env: {
     APP_STATIC_ROUTE_SEGMENTS: staticRouteSegments.join(","),
+    APP_VERSION: appVersion,
   },
 
   // 代理配置 - 客户端请求代理到 Go 后端

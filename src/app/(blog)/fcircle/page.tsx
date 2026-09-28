@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { ArrowUpDown } from "lucide-react";
@@ -88,10 +88,11 @@ export default async function Fcircle({ searchParams }: { searchParams: Promise<
                     </div>
                 </header>
 
-                {/* 网格：严格从左到右、逐行排列（最新在前）。grid-cols-1 保证移动端单列不按内容撑宽 */}
+                {/* 网格：严格从左到右、逐行排列（最新在前）。grid-cols-1 保证移动端单列不按内容撑宽；
+                    卡片右下角「评论」会把该条动态作为引用送到下方评论区（沿用同一个 target_path） */}
                 <div className="fcircle-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {data.list.map((moment) => (
-                        <MomentCard key={moment.id} moment={moment} />
+                        <MomentCard key={moment.id} moment={moment} commentTargetPath={targetPath} />
                     ))}
                 </div>
 

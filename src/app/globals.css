@@ -444,6 +444,43 @@ body {
   margin-bottom: 0;
 }
 
+/* ============ 评论区引用 ============ */
+/* 即刻页「评论这条说说」等以 `> 引用` 提交的内容会渲染成 blockquote。
+   评论区气泡本身是卡片色，如果引用块没有样式就跟正文糊在一起 ——
+   访客就看不出这条评论说的是哪条说说了。底色用主题色淡染以便一眼区分。 */
+.comment-content blockquote {
+  position: relative;
+  margin: 0.6em 0;
+  padding: 0.5em 0.9em 0.5em 1.6em;
+  border-left: 3px solid color-mix(in oklch, var(--primary) 60%, transparent);
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: color-mix(in oklch, var(--primary) 8%, transparent);
+  color: var(--muted-foreground);
+}
+
+.comment-content blockquote::before {
+  content: "\201C";
+  position: absolute;
+  top: 0.02em;
+  left: 0.35em;
+  font-size: 1.9em;
+  line-height: 1;
+  color: color-mix(in oklch, var(--primary) 35%, transparent);
+  user-select: none;
+}
+
+.comment-content blockquote p {
+  margin: 0.3em 0;
+}
+
+.comment-content blockquote p:first-child {
+  margin-top: 0;
+}
+
+.comment-content blockquote p:last-child {
+  margin-bottom: 0;
+}
+
 /* ============ 行内代码 ============ */
 .article-body code {
   padding: 0.15em 0.45em;

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { MessageCircle } from "lucide-react";
 
 import type { MomentItem } from "@/types/moments";
+import { toPlainText, useCommentQuote } from "@/hooks/use-comment-quote";
 import { resolveAssetUrl } from "@/lib/utils";
 
 function formatTime(iso: string): string {
@@ -21,12 +23,22 @@ function initials(name: string): string {
 }
 
 /** 朋友圈卡片（flex 纵向：内容顶对齐，时间贴底，适配 grid 等高拉伸） */
-export function MomentCard({ moment }: { moment: MomentItem }) {
+export function MomentCard({
+    moment,
+    commentTargetPath,
+}: {
+    moment: MomentItem;
+    /** 本页评论区的 target_path：点右下角「评论」时用它派发引用事件，须与 <PostComments> 一致 */
+    commentTargetPath: string;
+}) {
     const logo = resolveAssetUrl(moment.link_logo);
     // 头像加载失败或数据里就是占位图时，切到首字圆形兜底
     const [avatarFailed, setAvatarFailed] = useState(false);
     const isPlaceholderLogo = !!logo && /404|placeholder|default/i.test(logo);
     const showInitials = avatarFailed || isPlaceholderLogo || !logo;
+
+    // 点「评论」：把这条动态的标题（无标题时退回摘要 / 友链名）作为引用送进页面底部评论区并滚过去
+    const setQuote = useCommentQuote(commentTargetPath);
 
     return (
         <div className="flex h-full flex-col rounded-lg border bg-card p-3.5 shadow-sm transition-shadow hover:shadow-md">
@@ -68,9 +80,20 @@ export function MomentCard({ moment }: { moment: MomentItem }) {
                 )}
             </a>
 
-            {/* 时间（mt-auto 贴底） */}
-            <div className="mt-2.5 border-t pt-2 text-[11px] text-muted-foreground">
-                {formatTime(moment.published_at)}
+            {/* 底部信息条：时间在左，「评论」按钮在右（与即刻卡片一致的操作位） */}
+            <div className="mt-2.5 flex items-center justify-between gap-2 border-t pt-2 text-[11px] text-muted-foreground">
+                <span>{formatTime(moment.published_at)}</span>
+                <button
+                    type="button"
+                    onClick={() =>
+                        setQuote(toPlainText(moment.post_title || moment.post_summary || moment.link_name))
+                    }
+                    className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label="评论这条动态"
+                    title="评论这条动态"
+                >
+                    <MessageCircle className="size-4" />
+                </button>
             </div>
         </div>
     );

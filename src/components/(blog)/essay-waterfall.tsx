@@ -3,6 +3,7 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { Essay } from "@/types/essays";
+import { toPlainText, useCommentQuote } from "@/hooks/use-comment-quote";
 import { resolveAssetUrl } from "@/lib/utils";
 
 import { EssayCard } from "./essay-card";
@@ -18,10 +19,26 @@ function getCols(cw: number): number {
 }
 
 /** 即刻 / 说说 JS 瀑布流（最短列放置，对齐线上格式；点击图片打开看图器） */
-export function EssayWaterfall({ essays }: { essays: Essay[] }) {
+export function EssayWaterfall({
+    essays,
+    commentTargetPath,
+}: {
+    essays: Essay[];
+    /** 本页评论区的 target_path：点卡片上的「评论」时用它派发引用事件，必须与 <PostComments> 的一致 */
+    commentTargetPath: string;
+}) {
     const containerRef = useRef<HTMLDivElement>(null);
     const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
     const [lightbox, setLightbox] = useState<number | null>(null);
+
+    /**
+     * 点某条说说的「评论」：把该条说说的正文摘要作为引用送到页面底部的评论区，并滚过去。
+     * 即刻页所有说说共用一个 target_path（/essay），靠评论里的 `> 引用` 指明评论的是哪一条
+     * —— 派发事件与滚动的具体逻辑在 useCommentQuote（与朋友圈页共用）。
+     */
+    const setQuote = useCommentQuote(commentTargetPath);
+    // 正文当前是纯文本，但线上实现按 HTML 处理；先取纯文本两种情况都安全
+    const handleComment = useCallback((essay: Essay) => setQuote(toPlainText(essay.content)), [setQuote]);
 
     // 本页全部图片（拍平，带全局索引，供看图器底部缩略图条使用）
     const images = useMemo(
@@ -92,7 +109,11 @@ export function EssayWaterfall({ essays }: { essays: Essay[] }) {
                         }}
                         className="left-0 top-0"
                     >
-                        <EssayCard essay={essay} onImageClick={(local) => setLightbox(offsets[i] + local)} />
+                        <EssayCard
+                            essay={essay}
+                            onImageClick={(local) => setLightbox(offsets[i] + local)}
+                            onComment={handleComment}
+                        />
                     </div>
                 ))}
             </div>

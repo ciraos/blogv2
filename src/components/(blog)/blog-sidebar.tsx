@@ -5,10 +5,9 @@ import { AuthorGreeting } from "@/components/(blog)/author-greeting";
 import { Icon } from "@/components/ui/icon";
 import { collectTags } from "@/lib/articles";
 import { getAllPublicArticlesApi, getLatestCommentsApi, getPublicArchivesApi, type RecentComment } from "@/lib/api";
+import { resolveCommentAvatar, type GravatarConfig } from "@/lib/avatar";
 import { resolveAssetUrl } from "@/lib/utils";
 import type { SiteConfig } from "@/types/site-config";
-
-const GRAVATAR_URL = process.env.NEXT_PUBLIC_GRAVATAR_URL || "https://cravatar.cn/";
 
 /** 站点建站天数（按最新文章日期估算） */
 function daysSince(createdAt?: string): number {
@@ -171,7 +170,7 @@ async function ArchivesCard({ displayMonths = 6 }: { displayMonths?: number }) {
 }
 
 /** 最近评论：左侧头像 + 右侧评论内容，点击跳转到对应文章评论区（#post-comment 锚点） */
-async function RecentCommentsCard({ limit = 5 }: { limit?: number }) {
+async function RecentCommentsCard({ limit = 5, gravatar }: { limit?: number; gravatar?: GravatarConfig }) {
     let comments: RecentComment[] = [];
     try {
         const data = await getLatestCommentsApi({ page: 1, pageSize: limit });
@@ -200,9 +199,8 @@ async function RecentCommentsCard({ limit = 5 }: { limit?: number }) {
             </h3>
             <ul className="mt-3 space-y-2.5">
                 {comments.map((comment) => {
-                    const avatar = comment.email_md5
-                        ? `${GRAVATAR_URL}avatar/${comment.email_md5}?d=identicon`
-                        : null;
+                    // 头像口径与评论区一致：avatar_url 优先，否则按站点 GRAVATAR_URL + DEFAULT_GRAVATAR_TYPE 拼
+                    const avatar = resolveCommentAvatar(comment, gravatar);
                     // 跳转到对应文章评论区（文章详情页评论区锚点为 #post-comment）
                     const href = comment.target_path
                         ? `${comment.target_path}#post-comment`
@@ -215,20 +213,14 @@ async function RecentCommentsCard({ limit = 5 }: { limit?: number }) {
                                 href={href ?? "#"}
                                 className="group flex items-start gap-2.5"
                             >
-                                {/* 左侧头像 */}
-                                {avatar ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
-                                        src={avatar}
-                                        alt={comment.nickname}
-                                        loading="lazy"
-                                        className="size-8 shrink-0 rounded-full border object-cover"
-                                    />
-                                ) : (
-                                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
-                                        {(comment.nickname || "匿").charAt(0)}
-                                    </div>
-                                )}
+                                {/* 左侧头像：地址永远有值（无邮箱时由 d= 生成兜底头像） */}
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                    src={avatar}
+                                    alt={comment.nickname}
+                                    loading="lazy"
+                                    className="size-8 shrink-0 rounded-full border object-cover"
+                                />
 
                                 {/* 右侧评论内容 */}
                                 <div className="min-w-0 flex-1">
@@ -344,7 +336,9 @@ export async function BlogSidebar({ config }: { config?: SiteConfig }) {
                 <TagsCard />
                 <ArchivesCard displayMonths={config?.sidebar?.archive?.displayMonths || 6} />
                 {/* 最近评论：位于网站信息上方 */}
-                <RecentCommentsCard />
+                <RecentCommentsCard
+                    gravatar={{ url: config?.GRAVATAR_URL, defaultType: config?.DEFAULT_GRAVATAR_TYPE }}
+                />
                 {config && (
                     <SiteInfoCard
                         totalPostCount={siteinfo?.totalPostCount}

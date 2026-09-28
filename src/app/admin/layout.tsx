@@ -13,6 +13,7 @@ import { ApiError, getUserInfoApi } from "@/lib/api";
 import { resolveAssetUrl } from "@/lib/utils";
 import { resolveAppearance } from "@/lib/appearance";
 import { isAdminUser } from "@/lib/auth";
+import { APP_VERSION_LABEL } from "@/lib/version";
 import { SiteConfigResponse } from "@/types/site-config";
 
 const site_url = process.env.NEXT_PUBLIC_SITE_URL;
@@ -97,8 +98,10 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
                                 <div className="dsh-main flex-1 space-y-6">{children}</div>
                                 {/* dsh-main 是 flex-1，内容不足一屏时会把页脚顶到底部；
                                     mt-10 保证内容超出一屏时，页脚横线也不会贴着页面内容（分页等） */}
-                                <footer className="mt-10 flex h-14 shrink-0 items-center justify-center border-t">
+                                <footer className="mt-10 flex h-14 shrink-0 items-center justify-center gap-3 border-t">
                                     <Link href="https://beian.miit.gov.cn" target="_blank" rel="noopener external nofollow noreferrer" className="text-xs text-muted-foreground hover:underline">{config?.ICP_NUMBER}</Link>
+                                    {/* 前端版本号（package.json → 构建时注入；与后端版本无关） */}
+                                    <span className="text-xs text-muted-foreground/50">{APP_VERSION_LABEL}</span>
                                 </footer>
                             </main>
                         </SidebarProvider>

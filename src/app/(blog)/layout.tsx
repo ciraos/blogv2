@@ -9,6 +9,7 @@ import { FloatingActions } from "@/components/(blog)/floating-actions";
 import { AuthExpiredNotifier } from "@/components/(blog)/auth-expired-notifier";
 import { FooterRandomLinks } from "@/components/(blog)/footer-random-links";
 import { FooterSocialBar } from "@/components/(blog)/footer-social-bar";
+import { GravatarProvider } from "@/components/(blog)/gravatar-provider";
 import { OneImageHero } from "@/components/(blog)/one-image-hero";
 import { ScrollToTop } from "@/components/(blog)/scroll-to-top";
 // import Aside from "@/components/aside";
@@ -157,7 +158,13 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
 
             {/* 页面容器：只负责居中 / 最大宽度 / 内边距。
                 右侧边栏改由「页面」按需渲染（对齐官方做法，见 components/(blog)/page-with-sidebar.tsx） */}
-            <div className="main w-full max-w-300 mx-auto mt-10 px-4 sm:px-0 flex-1">{children}</div>
+            <div className="main w-full max-w-300 mx-auto mt-10 px-4 sm:px-0 flex-1">
+              {/* 头像配置下发：评论区 / 评论列表据此拼 Gravatar（GRAVATAR_URL + DEFAULT_GRAVATAR_TYPE），
+                  用 layout 已经取到的 site-config，客户端不必再请求一次，也不会先渲染错头像再替换 */}
+              <GravatarProvider value={{ url: config?.GRAVATAR_URL, defaultType: config?.DEFAULT_GRAVATAR_TYPE }}>
+                {children}
+              </GravatarProvider>
+            </div>
 
             {/* footer 外层全宽：整页背景模式下承载 footer 背景色与顶部渐隐带（铺满屏幕），
                 非 hero 页无 .one-image-footer-fade 时等同透明，不影响常规布局 */}

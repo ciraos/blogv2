@@ -27,6 +27,14 @@ import type {
 } from "@/types/moments";
 import type { SiteConfig } from "@/types/site-config";
 import type { AdminCreateUserRequest } from "@/types/users";
+import type {
+    AdminCreateDonationRequest,
+    AdminDonationListParams,
+    AdminUpdateDonationRequest,
+    Donation,
+    DonationListData,
+    DonationTotalData,
+} from "@/types/donations";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -1627,4 +1635,51 @@ export async function getCachedThumbnailSignApi(id: string): Promise<string | nu
     })();
     thumbSignInflight.set(id, task);
     return task;
+}
+
+// ===================== 打赏名单（PRO） =====================
+//
+// 后端把打赏放在闭源的 PRO 模块：远端真实路径是 /pro/admin/donations（增删改查）
+// 与公开的 /pro/donations/total（总额）。浏览器端不能直连（无 CORS + 需鉴权），
+// 统一经本应用同源代理 /api/admin/donations/* 转发（见 src/app/api/admin/donations/）。
+
+/** GET /api/admin/donations 管理端打赏列表（分页 + 状态筛选） */
+export async function getAdminDonationsApi(params: AdminDonationListParams = {}): Promise<DonationListData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<DonationListData>(`/api/admin/donations${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
+/** GET /api/admin/donations/{id} 管理端获取单条打赏记录 */
+export function getAdminDonationApi(id: number): Promise<Donation> {
+    return request<Donation>(`/api/admin/donations/${id}`, { method: "GET" });
+}
+
+/** POST /api/admin/donations 管理端新增打赏记录 */
+export function createAdminDonationApi(payload: AdminCreateDonationRequest): Promise<Donation> {
+    return request<Donation>("/api/admin/donations", { method: "POST", body: JSON.stringify(payload) });
+}
+
+/** PUT /api/admin/donations/{id} 管理端更新打赏记录 */
+export function updateAdminDonationApi(id: number, payload: AdminUpdateDonationRequest): Promise<Donation> {
+    return request<Donation>(`/api/admin/donations/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+/** DELETE /api/admin/donations/{id} 管理端删除打赏记录 */
+export function deleteAdminDonationApi(id: number): Promise<unknown> {
+    return request<unknown>(`/api/admin/donations/${id}`, { method: "DELETE" });
+}
+
+/**
+ * GET /api/admin/donations/total 打赏总额。
+ * 说明：远端这条其实是**公开**接口 /pro/donations/total（无需登录），
+ * 但管理端也要用，故仍走同源代理，避免浏览器直连后端（无 CORS）。
+ */
+export function getDonationTotalApi(): Promise<DonationTotalData> {
+    return request<DonationTotalData>("/api/admin/donations/total", { method: "GET" });
 }

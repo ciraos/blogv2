@@ -8,8 +8,10 @@ import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { CommentContent } from "@/components/(blog)/comment-content";
+import { useGravatarConfig } from "@/components/(blog)/gravatar-provider";
 import type { RecentComment } from "@/lib/api";
 import { ApiError, submitCommentApi, uploadCommentImageApi } from "@/lib/api";
+import { resolveCommentAvatar } from "@/lib/avatar";
 import type { CommentAuthor } from "@/lib/comment-author";
 
 interface CommentWithChildren extends RecentComment {
@@ -27,13 +29,6 @@ interface PostCommentsProps {
      * 为空 = 游客态，照旧显示三项并支持本地记忆回填。
      */
     author?: CommentAuthor | null;
-}
-
-function resolveAvatar(comment: RecentComment): string | null {
-    // 子评论优先用后端直接给的 avatar_url；父评论用 email_md5 拼 Gravatar
-    if (comment.avatar_url) return comment.avatar_url;
-    if (comment.email_md5) return `https://cravatar.cn/avatar/${comment.email_md5}?d=mp`;
-    return null;
 }
 
 function formatTime(iso: string): string {
@@ -76,20 +71,35 @@ function parseUserAgent(ua?: string): { os: string; browser: string } {
 type CodeBlockConfig = { codeMaxLines?: number; macStyle?: boolean };
 
 /** 单条评论内容行（父评论/子评论共用；reverse 时头像在右、内容在左；背景由外层组容器提供） */
-function CommentRow({ comment, reverse = false, codeBlock }: { comment: RecentComment; reverse?: boolean; codeBlock?: CodeBlockConfig }) {
-    const avatarUrl = resolveAvatar(comment);
+function CommentRow({
+    comment,
+    reverse = false,
+    codeBlock,
+    onReply,
+}: {
+    comment: RecentComment;
+    reverse?: boolean;
+    codeBlock?: CodeBlockConfig;
+    /**
+     * 点击「回复」。两级结构（和线上的「父评论 + 回复」一致）：
+     * parent_id 由父组件给出（始终是该组的顶层评论），reply_to_id 是这条评论本身。
+     */
+    onReply?: (comment: RecentComment) => void;
+}) {
+    // 头像：avatar_url 优先，否则按站点配置的 GRAVATAR_URL + DEFAULT_GRAVATAR_TYPE 拼
+    // （邮箱没有自定义头像时由 d= 生成兜底头像，所以这里永远有地址）
+    const gravatar = useGravatarConfig();
+    const avatarUrl = resolveCommentAvatar(comment, gravatar);
 
     return (
         <div className={`flex gap-3 ${reverse ? "flex-row-reverse" : ""}`}>
-            {avatarUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                    src={avatarUrl}
-                    alt={comment.nickname}
-                    loading="lazy"
-                    className="size-9 shrink-0 rounded-full object-cover"
-                />
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+                src={avatarUrl}
+                alt={comment.nickname}
+                loading="lazy"
+                className="size-9 shrink-0 rounded-full object-cover"
+            />
             <div className={`min-w-0 flex-1 ${reverse ? "flex flex-col items-end" : ""}`}>
                 <div
                     className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground ${reverse ? "flex-row-reverse" : ""
@@ -108,7 +118,7 @@ function CommentRow({ comment, reverse = false, codeBlock }: { comment: RecentCo
                     {comment.ip_location && comment.ip_location !== "未知" && (
                         <span>· {comment.ip_location}</span>
                     )}
-                    {/* 昵称最右侧：点赞 / 回复评论（后端接口待接入，暂为占位提示） */}
+                    {/* 昵称最右侧：点赞（接口待接入，暂为占位提示）/ 回复评论 */}
                     <span className="ml-auto flex items-center gap-0.5">
                         <button
                             type="button"
@@ -121,10 +131,10 @@ function CommentRow({ comment, reverse = false, codeBlock }: { comment: RecentCo
                         </button>
                         <button
                             type="button"
-                            onClick={() => toast.info("回复评论功能待接入")}
+                            onClick={() => onReply?.(comment)}
                             className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
                             title="回复评论"
-                            aria-label="回复评论"
+                            aria-label={`回复 ${comment.nickname}`}
                         >
                             <MessageCircle className="size-3.5" />
                         </button>
@@ -177,7 +187,7 @@ function CommentRow({ comment, reverse = false, codeBlock }: { comment: RecentCo
 /**
  * 文章评论区（对齐线上 CommentSection 结构：输入区 + 列表区）。
  * 评论列表（含子评论/博主回复）由服务端组件获取后传入；
- * 提交评论 POST /public/comments 接口待接入。
+ * 发表 / 回复统一走 POST /public/comments（回复时带 parent_id + reply_to_id）。
  */
 /** 随机匿名昵称：4 个随机汉字 + 2 位随机数字 */
 function randomAnonymousNickname(): string {
@@ -225,6 +235,25 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
     const [website, setWebsite] = useState(author?.website ?? "");
     const [content, setContent] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    /**
+     * 当前正在回复的目标（null = 发表顶层评论）。
+     * 评论区只有一个主输入框（昵称 / 邮箱 / 匿名 / 传图状态都挂在它身上），
+     * 所以「回复」不另开一个输入框：点击后把主输入框切到回复态、滚动到视野内并聚焦，
+     * 发送时带上 parent_id（顶层父评论）+ reply_to_id（被回复的那条）。
+     */
+    const [replyTarget, setReplyTarget] = useState<{
+        parentId: string;
+        replyToId: string;
+        nickname: string;
+    } | null>(null);
+    /** 主输入框：点「回复」后滚动 + 聚焦到这里 */
+    const contentRef = useRef<HTMLTextAreaElement>(null);
+    /**
+     * 引用文本（如即刻页点某条说说的「评论」按钮后带过来的内容摘要）。
+     * 由外部通过 window 事件 `comment-form-set-quote` 注入（带 targetPath，只响应本评论区）；
+     * 提交时会拼成 Markdown 引用块 `> 引用`，让所有人一眼看出评论的是哪条内容。
+     */
+    const [quoteText, setQuoteText] = useState("");
     // 评论列表：本地副本（可被提交成功后刷新），由服务端传入的 comments 初始化
     const [commentList, setCommentList] = useState<CommentWithChildren[]>(comments);
     const [anonDialogOpen, setAnonDialogOpen] = useState(false);
@@ -287,6 +316,24 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
         return () => clearTimeout(timer);
     }, [loggedIn]);
 
+    /**
+     * 外部（如即刻页的说卡片）请求把某段内容作为「引用」填入本评论区。
+     * 事件 detail 带 targetPath，只响应属于本页的请求，避免同页多个评论区互相串台
+     * （与线上 CommentSection 的 comment-form-set-quote 约定一致）。
+     */
+    useEffect(() => {
+        function handleSetQuote(event: Event) {
+            const detail = (event as CustomEvent<{ text?: string; targetPath?: string }>).detail;
+            const incoming = detail?.text?.trim();
+            if (!incoming) return;
+            if (detail?.targetPath && detail.targetPath !== targetPath) return;
+            setQuoteText(incoming);
+            requestAnimationFrame(() => contentRef.current?.focus());
+        }
+        window.addEventListener("comment-form-set-quote", handleSetQuote as EventListener);
+        return () => window.removeEventListener("comment-form-set-quote", handleSetQuote as EventListener);
+    }, [targetPath]);
+
     /** 退出匿名：解除锁定，昵称 / 邮箱恢复可编辑 */
     function confirmExitAnon() {
         setAnonActive(false);
@@ -307,7 +354,21 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
         }
     }
 
-    /** 提交评论：POST 转发到远端 /public/comments */
+    /**
+     * 点击某条评论的「回复」：记录回复目标，并把主输入框切到回复态。
+     * @param comment 被回复的那条评论
+     * @param parentId 该组的顶层父评论 id（回复子评论时仍是顶层父评论，保持两级结构）
+     */
+    function handleReply(comment: RecentComment, parentId: string) {
+        setReplyTarget({ parentId, replyToId: comment.id, nickname: comment.nickname });
+        // 等提示条渲染出来（输入框会下移）再滚动，避免定位偏移
+        requestAnimationFrame(() => {
+            contentRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+            contentRef.current?.focus();
+        });
+    }
+
+    /** 提交评论：POST 转发到远端 /public/comments；回复态时带上 parent_id / reply_to_id */
     async function handleSubmit() {
         if (!nickname.trim()) {
             toast.error("请填写昵称");
@@ -319,21 +380,30 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
         }
         if (submitting) return;
         setSubmitting(true);
+        // 引用块放在正文最前面（Markdown 引用），发出去后所有人可见，能看出评论的是哪条内容
+        const finalContent = quoteText ? `> ${quoteText}\n\n${content.trim()}` : content.trim();
         try {
             await submitCommentApi({
                 target_path: targetPath,
                 nickname: nickname.trim(),
                 email: email.trim() || undefined,
                 website: website.trim() || undefined,
-                content: content.trim(),
+                content: finalContent,
                 is_anonymous: anonActive,
+                // 回复态：parent_id 挂到顶层父评论，reply_to_id 指向被回复的那条
+                parent_id: replyTarget?.parentId,
+                reply_to_id: replyTarget?.replyToId,
             });
-            toast.success("评论发表成功");
+            toast.success(replyTarget ? `回复 @${replyTarget.nickname} 成功` : "评论发表成功");
             // 记住昵称 / 邮箱 / 网址：下次在任意评论区自动回填（匿名评论为随机身份，不覆盖已存信息）
             // 登录态的三项来自账号，不写入本地记忆（避免账号邮箱留痕到未登录的表单里）
             if (!anonActive && !loggedIn) saveStoredAuthor(nickname.trim(), email.trim(), website.trim());
             setContent("");
             setWebsite("");
+            // 退出回复态，避免下一条评论误挂到同一个人
+            setReplyTarget(null);
+            // 清掉引用，避免下一条评论继续带上同一条引用
+            setQuoteText("");
             // 重新拉取评论列表，让新评论出现在评论区
             await refetchComments();
         } catch (err) {
@@ -389,6 +459,13 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
         }
     }
 
+    // 输入框区域最上方的块（决定谁带圆角）：引用 > 回复提示 > 输入框本身
+    const topBlock: "quote" | "reply" | "textarea" = quoteText
+        ? "quote"
+        : replyTarget
+            ? "reply"
+            : "textarea";
+
     return (
         <section
             id="post-comment"
@@ -437,14 +514,65 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
 
                 {/* 输入框 + 字数 */}
                 <div className="mt-3 rounded-lg border bg-card">
+                    {/* 引用预览：由外部（即刻页的说卡片等）通过 comment-form-set-quote 事件注入，
+                        提交时会拼成 Markdown 引用 `> 引用` 放在正文最前面 */}
+                    {quoteText && (
+                        <div
+                            className={`flex items-start justify-between gap-2 border-b bg-muted/40 px-3 py-2 ${
+                                topBlock === "quote" ? "rounded-t-lg" : ""
+                            }`}
+                        >
+                            <div className="min-w-0 flex-1">
+                                <div className="text-[11px] font-medium text-muted-foreground">引用</div>
+                                <div className="mt-0.5 line-clamp-2 border-l-2 border-primary/40 pl-2 text-xs leading-relaxed text-foreground/80">
+                                    {quoteText}
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setQuoteText("")}
+                                title="取消引用"
+                                aria-label="取消引用"
+                                className="inline-flex shrink-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            >
+                                <X className="size-3.5" />
+                                取消
+                            </button>
+                        </div>
+                    )}
+                    {/* 回复态提示条：点某条评论的「回复」后出现，发送时会带上 parent_id / reply_to_id */}
+                    {replyTarget && (
+                        <div
+                            className={`flex items-center justify-between gap-2 border-b bg-primary/5 px-3 py-2 text-xs ${
+                                topBlock === "reply" ? "rounded-t-lg" : ""
+                            }`}
+                        >
+                            <span className="min-w-0 truncate text-muted-foreground">
+                                正在回复 <span className="font-medium text-primary">@{replyTarget.nickname}</span>
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setReplyTarget(null)}
+                                title="取消回复"
+                                aria-label="取消回复"
+                                className="inline-flex shrink-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            >
+                                <X className="size-3.5" />
+                                取消
+                            </button>
+                        </div>
+                    )}
                     <textarea
+                        ref={contentRef}
                         rows={5}
                         maxLength={500}
-                        placeholder={commentPlaceholder}
+                        placeholder={replyTarget ? `回复 @${replyTarget.nickname}…` : commentPlaceholder}
                         aria-label="评论内容"
                         value={content}
                         onChange={(event) => setContent(event.target.value)}
-                        className="w-full resize-none rounded-t-lg bg-transparent p-3.5 text-sm outline-none placeholder:text-muted-foreground/60"
+                        className={`w-full resize-none bg-transparent p-3.5 text-sm outline-none placeholder:text-muted-foreground/60 ${
+                            topBlock === "textarea" ? "rounded-t-lg" : ""
+                        }`}
                     />
                     <div className="flex items-center justify-between border-t px-3 py-2">
                         <div className="flex items-center gap-1">
@@ -539,12 +667,29 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                     <div className="space-y-3">
                         {commentList.map((comment) => (
                             /* 每组评论（父评论 + 其博主回复）共用一个背景色（淡色，尽量不抢眼） */
-                            <div key={comment.id} className="rounded-lg border border-border/40 bg-card/80 p-3.5">
-                                <CommentRow comment={comment} codeBlock={codeBlock} />
+                            <div
+                                key={comment.id}
+                                className={`rounded-lg border p-3.5 transition-colors ${
+                                    replyTarget?.parentId === comment.id
+                                        ? "border-primary/40 bg-primary/[0.03]"
+                                        : "border-border/40 bg-card/80"
+                                }`}
+                            >
+                                <CommentRow
+                                    comment={comment}
+                                    codeBlock={codeBlock}
+                                    onReply={(target) => handleReply(target, comment.id)}
+                                />
                                 {/* 子评论（博主回复等）：头像在右、内容在左 */}
                                 {comment.children && comment.children.length > 0 && (<div className="mt-3 space-y-3 pl-3 sm:ml-4 sm:pl-4">
                                     {comment.children.map((child) => (
-                                        <CommentRow key={child.id} comment={child} reverse codeBlock={codeBlock} />
+                                        <CommentRow
+                                            key={child.id}
+                                            comment={child}
+                                            reverse
+                                            codeBlock={codeBlock}
+                                            onReply={(target) => handleReply(target, comment.id)}
+                                        />
                                     ))}
                                 </div>
                                 )}

@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { EssayWaterfall } from "@/components/(blog)/essay-waterfall";
@@ -112,8 +112,9 @@ export default async function Essay({ searchParams }: { searchParams: Promise<Es
                     </div>
                 ) : (<h1 className="text-2xl font-bold tracking-tight">即刻</h1>)}
 
-                {/* JS 瀑布流：桌面 3 列 / 平板 2 列 / 移动端 1 列，最短列放置；图片可点击打开看图器 */}
-                <EssayWaterfall essays={data.list} />
+                {/* JS 瀑布流：桌面 3 列 / 平板 2 列 / 移动端 1 列，最短列放置；图片可点击打开看图器；
+                    卡片右下角「评论」会把该条说说作为引用送到下方评论区（沿用同一个 target_path） */}
+                <EssayWaterfall essays={data.list} commentTargetPath={targetPath} />
 
                 <NumberedPagination
                     page={page}

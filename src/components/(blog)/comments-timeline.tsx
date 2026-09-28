@@ -4,8 +4,7 @@ import { MessageSquare } from "lucide-react";
 import { TimelineShell } from "@/components/(blog)/timeline-shell";
 
 import type { RecentComment } from "@/lib/api";
-
-const GRAVATAR_URL = process.env.NEXT_PUBLIC_GRAVATAR_URL || "https://cravatar.cn/";
+import { resolveCommentAvatar, type GravatarConfig } from "@/lib/avatar";
 
 function formatDate(iso: string): string {
     const d = new Date(iso);
@@ -19,7 +18,14 @@ function formatDate(iso: string): string {
 }
 
 /** 首页最新评论：横向时间轴（左右滚动），仿即刻动态 */
-export function CommentsTimeline({ comments }: { comments: RecentComment[] }) {
+export function CommentsTimeline({
+    comments,
+    gravatar,
+}: {
+    comments: RecentComment[];
+    /** 头像配置（站点 GRAVATAR_URL / DEFAULT_GRAVATAR_TYPE）；不传则用内置默认值 */
+    gravatar?: GravatarConfig;
+}) {
     if (comments.length === 0) return null;
 
     return (
@@ -30,7 +36,7 @@ export function CommentsTimeline({ comments }: { comments: RecentComment[] }) {
 
                 <div className="flex gap-4">
                     {comments.map((comment) => (
-                        <CommentItem key={comment.id} comment={comment} />
+                        <CommentItem key={comment.id} comment={comment} gravatar={gravatar} />
                     ))}
                 </div>
             </div>
@@ -38,10 +44,9 @@ export function CommentsTimeline({ comments }: { comments: RecentComment[] }) {
     );
 }
 
-function CommentItem({ comment }: { comment: RecentComment }) {
-    const avatar = comment.email_md5
-        ? `${GRAVATAR_URL}avatar/${comment.email_md5}?d=identicon`
-        : null;
+function CommentItem({ comment, gravatar }: { comment: RecentComment; gravatar?: GravatarConfig }) {
+    // 头像口径与评论区一致：avatar_url 优先，否则按站点 GRAVATAR_URL + DEFAULT_GRAVATAR_TYPE 拼
+    const avatar = resolveCommentAvatar(comment, gravatar);
 
     return (
         <div className="flex w-56 shrink-0 flex-col">
@@ -54,21 +59,15 @@ function CommentItem({ comment }: { comment: RecentComment }) {
 
             {/* 评论卡片 */}
             <div className="mt-2 flex flex-1 flex-col rounded-lg border bg-card p-2.5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-pink-300 hover:shadow-md">
-                {/* 头部：头像 + 昵称 */}
+                {/* 头部：头像 + 昵称（地址永远有值：无邮箱时由 d= 生成兜底头像） */}
                 <div className="flex items-center gap-2">
-                    {avatar ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                            src={avatar}
-                            alt={comment.nickname}
-                            loading="lazy"
-                            className="size-6 shrink-0 rounded-full border border-pink-100 object-cover"
-                        />
-                    ) : (
-                        <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-pink-400 text-[10px] font-semibold text-white">
-                            {(comment.nickname || "匿").charAt(0)}
-                        </div>
-                    )}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        src={avatar}
+                        alt={comment.nickname}
+                        loading="lazy"
+                        className="size-6 shrink-0 rounded-full border border-pink-100 object-cover"
+                    />
                     <span className="truncate text-xs font-medium">
                         {comment.nickname || "匿名"}
                         {comment.is_admin_comment && (

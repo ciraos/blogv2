@@ -4,14 +4,15 @@ import Link from "next/link";
 import { NumberedPagination } from "@/components/(blog)/numbered-pagination";
 
 import { ApiError, getLatestCommentsApi, type RecentComment } from "@/lib/api";
+import { resolveCommentAvatar, type GravatarConfig } from "@/lib/avatar";
 import { generateBlogMetadata } from "@/lib/seo";
+import { getSiteConfigs } from "@/lib/site-config";
 
 export async function generateMetadata(): Promise<Metadata> {
     return generateBlogMetadata("最近评论");
 }
 
 const PAGE_SIZE = 20;
-const GRAVATAR_URL = process.env.NEXT_PUBLIC_GRAVATAR_URL || "https://cravatar.cn/";
 
 function formatDate(iso: string): string {
     const d = new Date(iso);
@@ -36,28 +37,22 @@ function stripHtml(html?: string): string {
         .trim();
 }
 
-function CommentRow({ comment }: { comment: RecentComment }) {
-    const avatar = comment.email_md5
-        ? `${GRAVATAR_URL}avatar/${comment.email_md5}?d=identicon`
-        : null;
+function CommentRow({ comment, gravatar }: { comment: RecentComment; gravatar?: GravatarConfig }) {
+    // 头像口径与评论区一致：avatar_url 优先，否则按站点 GRAVATAR_URL + DEFAULT_GRAVATAR_TYPE 拼
+    const avatar = resolveCommentAvatar(comment, gravatar);
 
     return (
         <div className="rounded-lg border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
             {/* 头部：头像 + 昵称 + 时间 */}
             <div className="flex items-center gap-2.5">
-                {avatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                        src={avatar}
-                        alt={comment.nickname}
-                        loading="lazy"
-                        className="size-8 shrink-0 rounded-full border object-cover"
-                    />
-                ) : (
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
-                        {(comment.nickname || "匿").charAt(0)}
-                    </div>
-                )}
+                {/* 地址永远有值（无邮箱时由 d= 生成兜底头像） */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                    src={avatar}
+                    alt={comment.nickname}
+                    loading="lazy"
+                    className="size-8 shrink-0 rounded-full border object-cover"
+                />
                 <span className="min-w-0 truncate text-sm font-medium">
                     {comment.nickname || "匿名"}
                     {comment.is_admin_comment && (
@@ -96,6 +91,14 @@ export default async function RecentComments({ searchParams }: { searchParams: P
     const sp = await searchParams;
     const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
 
+    // 头像配置（站点配置里的 GRAVATAR_URL / DEFAULT_GRAVATAR_TYPE）。
+    // 同一请求内 layout / PageWithSidebar 已请求过同一地址，Next 会复用，不会多打一次后端。
+    const config = await getSiteConfigs();
+    const gravatar: GravatarConfig = {
+        url: config?.GRAVATAR_URL,
+        defaultType: config?.DEFAULT_GRAVATAR_TYPE,
+    };
+
     let data;
     let errorMessage: string | null = null;
     try {
@@ -128,7 +131,7 @@ export default async function RecentComments({ searchParams }: { searchParams: P
 
             <div className="space-y-3">
                 {data.list.map((comment) => (
-                    <CommentRow key={comment.id} comment={comment} />
+                    <CommentRow key={comment.id} comment={comment} gravatar={gravatar} />
                 ))}
             </div>
 
