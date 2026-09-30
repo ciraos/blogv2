@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies } from "next/headers";
 import "../globals.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -14,10 +13,9 @@ import { OneImageHero } from "@/components/(blog)/one-image-hero";
 import { ScrollToTop } from "@/components/(blog)/scroll-to-top";
 // import Aside from "@/components/aside";
 
-import { getPublicLinksRandomApi, getAllPublicArticlesApi, getPublicArchivesApi, getUserInfoApi } from "@/lib/api";
-import { collectTags } from "@/lib/articles";
+import { getPublicLinksRandomApi } from "@/lib/api";
 import { resolveAppearance } from "@/lib/appearance";
-import { isAdminUser } from "@/lib/auth";
+import { getHeaderData } from "@/lib/header-data";
 import { SiteConfigResponse } from "@/types/site-config";
 
 const site_url = process.env.NEXT_PUBLIC_SITE_URL;
@@ -54,34 +52,9 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
   const config = await getSiteConfigs();
   // 站点外观：按后端 APPEARANCE_SKIN / APPEARANCE_TOKENS 生成主题变量（浅/深各一套）
   const appearance = resolveAppearance(config?.APPEARANCE_SKIN, config?.APPEARANCE_TOKENS);
-  // httpOnly token 由服务端读取，判断登录态传给 Header
-  const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
-  const isLoggedIn = !!token;
-
-  // 已登录时获取用户信息（头像等），传给 Header 显示圆形头像。
-  // token 过期/无效（401）：标记 authExpired，由客户端组件静默登出并提示
-  let userAvatar: string | null = null;
-  let userName: string | null = null;
-  let isAdmin = false;
-  let authExpired = false;
-  if (token) {
-    try {
-      const userInfo = await getUserInfoApi(token);
-      userAvatar = userInfo.avatar || null;
-      userName = userInfo.nickname || userInfo.username || null;
-      // 管理员判据（用户组 1）：决定用户菜单里是否显示后台 / 发布入口
-      isAdmin = isAdminUser(userInfo);
-    } catch (error) {
-      // 注：不依赖 instanceof ApiError（RSC/浏览器边界类引用可能缺失），直接读 status
-      const status = (error as { status?: number } | null)?.status ?? 0;
-      if (status === 401) {
-        authExpired = true;
-      } else {
-        console.error("获取用户信息失败", error);
-      }
-    }
-  }
+  // Header 的全部数据（登录态/用户信息/移动端菜单的标签云与建站天数）抽在 getHeaderData 里，
+  // 与 music layout 共用；authExpired 用于 token 过期的静默登出提示。
+  const { header, authExpired } = await getHeaderData(config);
 
   // 页脚随机友链：数量取配置 footer.list.randomFriends（默认 3）
   const randomFriendsCount = config?.footer?.list?.randomFriends ?? 3;
@@ -90,29 +63,6 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
     randomLinks = await getPublicLinksRandomApi(randomFriendsCount);
   } catch (error) {
     console.error("获取页脚随机友链失败", error);
-  }
-
-  // 移动端汉堡菜单：标签云（取全部文章聚合，前 12 个）
-  let mobileTags: { id: string; name: string; count: number }[] = [];
-  try {
-    const articles = await getAllPublicArticlesApi();
-    mobileTags = collectTags(articles).slice(0, 12);
-  } catch (error) {
-    console.error("获取标签失败", error);
-  }
-
-  // 移动端汉堡菜单：网站信息（与侧边栏一致：文章数/字数/建站天数）
-  const siteinfo = config?.sidebar?.siteinfo;
-  let siteCreatedAt: string | undefined;
-  try {
-    const archive = await getPublicArchivesApi();
-    const list = archive.list ?? [];
-    if (list.length > 0) {
-      const first = list[list.length - 1]; // 接口按时间倒序，最后一条最早
-      siteCreatedAt = `${first.year}-${String(first.month).padStart(2, "0")}-01T00:00:00Z`;
-    }
-  } catch (error) {
-    console.error("获取归档失败", error);
   }
 
   return (
@@ -138,19 +88,7 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
 
           {/* flex 列布局 + min-h-dvh：内容不足一屏时 footer 吸附在视口底部 */}
           <div id="CIRAOS" className="flex min-h-dvh flex-col">
-            <Header
-              menu={config?.header?.menu ?? []}
-              appName={config?.APP_NAME ?? "博客"}
-              isLoggedIn={isLoggedIn}
-              userpanel={config?.userpanel}
-              userAvatar={userAvatar}
-              userName={userName}
-              isAdmin={isAdmin}
-              mobileTags={mobileTags}
-              siteinfo={siteinfo}
-              siteCreatedAt={siteCreatedAt}
-              oneImage={config?.page?.one_image}
-            />
+            <Header {...header} />
 
             {/* 页面顶部大图（OneImage）：home/archives/tags/categories 各自 enable 控制；
                 header 透明悬浮其上，滚动离开首屏后恢复 */}

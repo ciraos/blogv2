@@ -269,6 +269,11 @@ export function DonationsManager() {
     const pageAmount = list.reduce((acc, item) => acc + Number(item.amount || 0), 0);
     const visibleCount = list.filter((item) => item.status === 1).length;
 
+    // 移动端(<640px)：grid-cols-1 把每个单元格竖排成卡片；≥640px：恢复表格式列布局。
+    // min-w 只写在 sm: 以上 —— 窄屏若也撑宽，卡片就会被拉出横向滚动。
+    const rowGrid = "sm:grid-cols-[16px_minmax(0,1fr)_112px_48px_144px_64px_80px]";
+    const rowMinW = "sm:min-w-[820px]";
+
     return (
         <div className="mt-4">
             {/* 统计磁贴 */}
@@ -297,7 +302,9 @@ export function DonationsManager() {
 
             {/* 列表卡片 */}
             <div className="mt-3 overflow-x-auto rounded-lg border bg-card shadow-sm">
-                <div className="flex min-w-[820px] flex-wrap items-center justify-between gap-3 border-b bg-slate-50 px-4 py-2.5 dark:bg-muted/30">
+                {/* 工具栏 / 表头 / 数据行共用同一套响应式规则：
+                    <640px 竖排成卡片（不撑宽），≥640px 表格式布局并可横向滚动 */}
+                <div className={`flex flex-wrap items-center justify-between gap-3 border-b bg-slate-50 px-4 py-2.5 dark:bg-muted/30 ${rowMinW}`}>
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             状态
@@ -352,19 +359,17 @@ export function DonationsManager() {
                     </div>
                 </div>
 
-                {/* 表头（与工具栏同宽：窄屏整表横向滚动，避免右侧列挤压左侧列） */}
-                <div className="flex min-w-[820px] items-center gap-3 whitespace-nowrap border-b bg-slate-50 px-4 py-2.5 text-xs font-medium text-muted-foreground dark:bg-muted/30">
-                    <span className="flex w-4 shrink-0 items-center">
+                {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
+                <div className={`hidden items-center gap-3 border-b bg-slate-50 px-4 py-2.5 text-xs font-medium text-muted-foreground dark:bg-muted/30 sm:grid ${rowMinW} ${rowGrid}`}>
+                    <span className="flex items-center">
                         <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="全选本页" />
                     </span>
-                    <span className="min-w-0 flex-1">昵称</span>
-                    <div className="ml-auto flex shrink-0 items-center gap-3">
-                        <span className="w-28 shrink-0">金额</span>
-                        <span className="w-12 shrink-0 text-center">排序</span>
-                        <span className="w-36 shrink-0">打赏时间</span>
-                        <span className="w-16 shrink-0 text-center">状态</span>
-                        <span className="w-20 shrink-0 text-right">操作</span>
-                    </div>
+                    <span>昵称</span>
+                    <span>金额</span>
+                    <span className="text-center">排序</span>
+                    <span>打赏时间</span>
+                    <span className="text-center">状态</span>
+                    <span className="text-right">操作</span>
                 </div>
 
                 {loading ? (
@@ -380,58 +385,58 @@ export function DonationsManager() {
                         return (
                             <div
                                 key={item.id}
-                                className="flex min-w-[820px] items-center gap-3 whitespace-nowrap border-b px-4 py-3 text-sm last:border-b-0 hover:bg-muted/40"
+                                className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
                             >
-                                <span className="flex w-4 shrink-0 items-center">
+                                <span className="flex items-center gap-2">
                                     <Checkbox
                                         checked={selected.has(item.id)}
                                         onCheckedChange={() => toggleOne(item.id)}
                                         aria-label={`选择 ${item.name}`}
                                     />
                                 </span>
-                                <div className="min-w-0 flex-1">
+                                <div className="min-w-0">
                                     <div className="truncate font-medium text-foreground">{item.name || "—"}</div>
                                 </div>
-                                <div className="ml-auto flex shrink-0 items-center gap-3">
-                                    <div className="w-28 shrink-0">
-                                        <span className="font-semibold tabular-nums text-primary">
-                                            {money(item.amount)}
-                                        </span>
-                                        <span className="ml-1 text-xs text-muted-foreground">{item.suffix || "元"}</span>
-                                    </div>
-                                    <div className="w-12 shrink-0 text-center text-xs tabular-nums text-muted-foreground">
-                                        {item.sort_order || 0}
-                                    </div>
-                                    <div className="w-36 shrink-0 text-xs text-muted-foreground">
-                                        {formatDateTime(item.custom_published_at || item.created_at)}
-                                    </div>
-                                    <div className="w-16 shrink-0 text-center">
-                                        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
-                                            {badge.label}
-                                        </span>
-                                    </div>
-                                    <div className="flex w-20 shrink-0 items-center justify-end gap-1">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon-sm"
-                                            aria-label="编辑"
-                                            title="编辑"
-                                            className={ACTION_TONE.edit}
-                                            onClick={() => openEdit(item)}
-                                        >
-                                            <Pencil className="size-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon-sm"
-                                            aria-label="删除"
-                                            title="删除"
-                                            className={ACTION_TONE.delete}
-                                            onClick={() => handleDelete(item)}
-                                        >
-                                            <Trash2 className="size-4" />
-                                        </Button>
-                                    </div>
+                                <div>
+                                    <span className="font-semibold tabular-nums text-primary">
+                                        {money(item.amount)}
+                                    </span>
+                                    <span className="ml-1 text-xs text-muted-foreground">{item.suffix || "元"}</span>
+                                </div>
+                                <div className="text-xs tabular-nums text-muted-foreground sm:text-center">
+                                    {/* 裸数字脱离表头看不懂，窄屏补个前缀 */}
+                                    <span className="mr-1 sm:hidden">排序</span>
+                                    {item.sort_order || 0}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                    {formatDateTime(item.custom_published_at || item.created_at)}
+                                </div>
+                                <div className="sm:text-center">
+                                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
+                                        {badge.label}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-1 sm:justify-end">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        aria-label="编辑"
+                                        title="编辑"
+                                        className={ACTION_TONE.edit}
+                                        onClick={() => openEdit(item)}
+                                    >
+                                        <Pencil className="size-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        aria-label="删除"
+                                        title="删除"
+                                        className={ACTION_TONE.delete}
+                                        onClick={() => handleDelete(item)}
+                                    >
+                                        <Trash2 className="size-4" />
+                                    </Button>
                                 </div>
                             </div>
                         );

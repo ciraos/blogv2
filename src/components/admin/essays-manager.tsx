@@ -244,9 +244,16 @@ export function EssaysManager() {
 
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+    // 移动端(<640px)：grid-cols-1 把每个单元格竖排成卡片；≥640px：恢复表格式列布局。
+    // min-w 只写在 sm: 以上 —— 窄屏若也撑宽，卡片就会被拉出横向滚动。
+    const rowGrid = "sm:grid-cols-[minmax(0,1fr)_96px_64px_112px_128px_96px]";
+    const rowMinW = "sm:min-w-[800px]";
+
     return (
         <div className="mt-4 overflow-x-auto rounded-lg border bg-card shadow-sm">
-            <div className="flex min-w-[720px] flex-wrap items-center justify-between gap-3 border-b bg-slate-50 px-4 py-2.5">
+            {/* 工具栏 / 表头 / 数据行共用同一套响应式规则：
+                <640px 竖排成卡片（不撑宽），≥640px 表格式布局并可横向滚动 */}
+            <div className={`flex flex-wrap items-center justify-between gap-3 border-b bg-slate-50 px-4 py-2.5 ${rowMinW}`}>
                 <div className="flex items-center gap-3">
                     {/* 状态筛选 */}
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -293,16 +300,15 @@ export function EssaysManager() {
                 </div>
             </div>
 
-            {/* 表头 */}
-            <div className="flex items-center gap-3 whitespace-nowrap border-b bg-slate-50 px-4 py-2.5 text-xs font-medium text-muted-foreground">
-                <span className="min-w-0 flex-1 max-w-[420px]">内容</span>
-                <div className="ml-auto flex shrink-0 items-center gap-3">
-                    <span className="w-24 shrink-0">媒体</span>
-                    <span className="w-16 shrink-0 text-center">状态</span>
-                    <span className="w-28 shrink-0">信息</span>
-                    <span className="w-32 shrink-0">时间</span>
-                    <span className="w-20 shrink-0 text-right">操作</span>
-                </div>
+            {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
+            <div className={`hidden items-center gap-3 border-b bg-slate-50 px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}>
+                <span>内容</span>
+                <span>媒体</span>
+                <span className="text-center">状态</span>
+                <span>信息</span>
+                <span>时间</span>
+                {/* 操作列：3 个 icon-sm（28px）按钮 + 2 个 gap = 92px，列宽取 96px 才装得下 */}
+                <span className="text-right">操作</span>
             </div>
 
             {loading ? (
@@ -316,38 +322,38 @@ export function EssaysManager() {
                     return (
                         <div
                             key={essay.id}
-                            className="flex items-center gap-3 whitespace-nowrap border-b px-4 py-3 text-sm last:border-b-0 hover:bg-muted/40"
+                            className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
                         >
-                            <div className="min-w-0 flex-1 max-w-[420px]">
-                                <div className="line-clamp-1 whitespace-pre-line break-words text-foreground">
+                            {/* 内容：移动端卡片的第一行，给两行更易读；桌面仍只一行 */}
+                            <div className="min-w-0 max-w-[420px]">
+                                <div className="line-clamp-2 whitespace-pre-line break-words text-foreground sm:line-clamp-1">
                                     {essay.content || "—"}
                                 </div>
                             </div>
-                            {/* 右列组：媒体/状态/信息/时间/操作，整体靠右贴着操作列 */}
-                            <div className="ml-auto flex shrink-0 items-center gap-3">
-                                {/* 媒体列：图片/音乐/视频 */}
-                                <div className="w-24 shrink-0 text-xs text-muted-foreground">
-                                    {media && (
-                                        <span className="inline-flex items-center gap-1">
-                                            {media.icon}
-                                            {media.text}
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="w-16 shrink-0 text-center">
-                                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
-                                        {badge.label}
+                            {/* 媒体列：图片/音乐/视频 */}
+                            <div className="text-xs text-muted-foreground">
+                                {media && (
+                                    <span className="inline-flex items-center gap-1">
+                                        {media.icon}
+                                        {media.text}
                                     </span>
-                                </div>
-                                <div className="w-28 shrink-0 text-xs text-muted-foreground">
-                                    <div className="truncate font-medium">{essay.address || "—"}</div>
-                                    <div className="truncate text-muted-foreground/60">{essay.from || "—"}</div>
-                                </div>
-                                <div className="w-32 shrink-0 text-xs text-muted-foreground">
-                                    <div>{formatDate(essay.created_at)}</div>
-                                    <div>{formatTime(essay.created_at)}</div>
-                                </div>
-                                <div className="flex w-20 shrink-0 items-center justify-end gap-1">
+                                )}
+                            </div>
+                            <div className="sm:text-center">
+                                <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
+                                    {badge.label}
+                                </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                                <div className="truncate font-medium">{essay.address || "—"}</div>
+                                <div className="truncate text-muted-foreground/60">{essay.from || "—"}</div>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                                <div>{formatDate(essay.created_at)}</div>
+                                <div>{formatTime(essay.created_at)}</div>
+                            </div>
+                            {/* 操作列：窄屏靠左跟随内容流，≥sm 贴右与表头对齐 */}
+                            <div className="flex items-center gap-1 sm:justify-end">
                                 <Button
                                     variant="ghost"
                                     size="icon-sm"
@@ -378,7 +384,6 @@ export function EssaysManager() {
                                 >
                                     <Trash2 className="size-4" />
                                 </Button>
-                                </div>
                             </div>
                         </div>
                     );

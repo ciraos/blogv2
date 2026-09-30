@@ -175,6 +175,11 @@ export function ArticleList() {
         setPage(1);
     };
 
+    // 移动端(<640px)：grid-cols-1 把每个单元格竖排成卡片；≥640px：恢复表格式列布局。
+    // min-w 只写在 sm: 以上 —— 窄屏若也撑宽，卡片就会被拉出横向滚动。
+    const rowGrid = "sm:grid-cols-[minmax(0,1fr)_96px_80px_96px_240px]";
+    const rowMinW = "sm:min-w-[800px]";
+
     return (
         <div className="mt-4 overflow-hidden rounded-lg border bg-card shadow-sm">
             {/* 工具栏：搜索 + 四个筛选下拉 + 重置 + 右侧按钮 */}
@@ -307,125 +312,105 @@ export function ArticleList() {
                 </div>
             </div>
 
-            {/* 列表 */}
+            {/* 列表：移动端(<640px)每个单元格竖排成卡片，≥640px 表格式 grid 并可横向滚动 */}
             <div className="overflow-x-auto">
-                {/* table-fixed + colgroup：列宽固定比例，与标题长短无关，整体规整 */}
-                <table className="w-full table-fixed text-sm">
-                    <colgroup>
-                        <col className="w-[30%]" />
-                        <col className="w-[10%]" />
-                        <col className="w-[11%]" />
-                        <col className="w-[12%]" />
-                        <col className="w-[37%]" />
-                    </colgroup>
-                    <thead>
-                        <tr className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
-                            <th className="px-3 py-2 font-medium">标题</th>
-                            <th className="px-3 py-2 font-medium">状态</th>
-                            <th className="px-3 py-2 font-medium">统计</th>
-                            <th className="whitespace-nowrap px-3 py-2 font-medium">发布于</th>
-                            <th className="px-3 py-2 text-center font-medium">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {loading && list.length === 0 ? (
-                            <tr>
-                                <td colSpan={5} className="px-3 py-10 text-center text-muted-foreground">
-                                    加载中…
-                                </td>
-                            </tr>
-                        ) : list.length === 0 ? (
-                            <tr>
-                                <td colSpan={5} className="px-3 py-10 text-center text-muted-foreground">
-                                    {keyword || status || review || category || tag ? "无结果" : "暂无文章"}
-                                </td>
-                            </tr>
-                        ) : (
-                            list.map((article) => (
-                                <tr key={article.id} className="border-b last:border-0 transition-colors hover:bg-muted/40">
-                                    <td className="px-3 py-2">
-                                        <div className="flex items-start gap-2">
-                                            <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground/60" />
-                                            <div className="min-w-0">
-                                                <div className="line-clamp-1 font-medium">{article.title}</div>
-                                                {/* 分类 / 标签：标题正下方、图标下方，从左到右 */}
-                                                <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                                                    {article.post_categories.map((c) => (
-                                                        <span key={c.id} className="rounded bg-muted px-1.5 py-px text-[11px] text-muted-foreground">
-                                                            {c.name}
-                                                        </span>
-                                                    ))}
-                                                    {article.post_tags.map((t) => (
-                                                        <span key={t.id} className="rounded bg-muted px-1.5 py-px text-[11px] text-muted-foreground">
-                                                            #{t.name}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-3 py-2">
-                                        <span
-                                            className={`inline-block rounded-md px-2 py-0.5 text-xs ${STATUS_CLASS[article.status] || "bg-muted text-muted-foreground"}`}
-                                        >
-                                            {STATUS_LABEL[article.status] || article.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-3 py-2 text-xs text-muted-foreground">
-                                        <div className="flex flex-col gap-1">
-                                            <span className="flex items-center gap-1">
-                                                <AlignJustify size={12} className="text-muted-foreground/60" />
-                                                {article.word_count || 0} 字
+                {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
+                <div className={`hidden items-center gap-3 border-b bg-muted/40 px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}>
+                    <span>标题</span>
+                    <span>状态</span>
+                    <span>统计</span>
+                    <span>发布于</span>
+                    {/* 操作列：3 个带文字按钮（预览/编辑/删除）约 218px，列宽取 240px */}
+                    <span className="text-center">操作</span>
+                </div>
+
+                {loading && list.length === 0 ? (
+                    <div className="px-4 py-10 text-center text-muted-foreground">加载中…</div>
+                ) : list.length === 0 ? (
+                    <div className="px-4 py-10 text-center text-muted-foreground">
+                        {keyword || status || review || category || tag ? "无结果" : "暂无文章"}
+                    </div>
+                ) : (
+                    list.map((article) => (
+                        <div
+                            key={article.id}
+                            className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
+                        >
+                            <div className="flex items-start gap-2">
+                                <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground/60" />
+                                <div className="min-w-0">
+                                    <div className="line-clamp-1 font-medium">{article.title}</div>
+                                    {/* 分类 / 标签：标题正下方、图标下方，从左到右 */}
+                                    <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                                        {article.post_categories.map((c) => (
+                                            <span key={c.id} className="rounded bg-muted px-1.5 py-px text-[11px] text-muted-foreground">
+                                                {c.name}
                                             </span>
-                                            <span className="flex items-center gap-1">
-                                                <Eye size={12} className="text-muted-foreground/60" />
-                                                {article.view_count || 0}
+                                        ))}
+                                        {article.post_tags.map((t) => (
+                                            <span key={t.id} className="rounded bg-muted px-1.5 py-px text-[11px] text-muted-foreground">
+                                                #{t.name}
                                             </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-3 py-2 text-xs text-muted-foreground">{formatDate(article.created_at)}</td>
-                                    {/* 操作列：预览 / 编辑 / 删除 */}
-                                    <td className="w-full whitespace-nowrap px-3 py-2">
-                                        <div className="flex items-center justify-center gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                aria-label="预览"
-                                                title="预览"
-                                                className={ACTION_TONE.view}
-                                                asChild
-                                            >
-                                                <Link href={`/posts/${article.abbrlink || article.id}`}>
-                                                    <Eye className="size-4" />预览
-                                                </Link>
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                aria-label="编辑"
-                                                title="编辑"
-                                                className={ACTION_TONE.edit}
-                                                onClick={() => toast.info("编辑功能待接入")}
-                                            >
-                                                <Pencil className="size-4" />编辑
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                aria-label="删除"
-                                                title="删除"
-                                                className={ACTION_TONE.delete}
-                                                onClick={() => toast.info("删除功能待接入")}
-                                            >
-                                                <Trash2 className="size-4" />删除
-                                            </Button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <span
+                                    className={`inline-block rounded-md px-2 py-0.5 text-xs ${STATUS_CLASS[article.status] || "bg-muted text-muted-foreground"}`}
+                                >
+                                    {STATUS_LABEL[article.status] || article.status}
+                                </span>
+                            </div>
+                            <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                    <AlignJustify size={12} className="text-muted-foreground/60" />
+                                    {article.word_count || 0} 字
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <Eye size={12} className="text-muted-foreground/60" />
+                                    {article.view_count || 0}
+                                </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground">{formatDate(article.created_at)}</div>
+                            {/* 操作列：窄屏靠左跟随内容流，≥sm 居中与表头对齐 */}
+                            <div className="flex items-center gap-1 sm:justify-center">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    aria-label="预览"
+                                    title="预览"
+                                    className={ACTION_TONE.view}
+                                    asChild
+                                >
+                                    <Link href={`/posts/${article.abbrlink || article.id}`}>
+                                        <Eye className="size-4" />预览
+                                    </Link>
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    aria-label="编辑"
+                                    title="编辑"
+                                    className={ACTION_TONE.edit}
+                                    onClick={() => toast.info("编辑功能待接入")}
+                                >
+                                    <Pencil className="size-4" />编辑
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    aria-label="删除"
+                                    title="删除"
+                                    className={ACTION_TONE.delete}
+                                    onClick={() => toast.info("删除功能待接入")}
+                                >
+                                    <Trash2 className="size-4" />删除
+                                </Button>
+                            </div>
+                        </div>
+                    ))
+                )}
             </div>
 
             {/* 分页 */}

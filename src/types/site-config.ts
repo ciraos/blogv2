@@ -472,6 +472,14 @@ export interface MomentsConfig {
 export interface MusicConfig {
     api: {
         base_url: string;
+        /** 音源平台（Meting 的 server 参数）：netease / tencent / kugou … */
+        meting_server: string;
+        /**
+         * 取音源的方式：
+         *  - "legacy"：逐首向 `${base_url}/Song_V1` 解析（exhigh 拿不到就降级 standard）
+         *  - "meting"：歌单里的歌曲自带 url，直接用，不再请求解析服务
+         */
+        protocol: string;
     };
     capsule: {
         custom_playlist: string;

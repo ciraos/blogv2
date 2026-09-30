@@ -9,9 +9,13 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  /* 字体栈只在 :root 里定义一次（--font-*-stack），这里只做「指向」。
+     注意：绝不能写成 var(--font-sans) 这种自引用 —— 变量会失效，全站会静默回落到
+     Tailwind preflight 的兜底值（原代码就是这个 bug）。另外本项目没用 next/font，
+     所以也不存在 --font-geist-sans / --font-geist-mono 这类变量。 */
+  --font-sans: var(--font-base-stack);
+  --font-mono: var(--font-mono-stack);
+  --font-heading: var(--font-base-stack);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -51,6 +55,15 @@
 }
 
 :root {
+  /* 站点基础字体栈（= Tailwind preflight 实际生效的那条，显式写出来供正文前置衬线体时引用，
+     避免只为一个属性重复抄一长串字体名）。全站 UI 仍由 preflight 决定，这里只作为变量备用。 */
+  --font-base-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
+  /* 等宽字体栈（代码块 / kbd / 快捷键等）。同样只在 :root 定义一次，
+     供 @theme 的 --font-mono 以及下方各处 var(--font-mono-stack, …) 引用。 */
+  --font-mono-stack: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
   --background: #f4f4f4;
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -234,12 +247,25 @@ body {
 @media (prefers-color-scheme: dark) {}
 
 /* ===================== 文章正文排版（content_html） ===================== */
+/* 正文的英文 / 数字（拉丁字形）优先用 Georgia（屏幕友好的衬线体）：
+   Georgia 不含中文字形，CSS 按「逐字形回落」继续往后找，最终落到系统中文黑体 ——
+   所以中文外观与改动前完全一致。注意不要把宋体等中文字体写进这条栈，
+   否则整站正文的中文都会变成宋体（影响面完全不同）。
+   需要「中文也变衬线」的整块引文味，用下面可选的 .quote-serif。 */
 .article-body {
+  font-family: Georgia, "Times New Roman", var(--font-base-stack);
   font-size: 1rem;
   line-height: 1.8;
   color: var(--foreground);
   word-break: break-word;
   overflow-wrap: break-word;
+}
+
+/* 可选：整块「引文味」—— 中英文一起变衬线（英文 Georgia / 中文宋体）。
+   用法：在后台正文里给元素加 class，例如
+   <p class="quote-serif" style="font-size:32px; text-align:center;">…</p> */
+.article-body .quote-serif {
+  font-family: Georgia, "Times New Roman", "Songti SC", "Songti TC", SimSun, "宋体", serif;
 }
 
 .article-body>*:first-child {
@@ -576,7 +602,7 @@ body {
   border-bottom-width: 2px;
   border-radius: 0.3em;
   background: var(--muted);
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono-stack, monospace);
   font-size: 0.85em;
 }
 
@@ -937,7 +963,7 @@ body {
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--primary);
-  font-family: var(--font-sans, system-ui, sans-serif);
+  font-family: var(--font-base-stack, system-ui, sans-serif);
 }
 
 /* 友链页自定义 HTML（FRIEND_LINK_APPLY_CUSTOM_CODE_HTML）直出的语言标识：更大更粗
@@ -1141,7 +1167,7 @@ body {
 
 :is(.article-body, .comment-content) .code-block-body pre,
 :is(.article-body, .comment-content) .code-block-body .line-numbers div {
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono-stack, monospace);
   font-size: 0.9em;
   line-height: 1.7;
 }
@@ -2140,7 +2166,7 @@ body {
   padding: 0 0.2em;
   overflow-x: auto;
   vertical-align: middle;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono-stack, monospace);
   background: color-mix(in oklch, var(--muted) 60%, transparent);
   border-radius: 4px;
 }
@@ -2150,7 +2176,7 @@ body {
   padding: 0.75em 1em;
   overflow-x: auto;
   text-align: center;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono-stack, monospace);
   font-size: 1.1em;
   background: var(--muted);
   border-radius: 8px;

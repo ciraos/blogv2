@@ -37,7 +37,7 @@ import {
     getAdminLinksApi,
     updateAdminLinkApi,
 } from "@/lib/api";
-import { resolveAssetUrl } from "@/lib/utils";
+import { cn, resolveAssetUrl } from "@/lib/utils";
 import { ACTION_TONE } from "@/lib/action-tones";
 import type { FriendLink, LinkCategory, LinkTag } from "@/types/links";
 
@@ -50,6 +50,14 @@ export interface FriendsFilterState {
 }
 
 const PAGE_SIZES = [10, 20, 50];
+
+/**
+ * 列表行栅格（桌面端）：选择 / 网站信息 / 描述 / 分类标签 / 状态 / 操作。
+ * 列宽沿用改造前 flex 布局里的固定值：描述 w-40=160px、分类标签 w-28=112px、
+ * 状态 w-20=80px、操作 w-24=96px；网站信息原本是 flex-1，等价换算成 minmax(0,1fr)，
+ * 选择列与其它后台管理页保持一致取 28px（复选框本身 16px，留点击余量）。
+ */
+const ROW_GRID = "sm:grid-cols-[28px_minmax(0,1fr)_160px_112px_80px_96px]";
 
 /** 状态 → 中文 + 色块（背景淡色 + 同色系文字） */
 function statusBadge(status: string) {
@@ -348,10 +356,15 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
 
     return (
         <div className="mt-4 overflow-x-auto rounded-lg border bg-card shadow-sm">
-            {/* 固定最小宽度，窄屏时整体横向滚动，避免列被挤压换行 */}
-            <div className="min-w-[880px]">
-                {/* 表头 */}
-                <div className="flex items-center gap-3 whitespace-nowrap bg-slate-50 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground">
+            {/* min-w 只在 ≥sm 生效：窄屏不撑宽，行才能按 grid-cols-1 竖排成卡片；≥sm 仍是原来的表格观感（可横向滚动） */}
+            <div className="sm:min-w-[880px]">
+                {/* 表头：移动端隐藏（卡片内用 sm:hidden 辅助文字代替表头），≥sm 才以 grid 显示 */}
+                <div
+                    className={cn(
+                        "hidden min-w-[880px] items-center gap-3 whitespace-nowrap border-b bg-slate-50 px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid",
+                        ROW_GRID
+                    )}
+                >
                     <input
                         type="checkbox"
                         checked={allChecked}
@@ -359,7 +372,7 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                         aria-label="全选"
                         className="size-4 shrink-0 accent-primary"
                     />
-                    <span className="flex flex-1 items-center gap-1 whitespace-nowrap">
+                    <span className="flex items-center gap-1 whitespace-nowrap">
                         网站信息
                         {/* 网站名称首字母排序：点击循环 默认 → A→Z → Z→A */}
                         <button
@@ -373,10 +386,10 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                             {nameSort === "asc" ? <ArrowDownAZ className="size-3.5" /> : nameSort === "desc" ? <ArrowUpAZ className="size-3.5" /> : <ArrowDownAZ className="size-3.5 opacity-60" />}
                         </button>
                     </span>
-                    <span className="w-40 shrink-0 truncate">描述</span>
-                    <span className="w-28 shrink-0">分类 / 标签</span>
-                    <span className="w-20 shrink-0 text-center">状态</span>
-                    <span className="w-24 shrink-0 text-right">操作</span>
+                    <span className="truncate">描述</span>
+                    <span>分类 / 标签</span>
+                    <span className="text-center">状态</span>
+                    <span className="text-right">操作</span>
                 </div>
 
                 {/* 表体（不设高度上限，全部行都显示；行多时随页面整体滚动，底部不会被裁切） */}
@@ -391,17 +404,24 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                             return (
                                 <div
                                     key={link.id}
-                                    className="flex items-center gap-3 whitespace-nowrap border-b px-4 py-3 text-sm last:border-b-0 hover:bg-muted/40"
+                                    className={cn(
+                                        "grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1",
+                                        ROW_GRID
+                                    )}
                                 >
-                                    <input
-                                        type="checkbox"
-                                        checked={selected.has(link.id)}
-                                        onChange={() => toggleOne(link.id)}
-                                        aria-label={`选择 ${link.name}`}
-                                        className="size-4 shrink-0 accent-primary"
-                                    />
+                                    {/* 单元格 1：选择框 + 移动端序号（卡片没有表头，用序号帮助定位） */}
+                                    <span className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={selected.has(link.id)}
+                                            onChange={() => toggleOne(link.id)}
+                                            aria-label={`选择 ${link.name}`}
+                                            className="size-4 shrink-0 accent-primary"
+                                        />
+                                        <span className="text-xs text-muted-foreground tabular-nums sm:hidden">#{link.id}</span>
+                                    </span>
                                     {/* 网站信息 */}
-                                    <div className="flex min-w-0 flex-1 shrink-0 items-center gap-2.5">
+                                    <div className="flex min-w-0 items-center gap-2.5">
                                         <LinkAvatarCell link={link} />
                                         <div className="min-w-0">
                                             <div className="truncate font-medium">{link.name}</div>
@@ -421,12 +441,18 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                                         </div>
                                     </div>
                                     {/* 描述 */}
-                                    <div className="w-40 shrink-0 truncate text-xs text-muted-foreground" title={link.description}>
+                                    <div className="min-w-0 truncate text-xs text-muted-foreground" title={link.description}>
+                                        {/* 移动端补「描述」提示，否则脱离表头后只是一段无来由的文字 */}
+                                        <span className="text-muted-foreground/70 sm:hidden">描述：</span>
                                         {link.description || "-"}
                                     </div>
                                     {/* 分类 / 标签 */}
-                                    <div className="w-28 shrink-0">
-                                        <div className="truncate text-xs">{link.category?.name || "-"}</div>
+                                    <div className="min-w-0">
+                                        <div className="truncate text-xs">
+                                            {/* 移动端补「分类」提示，标签本身是彩色小胶囊可自解释 */}
+                                            <span className="text-muted-foreground/70 sm:hidden">分类：</span>
+                                            {link.category?.name || "-"}
+                                        </div>
                                         {link.tag && (
                                             <span className="mt-0.5 inline-block rounded bg-accent px-1.5 py-px text-[10px] text-accent-foreground">
                                                 {link.tag.name}
@@ -434,13 +460,13 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                                         )}
                                     </div>
                                     {/* 状态 */}
-                                    <div className="w-20 shrink-0 text-center">
+                                    <div className="text-center">
                                         <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
                                             {badge.label}
                                         </span>
                                     </div>
                                     {/* 操作 */}
-                                    <div className="flex w-24 shrink-0 items-center justify-end gap-1">
+                                    <div className="flex items-center justify-end gap-1">
                                         <Button
                                             variant="ghost"
                                             size="icon-sm"
