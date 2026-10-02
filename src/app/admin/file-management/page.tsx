@@ -8,10 +8,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function FileManagement() {
     return (
-        <div className="space-y-4">
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight">文件管理</h2>
-                <p className="text-sm text-muted-foreground">浏览「我的文件」：文件夹可逐级进入，文件可查看详情与复制直链</p>
+        <div className="admin-page">
+            <div className="admin-page-head">
+                <div>
+                    <h2 className="text-xl font-semibold tracking-tight">文件管理</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">浏览「我的文件」：文件夹可逐级进入，文件可查看详情与复制直链</p>
+                </div>
             </div>
             <FileManager />
         </div>

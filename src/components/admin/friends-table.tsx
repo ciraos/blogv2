@@ -355,13 +355,15 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
     };
 
     return (
-        <div className="mt-4 overflow-x-auto rounded-lg border bg-card shadow-sm">
-            {/* min-w 只在 ≥sm 生效：窄屏不撑宽，行才能按 grid-cols-1 竖排成卡片；≥sm 仍是原来的表格观感（可横向滚动） */}
-            <div className="sm:min-w-[880px]">
+        // 本组件要同时产出「表格滚动区 + 卡片底部工具栏」两块，用 Fragment 让它们
+        // 直接成为上方 admin-card 的 flex 子项（滚动只发生在 admin-scroll 里）
+        <>
+            {/* 表格滚动区：只有这块纵向 / 横向滚动（表头吸顶）；筛选栏与卡片底部工具栏都不动 */}
+            <div className="admin-scroll">
                 {/* 表头：移动端隐藏（卡片内用 sm:hidden 辅助文字代替表头），≥sm 才以 grid 显示 */}
                 <div
                     className={cn(
-                        "hidden min-w-[880px] items-center gap-3 whitespace-nowrap border-b bg-slate-50 px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid",
+                        "admin-sticky-head hidden min-w-[880px] items-center gap-3 whitespace-nowrap border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid",
                         ROW_GRID
                     )}
                 >
@@ -392,8 +394,8 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                     <span className="text-right">操作</span>
                 </div>
 
-                {/* 表体（不设高度上限，全部行都显示；行多时随页面整体滚动，底部不会被裁切） */}
-                <div>
+                {/* 表体（min-w 只在 ≥sm 生效：窄屏不撑宽、不横向滚动；≥sm 撑到 880px，由外层 admin-scroll 横向滚动） */}
+                <div className="sm:min-w-[880px]">
                     {loading ? (
                         <div className="py-12 text-center text-sm text-muted-foreground">加载中…</div>
                     ) : sortedLinks.length === 0 ? (
@@ -500,8 +502,8 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                 </div>
             </div>
 
-            {/* 底部：总数 + 每页条数 + 分页跳转 */}
-            <div className="bg-slate-50 flex flex-wrap items-center justify-between gap-3 border-t px-4 py-2.5 text-xs text-muted-foreground">
+            {/* 底部：总数 + 每页条数 + 分页跳转（固定在卡片底部，不随表格滚动） */}
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1">
                     <div>
                         共 <span className="font-medium text-foreground">{total}</span> 条友链
@@ -747,6 +749,6 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
             </div>
         )}
 
-        </div>
+        </>
     );
 }

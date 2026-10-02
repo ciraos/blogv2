@@ -300,9 +300,10 @@ export function UserManagement() {
     const totalPages = data ? Math.max(1, Math.ceil(data.total / query.pageSize)) : 1;
 
     return (
-        <div className="space-y-4">
-            {/* ===== 工具栏：搜索 + 状态下拉 + 用户组下拉 + 新增/重置 ===== */}
-            <div className="flex flex-wrap items-center gap-2">
+        // admin-card：吃掉剩余高度，表格区域（admin-scroll）在卡片内部滚动
+        <div className="admin-card">
+            {/* ===== 工具栏：搜索 + 状态下拉 + 用户组下拉 + 新增/重置（固定在卡片顶部，不随表格滚动） ===== */}
+            <div className="flex shrink-0 flex-wrap items-center gap-2 border-b p-3">
                 <div className="relative">
                     <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
@@ -361,12 +362,12 @@ export function UserManagement() {
                 </div>
             </div>
 
-            {/* ===== 用户列表：<640px 单列堆叠卡片，≥640px 表格式栅格 ===== */}
-            <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
+            {/* ===== 用户列表：<640px 单列堆叠卡片，≥640px 表格式栅格；只有这块滚动（表头吸顶） ===== */}
+            <div className="admin-scroll">
                 {/* 表头：移动端隐藏，≥sm 才以 grid 显示；min-w 只在 sm 以上生效，窄屏不会撑出横向滚动 */}
                 <div
                     className={cn(
-                        "hidden min-w-[900px] items-center gap-3 border-b bg-muted/40 px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid",
+                        "admin-sticky-head hidden min-w-[900px] items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid",
                         ROW_GRID
                     )}
                 >
@@ -498,9 +499,9 @@ export function UserManagement() {
                 </div>
             </div>
 
-            {/* ===== 分页 ===== */}
+            {/* ===== 分页：固定在卡片底部，不随表格滚动 ===== */}
             {data && (
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <div className="flex shrink-0 items-center justify-between border-t p-3 text-sm text-muted-foreground">
                     <span>
                         共 {data.total} 条 · 第 {data.page} / {totalPages} 页
                     </span>

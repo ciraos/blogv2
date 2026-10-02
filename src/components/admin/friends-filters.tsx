@@ -112,7 +112,7 @@ export function FriendsFilters({
                 disabled={!hasFilter}
                 title="重置筛选"
                 aria-label="重置筛选"
-                className="w-max py-1 px-2 bg-slate-200 shrink-0"
+                className="w-max py-1 px-2 bg-muted/60 hover:bg-muted shrink-0"
             >
                 <RefreshCcw className="size-4" />
                 重置状态

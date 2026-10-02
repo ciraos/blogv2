@@ -411,9 +411,10 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
     }, [preview]);
 
     return (
-        <div className="space-y-3">
-            {/* ===== 顶部操作条 ===== */}
-            <div className="flex min-h-10 flex-wrap items-center justify-between gap-2">
+        // admin-card：吃掉剩余高度；操作条 / 面包屑固定在卡片顶部，内容在 admin-scroll 内部滚动
+        <div className="admin-card">
+            {/* ===== 顶部操作条（固定在卡片顶部，不随内容滚动） ===== */}
+            <div className="flex min-h-10 shrink-0 flex-wrap items-center justify-between gap-2 border-b p-3">
                 <div className="flex flex-wrap items-center gap-2">
                     {/* 新建 / 重命名 / 删除 / 移动 / 复制：胶囊按钮组 */}
                     <div className="flex items-center overflow-hidden rounded-xl border bg-card shadow-sm">
@@ -639,8 +640,8 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
                 </div>
             </div>
 
-            {/* ===== 面包屑 ===== */}
-            <div className="flex flex-wrap items-center gap-1 rounded-xl border bg-card px-3 py-2 text-sm shadow-sm">
+            {/* ===== 面包屑（固定在卡片顶部，不随内容滚动） ===== */}
+            <div className="flex shrink-0 flex-wrap items-center gap-1 border-b px-3 py-2 text-sm">
                 {breadcrumb.map((item, idx) => (
                     <span key={item.uri} className="flex items-center gap-1">
                         {idx > 0 && <ChevronRight className="size-3.5 text-muted-foreground" />}
@@ -661,8 +662,8 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
                 ))}
             </div>
 
-            {/* ===== 内容区 ===== */}
-            <div className="relative min-h-64">
+            {/* ===== 内容区（唯一的滚动区：网格视图 / 列表视图共用同一个 admin-scroll） ===== */}
+            <div className="admin-scroll">
                 {loading ? (
                     <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">
                         <Loader2 className="mr-2 size-4 animate-spin" />
@@ -681,7 +682,7 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
                         {query ? "没有匹配的文件" : "这个目录是空的"}
                     </div>
                 ) : view === "grid" ? (
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                    <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
                         {visible.map((item) => {
                             const checked = selected.includes(item.id);
                             return (
@@ -733,8 +734,9 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
                         })}
                     </div>
                 ) : (
-                    <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
-                        <div className="hidden min-w-[800px] grid-cols-[28px_1fr_80px_100px_150px_110px] items-center gap-3 border-b bg-muted/40 px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid">
+                    // 列表视图：表头吸顶；整个列表与网格视图共用外层 admin-scroll，这里不再自带滚动/边框
+                    <div>
+                        <div className="admin-sticky-head hidden min-w-[800px] grid-cols-[28px_1fr_80px_100px_150px_110px] items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid">
                             <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} aria-label="全选" />
                             <span>名称</span>
                             <span>类型</span>
@@ -840,7 +842,7 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
                 )}
 
                 {!loading && !error && nextToken && (
-                    <div className="mt-3 flex justify-center">
+                    <div className="flex justify-center p-3">
                         <Button variant="outline" size="sm" disabled={moreLoading} onClick={() => void load(uri, nextToken)}>
                             {moreLoading ? <Loader2 className="size-3.5 animate-spin" /> : null}
                             加载更多
@@ -849,9 +851,9 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
                 )}
             </div>
 
-            {/* ===== 详情面板 ===== */}
+            {/* ===== 详情面板（固定在卡片底部，不随列表滚动） ===== */}
             {detail && (
-                <div className="rounded-xl border bg-card p-4 shadow-sm">
+                <div className="shrink-0 border-t p-4">
                     <div className="mb-3 flex items-center justify-between gap-2">
                         <h3 className="truncate text-sm font-semibold" title={detail.name}>
                             {detail.name}

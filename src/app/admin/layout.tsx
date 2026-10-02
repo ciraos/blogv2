@@ -91,18 +91,26 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
                 >
                     <Toaster position="top-right" richColors closeButton />
                     <TooltipProvider>
-                        <SidebarProvider>
+                        {/* 整页锁 100dvh 且不滚动：滚动交给内容区（以及列表页内部的表格区域） */}
+                        <SidebarProvider className="h-dvh overflow-hidden">
                             <AppSidebar user={navUser} />
-                            <main className="flex min-h-screen w-full flex-1 min-w-0 flex-col py-2 px-5">
+                            <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-2">
                                 <SidebarTriggerFallback />
-                                <div className="dsh-main flex-1 space-y-6">{children}</div>
-                                {/* dsh-main 是 flex-1，内容不足一屏时会把页脚顶到底部；
-                                    mt-10 保证内容超出一屏时，页脚横线也不会贴着页面内容（分页等） */}
-                                <footer className="mt-10 flex h-14 shrink-0 items-center justify-center gap-3 border-t">
-                                    <Link href="https://beian.miit.gov.cn" target="_blank" rel="noopener external nofollow noreferrer" className="text-xs text-muted-foreground hover:underline">{config?.ICP_NUMBER}</Link>
-                                    {/* 前端版本号（package.json → 构建时注入；与后端版本无关） */}
-                                    <span className="text-xs text-muted-foreground/50">{APP_VERSION_LABEL}</span>
-                                </footer>
+                                {/* 内容区是 flex 列。注意这里**不能**给所有页面根节点加 min-h-0/flex-auto：
+                                    那会把「内容比视口高」的页面（仪表盘、设置页、占位页）压到视口高度，
+                                    它们内部的 absolute 装饰层与 main 里 shrink-0 的页脚就会叠在一起。
+                                    需要「表格自己滚」的列表页由 .admin-page 自己声明可压缩（见 globals.css）。 */}
+                                <div className="dsh-main flex min-h-0 flex-1 flex-col">
+                                    {children}
+                                    {/* 页脚排在页面内容之后（而不是 main 的 shrink-0 兄弟节点）：
+                                        列表页的页面根是 min-height:100%，所以页脚会被推到折线以下，
+                                        跟着内容一起滚 —— 滚到底才看到，不再固定贴在窗口底部。 */}
+                                    <footer className="mt-3 flex h-9 shrink-0 items-center justify-center gap-3 border-t">
+                                        <Link href="https://beian.miit.gov.cn" target="_blank" rel="noopener external nofollow noreferrer" className="text-xs text-muted-foreground hover:underline">{config?.ICP_NUMBER}</Link>
+                                        {/* 前端版本号（package.json → 构建时注入；与后端版本无关，侧边栏也有一份） */}
+                                        <span className="text-xs text-muted-foreground/50">{APP_VERSION_LABEL}</span>
+                                    </footer>
+                                </div>
                             </main>
                         </SidebarProvider>
                     </TooltipProvider>

@@ -37,7 +37,8 @@ export default async function Activate({ searchParams }: { searchParams: Promise
     }
 
     return (
-        <div className="flex w-full max-w-sm mx-auto flex-col items-center gap-4 rounded-xl border bg-card p-10 text-center shadow-sm">
+        // 卡片外壳由 (auth)/layout.tsx 的品牌卡片提供，这里只放内容
+        <div className="flex w-full flex-col items-center gap-4 text-center">
             {success ? (
                 <CheckCircle2 className="size-14 text-green-500" />
             ) : (

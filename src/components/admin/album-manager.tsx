@@ -174,9 +174,10 @@ export function AlbumManager() {
     };
 
     return (
-        <div className="space-y-3">
-            {/* ===== 顶部：Tab + 工具 ===== */}
-            <div className="flex flex-wrap items-center justify-between gap-2">
+        // admin-card：吃掉剩余高度；Tab/工具固定在卡片顶部，内容在 admin-scroll 内部滚动
+        <div className="admin-card">
+            {/* ===== 顶部：Tab + 工具（固定在卡片顶部，不随内容滚动） ===== */}
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b p-3">
                 <div className="flex items-center overflow-hidden rounded-xl border bg-card shadow-sm">
                     <button
                         type="button"
@@ -303,124 +304,128 @@ export function AlbumManager() {
             {/* ===== 图片 Tab ===== */}
             {tab === "images" && (
                 <>
-                    {loading ? (
-                        <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">
-                            <Loader2 className="mr-2 size-4 animate-spin" />
-                            加载中…
-                        </div>
-                    ) : error ? (
-                        <div className="flex min-h-64 flex-col items-center justify-center gap-2 text-sm">
-                            <p className="text-destructive">{error}</p>
-                            <Button variant="outline" size="sm" onClick={reload}>
-                                重试
-                            </Button>
-                        </div>
-                    ) : albums.length === 0 ? (
-                        <div className="flex min-h-64 flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
-                            <ImagePlus className="size-8 opacity-40" />
-                            {categoryId !== "all" || tag ? "没有匹配的图片" : "相册里还没有图片"}
-                            <Button size="sm" className="mt-1 h-8 rounded-lg text-xs" onClick={() => setImportOpen(true)}>
-                                <Upload className="size-3.5" />
-                                按 URL 批量导入
-                            </Button>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
-                            {albums.map((album) => {
-                                const src = resolveAssetUrl(album.imageUrl) ?? album.imageUrl;
-                                const checked = selected.includes(album.id);
-                                return (
-                                    <div
-                                        key={album.id}
-                                        className={cn(
-                                            "group relative overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md",
-                                            checked && "border-primary ring-1 ring-primary/30"
-                                        )}
-                                    >
-                                        <span className="absolute left-2 top-2 z-10">
-                                            <Checkbox
-                                                checked={checked}
-                                                onCheckedChange={() =>
-                                                    setSelected((prev) =>
-                                                        prev.includes(album.id)
-                                                            ? prev.filter((x) => x !== album.id)
-                                                            : [...prev, album.id]
-                                                    )
-                                                }
-                                                aria-label={`选择 ${album.title || album.imageUrl}`}
-                                            />
-                                        </span>
-                                        <span className="absolute right-2 top-2 z-10 hidden gap-1 group-hover:flex">
-                                            <button
-                                                type="button"
-                                                aria-label="编辑"
-                                                title="编辑"
-                                                onClick={() => setEditing(album)}
-                                                className="rounded-md bg-orange-500 p-1 text-white shadow-sm transition-colors hover:bg-orange-600"
-                                            >
-                                                <Pencil className="size-3.5" />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                aria-label="删除"
-                                                title="删除"
-                                                onClick={() => removeAlbum(album)}
-                                                className="rounded-md bg-red-500 p-1 text-white shadow-sm transition-colors hover:bg-red-600"
-                                            >
-                                                <Trash2 className="size-3.5" />
-                                            </button>
-                                        </span>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => setPreview(album)}
-                                            title={album.title || album.imageUrl}
-                                            className="block w-full"
+                    {/* 唯一的滚动区：状态提示 / 图片网格都在卡片内部滚动，分页固定在卡片底部 */}
+                    <div className="admin-scroll">
+                        {loading ? (
+                            <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">
+                                <Loader2 className="mr-2 size-4 animate-spin" />
+                                加载中…
+                            </div>
+                        ) : error ? (
+                            <div className="flex min-h-64 flex-col items-center justify-center gap-2 text-sm">
+                                <p className="text-destructive">{error}</p>
+                                <Button variant="outline" size="sm" onClick={reload}>
+                                    重试
+                                </Button>
+                            </div>
+                        ) : albums.length === 0 ? (
+                            <div className="flex min-h-64 flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+                                <ImagePlus className="size-8 opacity-40" />
+                                {categoryId !== "all" || tag ? "没有匹配的图片" : "相册里还没有图片"}
+                                <Button size="sm" className="mt-1 h-8 rounded-lg text-xs" onClick={() => setImportOpen(true)}>
+                                    <Upload className="size-3.5" />
+                                    按 URL 批量导入
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
+                                {albums.map((album) => {
+                                    const src = resolveAssetUrl(album.imageUrl) ?? album.imageUrl;
+                                    const checked = selected.includes(album.id);
+                                    return (
+                                        <div
+                                            key={album.id}
+                                            className={cn(
+                                                "group relative overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md",
+                                                checked && "border-primary ring-1 ring-primary/30"
+                                            )}
                                         >
-                                            <span className="block aspect-4/3 w-full overflow-hidden bg-muted">
-                                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                <img
-                                                    src={src}
-                                                    alt={album.title || ""}
-                                                    loading="lazy"
-                                                    className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                            <span className="absolute left-2 top-2 z-10">
+                                                <Checkbox
+                                                    checked={checked}
+                                                    onCheckedChange={() =>
+                                                        setSelected((prev) =>
+                                                            prev.includes(album.id)
+                                                                ? prev.filter((x) => x !== album.id)
+                                                                : [...prev, album.id]
+                                                        )
+                                                    }
+                                                    aria-label={`选择 ${album.title || album.imageUrl}`}
                                                 />
                                             </span>
-                                            <span className="block space-y-1 p-2.5 text-left">
-                                                <span
-                                                    className="line-clamp-1 block text-xs font-medium"
-                                                    title={album.title || album.imageUrl}
+                                            <span className="absolute right-2 top-2 z-10 hidden gap-1 group-hover:flex">
+                                                <button
+                                                    type="button"
+                                                    aria-label="编辑"
+                                                    title="编辑"
+                                                    onClick={() => setEditing(album)}
+                                                    className="rounded-md bg-orange-500 p-1 text-white shadow-sm transition-colors hover:bg-orange-600"
                                                 >
-                                                    {album.title || "（无标题）"}
-                                                </span>
-                                                <span className="flex flex-wrap items-center gap-1">
-                                                    <Badge variant="outline" className="text-[10px] font-normal">
-                                                        {categoryName(album.categoryId)}
-                                                    </Badge>
-                                                    {splitTags(album.tags).slice(0, 2).map((t) => (
-                                                        <Badge key={t} variant="secondary" className="text-[10px] font-normal">
-                                                            {t}
-                                                        </Badge>
-                                                    ))}
-                                                </span>
-                                                <span className="block text-[10px] text-muted-foreground">
-                                                    {album.widthAndHeight || (album.width ? `${album.width}×${album.height}` : "—")}
-                                                    {" · "}
-                                                    {formatSize(album.fileSize)}
-                                                    {" · "}
-                                                    {formatDate(album.published_at ?? album.created_at)}
-                                                    {album.viewCount ? ` · ${album.viewCount} 次浏览` : ""}
-                                                </span>
+                                                    <Pencil className="size-3.5" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    aria-label="删除"
+                                                    title="删除"
+                                                    onClick={() => removeAlbum(album)}
+                                                    className="rounded-md bg-red-500 p-1 text-white shadow-sm transition-colors hover:bg-red-600"
+                                                >
+                                                    <Trash2 className="size-3.5" />
+                                                </button>
                                             </span>
-                                        </button>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
+    
+                                            <button
+                                                type="button"
+                                                onClick={() => setPreview(album)}
+                                                title={album.title || album.imageUrl}
+                                                className="block w-full"
+                                            >
+                                                <span className="block aspect-4/3 w-full overflow-hidden bg-muted">
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img
+                                                        src={src}
+                                                        alt={album.title || ""}
+                                                        loading="lazy"
+                                                        className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                    />
+                                                </span>
+                                                <span className="block space-y-1 p-2.5 text-left">
+                                                    <span
+                                                        className="line-clamp-1 block text-xs font-medium"
+                                                        title={album.title || album.imageUrl}
+                                                    >
+                                                        {album.title || "（无标题）"}
+                                                    </span>
+                                                    <span className="flex flex-wrap items-center gap-1">
+                                                        <Badge variant="outline" className="text-[10px] font-normal">
+                                                            {categoryName(album.categoryId)}
+                                                        </Badge>
+                                                        {splitTags(album.tags).slice(0, 2).map((t) => (
+                                                            <Badge key={t} variant="secondary" className="text-[10px] font-normal">
+                                                                {t}
+                                                            </Badge>
+                                                        ))}
+                                                    </span>
+                                                    <span className="block text-[10px] text-muted-foreground">
+                                                        {album.widthAndHeight || (album.width ? `${album.width}×${album.height}` : "—")}
+                                                        {" · "}
+                                                        {formatSize(album.fileSize)}
+                                                        {" · "}
+                                                        {formatDate(album.published_at ?? album.created_at)}
+                                                        {album.viewCount ? ` · ${album.viewCount} 次浏览` : ""}
+                                                    </span>
+                                                </span>
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
 
-                    {/* 分页 */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+                    </div>
+
+                    {/* 分页：固定在卡片底部，不随内容滚动 */}
+                    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t p-3 text-xs text-muted-foreground">
                         <span>
                             共 <span className="font-medium text-foreground">{total}</span> 张图片 · 第 {page} / {totalPages} 页
                         </span>
@@ -436,8 +441,8 @@ export function AlbumManager() {
 
             {/* ===== 分类 Tab ===== */}
             {tab === "categories" && (
-                <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
-                    <div className="hidden min-w-[560px] grid-cols-[60px_1fr_1fr_90px_140px] items-center gap-3 border-b bg-muted/40 px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid">
+                <div className="admin-scroll">
+                    <div className="admin-sticky-head hidden min-w-[560px] grid-cols-[60px_1fr_1fr_90px_140px] items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid">
                         <span>ID</span>
                         <span>名称</span>
                         <span>描述</span>

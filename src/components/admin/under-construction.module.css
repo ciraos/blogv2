@@ -10,9 +10,12 @@
     var(--card);
   padding: 3rem 1.5rem 2.5rem;
   text-align: center;
-  /* 铺满后台内容区剩余高度：视口高 −（页面标题区 84px + 底部 footer 56px + 内边距 16px）＝ 100dvh − 156px；
+  /* 铺满后台内容区剩余高度：占位页的页面根用 .admin-page（可压缩、撑满内容区），
+     这里只要吃掉标题之外剩下的空间即可 —— 不再写死 100dvh − N 这种魔法数字
+     （原来的 calc 是按旧外壳的标题/footer 高度估的，外壳一改就对不上、会和页脚叠在一起）。
      视口很矮时保底 320px，内容更高时自然撑开 */
-  min-height: max(320px, calc(100dvh - 156px));
+  flex: 1 1 auto;
+  min-height: 320px;
   /* 内部纵向居中，让插画+文案+按钮整体落在中间而不是贴着顶部 */
   display: flex;
   flex-direction: column;

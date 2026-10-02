@@ -116,9 +116,10 @@ export function PageManager() {
     };
 
     return (
-        <div className="space-y-3">
-            {/* ===== 工具栏 ===== */}
-            <div className="flex flex-wrap items-center justify-between gap-2">
+        // admin-card：吃掉剩余高度；工具栏 / 分页固定，表格在 admin-scroll 内部滚动
+        <div className="admin-card">
+            {/* ===== 工具栏（固定在卡片顶部，不随表格滚动） ===== */}
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b p-3">
                 <div className="flex flex-wrap items-center gap-2">
                     <div className="relative">
                         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -182,27 +183,28 @@ export function PageManager() {
                 </div>
             </div>
 
-            {/* ===== 列表 ===== */}
+            {/* ===== 列表（唯一的滚动区：状态提示与表格都在 admin-scroll 内） ===== */}
             {loading ? (
-                <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">
+                <div className="admin-scroll flex min-h-64 items-center justify-center text-sm text-muted-foreground">
                     <Loader2 className="mr-2 size-4 animate-spin" />
                     加载中…
                 </div>
             ) : error ? (
-                <div className="flex min-h-64 flex-col items-center justify-center gap-2 text-sm">
+                <div className="admin-scroll flex min-h-64 flex-col items-center justify-center gap-2 text-sm">
                     <p className="text-destructive">{error}</p>
                     <Button variant="outline" size="sm" onClick={() => void load()}>
                         重试
                     </Button>
                 </div>
             ) : pages.length === 0 ? (
-                <div className="flex min-h-64 flex-col items-center justify-center gap-1 text-sm text-muted-foreground">
+                <div className="admin-scroll flex min-h-64 flex-col items-center justify-center gap-1 text-sm text-muted-foreground">
                     <FileText className="size-8 opacity-40" />
                     {search || publishFilter !== "all" ? "没有匹配的页面" : "还没有自定义页面"}
                 </div>
             ) : (
-                <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
-                    <div className="hidden min-w-[820px] grid-cols-[1fr_180px_90px_70px_60px_150px_150px] items-center gap-3 border-b bg-muted/40 px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid">
+                <div className="admin-scroll">
+                    {/* 表头：<640px 隐藏（卡片式行内含标签），≥sm 才以 grid 显示并吸顶 */}
+                    <div className="admin-sticky-head hidden min-w-[820px] grid-cols-[1fr_180px_90px_70px_60px_150px_150px] items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid">
                         <span>标题</span>
                         <span>路径</span>
                         <span>状态</span>
@@ -287,8 +289,8 @@ export function PageManager() {
                 </div>
             )}
 
-            {/* ===== 分页 ===== */}
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+            {/* ===== 分页（固定在卡片底部，不随表格滚动） ===== */}
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t p-3 text-xs text-muted-foreground">
                 <span>
                     共 <span className="font-medium text-foreground">{total}</span> 个页面 · 第 {page} / {totalPages} 页
                 </span>
@@ -352,6 +354,17 @@ function PageEditorDialog({
         if (!form.title.trim() || !form.path.trim() || !form.content.trim()) {
             toast.error("标题、路径、内容（HTML）都是必填");
             return;
+        }
+        // 防呆：前台渲染的是 content（HTML），markdown_content 只是存档（前台不读）。
+        // 「正文去掉标签后没几个字，但 Markdown 存档里有内容」基本就是粘错框了 —— 保存下去前台会是一片空白。
+        const visibleText = form.content.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+        if (visibleText.length < 10 && form.markdown_content.trim().length >= 20) {
+            const go = window.confirm(
+                "提醒：前台显示的是「正文」框（HTML），「Markdown 原文」只作存档、前台不读。\n\n" +
+                    `当前正文去掉标签后只有 ${visibleText.length} 个可见字符，前台会显示成空白页。\n\n` +
+                    "确定还是按现在的正文保存吗？\n（取消 → 回去把内容填进「正文」框）"
+            );
+            if (!go) return;
         }
         const payload: AdminPagePayload = {
             title: form.title.trim(),

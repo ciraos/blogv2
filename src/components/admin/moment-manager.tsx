@@ -285,338 +285,344 @@ export function MomentManager() {
     };
 
     return (
-        <div className="space-y-3">
-            {/* ===== 统计 / 抓取状态 ===== */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
-                <span>
-                    共 <span className="font-medium text-foreground">{total}</span> 条
-                </span>
-                <span>友链 {statistics?.total_links ?? 0}</span>
-                <span>活跃 {statistics?.active_links ?? 0}</span>
-                {statistics?.last_updated_time && <span>更新 {statistics.last_updated_time}</span>}
-                {fetchStatus?.status && (
-                    <Badge
-                        variant="outline"
-                        className={cn(
-                            "text-[10px] font-medium",
-                            fetchStatus.is_fetching
-                                ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                                : "border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400"
-                        )}
-                    >
-                        {fetchStatus.is_fetching ? "抓取中…" : fetchStatus.status}
-                    </Badge>
-                )}
-            </div>
+        // admin-card：吃掉剩余高度，列表区域（admin-scroll）在卡片内部滚动，不再顶高整页
+        <div className="admin-card">
+            {/* 统计 / 抓取状态、工具栏、批量操作条：固定在卡片顶部（shrink-0），不随列表滚动 */}
+            <div className="shrink-0 space-y-3 border-b p-3">
+                {/* ===== 统计 / 抓取状态 ===== */}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
+                    <span>
+                        共 <span className="font-medium text-foreground">{total}</span> 条
+                    </span>
+                    <span>友链 {statistics?.total_links ?? 0}</span>
+                    <span>活跃 {statistics?.active_links ?? 0}</span>
+                    {statistics?.last_updated_time && <span>更新 {statistics.last_updated_time}</span>}
+                    {fetchStatus?.status && (
+                        <Badge
+                            variant="outline"
+                            className={cn(
+                                "text-[10px] font-medium",
+                                fetchStatus.is_fetching
+                                    ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                    : "border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400"
+                            )}
+                        >
+                            {fetchStatus.is_fetching ? "抓取中…" : fetchStatus.status}
+                        </Badge>
+                    )}
+                </div>
 
-            {/* ===== 工具栏 ===== */}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                    <div className="relative">
-                        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                {/* ===== 工具栏 ===== */}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                value={keywordInput}
+                                onChange={(e) => setKeywordInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") submitFilters();
+                                }}
+                                placeholder="搜索标题 / 摘要…"
+                                className="h-9 w-44 pl-8 text-xs sm:w-56"
+                            />
+                        </div>
                         <Input
-                            value={keywordInput}
-                            onChange={(e) => setKeywordInput(e.target.value)}
+                            value={linkIdInput}
+                            onChange={(e) => setLinkIdInput(e.target.value.replace(/[^\d]/g, ""))}
                             onKeyDown={(e) => {
                                 if (e.key === "Enter") submitFilters();
                             }}
-                            placeholder="搜索标题 / 摘要…"
-                            className="h-9 w-44 pl-8 text-xs sm:w-56"
+                            inputMode="numeric"
+                            placeholder="友链 ID"
+                            aria-label="按友链 ID 筛选"
+                            className="h-9 w-24 text-xs tabular-nums"
                         />
-                    </div>
-                    <Input
-                        value={linkIdInput}
-                        onChange={(e) => setLinkIdInput(e.target.value.replace(/[^\d]/g, ""))}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") submitFilters();
-                        }}
-                        inputMode="numeric"
-                        placeholder="友链 ID"
-                        aria-label="按友链 ID 筛选"
-                        className="h-9 w-24 text-xs tabular-nums"
-                    />
-                    <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs" onClick={submitFilters}>
-                        查询
-                    </Button>
-                    {hasFilter && (
+                        <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs" onClick={submitFilters}>
+                            查询
+                        </Button>
+                        {hasFilter && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-9 rounded-xl text-xs"
+                                onClick={resetFilters}
+                            >
+                                <RotateCcw className="size-3.5" />
+                                重置
+                            </Button>
+                        )}
+                        <Select
+                            value={sortBy}
+                            onValueChange={(v) => {
+                                setSortBy(v as MomentSortBy);
+                                setPage(1);
+                            }}
+                        >
+                            <SelectTrigger className="h-9 w-32 rounded-xl text-xs" aria-label="排序字段">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {MOMENT_SORT_OPTIONS.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Select
+                            value={sortOrder}
+                            onValueChange={(v) => {
+                                setSortOrder(v as MomentSortOrder);
+                                setPage(1);
+                            }}
+                        >
+                            <SelectTrigger className="h-9 w-24 rounded-xl text-xs" aria-label="排序方向">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {MOMENT_SORT_ORDER_OPTIONS.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         <Button
-                            variant="ghost"
+                            variant="outline"
+                            size="icon-sm"
+                            aria-label="刷新"
+                            title="刷新列表"
+                            className="size-9 rounded-xl"
+                            disabled={loading}
+                            onClick={() => void load()}
+                        >
+                            <RefreshCw className={cn("size-4", loading && "animate-spin")} />
+                        </Button>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button
                             size="sm"
                             className="h-9 rounded-xl text-xs"
-                            onClick={resetFilters}
+                            disabled={busy !== ""}
+                            onClick={() => void handleTriggerFetch()}
                         >
-                            <RotateCcw className="size-3.5" />
-                            重置
+                            {busy === "fetch" ? <Loader2 className="size-3.5 animate-spin" /> : <Zap className="size-3.5" />}
+                            抓取
                         </Button>
-                    )}
-                    <Select
-                        value={sortBy}
-                        onValueChange={(v) => {
-                            setSortBy(v as MomentSortBy);
-                            setPage(1);
-                        }}
-                    >
-                        <SelectTrigger className="h-9 w-32 rounded-xl text-xs" aria-label="排序字段">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {MOMENT_SORT_OPTIONS.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Select
-                        value={sortOrder}
-                        onValueChange={(v) => {
-                            setSortOrder(v as MomentSortOrder);
-                            setPage(1);
-                        }}
-                    >
-                        <SelectTrigger className="h-9 w-24 rounded-xl text-xs" aria-label="排序方向">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {MOMENT_SORT_ORDER_OPTIONS.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Button
-                        variant="outline"
-                        size="icon-sm"
-                        aria-label="刷新"
-                        title="刷新列表"
-                        className="size-9 rounded-xl"
-                        disabled={loading}
-                        onClick={() => void load()}
-                    >
-                        <RefreshCw className={cn("size-4", loading && "animate-spin")} />
-                    </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 rounded-xl text-xs"
+                            disabled={busy !== ""}
+                            onClick={() => void handleClearCache()}
+                        >
+                            {busy === "clear" ? <Loader2 className="size-3.5 animate-spin" /> : <Eraser className="size-3.5" />}
+                            清理缓存
+                        </Button>
+                    </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                        size="sm"
-                        className="h-9 rounded-xl text-xs"
-                        disabled={busy !== ""}
-                        onClick={() => void handleTriggerFetch()}
-                    >
-                        {busy === "fetch" ? <Loader2 className="size-3.5 animate-spin" /> : <Zap className="size-3.5" />}
-                        抓取
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-9 rounded-xl text-xs"
-                        disabled={busy !== ""}
-                        onClick={() => void handleClearCache()}
-                    >
-                        {busy === "clear" ? <Loader2 className="size-3.5 animate-spin" /> : <Eraser className="size-3.5" />}
-                        清理缓存
-                    </Button>
-                </div>
+                {/* ===== 批量操作条 ===== */}
+                {someSelected && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-xs">
+                        <span>
+                            已选 <span className="font-medium text-foreground">{selected.size}</span> 条
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 rounded-lg text-xs"
+                                onClick={clearSelection}
+                            >
+                                取消选择
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                className="h-8 rounded-lg text-xs"
+                                disabled={busy !== ""}
+                                onClick={() => void handleBatchDelete()}
+                            >
+                                {busy === "batch" ? (
+                                    <Loader2 className="size-3.5 animate-spin" />
+                                ) : (
+                                    <Trash2 className="size-3.5" />
+                                )}
+                                批量删除
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            {/* ===== 批量操作条 ===== */}
-            {someSelected && (
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-xs">
-                    <span>
-                        已选 <span className="font-medium text-foreground">{selected.size}</span> 条
-                    </span>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 rounded-lg text-xs"
-                            onClick={clearSelection}
-                        >
-                            取消选择
+            {/* ===== 列表 =====（卡片内唯一滚动区：只有列表在这里滚动，表头吸顶） */}
+            <div className="admin-scroll">
+                {loading ? (
+                    <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">
+                        <Loader2 className="mr-2 size-4 animate-spin" />
+                        加载中…
+                    </div>
+                ) : error ? (
+                    <div className="flex min-h-64 flex-col items-center justify-center gap-2 text-sm">
+                        <p className="text-destructive">{error}</p>
+                        <Button variant="outline" size="sm" onClick={() => void load()}>
+                            重试
                         </Button>
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            className="h-8 rounded-lg text-xs"
-                            disabled={busy !== ""}
-                            onClick={() => void handleBatchDelete()}
-                        >
-                            {busy === "batch" ? (
-                                <Loader2 className="size-3.5 animate-spin" />
-                            ) : (
-                                <Trash2 className="size-3.5" />
+                    </div>
+                ) : moments.length === 0 ? (
+                    <div className="flex min-h-64 flex-col items-center justify-center gap-1 text-sm text-muted-foreground">
+                        <Rss className="size-8 opacity-40" />
+                        <span>{hasFilter ? "没有匹配的朋友圈数据" : "暂无朋友圈数据"}</span>
+                        <span className="text-xs opacity-70">
+                            {hasFilter ? "试试调整筛选条件" : "触发 RSS 抓取后将在这里显示聚合文章"}
+                        </span>
+                    </div>
+                ) : (
+                    <>
+                        <div
+                            className={cn(
+                                "admin-sticky-head hidden min-w-[900px] items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid",
+                                ROW_GRID
                             )}
-                            批量删除
-                        </Button>
-                    </div>
-                </div>
-            )}
-
-            {/* ===== 列表 ===== */}
-            {loading ? (
-                <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    加载中…
-                </div>
-            ) : error ? (
-                <div className="flex min-h-64 flex-col items-center justify-center gap-2 text-sm">
-                    <p className="text-destructive">{error}</p>
-                    <Button variant="outline" size="sm" onClick={() => void load()}>
-                        重试
-                    </Button>
-                </div>
-            ) : moments.length === 0 ? (
-                <div className="flex min-h-64 flex-col items-center justify-center gap-1 text-sm text-muted-foreground">
-                    <Rss className="size-8 opacity-40" />
-                    <span>{hasFilter ? "没有匹配的朋友圈数据" : "暂无朋友圈数据"}</span>
-                    <span className="text-xs opacity-70">
-                        {hasFilter ? "试试调整筛选条件" : "触发 RSS 抓取后将在这里显示聚合文章"}
-                    </span>
-                </div>
-            ) : (
-                <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
-                    <div
-                        className={cn(
-                            "hidden min-w-[900px] items-center gap-3 border-b bg-muted/40 px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid",
-                            ROW_GRID
-                        )}
-                    >
-                        <Checkbox
-                            checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                            onCheckedChange={(v) => toggleAll(v === true)}
-                            aria-label="全选当前页"
-                        />
-                        <span>文章</span>
-                        <span>友链</span>
-                        <span>作者</span>
-                        <span>发布时间</span>
-                        <span>抓取时间</span>
-                        <span className="text-right">操作</span>
-                    </div>
-                    <div className="sm:min-w-[900px]">
-                        {moments.map((item) => (
-                            <div
-                                key={item.id}
-                                className={cn(
-                                    "grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1",
-                                    ROW_GRID
-                                )}
-                            >
-                                <span className="flex items-center gap-2">
-                                    <Checkbox
-                                        checked={selected.has(item.id)}
-                                        onCheckedChange={(v) => toggleOne(item.id, v === true)}
-                                        aria-label={`选择 ${item.post_title || item.id}`}
-                                    />
-                                    <span className="text-xs text-muted-foreground tabular-nums sm:hidden">
-                                        #{item.id}
-                                    </span>
-                                </span>
-
-                                <div className="min-w-0">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="truncate font-medium" title={item.post_title}>
-                                            {item.post_title || "（无标题）"}
+                        >
+                            <Checkbox
+                                checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                                onCheckedChange={(v) => toggleAll(v === true)}
+                                aria-label="全选当前页"
+                            />
+                            <span>文章</span>
+                            <span>友链</span>
+                            <span>作者</span>
+                            <span>发布时间</span>
+                            <span>抓取时间</span>
+                            <span className="text-right">操作</span>
+                        </div>
+                        <div className="sm:min-w-[900px]">
+                            {moments.map((item) => (
+                                <div
+                                    key={item.id}
+                                    className={cn(
+                                        "grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1",
+                                        ROW_GRID
+                                    )}
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <Checkbox
+                                            checked={selected.has(item.id)}
+                                            onCheckedChange={(v) => toggleOne(item.id, v === true)}
+                                            aria-label={`选择 ${item.post_title || item.id}`}
+                                        />
+                                        <span className="text-xs text-muted-foreground tabular-nums sm:hidden">
+                                            #{item.id}
                                         </span>
-                                        {item.post_url && (
-                                            <a
-                                                href={item.post_url}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                title="打开原文"
-                                                aria-label="打开原文"
-                                                className="shrink-0 text-muted-foreground transition-colors hover:text-primary"
-                                            >
-                                                <ExternalLink className="size-3.5" />
-                                            </a>
-                                        )}
-                                    </div>
-                                    <p
-                                        className="mt-0.5 truncate text-xs text-muted-foreground"
-                                        title={item.post_summary || item.post_url}
-                                    >
-                                        {item.post_summary || item.post_url}
-                                    </p>
-                                </div>
+                                    </span>
 
-                                <div className="flex min-w-0 items-center gap-2">
-                                    <Avatar size="sm">
-                                        {item.link_logo ? (
-                                            <AvatarImage src={item.link_logo} alt={item.link_name || "友链头像"} />
-                                        ) : null}
-                                        <AvatarFallback>{(item.link_name || "友").slice(0, 1)}</AvatarFallback>
-                                    </Avatar>
                                     <div className="min-w-0">
-                                        <div className="truncate text-xs" title={item.link_name}>
-                                            {item.link_name || "—"}
-                                        </div>
-                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                            <span className="shrink-0 tabular-nums">#{item.link_id}</span>
-                                            {item.link_url && (
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="truncate font-medium" title={item.post_title}>
+                                                {item.post_title || "（无标题）"}
+                                            </span>
+                                            {item.post_url && (
                                                 <a
-                                                    href={item.link_url}
+                                                    href={item.post_url}
                                                     target="_blank"
                                                     rel="noreferrer"
-                                                    title={item.link_url}
-                                                    className="truncate transition-colors hover:text-primary"
+                                                    title="打开原文"
+                                                    aria-label="打开原文"
+                                                    className="shrink-0 text-muted-foreground transition-colors hover:text-primary"
                                                 >
-                                                    {item.link_url}
+                                                    <ExternalLink className="size-3.5" />
                                                 </a>
                                             )}
                                         </div>
+                                        <p
+                                            className="mt-0.5 truncate text-xs text-muted-foreground"
+                                            title={item.post_summary || item.post_url}
+                                        >
+                                            {item.post_summary || item.post_url}
+                                        </p>
                                     </div>
+
+                                    <div className="flex min-w-0 items-center gap-2">
+                                        <Avatar size="sm">
+                                            {item.link_logo ? (
+                                                <AvatarImage src={item.link_logo} alt={item.link_name || "友链头像"} />
+                                            ) : null}
+                                            <AvatarFallback>{(item.link_name || "友").slice(0, 1)}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="min-w-0">
+                                            <div className="truncate text-xs" title={item.link_name}>
+                                                {item.link_name || "—"}
+                                            </div>
+                                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                                <span className="shrink-0 tabular-nums">#{item.link_id}</span>
+                                                {item.link_url && (
+                                                    <a
+                                                        href={item.link_url}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        title={item.link_url}
+                                                        className="truncate transition-colors hover:text-primary"
+                                                    >
+                                                        {item.link_url}
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <span className="truncate text-xs text-muted-foreground" title={item.author}>
+                                        {item.author || "—"}
+                                    </span>
+
+                                    <TimeCell value={item.published_at} />
+                                    <TimeCell value={item.fetched_at} />
+
+                                    <span className="flex justify-end gap-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            aria-label="查看"
+                                            title="查看详情"
+                                            className={ACTION_TONE.view}
+                                            onClick={() => setViewing(item)}
+                                        >
+                                            <Eye className="size-3.5" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            aria-label="编辑"
+                                            title="编辑"
+                                            className={ACTION_TONE.edit}
+                                            onClick={() => setEditing(item)}
+                                        >
+                                            <Pencil className="size-3.5" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            aria-label="删除"
+                                            title="删除"
+                                            className={ACTION_TONE.delete}
+                                            disabled={busy !== ""}
+                                            onClick={() => void handleDelete(item)}
+                                        >
+                                            <Trash2 className="size-3.5" />
+                                        </Button>
+                                    </span>
                                 </div>
+                            ))}
+                        </div>
+                    </>
+                )}
+            </div>
 
-                                <span className="truncate text-xs text-muted-foreground" title={item.author}>
-                                    {item.author || "—"}
-                                </span>
-
-                                <TimeCell value={item.published_at} />
-                                <TimeCell value={item.fetched_at} />
-
-                                <span className="flex justify-end gap-1">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon-sm"
-                                        aria-label="查看"
-                                        title="查看详情"
-                                        className={ACTION_TONE.view}
-                                        onClick={() => setViewing(item)}
-                                    >
-                                        <Eye className="size-3.5" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon-sm"
-                                        aria-label="编辑"
-                                        title="编辑"
-                                        className={ACTION_TONE.edit}
-                                        onClick={() => setEditing(item)}
-                                    >
-                                        <Pencil className="size-3.5" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon-sm"
-                                        aria-label="删除"
-                                        title="删除"
-                                        className={ACTION_TONE.delete}
-                                        disabled={busy !== ""}
-                                        onClick={() => void handleDelete(item)}
-                                    >
-                                        <Trash2 className="size-3.5" />
-                                    </Button>
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* ===== 分页 ===== */}
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+            {/* ===== 分页 =====（固定在卡片底部，不随列表滚动） */}
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t p-3 text-xs text-muted-foreground">
                 <span>
                     共 <span className="font-medium text-foreground">{total}</span> 条 · 第 {page} / {totalPages} 页
                 </span>

@@ -439,11 +439,12 @@ export function CommentsManager() {
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
     return (
-        <div className="mt-4 overflow-x-auto rounded-lg border bg-card shadow-sm">
-            {/* ===== 筛选栏（移动端两列换行，桌面端单行 1000px） ===== */}
+        // admin-card：吃掉剩余高度，表格区域（admin-scroll）在卡片内部滚动
+        <div className="admin-card">
+            {/* ===== 筛选栏（移动端两列换行，桌面端单行；固定在卡片顶部，不随表格滚动） ===== */}
             <form
                 onSubmit={submitFilters}
-                className="flex flex-wrap items-center gap-2 border-b bg-muted/40 px-4 py-2.5 xl:min-w-[980px]"
+                className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-muted/40 px-4 py-2.5"
             >
                 <Input
                     value={filters.nickname}
@@ -511,69 +512,72 @@ export function CommentsManager() {
                 </div>
             </form>
 
-            {/* ===== 表头（仅桌面端；移动端是卡片式布局，不需要表头） ===== */}
-            <div className="hidden min-w-[980px] items-center gap-3 whitespace-nowrap border-b bg-muted/40 px-4 py-2.5 text-xs font-medium text-muted-foreground xl:flex">
-                <Checkbox
-                    checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                    onCheckedChange={toggleSelectAll}
-                    aria-label="全选本页评论"
-                />
-                <span className="min-w-0 flex-1 max-w-[420px]">评论内容</span>
-                <div className="ml-auto flex shrink-0 items-center gap-3">
-                    <span className="w-36 shrink-0">评论者</span>
-                    <span className="w-36 shrink-0">评论目标</span>
-                    <span className="w-16 shrink-0 text-center">状态</span>
-                    <span className="w-24 shrink-0">IP 归属地</span>
-                    <span className="w-28 shrink-0">时间</span>
-                    <span className="w-28 shrink-0 text-right">操作</span>
+            {/* 列表滚动区：只有这块纵向 / 横向滚动（表头吸顶），筛选栏与分页都固定在卡片上 */}
+            <div className="admin-scroll">
+                {/* ===== 表头（仅桌面端；移动端是卡片式布局，不需要表头） ===== */}
+                <div className="admin-sticky-head hidden min-w-[980px] items-center gap-3 whitespace-nowrap border-b px-4 py-2.5 text-xs font-medium text-muted-foreground xl:flex">
+                    <Checkbox
+                        checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="全选本页评论"
+                    />
+                    <span className="min-w-0 flex-1 max-w-[420px]">评论内容</span>
+                    <div className="ml-auto flex shrink-0 items-center gap-3">
+                        <span className="w-36 shrink-0">评论者</span>
+                        <span className="w-36 shrink-0">评论目标</span>
+                        <span className="w-16 shrink-0 text-center">状态</span>
+                        <span className="w-24 shrink-0">IP 归属地</span>
+                        <span className="w-28 shrink-0">时间</span>
+                        <span className="w-28 shrink-0 text-right">操作</span>
+                    </div>
                 </div>
+
+                {loading ? (
+                    <div className="py-12 text-center text-sm text-muted-foreground">加载中…</div>
+                ) : list.length === 0 ? (
+                    <div className="py-12 text-center text-sm text-muted-foreground">暂无评论</div>
+                ) : (
+                    <div className="xl:min-w-[980px]">
+                        {list.map((comment) => (
+                            <div key={comment.id}>
+                                <CommentRow
+                                    comment={comment}
+                                    depth={0}
+                                    selected={selected.includes(comment.id)}
+                                    expanded={expanded.includes(comment.id)}
+                                    busyId={busyId}
+                                    onSelect={toggleSelect}
+                                    onToggleExpand={toggleExpand}
+                                    onToggleStatus={handleToggleStatus}
+                                    onTogglePin={handleTogglePin}
+                                    onEdit={openEdit}
+                                    onDelete={handleDelete}
+                                />
+                                {expanded.includes(comment.id) &&
+                                    (comment.children ?? []).map((child) => (
+                                        <CommentRow
+                                            key={child.id}
+                                            comment={child}
+                                            depth={1}
+                                            selected={selected.includes(child.id)}
+                                            expanded={false}
+                                            busyId={busyId}
+                                            onSelect={toggleSelect}
+                                            onToggleExpand={toggleExpand}
+                                            onToggleStatus={handleToggleStatus}
+                                            onTogglePin={handleTogglePin}
+                                            onEdit={openEdit}
+                                            onDelete={handleDelete}
+                                        />
+                                    ))}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
-            {loading ? (
-                <div className="py-12 text-center text-sm text-muted-foreground">加载中…</div>
-            ) : list.length === 0 ? (
-                <div className="py-12 text-center text-sm text-muted-foreground">暂无评论</div>
-            ) : (
-                <div className="xl:min-w-[980px]">
-                    {list.map((comment) => (
-                        <div key={comment.id}>
-                            <CommentRow
-                                comment={comment}
-                                depth={0}
-                                selected={selected.includes(comment.id)}
-                                expanded={expanded.includes(comment.id)}
-                                busyId={busyId}
-                                onSelect={toggleSelect}
-                                onToggleExpand={toggleExpand}
-                                onToggleStatus={handleToggleStatus}
-                                onTogglePin={handleTogglePin}
-                                onEdit={openEdit}
-                                onDelete={handleDelete}
-                            />
-                            {expanded.includes(comment.id) &&
-                                (comment.children ?? []).map((child) => (
-                                    <CommentRow
-                                        key={child.id}
-                                        comment={child}
-                                        depth={1}
-                                        selected={selected.includes(child.id)}
-                                        expanded={false}
-                                        busyId={busyId}
-                                        onSelect={toggleSelect}
-                                        onToggleExpand={toggleExpand}
-                                        onToggleStatus={handleToggleStatus}
-                                        onTogglePin={handleTogglePin}
-                                        onEdit={openEdit}
-                                        onDelete={handleDelete}
-                                    />
-                                ))}
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {/* ===== 分页 ===== */}
-            <div className="flex items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
+            {/* ===== 分页：固定在卡片底部，不随表格滚动 ===== */}
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
                 <span>
                     第 {page} / {totalPages} 页
                 </span>

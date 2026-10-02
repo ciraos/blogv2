@@ -275,24 +275,25 @@ export function DonationsManager() {
     const rowMinW = "sm:min-w-[820px]";
 
     return (
-        <div className="mt-4">
-            {/* 统计磁贴 */}
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                <div className="rounded-lg border bg-card px-3 py-2">
+        // admin-card：吃掉剩余高度，列表区域（admin-scroll）在卡片内部滚动，不再顶高整页
+        <div className="admin-card">
+            {/* 统计磁贴：固定在卡片顶部（shrink-0），不随列表滚动 */}
+            <div className="grid shrink-0 grid-cols-2 gap-2 border-b p-3 md:grid-cols-4">
+                <div className="rounded-lg border bg-muted/40 px-3 py-2">
                     <p className="text-xs text-muted-foreground">总记录数</p>
                     <p className="text-lg font-semibold tabular-nums">{total}</p>
                 </div>
-                <div className="rounded-lg border bg-card px-3 py-2">
+                <div className="rounded-lg border bg-muted/40 px-3 py-2">
                     <p className="text-xs text-muted-foreground">累计打赏</p>
                     <p className="text-lg font-semibold tabular-nums text-primary">¥{money(totalAmount)}</p>
                 </div>
-                <div className="rounded-lg border bg-card px-3 py-2">
+                <div className="rounded-lg border bg-muted/40 px-3 py-2">
                     <p className="text-xs text-muted-foreground">当前页金额</p>
                     <p className="text-lg font-semibold tabular-nums text-green-600 dark:text-green-400">
                         ¥{money(pageAmount)}
                     </p>
                 </div>
-                <div className="rounded-lg border bg-card px-3 py-2">
+                <div className="rounded-lg border bg-muted/40 px-3 py-2">
                     <p className="text-xs text-muted-foreground">当前页显示中</p>
                     <p className="text-lg font-semibold tabular-nums text-orange-600 dark:text-orange-400">
                         {visibleCount}
@@ -300,67 +301,67 @@ export function DonationsManager() {
                 </div>
             </div>
 
-            {/* 列表卡片 */}
-            <div className="mt-3 overflow-x-auto rounded-lg border bg-card shadow-sm">
-                {/* 工具栏 / 表头 / 数据行共用同一套响应式规则：
-                    <640px 竖排成卡片（不撑宽），≥640px 表格式布局并可横向滚动 */}
-                <div className={`flex flex-wrap items-center justify-between gap-3 border-b bg-slate-50 px-4 py-2.5 dark:bg-muted/30 ${rowMinW}`}>
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            状态
-                            <Select value={statusFilter || "all"} onValueChange={(v) => setStatusFilter(v === "all" ? "" : v)}>
-                                <SelectTrigger className="h-7 w-max text-xs">
-                                    <SelectValue placeholder="全部" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">全部</SelectItem>
-                                    {STATUS_OPTIONS.map((o) => (
-                                        <SelectItem key={o.value} value={o.value}>
-                                            {o.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                            共 <span className="font-medium text-foreground">{total}</span> 条打赏记录
-                        </span>
+            {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动。
+                工具栏 / 表头 / 数据行共用同一套响应式规则：<640px 竖排成卡片（不撑宽），≥640px 表格式布局 */}
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2.5">
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        状态
+                        <Select value={statusFilter || "all"} onValueChange={(v) => setStatusFilter(v === "all" ? "" : v)}>
+                            <SelectTrigger className="h-7 w-max text-xs">
+                                <SelectValue placeholder="全部" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">全部</SelectItem>
+                                {STATUS_OPTIONS.map((o) => (
+                                    <SelectItem key={o.value} value={o.value}>
+                                        {o.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
-                    <div className="flex items-center gap-2">
-                        {selected.size > 0 && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={deleting}
-                                className="h-7 px-2 text-xs text-red-600 hover:text-red-600 dark:text-red-400"
-                                onClick={handleBatchDelete}
-                            >
-                                <Trash2 className="size-3.5" />
-                                {deleting ? "删除中…" : `批量删除（${selected.size}）`}
-                            </Button>
-                        )}
-                        <Button
-                            size="sm"
-                            className="h-7 px-2 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
-                            onClick={openCreate}
-                        >
-                            <Plus className="size-3.5" />
-                            新增打赏
-                        </Button>
+                    <span className="text-xs text-muted-foreground">
+                        共 <span className="font-medium text-foreground">{total}</span> 条打赏记录
+                    </span>
+                </div>
+                <div className="flex items-center gap-2">
+                    {selected.size > 0 && (
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => setRefreshKey((k) => k + 1)}
+                            disabled={deleting}
+                            className="h-7 px-2 text-xs text-red-600 hover:text-red-600 dark:text-red-400"
+                            onClick={handleBatchDelete}
                         >
-                            <RefreshCw className="size-3.5" />
-                            刷新
+                            <Trash2 className="size-3.5" />
+                            {deleting ? "删除中…" : `批量删除（${selected.size}）`}
                         </Button>
-                    </div>
+                    )}
+                    <Button
+                        size="sm"
+                        className="h-7 px-2 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                        onClick={openCreate}
+                    >
+                        <Plus className="size-3.5" />
+                        新增打赏
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setRefreshKey((k) => k + 1)}
+                    >
+                        <RefreshCw className="size-3.5" />
+                        刷新
+                    </Button>
                 </div>
+            </div>
 
+            {/* 列表：卡片内唯一滚动区（表头吸顶），工具栏与分页都不动 */}
+            <div className="admin-scroll">
                 {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
-                <div className={`hidden items-center gap-3 border-b bg-slate-50 px-4 py-2.5 text-xs font-medium text-muted-foreground dark:bg-muted/30 sm:grid ${rowMinW} ${rowGrid}`}>
+                <div className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}>
                     <span className="flex items-center">
                         <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="全选本页" />
                     </span>
@@ -442,14 +443,14 @@ export function DonationsManager() {
                         );
                     })
                 )}
+            </div>
 
-                {/* 分页 */}
-                <div className="flex items-center justify-between gap-3 border-t bg-slate-50 px-4 py-2.5 text-xs text-muted-foreground dark:bg-muted/30">
-                    <span>
-                        第 {page} / {totalPages} 页
-                    </span>
-                    <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} disabled={loading} />
-                </div>
+            {/* 分页：固定在卡片底部，不随列表滚动 */}
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
+                <span>
+                    第 {page} / {totalPages} 页
+                </span>
+                <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} disabled={loading} />
             </div>
 
             {/* ===== 新增 / 编辑弹窗 ===== */}

@@ -21,6 +21,7 @@
     "@next/mdx": "^16.3.3",
     "@tanstack/react-table": "^8.21.3",
     "@types/mdx": "^2.0.14",
+    "@uiw/react-md-editor": "^4.1.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "highlight.js": "^11.12.0",

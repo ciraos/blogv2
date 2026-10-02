@@ -250,10 +250,11 @@ export function EssaysManager() {
     const rowMinW = "sm:min-w-[800px]";
 
     return (
-        <div className="mt-4 overflow-x-auto rounded-lg border bg-card shadow-sm">
-            {/* 工具栏 / 表头 / 数据行共用同一套响应式规则：
-                <640px 竖排成卡片（不撑宽），≥640px 表格式布局并可横向滚动 */}
-            <div className={`flex flex-wrap items-center justify-between gap-3 border-b bg-slate-50 px-4 py-2.5 ${rowMinW}`}>
+        // admin-card：吃掉剩余高度，列表区域（admin-scroll）在卡片内部滚动，不再顶高整页
+        <div className="admin-card">
+            {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动。
+                工具栏 / 表头 / 数据行共用同一套响应式规则：<640px 竖排成卡片（不撑宽），≥640px 表格式布局 */}
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2.5">
                 <div className="flex items-center gap-3">
                     {/* 状态筛选 */}
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -300,98 +301,101 @@ export function EssaysManager() {
                 </div>
             </div>
 
-            {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
-            <div className={`hidden items-center gap-3 border-b bg-slate-50 px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}>
-                <span>内容</span>
-                <span>媒体</span>
-                <span className="text-center">状态</span>
-                <span>信息</span>
-                <span>时间</span>
-                {/* 操作列：3 个 icon-sm（28px）按钮 + 2 个 gap = 92px，列宽取 96px 才装得下 */}
-                <span className="text-right">操作</span>
-            </div>
+            {/* 列表：卡片内唯一滚动区（表头吸顶），工具栏与分页都不动 */}
+            <div className="admin-scroll">
+                {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
+                <div className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}>
+                    <span>内容</span>
+                    <span>媒体</span>
+                    <span className="text-center">状态</span>
+                    <span>信息</span>
+                    <span>时间</span>
+                    {/* 操作列：3 个 icon-sm（28px）按钮 + 2 个 gap = 92px，列宽取 96px 才装得下 */}
+                    <span className="text-right">操作</span>
+                </div>
 
-            {loading ? (
-                <div className="py-12 text-center text-sm text-muted-foreground">加载中…</div>
-            ) : list.length === 0 ? (
-                <div className="py-12 text-center text-sm text-muted-foreground">暂无说说</div>
-            ) : (
-                list.map((essay) => {
-                    const badge = statusBadge(essay.status);
-                    const media = mediaMeta(essay);
-                    return (
-                        <div
-                            key={essay.id}
-                            className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
-                        >
-                            {/* 内容：移动端卡片的第一行，给两行更易读；桌面仍只一行 */}
-                            <div className="min-w-0 max-w-[420px]">
-                                <div className="line-clamp-2 whitespace-pre-line break-words text-foreground sm:line-clamp-1">
-                                    {essay.content || "—"}
+                {loading ? (
+                    <div className="py-12 text-center text-sm text-muted-foreground">加载中…</div>
+                ) : list.length === 0 ? (
+                    <div className="py-12 text-center text-sm text-muted-foreground">暂无说说</div>
+                ) : (
+                    list.map((essay) => {
+                        const badge = statusBadge(essay.status);
+                        const media = mediaMeta(essay);
+                        return (
+                            <div
+                                key={essay.id}
+                                className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
+                            >
+                                {/* 内容：移动端卡片的第一行，给两行更易读；桌面仍只一行 */}
+                                <div className="min-w-0 max-w-[420px]">
+                                    <div className="line-clamp-2 whitespace-pre-line break-words text-foreground sm:line-clamp-1">
+                                        {essay.content || "—"}
+                                    </div>
+                                </div>
+                                {/* 媒体列：图片/音乐/视频 */}
+                                <div className="text-xs text-muted-foreground">
+                                    {media && (
+                                        <span className="inline-flex items-center gap-1">
+                                            {media.icon}
+                                            {media.text}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="sm:text-center">
+                                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
+                                        {badge.label}
+                                    </span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                    <div className="truncate font-medium">{essay.address || "—"}</div>
+                                    <div className="truncate text-muted-foreground/60">{essay.from || "—"}</div>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                    <div>{formatDate(essay.created_at)}</div>
+                                    <div>{formatTime(essay.created_at)}</div>
+                                </div>
+                                {/* 操作列：窄屏靠左跟随内容流，≥sm 贴右与表头对齐 */}
+                                <div className="flex items-center gap-1 sm:justify-end">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        aria-label="编辑"
+                                        title="编辑"
+                                        className={ACTION_TONE.edit}
+                                        onClick={() => openEdit(essay)}
+                                    >
+                                        <Pencil className="size-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        aria-label="预览"
+                                        title="预览"
+                                        className={ACTION_TONE.view}
+                                        onClick={() => setPreview(essay)}
+                                    >
+                                        <Eye className="size-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        aria-label="删除"
+                                        title="删除"
+                                        className={ACTION_TONE.delete}
+                                        onClick={() => handleDelete(essay)}
+                                    >
+                                        <Trash2 className="size-4" />
+                                    </Button>
                                 </div>
                             </div>
-                            {/* 媒体列：图片/音乐/视频 */}
-                            <div className="text-xs text-muted-foreground">
-                                {media && (
-                                    <span className="inline-flex items-center gap-1">
-                                        {media.icon}
-                                        {media.text}
-                                    </span>
-                                )}
-                            </div>
-                            <div className="sm:text-center">
-                                <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
-                                    {badge.label}
-                                </span>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                                <div className="truncate font-medium">{essay.address || "—"}</div>
-                                <div className="truncate text-muted-foreground/60">{essay.from || "—"}</div>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                                <div>{formatDate(essay.created_at)}</div>
-                                <div>{formatTime(essay.created_at)}</div>
-                            </div>
-                            {/* 操作列：窄屏靠左跟随内容流，≥sm 贴右与表头对齐 */}
-                            <div className="flex items-center gap-1 sm:justify-end">
-                                <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    aria-label="编辑"
-                                    title="编辑"
-                                    className={ACTION_TONE.edit}
-                                    onClick={() => openEdit(essay)}
-                                >
-                                    <Pencil className="size-4" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    aria-label="预览"
-                                    title="预览"
-                                    className={ACTION_TONE.view}
-                                    onClick={() => setPreview(essay)}
-                                >
-                                    <Eye className="size-4" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    aria-label="删除"
-                                    title="删除"
-                                    className={ACTION_TONE.delete}
-                                    onClick={() => handleDelete(essay)}
-                                >
-                                    <Trash2 className="size-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    );
-                })
-            )}
+                        );
+                    })
+                )}
+            </div>
 
-            {/* 分页：上一页 / 下一页 */}
-            <div className="flex items-center justify-between gap-3 border-t bg-slate-50 px-4 py-2.5 text-xs text-muted-foreground">
+            {/* 分页：固定在卡片底部，不随列表滚动 */}
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
                 <span>第 {page} / {totalPages} 页</span>
                 <PaginationControls
                     page={page}

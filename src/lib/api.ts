@@ -470,6 +470,129 @@ export async function getAdminArticleTagsApi(): Promise<PostTag[]> {
     return request<PostTag[]>("/api/admin/article-tags", { method: "GET" });
 }
 
+/**
+ * 文章新建/更新的请求体。
+ * 字段名对齐后端 swagger 的 model.CreateArticleRequest / model.UpdateArticleRequest（31 项），
+ * 这里只声明本次用到的部分；content_md 是 Markdown 原文，content_html 由后端渲染（见 article-form 的告警逻辑）。
+ */
+export interface AdminArticlePayload {
+    title: string;
+    content_md: string;
+    status?: "DRAFT" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED";
+    post_category_ids?: string[];
+    post_tag_ids?: string[];
+    summaries?: string[];
+    cover_url?: string;
+    top_img_url?: string;
+    keywords?: string;
+    abbrlink?: string;
+    primary_color?: string;
+    is_primary_color_manual?: boolean;
+    copyright?: boolean;
+    copyright_author?: string;
+    copyright_author_href?: string;
+    copyright_url?: string;
+    is_reprint?: boolean;
+    show_on_home?: boolean;
+    pin_sort?: number;
+    home_sort?: number;
+    ip_location?: string;
+    review_status?: string;
+}
+
+/** POST /api/admin/articles 新建文章（成功返回新文章详情，含后端渲染的 content_html） */
+export async function createAdminArticleApi(payload: AdminArticlePayload): Promise<ArticleDetail> {
+    return request<ArticleDetail>("/api/admin/articles", { method: "POST", body: JSON.stringify(payload) });
+}
+
+/** PUT /api/admin/articles/[id] 更新文章 */
+export async function updateAdminArticleApi(id: string | number, payload: AdminArticlePayload): Promise<ArticleDetail> {
+    return request<ArticleDetail>(`/api/admin/articles/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+/** GET /api/admin/articles/[id] 管理端文章详情（编辑页回填：含 content_md 与分类/标签 id） */
+export async function getAdminArticleApi(id: string | number): Promise<ArticleDetail> {
+    return request<ArticleDetail>(`/api/admin/articles/${id}`, { method: "GET" });
+}
+
+/** DELETE /api/admin/articles/[id] 删除文章 */
+export async function deleteAdminArticleApi(id: string | number): Promise<unknown> {
+    return request(`/api/admin/articles/${id}`, { method: "DELETE" });
+}
+
+// ===================== 文章历史版本（后台） =====================
+
+/** 历史版本列表项（GET /articles/{id}/history） */
+export interface ArticleHistoryListItem {
+    id: number;
+    version: number;
+    title: string;
+    word_count: number;
+    change_note: string;
+    editor_nickname: string;
+    created_at: string;
+}
+
+/** 完整历史版本（对比接口返回 old_version / new_version） */
+export interface ArticleHistoryVersion {
+    id: number;
+    article_id: string;
+    version: number;
+    title: string;
+    content_md: string;
+    content_html: string;
+    cover_url: string;
+    top_img_url: string;
+    keywords: string;
+    primary_color: string;
+    summaries: string[] | null;
+    word_count: number;
+    change_note: string;
+    editor_id: number;
+    editor_nickname: string;
+    created_at: string;
+}
+
+/** 历史版本分页响应 */
+export interface ArticleHistoryPage {
+    list: ArticleHistoryListItem[] | null;
+    page: number;
+    page_size: number;
+    total: number;
+}
+
+/** GET /api/admin/articles/[id]/history 历史版本列表（分页） */
+export async function getAdminArticleHistoryApi(
+    id: string | number,
+    page = 1,
+    pageSize = 20
+): Promise<ArticleHistoryPage> {
+    const qs = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    return request<ArticleHistoryPage>(`/api/admin/articles/${id}/history?${qs.toString()}`, { method: "GET" });
+}
+
+/** GET /api/admin/articles/[id]/history/compare 取两个版本内容做对比 */
+export async function compareAdminArticleHistoryApi(
+    id: string | number,
+    v1: number,
+    v2: number
+): Promise<{ new_version: ArticleHistoryVersion | null; old_version: ArticleHistoryVersion | null }> {
+    const qs = new URLSearchParams({ v1: String(v1), v2: String(v2) });
+    return request(`/api/admin/articles/${id}/history/compare?${qs.toString()}`, { method: "GET" });
+}
+
+/** POST /api/admin/articles/[id]/history/[version]/restore 回滚到指定版本 */
+export async function restoreAdminArticleHistoryApi(
+    id: string | number,
+    version: number,
+    changeNote?: string
+): Promise<unknown> {
+    return request(`/api/admin/articles/${id}/history/${version}/restore`, {
+        method: "POST",
+        body: JSON.stringify({ change_note: changeNote ?? "" }),
+    });
+}
+
 /** POST /api/admin/links 管理员创建友链（同源代理，需登录） */
 export async function createAdminLinkApi(payload: AdminCreateLinkRequest): Promise<unknown> {
     return request<unknown>("/api/admin/links", {

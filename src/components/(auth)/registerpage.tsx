@@ -72,11 +72,11 @@ export function RegisterPage() {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="w-full max-w-xs mx-auto">
+        <form onSubmit={handleSubmit} className="w-full">
             <FieldSet>
                 <div className="text-center">
-                    <h1 className="text-2xl font-bold tracking-tight">注册</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">创建一个新账号</p>
+                    <h1 className="text-xl font-semibold tracking-tight">注册</h1>
+                    <p className="mt-2 text-sm text-muted-foreground">创建一个新账号</p>
                 </div>
 
                 <FieldGroup>

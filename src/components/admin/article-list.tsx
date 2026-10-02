@@ -6,6 +6,7 @@ import {
     Eye,
     FileText,
     FolderTree,
+    History,
     Pencil,
     Plus,
     RotateCcw,
@@ -177,13 +178,14 @@ export function ArticleList() {
 
     // 移动端(<640px)：grid-cols-1 把每个单元格竖排成卡片；≥640px：恢复表格式列布局。
     // min-w 只写在 sm: 以上 —— 窄屏若也撑宽，卡片就会被拉出横向滚动。
-    const rowGrid = "sm:grid-cols-[minmax(0,1fr)_96px_80px_96px_240px]";
-    const rowMinW = "sm:min-w-[800px]";
+    const rowGrid = "sm:grid-cols-[minmax(0,1fr)_96px_80px_96px_272px]";
+    const rowMinW = "sm:min-w-[840px]";
 
     return (
-        <div className="mt-4 overflow-hidden rounded-lg border bg-card shadow-sm">
-            {/* 工具栏：搜索 + 四个筛选下拉 + 重置 + 右侧按钮 */}
-            <div className="flex flex-wrap items-center gap-2 border-b p-3">
+        // admin-card：吃掉剩余高度，表格区域（admin-scroll）在卡片内部滚动，不再顶高整页
+        <div className="admin-card">
+            {/* 工具栏：搜索 + 四个筛选下拉 + 重置 + 右侧按钮（固定在卡片顶部，不随表格滚动） */}
+            <div className="flex shrink-0 flex-wrap items-center gap-2 border-b p-3">
                 {/* 左：搜索 + 筛选 + 重置 */}
                 <div className="flex flex-1 flex-wrap items-center gap-2">
                     <div className="relative w-48">
@@ -301,9 +303,12 @@ export function ArticleList() {
                         <FolderTree size={14} />
                         分类标签
                     </Button>
-                    <Button size="sm" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => toast.info("新增文章待接入")}>
-                        <Plus size={14} />
-                        新增文章
+                    {/* 新建文章 → /admin/post-management/new（原来是 onClick toast 占位） */}
+                    <Button size="sm" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90" asChild>
+                        <Link href="/admin/post-management/new">
+                            <Plus size={14} />
+                            新增文章
+                        </Link>
                     </Button>
                     <Button variant="outline" size="sm" className="h-8" onClick={() => toast.info("导入功能待接入")}>
                         <Upload size={14} />
@@ -312,15 +317,16 @@ export function ArticleList() {
                 </div>
             </div>
 
-            {/* 列表：移动端(<640px)每个单元格竖排成卡片，≥640px 表格式 grid 并可横向滚动 */}
-            <div className="overflow-x-auto">
+            {/* 列表：移动端(<640px)每个单元格竖排成卡片，≥640px 表格式 grid 并可横向滚动。
+                admin-scroll：只有这块纵向滚动（表头吸顶），卡片与工具栏都不动 */}
+            <div className="admin-scroll">
                 {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
-                <div className={`hidden items-center gap-3 border-b bg-muted/40 px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}>
+                <div className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}>
                     <span>标题</span>
                     <span>状态</span>
                     <span>统计</span>
                     <span>发布于</span>
-                    {/* 操作列：3 个带文字按钮（预览/编辑/删除）约 218px，列宽取 240px */}
+                    {/* 操作列：预览/编辑/删除 带文字 + 历史版本用图标按钮，合计约 250px，列宽取 272px */}
                     <span className="text-center">操作</span>
                 </div>
 
@@ -387,15 +393,31 @@ export function ArticleList() {
                                         <Eye className="size-4" />预览
                                     </Link>
                                 </Button>
+                                {/* 编辑 → /admin/post-management/[id]/edit（原来是 onClick toast 占位） */}
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     aria-label="编辑"
                                     title="编辑"
                                     className={ACTION_TONE.edit}
-                                    onClick={() => toast.info("编辑功能待接入")}
+                                    asChild
                                 >
-                                    <Pencil className="size-4" />编辑
+                                    <Link href={`/admin/post-management/${article.id}/edit`}>
+                                        <Pencil className="size-4" />编辑
+                                    </Link>
+                                </Button>
+                                {/* 历史版本 → /admin/post-management/[id]/history（图标按钮，省出操作列宽度） */}
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-8 shrink-0"
+                                    aria-label="历史版本"
+                                    title="历史版本 / 对比 / 回滚"
+                                    asChild
+                                >
+                                    <Link href={`/admin/post-management/${article.id}/history`}>
+                                        <History className="size-4" />
+                                    </Link>
                                 </Button>
                                 <Button
                                     variant="ghost"
@@ -413,8 +435,8 @@ export function ArticleList() {
                 )}
             </div>
 
-            {/* 分页 */}
-            <div className="flex items-center justify-between border-t p-3">
+            {/* 分页：固定在卡片底部，不随表格滚动 */}
+            <div className="flex shrink-0 items-center justify-between border-t p-3">
                 <div className="gap-2">
                     <span className="rounded-sm p-1 text-xs text-muted-foreground bg-muted">共 {total} 篇</span>
                     <span className="ml-2 text-xs text-muted-foreground">

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
+import { adminProxyFetch } from "@/lib/admin-api"
 import { API_URL } from "@/lib/api"
 import { ACCESS_TOKEN_KEY } from "@/lib/auth"
 
@@ -8,8 +9,7 @@ import { ACCESS_TOKEN_KEY } from "@/lib/auth"
 // 后端不开放 CORS 且需鉴权，浏览器端不能直连，由本路由读取 httpOnly cookie 中的 token 转发。
 const REMOTE = `${API_URL}/articles`
 
-export async function GET(request: NextRequest) {
-    const token = request.cookies.get(ACCESS_TOKEN_KEY)?.value
+export async function GET(request: NextRequest) {    const token = request.cookies.get(ACCESS_TOKEN_KEY)?.value
     if (!token) {
         return NextResponse.json({ code: 401, message: "未登录", data: null }, { status: 401 })
     }
@@ -34,4 +34,11 @@ export async function GET(request: NextRequest) {
         )
     }
     return NextResponse.json({ code: 200, message: json?.message || "ok", data: json?.data ?? null })
+}
+
+// 新建文章：POST 转发到远端 /articles（JSON body，成功后返回新文章详情）。
+// 复用 authedProxyFetch：它负责读 httpOnly token cookie、补 Content-Type 与 401/502 处理。
+export async function POST(request: NextRequest) {
+    const body = await request.text()
+    return adminProxyFetch("/articles", { method: "POST", body })
 }

@@ -15,9 +15,13 @@ export function FriendsManager() {
     });
 
     return (
-        <>
-            <FriendsFilters value={filters} onChange={setFilters} />
+        // admin-card：筛选栏固定在顶部、表格区域（admin-scroll）在卡片内部滚动
+        <div className="admin-card">
+            {/* 筛选工具栏：固定在卡片顶部，不随表格滚动 */}
+            <div className="shrink-0 border-b p-3">
+                <FriendsFilters value={filters} onChange={setFilters} />
+            </div>
             <FriendsTable filters={filters} />
-        </>
+        </div>
     );
 }

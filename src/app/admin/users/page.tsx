@@ -9,11 +9,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function Users() {
     return (
-        <div className="space-y-4">
-            <div className="space-y-4">
+        <div className="admin-page">
+            <div className="admin-page-head">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">用户管理</h2>
-                    <p className="text-slate-400 text-xs"></p>
+                    <h2 className="text-xl font-semibold tracking-tight">用户管理</h2>
+                    {/* 原页面说明为空，保持为空（只统一了字号与配色） */}
+                    <p className="mt-1 text-xs text-muted-foreground"></p>
                 </div>
             </div>
             <UserManagement />

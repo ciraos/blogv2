@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import "../globals.css";
+import { AuthCard } from "@/components/(auth)/auth-card";
 import { ThemeProvider } from "@/components/ui/theme-provider";
+import { resolveAppearance } from "@/lib/appearance";
+import { getSiteConfigs } from "@/lib/site-config";
 import { SiteConfigResponse } from "@/types/site-config";
 
 const site_url = process.env.NEXT_PUBLIC_SITE_URL;
@@ -20,24 +23,18 @@ export async function generateMetadata(): Promise<Metadata> {
     };
 }
 
-export async function getSiteConfigs() {
-    try {
-        const i = await fetch(`${api_url}/public/site-config`);
-        if (!i.ok) throw new Error("获取配置失败！");
-        const data = (await i.json()) as SiteConfigResponse;
-        // console.log(data);
-        return data.data;
-    } catch (error) {
-        // return { APP_NAME: "博客", ICON_URL: "/favicon.ico", error };
-        console.error(error);
-    }
-}
-
 export default async function AuthLayout({ children }: Readonly<{ children: React.ReactNode; }>) {
     const config = await getSiteConfigs();
+    // 站点外观：按后端 APPEARANCE_SKIN / APPEARANCE_TOKENS 生成皮肤变量（浅/深各一套），
+    // 与 (blog)/admin 两个 layout 一致。这里以前漏了注入，导致 --primary 退回 globals.css 的
+    // 近黑色默认值 —— 登录/注册按钮用的是 bg-primary，所以显示不出主题色。
+    const appearance = resolveAppearance(config?.APPEARANCE_SKIN, config?.APPEARANCE_TOKENS);
 
     return (
-        <html lang="zh-CN" suppressHydrationWarning>
+        <html lang="zh-CN" suppressHydrationWarning data-skin={appearance.skinId}>
+            <head>
+                <style dangerouslySetInnerHTML={{ __html: appearance.css }} />
+            </head>
             <body className="">
 
                 <ThemeProvider
@@ -49,8 +46,21 @@ export default async function AuthLayout({ children }: Readonly<{ children: Reac
                 >
                     <div id="CIRAOS">
 
-                        <div className="flex min-h-screen items-center justify-center p-6">
-                            <div className="w-full">{children}</div>
+                        {/* 背景：容器渐变 + 主题色柔光（主色来自外观皮肤，卡片浮在其上） */}
+                        <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-linear-to-br from-background to-muted p-6">
+                            <div
+                                aria-hidden="true"
+                                className="pointer-events-none absolute -top-1/3 left-1/2 size-[46rem] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl"
+                            />
+                            <div className="relative flex w-full justify-center">
+                                <AuthCard
+                                    appName={config?.APP_NAME ?? "博客"}
+                                    logoDay={config?.LOGO_HORIZONTAL_DAY || config?.LOGO_URL || "/favicon.ico"}
+                                    logoNight={config?.LOGO_HORIZONTAL_NIGHT || config?.LOGO_HORIZONTAL_DAY || config?.LOGO_URL || "/favicon.ico"}
+                                >
+                                    {children}
+                                </AuthCard>
+                            </div>
                         </div>
 
                         {/* <div id="footer" className="">

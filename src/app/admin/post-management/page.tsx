@@ -9,12 +9,14 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function PostManagement() {
     return (
-        <div className="space-y-4">
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight">文章管理</h2>
-                <p className="text-slate-400 text-xs">管理文章，支持分类、标签、搜索与分页</p>
+        <div className="admin-page">
+            <div className="admin-page-head">
+                <div>
+                    <h2 className="text-xl font-semibold tracking-tight">文章管理</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">管理文章，支持分类、标签、搜索与分页</p>
+                </div>
             </div>
-            {/* 文章列表：按页拉取 /api/admin/articles */}
+            {/* 文章列表：按页拉取 /api/admin/articles（表格在卡片内部滚动） */}
             <ArticleList />
         </div>
     );
