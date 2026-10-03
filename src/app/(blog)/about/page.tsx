@@ -373,17 +373,14 @@ export default async function About() {
                         >
                             <ItemTips>{page.game.tips}</ItemTips>
                             <span className="text-4xl font-bold leading-none">{page.game.title}</span>
-                            <div className="mt-auto flex items-center gap-2">
-                                {page.game.title === "原神" && (
-                                    <div className="relative hidden h-[62.5px] w-full max-w-[300px] overflow-hidden sm:block" aria-hidden="true" />
-                                )}
-                                {/* UID：左下角 + 半透明深色底突出显示（移动端背景图 cover 时右下角会被图盖住） */}
-                                {page.game.uid && (
-                                    <span className="inline-flex shrink-0 items-center rounded-full bg-black/45 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
-                                        {page.game.uid}
-                                    </span>
-                                )}
-                            </div>
+                            {/* UID：左下角。
+                                注意：这里的 Card 是 about 页本地实现（display:block），
+                                所以 mt-auto 不会生效 —— 直接用绝对定位钉在卡片内边距的左下角（卡片本身是 relative）。 */}
+                            {page.game.uid && (
+                                <span className="absolute bottom-4 left-4 inline-flex items-center rounded-full bg-black/45 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
+                                    {page.game.uid}
+                                </span>
+                            )}
                         </Card>
                     )}
                     {enable.comic && page.comic?.list.length ? (

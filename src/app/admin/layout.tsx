@@ -94,7 +94,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
                         {/* 整页锁 100dvh 且不滚动：滚动交给内容区（以及列表页内部的表格区域） */}
                         <SidebarProvider className="h-dvh overflow-hidden">
                             <AppSidebar user={navUser} />
-                            <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-2">
+                            <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-2 overflow-y-auto px-5 py-1.5">
                                 <SidebarTriggerFallback />
                                 {/* 内容区是 flex 列。注意这里**不能**给所有页面根节点加 min-h-0/flex-auto：
                                     那会把「内容比视口高」的页面（仪表盘、设置页、占位页）压到视口高度，
@@ -102,10 +102,9 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
                                     需要「表格自己滚」的列表页由 .admin-page 自己声明可压缩（见 globals.css）。 */}
                                 <div className="dsh-main flex min-h-0 flex-1 flex-col">
                                     {children}
-                                    {/* 页脚排在页面内容之后（而不是 main 的 shrink-0 兄弟节点）：
-                                        列表页的页面根是 min-height:100%，所以页脚会被推到折线以下，
-                                        跟着内容一起滚 —— 滚到底才看到，不再固定贴在窗口底部。 */}
-                                    <footer className="mt-3 flex h-9 shrink-0 items-center justify-center gap-3 border-t">
+                                    {/* 页脚排在内容之后、且不额外占高：页面根只吃「扣掉页脚」的剩余高度，
+                                        所以列表页不会出现整页滚动条，页脚就落在卡片正下方。压薄到 h-8 把高度让给表格。 */}
+                                    <footer className="mt-2 flex h-8 shrink-0 items-center justify-center gap-3 border-t">
                                         <Link href="https://beian.miit.gov.cn" target="_blank" rel="noopener external nofollow noreferrer" className="text-xs text-muted-foreground hover:underline">{config?.ICP_NUMBER}</Link>
                                         {/* 前端版本号（package.json → 构建时注入；与后端版本无关，侧边栏也有一份） */}
                                         <span className="text-xs text-muted-foreground/50">{APP_VERSION_LABEL}</span>
