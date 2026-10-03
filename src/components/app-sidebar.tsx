@@ -64,6 +64,7 @@ const data = {
         { title: "说说管理", url: "/admin/essays", pro: true },
         { title: "评论管理", url: "/admin/comments" },
         { title: "相册管理", url: "/admin/albums" },
+        { title: "社区问答", url: "/admin/qa", pro: true },
       ],
     },
     {
@@ -93,6 +94,7 @@ const data = {
         { title: "SEO 推送", url: "/admin/seo-push", pro: true },
         { title: "存储策略", url: "/admin/storage" },
         { title: "图片样式缓存", url: "/admin/image-styles/cache", pro: true },
+        { title: "缓存管理", url: "/admin/cache-management" },
         { title: "主题商城", url: "/admin/themes" },
         { title: "知识库管理", url: "/admin/knowledge" },
         { title: "插件管理", url: "/admin/plugins" },
