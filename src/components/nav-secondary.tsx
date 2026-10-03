@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { ArrowUpRightIcon } from "lucide-react"
 
 import {
   SidebarGroup,
@@ -36,6 +37,10 @@ export function NavSecondary({
                 >
                   {item.icon}
                   <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
+                  {/* 新标签页打开的入口给个外向箭头提示（收起成图标栏时隐藏） */}
+                  {item.target === "_blank" && (
+                    <ArrowUpRightIcon className="ml-auto size-3.5 shrink-0 opacity-50 group-data-[collapsible=icon]:hidden" />
+                  )}
                 </a>
               </SidebarMenuButton>
             </SidebarMenuItem>

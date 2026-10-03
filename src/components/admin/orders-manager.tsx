@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { toast } from "sonner";
 import {
     Banknote,
@@ -9,10 +10,12 @@ import {
     Clock,
     Download,
     Eye,
+    Loader2,
     RefreshCw,
     RotateCcw,
     Search,
     ShoppingCart,
+    TriangleAlert,
     Undo2,
 } from "lucide-react";
 
@@ -27,45 +30,32 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { ACTION_TONE } from "@/lib/action-tones";
+import { getAdminOrdersApi } from "@/lib/api";
+import type {
+    AdminOrder,
+    AdminOrderListParams,
+    OrderStatus,
+    OrderType,
+    PaymentProvider,
+} from "@/types/orders";
 
 /**
- * 订单管理页（静态外壳：只做视觉与布局，未接入任何接口，全部按钮为占位）。
+ * 订单管理页：统计磁贴 + 筛选工具栏 + 列表（卡片内滚动、表头吸顶）+ 分页。
  *
- * 接口情况（写在这里方便以后接）：
- *  - 远端路径：后端 PRO 模块 `/pro/admin/orders`
- *  - 同源代理：前端需要另建 `/api/admin/orders`（浏览器带登录 cookie 走同源）
- *  - 已线上探活确认存在（未登录返回 401）
- *  - 列表响应形状：`{ orders, total, page, size }`（注意是 `size`，不是 `page_size`；
- *    请求参数里分页字段才叫 `page_size`）
- *  - 查询参数：page / page_size / status / payment_provider / user_email / order_no /
- *    trade_no / order_type / start_date / end_date / sort_by / sort_order
+ * 接口：远端 PRO 模块 `/pro/admin/orders` → 同源代理 `/api/admin/orders`
+ *   （浏览器带登录 cookie 走同源，见 src/app/api/admin/orders/route.ts）。
+ *   ⚠️ 响应分页字段是 `size`（不是 `page_size`）；请求参数里分页字段才叫 `page_size`。
+ *   参数：page / page_size / status / payment_provider / order_type / order_no /
+ *        trade_no / user_email / start_date / end_date …
+ *   类型定义统一放在 `@/types/orders`（本组件不再内联重复类型）。
  *
- * 接入步骤：
- *  1. `orders` / `total` / `page` 三个常量换成 useState，useEffect 里拉 `/api/admin/orders`；
- *  2. 补 loading / 错误 toast（本次不接，所以列表恒为空 → 走空态）；
- *  3. 各占位 onClick 换成真实动作（详情抽屉 / 关闭订单 / 退款）。
+ * 本次范围（只做「读」）：
+ *   ✅ 首屏加载 + 筛选（查询 / 回车 / 下拉变更）+ 分页切换；loading / 空态 / 错误态齐全；
+ *   ⛔ 行内操作（详情 / 关闭 / 退款）与工具栏「刷新 / 导出」仍是占位 toast；
+ *   ⛔ 统计磁贴没有独立接口，数值一律显示「—」。
  *
- * 字段名与官方前端类型定义 `order.ts` 对齐（本仓库 src/types 暂无 orders.ts，
- * 接入时把下面这几个类型搬过去即可）。
+ * 布局与 globals.css 的 .admin-* 约定一致：卡片直系 flex 子元素里只有 .admin-scroll 一个滚动区。
  */
-type OrderStatus = "PENDING" | "SUCCESS" | "FAILED" | "CANCELLED" | "EXPIRED";
-type OrderType = "ARTICLE" | "SHARE" | "PRODUCT" | "MEMBERSHIP";
-type PaymentProvider = "ALIPAY" | "WECHAT" | "EPAY" | "HUPIJIAO";
-
-/** 列表项（只保留列表页会用到的字段） */
-interface AdminOrder {
-    id: number;
-    order_no: string;
-    order_type: OrderType;
-    user_email: string;
-    amount: number;
-    currency: string;
-    payment_provider: PaymentProvider;
-    payment_status: OrderStatus;
-    trade_no: string;
-    pay_time?: string;
-    created_at: string;
-}
 
 const PAGE_SIZE = 20;
 
@@ -94,7 +84,7 @@ const ORDER_TYPE_LABEL: Record<OrderType, string> = {
     MEMBERSHIP: "会员",
 };
 
-/** 筛选项：状态 / 支付方式 / 订单类型（枚举名与 order.ts 一致，展示用中文） */
+/** 筛选项：状态 / 支付方式 / 订单类型（枚举值来自 @/types/orders，展示用中文） */
 const STATUS_OPTIONS = (Object.keys(STATUS_META) as OrderStatus[]).map((value) => ({
     value,
     label: STATUS_META[value].label,
@@ -108,13 +98,66 @@ const ORDER_TYPE_OPTIONS = (Object.keys(ORDER_TYPE_LABEL) as OrderType[]).map((v
     label: ORDER_TYPE_LABEL[value],
 }));
 
-/** 统计磁贴（本次没有接口，数值统一显示 —） */
+/** 统计磁贴（本次没有对应接口，数值统一显示 —） */
 const STAT_TILES = [
     { label: "订单总数", icon: ShoppingCart, tone: "text-foreground" },
     { label: "已支付金额", icon: Banknote, tone: "text-primary" },
     { label: "待支付", icon: Clock, tone: "text-amber-600 dark:text-amber-400" },
     { label: "今日新增", icon: CalendarPlus, tone: "text-emerald-600 dark:text-emerald-400" },
 ] as const;
+
+/** 筛选控件状态：全部以字符串保存（"" = 未选择） */
+interface FilterState {
+    orderNo: string;
+    tradeNo: string;
+    userEmail: string;
+    status: string;
+    provider: string;
+    orderType: string;
+    startDate: string;
+    endDate: string;
+}
+
+const EMPTY_FILTERS: FilterState = {
+    orderNo: "",
+    tradeNo: "",
+    userEmail: "",
+    status: "",
+    provider: "",
+    orderType: "",
+    startDate: "",
+    endDate: "",
+};
+
+/** 筛选条件 → 接口参数：空串一律转 undefined（后端不接受空字符串） */
+function buildParams(f: FilterState, page: number, pageSize: number): AdminOrderListParams {
+    return {
+        page,
+        page_size: pageSize,
+        status: (f.status || undefined) as OrderStatus | undefined,
+        payment_provider: (f.provider || undefined) as PaymentProvider | undefined,
+        order_type: (f.orderType || undefined) as OrderType | undefined,
+        order_no: f.orderNo.trim() || undefined,
+        trade_no: f.tradeNo.trim() || undefined,
+        user_email: f.userEmail.trim() || undefined,
+        start_date: f.startDate || undefined,
+        end_date: f.endDate || undefined,
+    };
+}
+
+/** 是否有生效中的筛选（决定空态文案：没匹配 vs 确实没数据） */
+function hasAnyFilter(f: FilterState): boolean {
+    return Boolean(
+        f.orderNo.trim() ||
+            f.tradeNo.trim() ||
+            f.userEmail.trim() ||
+            f.status ||
+            f.provider ||
+            f.orderType ||
+            f.startDate ||
+            f.endDate
+    );
+}
 
 /** 时间戳（YYYY-MM-DD HH:MM，本地时区） */
 function formatDateTime(iso?: string): string {
@@ -145,38 +188,86 @@ function orderTypeLabel(type: string) {
     return ORDER_TYPE_LABEL[type as OrderType] ?? (type || "—");
 }
 
-/**
- * 订单管理页外壳：统计磁贴 + 筛选工具栏 + 列表（卡片内滚动、表头吸顶）+ 分页。
- * 布局与 globals.css 的 .admin-* 约定一致：卡片直系 flex 子元素里只有 .admin-scroll 一个滚动区。
- */
 export function OrdersManager() {
-    // ===== 筛选条件：全部为本地 state（能改、能打开下拉，但不过滤） =====
-    const [orderNo, setOrderNo] = useState("");
-    const [tradeNo, setTradeNo] = useState("");
-    const [userEmail, setUserEmail] = useState("");
-    const [status, setStatus] = useState("");
-    const [provider, setProvider] = useState("");
-    const [orderType, setOrderType] = useState("");
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
+    // ===== 筛选条件 =====
+    // draft：输入框里正在编辑的值；applied：真正发给接口的值。
+    // 文本框/日期 → 点「查询」或回车才提交；下拉框 → 变更即提交（都会回到第 1 页）。
+    const [draft, setDraft] = useState<FilterState>(EMPTY_FILTERS);
+    const [applied, setApplied] = useState<FilterState>(EMPTY_FILTERS);
 
-    /** 接口接入前：列表恒为空，接入后换成接口返回的 orders / total / page */
-    const orders: AdminOrder[] = [];
-    const total = orders.length;
-    const page = 1;
-    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    // ===== 列表数据（全部来自 /api/admin/orders）=====
+    const [orders, setOrders] = useState<AdminOrder[]>([]);
+    const [total, setTotal] = useState(0);
+    const [page, setPage] = useState(1);
+    const [pageSize] = useState(PAGE_SIZE);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    /** 非筛选类重拉（错误态重试）；变更即触发 effect */
+    const [reloadKey, setReloadKey] = useState(0);
 
-    /** 重置只清本地筛选（不涉及接口）；查询/刷新/导出等需要接口的动作一律占位 */
-    const resetFilters = () => {
-        setOrderNo("");
-        setTradeNo("");
-        setUserEmail("");
-        setStatus("");
-        setProvider("");
-        setOrderType("");
-        setStartDate("");
-        setEndDate("");
+    /** 请求序号：只认最后一次请求的结果，避免快速切筛选/翻页时旧响应覆盖新数据 */
+    const reqSeq = useRef(0);
+
+    useEffect(() => {
+        const seq = ++reqSeq.current;
+        // 延后到下一个 tick：effect 内同步 setState 会触发级联渲染（react-hooks/set-state-in-effect）
+        const timer = setTimeout(async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const data = await getAdminOrdersApi(buildParams(applied, page, pageSize));
+                if (seq !== reqSeq.current) return;
+                setOrders(data.orders ?? []);
+                setTotal(data.total ?? 0);
+            } catch (e) {
+                if (seq !== reqSeq.current) return;
+                const message = e instanceof Error ? e.message : "订单列表加载失败";
+                setOrders([]);
+                setTotal(0);
+                setError(message);
+                toast.error(message);
+            } finally {
+                if (seq === reqSeq.current) setLoading(false);
+            }
+        }, 0);
+        return () => {
+            clearTimeout(timer);
+            // 卸载 / 参数变化：作废在途请求的结果
+            reqSeq.current += 1;
+        };
+    }, [applied, page, pageSize, reloadKey]);
+
+    /** 提交一组筛选值：进第 1 页并重新请求（即使条件没变也重拉，作为「查询」的语义） */
+    const search = (next: FilterState) => {
+        setDraft(next);
+        setApplied(next);
+        setPage(1);
+        setReloadKey((k) => k + 1);
     };
+
+    /** 下拉变更：立即生效（左侧输入框保持用户正在编辑的内容） */
+    const commit = (patch: Partial<FilterState>) => {
+        search({ ...draft, ...patch });
+    };
+
+    /** 「查询」按钮 / 输入框回车：把 draft 提交出去 */
+    const runQuery = () => search({ ...draft });
+
+    const handleEnter = (e: KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter") runQuery();
+    };
+
+    const resetFilters = () => search({ ...EMPTY_FILTERS });
+
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+    const changePage = (next: number) => {
+        const target = Math.min(Math.max(1, next), totalPages);
+        if (target === page) return;
+        setPage(target);
+    };
+
+    const retry = () => setReloadKey((k) => k + 1);
 
     // 移动端(<640px)：grid-cols-1 把每个单元格竖排成卡片；≥640px：恢复表格式列布局。
     // min-w 只写在 sm: 以上 —— 窄屏若也撑宽，卡片就会被拉出横向滚动。
@@ -202,35 +293,38 @@ export function OrdersManager() {
             {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动。
                 筛选条件与列表列共用同一套响应式规则：<640px 竖排成卡片，≥640px 表格式布局 */}
             <div className="flex shrink-0 flex-wrap items-center gap-2 border-b p-3">
-                {/* 左：筛选条件 + 占位查询按钮 */}
+                {/* 左：筛选条件 + 查询 / 重置 */}
                 <div className="flex flex-1 flex-wrap items-center gap-2">
                     {/* order_no */}
                     <Input
-                        value={orderNo}
-                        onChange={(e) => setOrderNo(e.target.value)}
+                        value={draft.orderNo}
+                        onChange={(e) => setDraft((prev) => ({ ...prev, orderNo: e.target.value }))}
+                        onKeyDown={handleEnter}
                         placeholder="订单号"
                         aria-label="按订单号筛选"
                         className="h-8 w-36 text-sm"
                     />
                     {/* trade_no */}
                     <Input
-                        value={tradeNo}
-                        onChange={(e) => setTradeNo(e.target.value)}
+                        value={draft.tradeNo}
+                        onChange={(e) => setDraft((prev) => ({ ...prev, tradeNo: e.target.value }))}
+                        onKeyDown={handleEnter}
                         placeholder="交易号"
                         aria-label="按交易号筛选"
                         className="h-8 w-36 text-sm"
                     />
                     {/* user_email */}
                     <Input
-                        value={userEmail}
-                        onChange={(e) => setUserEmail(e.target.value)}
+                        value={draft.userEmail}
+                        onChange={(e) => setDraft((prev) => ({ ...prev, userEmail: e.target.value }))}
+                        onKeyDown={handleEnter}
                         placeholder="用户邮箱"
                         aria-label="按用户邮箱筛选"
                         className="h-8 w-44 text-sm"
                     />
 
-                    {/* payment_status */}
-                    <Select value={status} onValueChange={setStatus}>
+                    {/* payment_status（下拉变更立即查询） */}
+                    <Select value={draft.status} onValueChange={(v) => commit({ status: v })}>
                         <SelectTrigger className="h-8 w-28 shrink-0" aria-label="按订单状态筛选">
                             <SelectValue placeholder="订单状态" />
                         </SelectTrigger>
@@ -244,7 +338,7 @@ export function OrdersManager() {
                     </Select>
 
                     {/* payment_provider */}
-                    <Select value={provider} onValueChange={setProvider}>
+                    <Select value={draft.provider} onValueChange={(v) => commit({ provider: v })}>
                         <SelectTrigger className="h-8 w-28 shrink-0" aria-label="按支付方式筛选">
                             <SelectValue placeholder="支付方式" />
                         </SelectTrigger>
@@ -258,7 +352,7 @@ export function OrdersManager() {
                     </Select>
 
                     {/* order_type */}
-                    <Select value={orderType} onValueChange={setOrderType}>
+                    <Select value={draft.orderType} onValueChange={(v) => commit({ orderType: v })}>
                         <SelectTrigger className="h-8 w-26 shrink-0" aria-label="按订单类型筛选">
                             <SelectValue placeholder="订单类型" />
                         </SelectTrigger>
@@ -271,31 +365,28 @@ export function OrdersManager() {
                         </SelectContent>
                     </Select>
 
-                    {/* start_date / end_date：日期范围（本地 state，不过滤） */}
+                    {/* start_date / end_date：日期范围（回车提交） */}
                     <div className="flex items-center gap-1.5">
                         <Input
                             type="date"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
+                            value={draft.startDate}
+                            onChange={(e) => setDraft((prev) => ({ ...prev, startDate: e.target.value }))}
+                            onKeyDown={handleEnter}
                             aria-label="开始日期"
                             className="h-8 w-36 text-sm"
                         />
                         <span className="text-xs text-muted-foreground">至</span>
                         <Input
                             type="date"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
+                            value={draft.endDate}
+                            onChange={(e) => setDraft((prev) => ({ ...prev, endDate: e.target.value }))}
+                            onKeyDown={handleEnter}
                             aria-label="结束日期"
                             className="h-8 w-36 text-sm"
                         />
                     </div>
 
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8"
-                        onClick={() => toast.info("筛选查询待接入")}
-                    >
+                    <Button variant="outline" size="sm" className="h-8" onClick={runQuery}>
                         <Search size={14} />
                         查询
                     </Button>
@@ -305,7 +396,7 @@ export function OrdersManager() {
                     </Button>
                 </div>
 
-                {/* 右：刷新 / 导出（都为占位） */}
+                {/* 右：刷新 / 导出（仍为占位，本次只做「读」） */}
                 <div className="flex items-center gap-2">
                     <Button
                         variant="outline"
@@ -328,7 +419,8 @@ export function OrdersManager() {
                 </div>
             </div>
 
-            {/* 列表：卡片内唯一滚动区（表头吸顶），统计磁贴 / 工具栏 / 分页都不动 */}
+            {/* 列表：卡片内唯一滚动区（表头吸顶），统计磁贴 / 工具栏 / 分页都不动。
+                三种状态都渲染在这一个 .admin-scroll 里，外壳结构保持不变。 */}
             <div className="admin-scroll">
                 {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
                 <div className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}>
@@ -343,14 +435,51 @@ export function OrdersManager() {
                     <span className="text-right">操作</span>
                 </div>
 
-                {orders.length === 0 ? (
-                    // 空态：接口未接入，列表恒为空
+                {loading ? (
+                    // 加载态：只在表格区给骨架 + spinner，不整页白屏
+                    <div className="flex flex-col items-center justify-center gap-3 px-4 py-16 text-center">
+                        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">加载中…</p>
+                        <div className="w-full max-w-3xl space-y-2" aria-hidden>
+                            {[0, 1, 2, 3, 4].map((i) => (
+                                <div key={i} className="h-9 animate-pulse rounded-lg bg-muted/60" />
+                            ))}
+                        </div>
+                    </div>
+                ) : error ? (
+                    // 错误态：可重试（toast 已在请求失败时弹过）
+                    <div className="flex flex-col items-center justify-center gap-2 px-4 py-16 text-center">
+                        <div className="flex size-11 items-center justify-center rounded-full border bg-destructive/10">
+                            <TriangleAlert className="size-5 text-destructive" />
+                        </div>
+                        <p className="text-sm font-medium text-foreground">订单加载失败</p>
+                        <p className="max-w-md text-xs text-muted-foreground">{error}</p>
+                        <Button variant="outline" size="sm" className="mt-1 h-8" onClick={retry}>
+                            <RefreshCw size={14} />
+                            重试
+                        </Button>
+                    </div>
+                ) : orders.length === 0 ? (
+                    // 空态：区分「有筛选但没匹配」与「确实没数据」
                     <div className="flex flex-col items-center justify-center gap-2 px-4 py-16 text-center">
                         <div className="flex size-11 items-center justify-center rounded-full border bg-muted/40">
                             <ShoppingCart className="size-5 text-muted-foreground/70" />
                         </div>
-                        <p className="text-sm font-medium text-foreground">暂无订单</p>
-                        <p className="text-xs text-muted-foreground">接口接入后显示</p>
+                        {hasAnyFilter(applied) ? (
+                            <>
+                                <p className="text-sm font-medium text-foreground">没有匹配的订单</p>
+                                <p className="text-xs text-muted-foreground">当前筛选条件下没有结果，试试放宽条件或重置</p>
+                                <Button variant="outline" size="sm" className="mt-1 h-8" onClick={resetFilters}>
+                                    <RotateCcw size={14} />
+                                    重置筛选
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-sm font-medium text-foreground">暂无订单</p>
+                                <p className="text-xs text-muted-foreground">还没有订单数据</p>
+                            </>
+                        )}
                     </div>
                 ) : (
                     orders.map((order) => {
@@ -406,7 +535,7 @@ export function OrdersManager() {
                                     <span className="mr-1 sm:hidden">创建</span>
                                     {formatDateTime(order.created_at)}
                                 </div>
-                                {/* 操作：详情 / 关闭 / 退款（全部占位） */}
+                                {/* 操作：详情 / 关闭 / 退款（仍为占位，本次只做「读」） */}
                                 <div className="flex items-center gap-1 sm:justify-end">
                                     <Button
                                         variant="ghost"
@@ -445,7 +574,7 @@ export function OrdersManager() {
                 )}
             </div>
 
-            {/* 分页：固定在卡片底部，不随列表滚动（本次恒为「共 0 条 · 第 1/1 页」并禁用） */}
+            {/* 分页：固定在卡片底部，不随列表滚动 */}
             <div className="flex shrink-0 items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
                 <span>
                     共 <span className="font-medium tabular-nums text-foreground">{total}</span> 条 · 第 {page} / {totalPages} 页
@@ -453,8 +582,8 @@ export function OrdersManager() {
                 <PaginationControls
                     page={page}
                     totalPages={totalPages}
-                    onPageChange={() => toast.info("分页待接入")}
-                    disabled
+                    onPageChange={changePage}
+                    disabled={loading}
                 />
             </div>
         </div>

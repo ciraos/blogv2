@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Cloud, HardDrive, Pencil, Plus, RefreshCw, Search, Server, Star, Trash2 } from "lucide-react";
 
@@ -14,67 +14,34 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { getAdminStoragePoliciesApi } from "@/lib/api";
 import { ACTION_TONE } from "@/lib/action-tones";
+import { FLAG_OPTIONS, TYPE_OPTIONS, type StoragePolicy } from "@/types/storage-policy";
 
 /**
- * 存储策略页 —— 纯静态外壳（接口先不接）。
+ * 存储策略页 —— 读接口已接入（本轮只做「读」，增删改按钮仍是占位 toast）。
  *
  * 接口来源（官方 storage-policy.ts / swagger）：远端 `/storage-policies`
- *  - GET    /storage-policies                 列表（响应 { list, total }，⚠️ 无分页字段）
+ *  - GET    /storage-policies                 列表（响应 { list, total }，⚠️ 无分页字段、无查询参数）
  *  - POST   /storage-policies                 新建
  *  - PUT    /storage-policies/{id}            更新
  *  - DELETE /storage-policies/{id}            删除
  *  - POST   /storage-policies/{id}/onedrive/connect  OneDrive 授权回调
  *  - GET    /storage-policies/onedrive/authorize     OneDrive 授权地址
- * 同源代理需另建 `/api/admin/storage-policies`（本轮不接）。
+ * 同源代理 `/api/admin/storage-policies`（见 src/app/api/admin/storage-policies/route.ts）。
  *
- * 本轮约定：不发起任何网络请求；按钮一律 toast.info("…待接入")；
- * 筛选 / 搜索 / 分页为本地 state；数据源是空数组常量，渲染逻辑按字段写好。
+ * ⚠️ 已知问题：线上探活 `/storage-policies` 返回 404（不是 401），即当前后端**没有**这条远端路径，
+ * 接入后大概率会报错。这里照原样实现（不改远端路径、不删代理），但做优雅降级：
+ * 出错时 toast.error + 表格区可重试的错误态，绝不白屏 / 不崩。
+ *
+ * 由于列表接口没有分页参数，分页与筛选全部在本地完成（拿全量 list 后 slice / filter）。
+ * 类型与中文标签常量统一从 `@/types/storage-policy` 引入，组件内不再重复声明。
+ *
+ * 外壳沿用后台列表页统一外壳：admin-card 内只有 admin-scroll 一个直系滚动子元素，
+ * 加载 / 空 / 错误三态都渲染在同一个 admin-scroll 里。
  */
 
 const PAGE_SIZE = 10;
-
-/** 官方 StoragePolicy.type → 中文标签 */
-const TYPE_OPTIONS = [
-    { value: "local", label: "本机存储" },
-    { value: "onedrive", label: "OneDrive" },
-    { value: "tencent_cos", label: "腾讯云 COS" },
-    { value: "aliyun_oss", label: "阿里云 OSS" },
-    { value: "aws_s3", label: "AWS S3" },
-    { value: "qiniu_kodo", label: "七牛云存储" },
-    { value: "upyun", label: "又拍云存储" },
-] as const;
-
-type StorageType = (typeof TYPE_OPTIONS)[number]["value"];
-
-/** 官方 flag → 中文用途 */
-const FLAG_OPTIONS = [
-    { value: "article_image", label: "文章图片默认" },
-    { value: "comment_image", label: "评论图片默认" },
-    { value: "user_avatar", label: "用户头像默认" },
-] as const;
-
-/** 官方 StoragePolicy.settings 里本轮用到的字段 */
-interface StoragePolicySettings {
-    cdn_domain?: string;
-}
-
-/** 官方 StoragePolicy（字段名严格对齐） */
-interface StoragePolicy {
-    id?: number;
-    name?: string;
-    type?: StorageType | string;
-    is_private?: boolean;
-    max_size?: number;
-    base_path?: string;
-    virtual_path?: string;
-    flag?: string;
-    settings?: StoragePolicySettings;
-    created_at?: string;
-}
-
-/** 数据源占位：接接口后由 GET /storage-policies 填充 */
-const STORAGE_POLICIES: StoragePolicy[] = [];
 
 const typeLabel = (type?: string) => TYPE_OPTIONS.find((t) => t.value === type)?.label ?? type ?? "—";
 
@@ -113,25 +80,96 @@ function domainOf(item: StoragePolicy): string {
  * 外壳对齐打赏管理：页面不滚，磁贴 / 工具栏 / 分页固定在卡片上，只有列表区（admin-scroll）内部滚动。
  */
 export function StorageManager() {
-    /** 本地筛选（接口接入后作为请求参数） */
+    /** 列表数据（远端 /storage-policies 全量返回） */
+    const [list, setList] = useState<StoragePolicy[]>([]);
+    const [total, setTotal] = useState(0);
+    const [loading, setLoading] = useState(true);
+    /** 错误信息：非空时列表区显示可重试的错误态（远端 404 走的就是这条路） */
+    const [error, setError] = useState<string | null>(null);
+    /** 本地筛选：类型 + 关键词（接口没有查询参数，全在前端过滤） */
     const [typeFilter, setTypeFilter] = useState<string>("all");
     const [keyword, setKeyword] = useState("");
+    /** 本地分页页码（接口无分页字段，拿全量后在本地 slice） */
     const [page, setPage] = useState(1);
+    /** 重试计数：变化即重新拉取 */
+    const [refreshKey, setRefreshKey] = useState(0);
 
-    const list = STORAGE_POLICIES;
-    const total = STORAGE_POLICIES.length;
-    const loading = false;
-    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    // 拉取列表（浏览器自动携带登录 cookie）。延后到下一个 tick 再 setLoading，
+    // 避免在 effect 内同步 setState 触发级联渲染（react-hooks/set-state-in-effect）。
+    useEffect(() => {
+        let cancelled = false;
+        const timer = setTimeout(() => setLoading(true), 0);
+        getAdminStoragePoliciesApi()
+            .then((data) => {
+                if (cancelled) return;
+                const rows = data?.list ?? [];
+                setList(rows);
+                setTotal(data?.total ?? rows.length);
+                setError(null);
+            })
+            .catch((e) => {
+                if (cancelled) return;
+                const msg = e instanceof Error ? e.message : "存储策略列表加载失败";
+                // 出错（含远端 404）时清空列表：错误态独占列表区，不残留旧数据
+                setList([]);
+                setTotal(0);
+                setError(msg);
+                // toast 提示 + 表格区错误态（可重试），页面结构与外壳不受影响
+                toast.error(msg);
+            })
+            .finally(() => {
+                if (!cancelled) {
+                    clearTimeout(timer);
+                    setLoading(false);
+                }
+            });
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [refreshKey]);
 
-    /** 磁贴（接接口后由列表聚合） */
+    const kw = keyword.trim().toLowerCase();
+    /** 本地筛选结果（类型 + 名称 / 域名 / 路径关键词） */
+    const filtered = list.filter((item) => {
+        if (typeFilter !== "all" && item.type !== typeFilter) return false;
+        if (!kw) return true;
+        const haystack = [item.name, domainOf(item), item.base_path, item.virtual_path, flagLabel(item.flag)]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+        return haystack.includes(kw);
+    });
+
+    const hasFilter = typeFilter !== "all" || kw !== "";
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const currentPage = Math.min(page, totalPages);
+    /** 当前页要渲染的行（本地分页） */
+    const pageRows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+    /** 磁贴数值：按全量列表聚合；加载中 / 出错时用占位符 */
+    const statsReady = !loading && !error;
     const tiles = [
-        { label: "策略数", value: "—", icon: Server },
-        { label: "本机存储", value: "—", icon: HardDrive },
-        { label: "云存储", value: "—", icon: Cloud },
-        { label: "默认策略", value: "—", icon: Star },
+        { label: "策略数", value: statsReady ? String(total || list.length) : "—", icon: Server },
+        {
+            label: "本机存储",
+            value: statsReady ? String(list.filter((it) => it.type === "local").length) : "—",
+            icon: HardDrive,
+        },
+        {
+            label: "云存储",
+            value: statsReady ? String(list.filter((it) => it.type && it.type !== "local").length) : "—",
+            icon: Cloud,
+        },
+        {
+            label: "默认策略",
+            value: statsReady ? String(list.filter((it) => !!it.flag).length) : "—",
+            icon: Star,
+        },
     ];
 
-    const hasFilter = typeFilter !== "all" || keyword.trim() !== "";
+    /** 重试：错误态 / 手动重拉都靠这个计数触发 effect（筛选条件保留） */
+    const retry = () => setRefreshKey((k) => k + 1);
 
     // 移动端(<640px)：grid-cols-1 把每个单元格竖排成卡片；≥640px：恢复表格式列布局。
     // min-w 只写在 sm: 以上 —— 窄屏若也撑宽，卡片就会被拉出横向滚动。
@@ -179,7 +217,7 @@ export function StorageManager() {
                         </Select>
                     </div>
                     <span className="text-xs text-muted-foreground">
-                        共 <span className="font-medium text-foreground">{total}</span> 个存储策略
+                        共 <span className="font-medium text-foreground">{filtered.length}</span> 个存储策略
                     </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -215,7 +253,8 @@ export function StorageManager() {
                 </div>
             </div>
 
-            {/* 列表：卡片内唯一滚动区（表头吸顶），工具栏与分页都不动 */}
+            {/* 列表：卡片内唯一滚动区（表头吸顶），工具栏与分页都不动。
+                加载 / 空 / 错误三态都渲染在这个 admin-scroll 里，外壳保持不变 */}
             <div className="admin-scroll">
                 {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
                 <div
@@ -232,15 +271,50 @@ export function StorageManager() {
                 </div>
 
                 {loading ? (
-                    <div className="py-12 text-center text-sm text-muted-foreground">加载中…</div>
-                ) : list.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center gap-1.5 py-12 text-sm text-muted-foreground">
+                    <div aria-busy="true" aria-label="加载中">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <div
+                                key={i}
+                                className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
+                            >
+                                <div className="h-3 w-28 animate-pulse rounded bg-muted" />
+                                <div className="h-3 w-16 animate-pulse rounded bg-muted" />
+                                <div className="h-3 w-32 animate-pulse rounded bg-muted" />
+                                <div className="h-3 w-14 animate-pulse rounded bg-muted" />
+                                <div className="h-3 w-20 animate-pulse rounded bg-muted" />
+                                <div className="h-3 w-8 animate-pulse rounded bg-muted sm:mx-auto" />
+                                <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+                                <div className="h-6 w-24 animate-pulse rounded bg-muted sm:ml-auto" />
+                            </div>
+                        ))}
+                    </div>
+                ) : error ? (
+                    // 错误态（远端 404 走这里）：消息 + 重试，页面不白屏
+                    <div className="flex min-h-64 flex-col items-center justify-center gap-2 px-4 py-12 text-center">
+                        <span className="flex size-12 items-center justify-center rounded-full border bg-destructive/10">
+                            <Server className="size-5 text-destructive" />
+                        </span>
+                        <p className="text-sm font-medium text-destructive">存储策略加载失败</p>
+                        <p className="max-w-md text-xs text-muted-foreground">{error}</p>
+                        <p className="max-w-md text-xs text-muted-foreground/70">
+                            远端 /storage-policies 在当前后端可能尚未开放（探活为 404），可稍后重试
+                        </p>
+                        <Button variant="outline" size="sm" className="mt-1 h-8 rounded-lg text-xs" onClick={retry}>
+                            <RefreshCw className="size-3.5" />
+                            重试
+                        </Button>
+                    </div>
+                ) : pageRows.length === 0 ? (
+                    // 空态：区分「筛选没匹配」与「确实没数据」
+                    <div className="flex min-h-64 flex-col items-center justify-center gap-1.5 px-4 py-12 text-sm text-muted-foreground">
                         <Server className="size-5 opacity-60" />
                         <span>{hasFilter ? "没有匹配的存储策略" : "暂无存储策略"}</span>
-                        <span className="text-xs text-muted-foreground/70">接口接入后显示</span>
+                        <span className="text-xs text-muted-foreground/70">
+                            {hasFilter ? "换个类型或关键词试试" : "远端返回的列表为空"}
+                        </span>
                     </div>
                 ) : (
-                    list.map((item, index) => (
+                    pageRows.map((item, index) => (
                         <div
                             key={item.id ?? `${item.name}-${index}`}
                             className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
@@ -321,13 +395,18 @@ export function StorageManager() {
                 )}
             </div>
 
-            {/* 分页：固定在卡片底部，不随列表滚动；⚠️ /storage-policies 无分页字段，接接口前保持禁用 */}
+            {/* 分页：固定在卡片底部，不随列表滚动。
+                ⚠️ /storage-policies 无分页字段 → 这里是**本地分页**（全量 list 上 slice），不发分页参数 */}
             <div className="flex shrink-0 items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
                 <span>
-                    第 {page} / {totalPages} 页
-                    <span className="ml-2 text-muted-foreground/70">（接口接入后启用分页）</span>
+                    共 {filtered.length} 条 · 第 {currentPage}/{totalPages} 页
                 </span>
-                <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} disabled />
+                <PaginationControls
+                    page={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                    disabled={loading || !!error}
+                />
             </div>
         </div>
     );

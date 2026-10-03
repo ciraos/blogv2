@@ -35,6 +35,11 @@ import type {
     DonationListData,
     DonationTotalData,
 } from "@/types/donations";
+import type { AdminOrderListData, AdminOrderListParams } from "@/types/orders";
+import type { AdminProductListParams, ProductListData } from "@/types/products";
+import type { AdminDocSeriesListParams, DocSeriesListData } from "@/types/doc-series";
+import type { StoragePolicyListData } from "@/types/storage-policy";
+import type { ThemeListData } from "@/types/themes";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -1805,4 +1810,87 @@ export function deleteAdminDonationApi(id: number): Promise<unknown> {
  */
 export function getDonationTotalApi(): Promise<DonationTotalData> {
     return request<DonationTotalData>("/api/admin/donations/total", { method: "GET" });
+}
+
+// ===================== 订单（PRO） =====================
+//
+// 远端真实路径是闭源 PRO 模块的 /pro/admin/orders（列表）。
+// 浏览器端不能直连（无 CORS + 需鉴权），统一经本应用同源代理 /api/admin/orders 转发
+// （见 src/app/api/admin/orders/route.ts）。
+// ⚠️ 响应里分页字段是 `size`；请求参数里分页字段才叫 `page_size`。
+
+/** GET /api/admin/orders 管理端订单列表（转发远端 /pro/admin/orders） */
+export async function getAdminOrdersApi(params: AdminOrderListParams = {}): Promise<AdminOrderListData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<AdminOrderListData>(`/api/admin/orders${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
+// ===================== 商品（PRO） =====================
+//
+// 远端真实路径是闭源 PRO 模块的 /pro/admin/products（列表）。
+// 同源代理 /api/admin/products（见 src/app/api/admin/products/route.ts）。
+// 响应形状 { list, total, page, page_size }。
+
+/** GET /api/admin/products 管理端商品列表（转发远端 /pro/admin/products） */
+export async function getAdminProductsApi(params: AdminProductListParams = {}): Promise<ProductListData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<ProductListData>(`/api/admin/products${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
+// ===================== 文档系列 =====================
+//
+// 远端路径 /doc-series（swagger：/doc-series、/doc-series/{id}、/doc-series/{id}/articles）。
+// 同源代理 /api/admin/doc-series（见 src/app/api/admin/doc-series/route.ts）。
+// ⚠️ 响应与请求的分页字段都是 `pageSize`（驼峰，不是 page_size）。
+
+/** GET /api/admin/doc-series 文档系列列表（转发远端 /doc-series） */
+export async function getAdminDocSeriesApi(params: AdminDocSeriesListParams = {}): Promise<DocSeriesListData> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<DocSeriesListData>(`/api/admin/doc-series${query ? `?${query}` : ""}`, { method: "GET" });
+}
+
+// ===================== 存储策略 =====================
+//
+// 远端路径 /storage-policies（写接口：POST /storage-policies、PUT|DELETE /storage-policies/{id}）。
+// 同源代理 /api/admin/storage-policies（见 src/app/api/admin/storage-policies/route.ts）。
+// 响应形状 { list, total }：⚠️ 没有分页字段。
+
+/** GET /api/admin/storage-policies 存储策略列表（转发远端 /storage-policies） */
+export function getAdminStoragePoliciesApi(): Promise<StoragePolicyListData> {
+    return request<StoragePolicyListData>("/api/admin/storage-policies", { method: "GET" });
+}
+
+// ===================== 主题（主题商城） =====================
+//
+// 远端路径 /theme/installed（已安装）与 /theme/official（官方）。
+// 同源代理 /api/admin/themes/installed、/api/admin/themes/official
+// （见 src/app/api/admin/themes/installed/route.ts、src/app/api/admin/themes/official/route.ts）。
+// 响应形状 { list, total }：⚠️ 没有分页字段。
+
+/** GET /api/admin/themes/installed 已安装主题列表（转发远端 /theme/installed） */
+export function getAdminInstalledThemesApi(): Promise<ThemeListData> {
+    return request<ThemeListData>("/api/admin/themes/installed", { method: "GET" });
+}
+
+/** GET /api/admin/themes/official 官方主题列表（转发远端 /theme/official） */
+export function getAdminOfficialThemesApi(): Promise<ThemeListData> {
+    return request<ThemeListData>("/api/admin/themes/official", { method: "GET" });
 }

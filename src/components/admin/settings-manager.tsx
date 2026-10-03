@@ -283,7 +283,13 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
 
     return (
         <>
-            <div className="flex overflow-hidden rounded-xl border border-border/60 bg-card">
+            {/* shrink-0 必须保留：外层在 .dsh-main（flex 列）里是 flex 项，而自己是 overflow 非 visible
+                的容器 —— 按 CSS 规范这种项的最小高度会自动算成 0，于是它被压缩到「一屏高」、
+                多出来的内容被裁掉且无处可滚（滚轮找不到可滚祖先 → 设置页整页滚不动）。
+                禁止压缩后容器按内容撑高，滚动重新交回 admin layout 的 main。
+                这里用 overflow-clip 而不是 overflow-hidden：clip 同样按圆角裁剪，但**不构成滚动容器**，
+                所以左侧导航的 sticky 仍以 main 为参照系（用 hidden 时以本容器为参照，而它不滚动 → 吸顶失效）。 */}
+            <div className="flex shrink-0 overflow-clip rounded-xl border border-border/60 bg-card">
                 {/* ===== 左侧导航栏（桌面端）===== */}
                 <aside className="hidden w-60 shrink-0 border-r border-border/60 bg-muted/30 lg:block">
                     {/* 外层负责铺满整列（背景/分隔线连续），内层 sticky 跟随滚动 */}

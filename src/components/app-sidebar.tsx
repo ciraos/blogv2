@@ -8,21 +8,22 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { SidebarCollapseButton } from "@/components/sidebar-collapse-button"
 import {
   LayoutDashboardIcon,
   FileTextIcon,
   MessageSquareIcon,
   UsersIcon,
   Settings2Icon,
-  CircleHelpIcon,
+  ExternalLinkIcon,
   CommandIcon,
   Grid2x2Plus,
   Settings
 } from "lucide-react"
 import { SiteConfigResponse } from "@/types/site-config";
 import { APP_VERSION_LABEL } from "@/lib/version";
+import { resolveAssetUrl } from "@/lib/utils";
 
 const api_url = process.env.NEXT_PUBLIC_API_URL;
 
@@ -111,7 +112,7 @@ const data = {
     {
       title: "访问前台",
       url: "/",
-      icon: (<CircleHelpIcon />),
+      icon: (<ExternalLinkIcon />),
       target: "_blank",
     }
   ],
@@ -126,16 +127,34 @@ export function AppSidebar({
   user: { name: string; email: string; avatar: string }
 }) {
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible="icon" variant="floating" className="dsh-sidebar-flat" {...props}>
 
       <SidebarHeader>
-        {/* 展开：站名 + 折叠按钮同一行；收起（icon 模式）：只剩图标，折叠按钮移到它下面 */}
-        <div className="flex items-center justify-between gap-1 px-1 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-1.5 group-data-[collapsible=icon]:px-0">
-          <div className="flex min-w-0 items-center gap-2 group-data-[collapsible=icon]:justify-center">
-            <CommandIcon className="size-5! shrink-0" />
-            <span className="truncate text-base font-semibold group-data-[collapsible=icon]:hidden">{config?.APP_NAME}</span>
+        {/* 顶部一行：收缩按钮 → 站点名称 → 版本（依次排列）。
+            收起为 icon 模式时改为竖排居中，站名与版本自动隐藏，只留图标 + 收缩按钮 */}
+        {/* 顶部：收缩按钮 → 站点图标 → 站点名称 → 版本。
+            收起成 icon 模式时整块品牌区隐藏、只留居中的收缩按钮（底部同理只留头像）。 */}
+        <div className="flex items-center gap-2 px-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          <SidebarCollapseButton />
+          <div className="flex min-w-0 items-center gap-2 group-data-[collapsible=icon]:hidden">
+            {/* 站点图标：优先用站点配置里的 ICON_URL（千站千面），取不到才回退到通用图标 */}
+            {config?.ICON_URL ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                    src={resolveAssetUrl(config.ICON_URL) ?? ""}
+                    alt=""
+                    aria-hidden="true"
+                    className="size-5 shrink-0 rounded-sm object-cover"
+                />
+            ) : (
+                <CommandIcon className="size-5! shrink-0" />
+            )}
+            <span className="truncate text-base font-semibold">{config?.APP_NAME}</span>
+            {/* 前端版本号（package.json → 构建时注入，与后端版本无关）。纯灰小字，不加底色 */}
+            <span className="shrink-0 text-[10px] font-normal tabular-nums text-muted-foreground">
+              {APP_VERSION_LABEL}
+            </span>
           </div>
-          <SidebarTrigger aria-label="折叠 / 展开侧边栏" title="折叠 / 展开侧边栏" className="shrink-0" />
         </div>
       </SidebarHeader>
 
@@ -146,11 +165,7 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter>
-        {/* 前端版本号（package.json → 构建时注入，与后端版本无关）。
-            收起为图标模式时隐藏，避免挤压用户卡片 */}
-        <div className="px-2 pb-1 text-center text-[11px] tabular-nums text-muted-foreground/60 group-data-[collapsible=icon]:hidden">
-          {APP_VERSION_LABEL}
-        </div>
+        {/* 版本号已移到顶栏（收缩按钮 / 站名之后），这里只留用户卡片 */}
         <NavUser user={user} />
       </SidebarFooter>
 

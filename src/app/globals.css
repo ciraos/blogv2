@@ -92,8 +92,10 @@
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
+  /* 侧边栏「选中 / 悬停」底色：淡紫药丸（对齐后台新版式的选中态）。
+     不用 var(--primary)：深色模式下 primary 是近白色，调出来的淡色会变成白底。 */
+  --sidebar-accent: oklch(0.94 0.03 290);
+  --sidebar-accent-foreground: oklch(0.44 0.16 285);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
   --scrollbar-width: 8px;
@@ -130,8 +132,8 @@
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.32 0.045 290);
+  --sidebar-accent-foreground: oklch(0.86 0.06 290);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
 }
@@ -256,6 +258,25 @@ body {
  *  - .admin-page-head：页顶标题区（标题 + 说明 + 右侧操作）统一节奏
  * 这几条给所有后台列表页共用，样式集中一处，改一次全站生效。
  */
+/* 后台侧边栏（variant="floating"）：把悬浮面板从「整列」缩小到「只包导航区」。
+   这样顶栏那一行（收缩按钮 / 站点图标 / 站点名称 / 版本）与页脚都不在面板内 —— 面板只是导航卡片。
+   列本身透明，页面底色直接透上来，与参考版式一致。 */
+.dsh-sidebar-flat [data-slot="sidebar-inner"] {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* 导航区做成面板：展开态与收起态都保留（收起后是 48px 宽的图标栏，
+   横向不加任何外边距 —— 只靠外层 floating 自带的 p-2，32px 的图标按钮才放得下）。 */
+.dsh-sidebar-flat [data-slot="sidebar-content"] {
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius);
+  background: var(--sidebar);
+}
+
 .admin-page {
   display: flex;
   /* 自己声明「可压缩」：撑满内容区高度、且允许被压到可用高度以内，
