@@ -26,31 +26,48 @@ function colorFromName(name: string): string {
     return palette[hash % palette.length];
 }
 
-/** 友链头像圆（120px；无 logo / 失效占位图 / 加载失败时用首字圆兜底） */
-function FlinkAvatar({ name, logo }: { name: string; logo: string | null }) {
+/** 友链头像圆（120px；无 logo / 失效占位图 / 加载失败时用首字圆兜底）
+ *  有 url 时整圆为新标签页链接，无 url 时保持纯展示（不可点击）。 */
+function FlinkAvatar({ name, logo, url }: { name: string; logo: string | null; url?: string | null }) {
     const color = useMemo(() => colorFromName(name), [name]);
     const [avatarFailed, setAvatarFailed] = useState(false);
     // 数据里直接填了失效占位图（如 404_1.avif）的视为无头像
     const isPlaceholderLogo = !!logo && /404|placeholder|default/i.test(logo);
     const showInitials = avatarFailed || isPlaceholderLogo || !logo;
 
+    const avatarClass =
+        "flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-lg transition-transform duration-300 hover:scale-105 md:size-30";
+    const inner = showInitials ? (
+        <FlinkInitial name={name} color={color} />
+    ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+            src={logo ?? ""}
+            alt={name}
+            loading="lazy"
+            onError={() => setAvatarFailed(true)}
+            className="h-full w-full object-cover"
+        />
+    );
+
+    if (url) {
+        return (
+            <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={name}
+                aria-label={name}
+                className={avatarClass}
+            >
+                {inner}
+            </a>
+        );
+    }
+
     return (
-        <span
-            className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-lg transition-transform duration-300 hover:scale-105 md:size-30"
-            title={name}
-        >
-            {showInitials ? (
-                <FlinkInitial name={name} color={color} />
-            ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                    src={logo ?? ""}
-                    alt={name}
-                    loading="lazy"
-                    onError={() => setAvatarFailed(true)}
-                    className="h-full w-full object-cover"
-                />
-            )}
+        <span className={avatarClass} title={name}>
+            {inner}
         </span>
     );
 }
@@ -59,7 +76,12 @@ function FlinkAvatar({ name, logo }: { name: string; logo: string | null }) {
  *  默认纳入全部友链头像，滚动可遍历每个友链；仅当友链太少(<16)才循环填充以保证轨道铺满容器。 */
 function useWallWallItems(links: FriendLink[]) {
     return useMemo(() => {
-        const raw = links.map((l) => ({ name: l.name, logo: resolveAssetUrl(l.logo) }));
+        const raw = links.map((l) => ({
+            name: l.name,
+            logo: resolveAssetUrl(l.logo),
+            // 与「随机访问」同一套规范化：不以 http 开头就补 https://
+            url: l.url ? (l.url.startsWith("http") ? l.url : `https://${l.url}`) : null,
+        }));
         if (raw.length === 0) return { top: [], bottom: [] };
         // 数量足够则用全部友链；太少则循环填充到 16 个，避免轨道出现空白
         const base = raw.length >= 16 ? raw : Array.from({ length: 16 }, (_, i) => raw[i % raw.length]);
@@ -123,14 +145,14 @@ export function FlinkBanner({ links }: { links: FriendLink[] }) {
                     {/* 上排 */}
                     <div className="link-tag-wall-track flex items-center gap-x-6">
                         {top.map((item, index) => (
-                            <FlinkAvatar key={`top-${index}-${item.name}`} name={item.name} logo={item.logo} />
+                            <FlinkAvatar key={`top-${index}-${item.name}`} name={item.name} logo={item.logo} url={item.url} />
                         ))}
                     </div>
                     {/* 下排：外包一层 wrapper 做整体左移错位（不与内部滚动动画的 transform 冲突） */}
                     <div className="relative -translate-x-10 mt-6 md:-translate-x-15 md:mt-7">
                         <div className="link-tag-wall-track flex items-center gap-x-6">
                             {bottom.map((item, index) => (
-                                <FlinkAvatar key={`bottom-${index}-${item.name}`} name={item.name} logo={item.logo} />
+                                <FlinkAvatar key={`bottom-${index}-${item.name}`} name={item.name} logo={item.logo} url={item.url} />
                             ))}
                         </div>
                     </div>

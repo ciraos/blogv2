@@ -50,9 +50,17 @@ export function LinkApplyConditions({ conditions }: LinkApplyConditionsProps) {
                                     onChange={() => toggle(index)}
                                     className="sr-only"
                                 />
-                                {/* 条件文案来自后端，可能含 <b> 等标签（加重字纯加粗同色，不似链接） */}
+                                {/* 条件文案来自后端，可能含 <b> / <strong> 等标签，加重的词用「主题主色 + 粗体」突出。
+                                    粗体为什么写 font-bold(700) 而不是 font-semibold(600)：
+                                    这里没有自带字体，中文由浏览器回退到系统字体（微软雅黑 / Noto Sans SC / 苹方…），
+                                    这类字体通常只随 400 与 700 两个字重；请求 600 时部分浏览器/字体会就近匹配到
+                                    「中等/半粗」甚至回落到 400，看起来就像没变粗。700 是这些回退字体都有的真实字重，
+                                    必定命中粗体字面；若某个回退字体只有 400，浏览器默认 font-synthesis-weight:auto
+                                    会合成粗体（全站没有 font-synthesis:none），所以任何浏览器上都会变粗。
+                                    颜色用 --link-accent（浅色下是加深的主色，保证白底对比度；深色下就是 --primary），
+                                    不写死 hex；<b> 与 <strong> 都覆盖，后端两种写法都不会丢主色。 */}
                                 <span
-                                    className="text-sm leading-relaxed [&_b]:font-semibold [&_b]:text-foreground"
+                                    className="text-sm leading-relaxed [&_b]:font-bold [&_b]:text-(--link-accent) [&_strong]:font-bold [&_strong]:text-(--link-accent)"
                                     dangerouslySetInnerHTML={{ __html: condition }}
                                 />
                             </label>

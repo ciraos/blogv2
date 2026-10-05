@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server"
 import { cookies } from "next/headers"
 
 import { API_URL, getCommentsWithChildrenApi } from "@/lib/api"
+import { clientForwardHeaders } from "@/lib/proxy-headers"
 
 interface CommentCreateResponse {
     code: number
@@ -18,6 +19,9 @@ interface CommentCreateResponse {
 // 只有带上 Authorization 后端才知道「用管理员邮箱评论的是管理员本人」；
 // 不带就被当作游客，一旦邮箱命中管理员邮箱会被直接拒绝（constant.ErrAdminEmailUsedByGuest
 // → 403「此邮箱为管理员专属」），即使用户在本站已登录。
+//
+// 还必须转发 UA 与客户端 IP：后端用它们推断评论的「操作系统与浏览器」「IP 归属地」，
+// 不转发这两项后端只能记「未知」（见 @/lib/proxy-headers 的说明与安全前提）。
 export async function POST(request: NextRequest) {
     let body: Record<string, unknown>
     try {
@@ -29,7 +33,8 @@ export async function POST(request: NextRequest) {
     const cookieStore = await cookies()
     const token = cookieStore.get("token")?.value
 
-    const headers = new Headers({ "Content-Type": "application/json" })
+    const headers = clientForwardHeaders(request)
+    headers.set("Content-Type", "application/json")
     if (token) {
         headers.set("Authorization", `Bearer ${token}`)
     }

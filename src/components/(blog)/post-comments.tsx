@@ -141,9 +141,14 @@ function CommentRow({
                     </span>
                 </div>
                 {/* 内容气泡：铺满评论列、无边框（层次由外层的评论卡片提供）；
-                    回复别人的评论（reverse，头像在右）正文靠右显示，代码框内部由 CSS 复位为左对齐 */}
+                    回复别人的评论（reverse，头像在右）正文靠右显示，代码框内部由 CSS 复位为左对齐；
+                    引用块（即刻页「评论这条说说」以 `> 引用` 提交）默认只显示 2 行、超出省略号。
+                    line-clamp 必须落在「没有 padding 的内层 <p>」上，不能落在 blockquote 上：
+                    带 padding 的元素被 line-clamp 时，Chromium 只把内容高度截到 2 行，而
+                    overflow:hidden 的裁剪边界仍是 padding box —— 底部 7px 内边距会把第 3 行的
+                    上半截字形露出来，引用看起来就是「被拦腰切断 / 内容没了一半」。 */}
                 <div
-                    className={`comment-bubble relative mt-1.5 w-full min-w-0 break-words py-2 px-3 rounded-md bg-card text-sm leading-relaxed [&_p]:my-1 ${reverse ? "comment-bubble-reverse" : ""
+                    className={`comment-bubble relative mt-1.5 w-full min-w-0 break-words py-2 px-3 rounded-md bg-card text-sm leading-relaxed [&_p]:my-1 [&_blockquote>p]:line-clamp-2 ${reverse ? "comment-bubble-reverse" : ""
                         }`}
                 >
                     {/* 气泡尾巴：卡片色三角，指向头像一侧（去掉边框后不再需要外层描边三角） */}

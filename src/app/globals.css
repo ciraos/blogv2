@@ -98,6 +98,9 @@
   --sidebar-accent-foreground: oklch(0.44 0.16 285);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* 友链申请条件里被 <b>/<strong> 强调的词：浅色下把主色加深，保证白底上的对比度
+     （直接用 --primary 在白卡片上约 2.2:1，偏浅）；深色模式见 .dark 里改回 --primary。 */
+  --link-accent: color-mix(in oklab, var(--primary) 72%, black);
   --scrollbar-width: 8px;
   --scrollbar-thumb: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
   --scrollbar-thumb-hover: color-mix(in oklch, var(--muted-foreground) 60%, transparent);
@@ -136,6 +139,8 @@
   --sidebar-accent-foreground: oklch(0.86 0.06 290);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  /* 深色底上不需要加深，直接用主色 */
+  --link-accent: var(--primary);
 }
 
 body {
