@@ -1,8 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Eye, Image as ImageIcon, Music, Pencil, Plus, RefreshCw, Trash2, Video as VideoIcon } from "lucide-react";
+import {
+    Eye,
+    Image as ImageIcon,
+    Link as LinkIcon,
+    Loader2,
+    Music,
+    Pencil,
+    Plus,
+    RefreshCw,
+    Trash2,
+    Video as VideoIcon,
+    X,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,23 +32,66 @@ import {
     deleteAdminEssayApi,
     getAdminEssaysListApi,
     updateAdminEssayApi,
+    uploadAdminEssayImageApi,
 } from "@/lib/api";
-import type { Essay } from "@/types/essays";
+import { cn, toSameOriginMediaUrl } from "@/lib/utils";
+import type { AdminCreateEssayRequest, Essay } from "@/types/essays";
 
 const PAGE_SIZE = 10;
 
+/** 说说内容上限（与官方发布说说对话框一致：正文 5000 字，附带「N / 5000」字数统计） */
+const CONTENT_MAX = 5000;
+
 const STATUS_OPTIONS = [
-    { value: "1", label: "发布" },
+    { value: "1", label: "已发布" },
     { value: "2", label: "草稿" },
     { value: "3", label: "隐藏" },
 ];
 
 /** 状态徽章（1=发布 2=草稿 3=隐藏） */
 function statusBadge(status?: number) {
-    if (status === 1) return { label: "发布", cls: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400" };
+    if (status === 1) return { label: "已发布", cls: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400" };
     if (status === 2) return { label: "草稿", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-400" };
     if (status === 3) return { label: "隐藏", cls: "bg-muted text-muted-foreground" };
     return { label: String(status ?? ""), cls: "bg-muted text-muted-foreground" };
+}
+
+/**
+ * 表单行：标签（必填带 *）+ 控件 + 说明/错误文案。
+ * 结构对齐官方前端的 FormInput / FormTextarea（标签在控件上方、说明文字在控件下方）。
+ */
+function FormField({
+    label,
+    required,
+    description,
+    error,
+    children,
+}: {
+    label?: string;
+    required?: boolean;
+    description?: string;
+    error?: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <label className="flex flex-col gap-1.5">
+            {label && (
+                <span className="text-sm font-medium text-foreground/80">
+                    {label}
+                    {required && <span className="ml-0.5 text-destructive">*</span>}
+                </span>
+            )}
+            {children}
+            {(description || error) && (
+                <span
+                    role={error ? "alert" : undefined}
+                    className={cn("text-xs leading-relaxed", error ? "text-destructive" : "text-muted-foreground")}
+                >
+                    {error || description}
+                </span>
+            )}
+        </label>
+    );
 }
 
 /** 非空判定：字符串需非空；数组需有元素；对象需「任一值非空」才算有效。
@@ -76,7 +131,7 @@ function formatTime(iso?: string): string {
     return `${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-/** 说说管理页：状态筛选 + 列表 + 编辑弹窗 + 删除 */
+/** 说说管理页：状态筛选 + 列表 + 发布/编辑弹窗 + 删除 */
 export function EssaysManager() {
     const [list, setList] = useState<Essay[]>([]);
     const [total, setTotal] = useState(0);
@@ -90,25 +145,39 @@ export function EssaysManager() {
     const [editing, setEditing] = useState<Essay | null>(null);
     const [createOpen, setCreateOpen] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    /** 图片列表下方的「输入图片 URL」行是否展开（对应官方对话框的「添加链接」贴片） */
+    const [urlPanelOpen, setUrlPanelOpen] = useState(false);
+    const [imageUrlInput, setImageUrlInput] = useState("");
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [form, setForm] = useState({
         content: "",
-        image: "",
+        /** 图片列表（官方对话框为缩略图贴片，不再是一行一个地址的文本框） */
+        images: [] as string[],
         address: "",
         from: "",
         link: "",
-        sort_order: "",
-        status: "",
+        /** 网易云歌曲 ID（官方对话框的「音乐配置」，空表示不带音乐） */
+        songId: "",
+        sort_order: "0",
+        status: "1",
     });
+
+    const isEdit = Boolean(editing);
 
     const openEdit = (essay: Essay) => {
         setEditing(essay);
+        setCreateOpen(false);
+        setUrlPanelOpen(false);
+        setImageUrlInput("");
         setForm({
             content: essay.content || "",
-            image: (essay.image || []).join("\n"),
+            images: [...(essay.image || [])],
             address: essay.address || "",
             from: essay.from || "",
             link: essay.link || "",
-            sort_order: essay.sort_order ? String(essay.sort_order) : "",
+            songId: essay.aplayer?.id ? String(essay.aplayer.id) : "",
+            sort_order: essay.sort_order != null ? String(essay.sort_order) : "0",
             status: essay.status ? String(essay.status) : "1",
         });
     };
@@ -116,79 +185,114 @@ export function EssaysManager() {
     const closeDialog = () => {
         setEditing(null);
         setCreateOpen(false);
+        setUrlPanelOpen(false);
+        setImageUrlInput("");
     };
 
-    /** 打开新增弹窗（空表单） */
+    /** 打开发布弹窗（空表单） */
     const openCreate = () => {
         setEditing(null);
+        setUrlPanelOpen(false);
+        setImageUrlInput("");
         setForm({
             content: "",
-            image: "",
+            images: [],
             address: "",
             from: "",
             link: "",
-            sort_order: "",
+            songId: "",
+            sort_order: "0",
             status: "1",
         });
         setCreateOpen(true);
     };
 
+    /** 追加图片地址（去重后加进图片列表） */
+    const appendImage = (url: string) => {
+        const value = url.trim();
+        if (!value) return;
+        if (form.images.includes(value)) {
+            toast.warning("该图片已添加");
+            return;
+        }
+        setForm((prev) => ({ ...prev, images: [...prev.images, value] }));
+    };
+
+    /** 「添加链接」：把输入框里的图片 URL 加进列表 */
+    const addImageUrl = () => {
+        appendImage(imageUrlInput);
+        setImageUrlInput("");
+        setUrlPanelOpen(false);
+    };
+
+    const removeImage = (index: number) => {
+        setForm((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
+    };
+
+    /** 选择本地图片 → 走说说自己的上传接口（远端 /pro/essays/upload-image，图片落到 essay_image 目录）拿回本站地址 */
+    const handleFile = async (file: File) => {
+        if (!file.type.startsWith("image/")) {
+            toast.warning("请选择图片文件");
+            return;
+        }
+        setUploading(true);
+        try {
+            // 后端字段名不完全确定：url / file_id 任一可用即可（解析见 lib/api.ts）
+            const { url, file_id } = await uploadAdminEssayImageApi(file);
+            const resolved = url || file_id;
+            if (!resolved) throw new Error("后端未返回图片 URL");
+            appendImage(toSameOriginMediaUrl(resolved));
+            toast.success("上传成功");
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "上传失败，请稍后重试");
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) void handleFile(file);
+        // 清空 value，同一个文件再次选择也能触发 change
+        e.target.value = "";
+    };
+
+    /** 表单 → 接口请求体（字段口径与官方发布说说对话框一致） */
+    const buildPayload = (): AdminCreateEssayRequest => ({
+        content: form.content.trim(),
+        image: form.images,
+        address: form.address.trim() || undefined,
+        from: form.from.trim() || undefined,
+        link: form.link.trim() || undefined,
+        aplayer: form.songId.trim() ? { id: form.songId.trim() } : undefined,
+        status: Number(form.status) || 1,
+        sort_order: Number(form.sort_order) || 0,
+    });
+
     const handleSave = async () => {
-        if (createOpen && !editing) {
-            // —— 新增 ——
-            if (!form.content.trim()) {
-                toast.error("正文内容必填");
-                return;
-            }
-            setSaving(true);
-            try {
-                await createAdminEssayApi({
-                    content: form.content,
-                    image: form.image
-                        .split(/\r?\n/)
-                        .map((s) => s.trim())
-                        .filter(Boolean),
-                    address: form.address || undefined,
-                    from: form.from || undefined,
-                    link: form.link || undefined,
-                    sort_order: form.sort_order ? Number(form.sort_order) : undefined,
-                    status: form.status ? Number(form.status) : undefined,
-                });
-                toast.success("新增成功");
-                setCreateOpen(false);
-                setRefreshKey((k) => k + 1);
-            } catch (e) {
-                toast.error(e instanceof Error ? e.message : "新增失败");
-            } finally {
-                setSaving(false);
-            }
-            return;
-        }
-        // —— 编辑 ——
-        if (!editing) return;
         if (!form.content.trim()) {
-            toast.error("正文内容必填");
+            toast.warning("内容不能为空");
             return;
         }
+        const payload = buildPayload();
         setSaving(true);
         try {
-            await updateAdminEssayApi(editing.id, {
-                content: form.content,
-                image: form.image
-                    .split(/\r?\n/)
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                address: form.address || undefined,
-                from: form.from || undefined,
-                link: form.link || undefined,
-                sort_order: form.sort_order ? Number(form.sort_order) : undefined,
-                status: form.status ? Number(form.status) : undefined,
-            });
-            toast.success("保存成功");
-            setEditing(null);
+            if (isEdit && editing) {
+                // —— 保存修改 ——
+                await updateAdminEssayApi(editing.id, payload);
+                toast.success("说说已更新");
+                setEditing(null);
+            } else {
+                // —— 发布 ——
+                await createAdminEssayApi(payload);
+                toast.success("说说已发布");
+                setCreateOpen(false);
+            }
+            setUrlPanelOpen(false);
+            setImageUrlInput("");
             setRefreshKey((k) => k + 1);
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : "保存失败");
+            toast.error(e instanceof Error ? e.message : isEdit ? "更新失败" : "发布失败");
         } finally {
             setSaving(false);
         }
@@ -287,7 +391,7 @@ export function EssaysManager() {
                         onClick={openCreate}
                     >
                         <Plus className="size-3.5" />
-                        新增说说
+                        发布说说
                     </Button>
                     <Button
                         variant="outline"
@@ -404,101 +508,249 @@ export function EssaysManager() {
                 />
             </div>
 
-            {/* ===== 编辑 / 新增说说弹窗 ===== */}
+            {/* ===== 发布 / 编辑说说弹窗 =====
+                结构对齐官方（PRO 版）「说说管理」的发布说说对话框：
+                头部（图标 + 标题 + 一句话说明）→ 滚动区（相关链接 / 说说内容（带 N/5000 字数统计）/
+                图片列表（缩略图 + 上传 + 贴链接）/ 音乐配置（网易云歌曲 ID）/ 地址·发布者 / 状态·排序）
+                → 底部固定「取消 / 发布（保存修改）」。 */}
             {(editing || createOpen) && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
                     onMouseDown={closeDialog}
                 >
                     <div
-                        className="w-full max-w-xl rounded-xl border bg-card p-5 shadow-xl"
+                        className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-xl border bg-card shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
-                        <div className="mb-4 flex items-center justify-between">
-                            <h3 className="text-base font-semibold">
-                                {createOpen ? "新增说说" : `编辑说说 #${editing?.id}`}
-                            </h3>
+                        {/* 头部：图标 + 标题 + 说明 */}
+                        <div className="flex shrink-0 items-center gap-3 border-b border-border/60 px-5 py-4">
+                            <div className="rounded-xl bg-primary/10 p-2">
+                                <Plus className="size-5 text-primary" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <h3 className="text-base font-semibold">
+                                    {isEdit ? "编辑说说" : "发布说说"}
+                                </h3>
+                                <p className="mt-0.5 text-xs font-normal text-muted-foreground">
+                                    {isEdit ? "修改即刻动态内容" : "发布一条新的即刻动态"}
+                                </p>
+                            </div>
                             <button
                                 type="button"
                                 onClick={closeDialog}
                                 aria-label="关闭"
-                                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                             >
-                                ✕
+                                <X className="size-4" />
                             </button>
                         </div>
-                        <div className="space-y-3">
-                            <label className="block">
-                                <span className="mb-1 block text-xs font-medium text-muted-foreground">正文（必填）</span>
+
+                        {/* 内容区：唯一的滚动区 */}
+                        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-4">
+                            {/* 相关链接 */}
+                            <FormField label="相关链接">
+                                <div className="relative">
+                                    <LinkIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+                                    <Input
+                                        className="pl-8"
+                                        value={form.link}
+                                        onChange={(e) => setForm({ ...form, link: e.target.value })}
+                                        placeholder="https://example.com（可选）"
+                                    />
+                                </div>
+                            </FormField>
+
+                            {/* 说说内容（必填）+ 字数统计 */}
+                            <FormField
+                                label="说说内容"
+                                required
+                                description={`${form.content.length} / ${CONTENT_MAX}`}
+                            >
                                 <textarea
                                     value={form.content}
                                     onChange={(e) => setForm({ ...form, content: e.target.value })}
                                     rows={4}
-                                    placeholder="此时此刻的想法…"
-                                    className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                                    maxLength={CONTENT_MAX}
+                                    placeholder="请输入说说内容..."
+                                    className="max-h-48 min-h-[5.5rem] w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
                                 />
-                            </label>
-                            <label className="block">
-                                <span className="mb-1 block text-xs font-medium text-muted-foreground">图片地址（可选，每行一个）</span>
-                                <textarea
-                                    value={form.image}
-                                    onChange={(e) => setForm({ ...form, image: e.target.value })}
-                                    rows={3}
-                                    placeholder="https://…"
-                                    className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                            </FormField>
+
+                            {/* 图片列表：缩略图贴片 + 上传 + 手动贴链接 */}
+                            <div className="space-y-3">
+                                <p className="text-sm font-medium text-foreground">图片列表</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {form.images.map((url, index) => (
+                                        <div
+                                            key={url}
+                                            className="group relative size-20 overflow-hidden rounded-xl border border-border/60 bg-muted/30"
+                                        >
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img
+                                                src={url}
+                                                alt={`图片 ${index + 1}`}
+                                                className="size-full object-cover"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeImage(index)}
+                                                aria-label={`删除图片 ${index + 1}`}
+                                                className="absolute top-0.5 right-0.5 flex size-5 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                                            >
+                                                <X className="size-3" />
+                                            </button>
+                                        </div>
+                                    ))}
+
+                                    {/* 上传图片（走说说自己的上传接口 /api/admin/essays/upload-image） */}
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={uploading}
+                                        className="flex size-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border/80 bg-muted/30 transition-colors hover:border-primary/50 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {uploading ? (
+                                            <Loader2 className="size-5 animate-spin text-primary" />
+                                        ) : (
+                                            <>
+                                                <Plus className="size-5 text-muted-foreground" />
+                                                <span className="text-[10px] text-muted-foreground">上传图片</span>
+                                            </>
+                                        )}
+                                    </button>
+
+                                    {/* 添加链接（保留原先「图片地址」能力，只是收进贴片里） */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setUrlPanelOpen((v) => !v)}
+                                        aria-expanded={urlPanelOpen}
+                                        className="flex size-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border/80 bg-muted/30 transition-colors hover:border-primary/50 hover:bg-primary/5"
+                                    >
+                                        <LinkIcon className="size-5 text-muted-foreground" />
+                                        <span className="text-[10px] text-muted-foreground">添加链接</span>
+                                    </button>
+                                </div>
+
+                                {urlPanelOpen && (
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            className="flex-1"
+                                            value={imageUrlInput}
+                                            onChange={(e) => setImageUrlInput(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter") {
+                                                    e.preventDefault();
+                                                    addImageUrl();
+                                                }
+                                            }}
+                                            placeholder="输入图片 URL"
+                                        />
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            className="shrink-0"
+                                            onClick={addImageUrl}
+                                            disabled={!imageUrlInput.trim()}
+                                        >
+                                            添加
+                                        </Button>
+                                    </div>
+                                )}
+
+                                <p className="text-xs text-muted-foreground">
+                                    支持 JPG、PNG、WEBP 格式，建议尺寸 800x600，也可以直接输入图片链接
+                                </p>
+
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp,image/gif"
+                                    onChange={handleFileChange}
+                                    className="hidden"
                                 />
-                            </label>
-                            <div className="grid grid-cols-2 gap-3">
-                                <label className="block">
-                                    <span className="mb-1 block text-xs font-medium text-muted-foreground">定位地址</span>
-                                    <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="如：家里" />
-                                </label>
-                                <label className="block">
-                                    <span className="mb-1 block text-xs font-medium text-muted-foreground">来源</span>
-                                    <Input value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })} placeholder="如：微博" />
-                                </label>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <label className="block">
-                                    <span className="mb-1 block text-xs font-medium text-muted-foreground">关联链接</span>
-                                    <Input value={form.link} onChange={(e) => setForm({ ...form, link: e.target.value })} placeholder="https://…" />
-                                </label>
-                                <label className="block">
-                                    <span className="mb-1 block text-xs font-medium text-muted-foreground">排序权重</span>
+
+                            {/* 音乐配置：只支持网易云歌曲 ID */}
+                            <div className="space-y-3">
+                                <p className="text-sm font-medium text-foreground">音乐配置</p>
+                                <div className="space-y-3 rounded-xl border border-border/60 bg-muted/30 p-3">
+                                    <div>
+                                        <p className="text-sm text-foreground/80">只支持网易云音乐</p>
+                                        <p className="mt-0.5 text-xs text-muted-foreground">
+                                            请在网易云音乐中找到歌曲，复制歌曲 ID（歌曲链接中的数字）
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center overflow-hidden rounded-lg border border-input transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30">
+                                        <span className="flex h-8 shrink-0 items-center border-r border-border/80 px-2 text-xs text-muted-foreground">
+                                            歌曲 ID
+                                        </span>
+                                        <input
+                                            value={form.songId}
+                                            onChange={(e) => setForm({ ...form, songId: e.target.value })}
+                                            placeholder="请输入网易云音乐歌曲 ID，如：1901371647"
+                                            className="h-8 min-w-0 flex-1 bg-transparent px-2.5 text-sm outline-none placeholder:text-muted-foreground"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 地址 / 发布者（窄屏单列，≥sm 两列） */}
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <FormField label="地址">
+                                    <Input
+                                        value={form.address}
+                                        onChange={(e) => setForm({ ...form, address: e.target.value })}
+                                        placeholder="如：深圳"
+                                    />
+                                </FormField>
+                                <FormField label="发布者">
+                                    <Input
+                                        value={form.from}
+                                        onChange={(e) => setForm({ ...form, from: e.target.value })}
+                                        placeholder="留空则不显示"
+                                    />
+                                </FormField>
+                            </div>
+
+                            {/* 状态 / 排序 */}
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <FormField label="状态">
+                                    <Select
+                                        value={form.status}
+                                        onValueChange={(v) => setForm({ ...form, status: v })}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="选择状态" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {STATUS_OPTIONS.map((o) => (
+                                                <SelectItem key={o.value} value={o.value}>
+                                                    {o.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </FormField>
+                                <FormField label="排序" description="数值越大越靠前">
                                     <Input
                                         type="number"
                                         value={form.sort_order}
                                         onChange={(e) => setForm({ ...form, sort_order: e.target.value })}
                                         placeholder="0"
                                     />
-                                </label>
+                                </FormField>
                             </div>
-                            <label className="block">
-                                <span className="mb-1 block text-xs font-medium text-muted-foreground">状态</span>
-                                <Select
-                                    value={form.status}
-                                    onValueChange={(v) => setForm({ ...form, status: v })}
-                                >
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="选择状态" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {STATUS_OPTIONS.map((o) => (
-                                            <SelectItem key={o.value} value={o.value}>
-                                                {o.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </label>
-                            <div className="flex justify-end gap-2 pt-2">
-                                <Button variant="outline" onClick={closeDialog}>
-                                    取消
-                                </Button>
-                                <Button onClick={handleSave} disabled={saving}>
-                                    {saving ? (createOpen ? "新增中…" : "保存中…") : createOpen ? "新增" : "保存"}
-                                </Button>
-                            </div>
+                        </div>
+
+                        {/* 底部操作：固定在弹窗底部 */}
+                        <div className="flex shrink-0 items-center justify-end gap-2 border-t px-5 py-3.5">
+                            <Button variant="outline" onClick={closeDialog} disabled={saving}>
+                                取消
+                            </Button>
+                            <Button onClick={handleSave} disabled={saving}>
+                                {saving && <Loader2 className="size-4 animate-spin" />}
+                                {isEdit ? "保存修改" : "发布"}
+                            </Button>
                         </div>
                     </div>
                 </div>

@@ -1543,6 +1543,39 @@ export async function uploadAdminImageApi(file: File): Promise<{ url: string; fi
     });
 }
 
+/**
+ * POST /api/admin/essays/upload-image 后台上传说说图片（同源代理 → 远端 POST /pro/essays/upload-image，需管理员）。
+ * 远端路径依据见 src/app/api/admin/essays/upload-image/route.ts（实测 POST 只有 /pro/essays/upload-image 存在）。
+ * 该接口会把图片存到后端的 essay_image 目录（前端不传任何目录参数，官方前端 FormData 只有 file）。
+ *
+ * 该接口官方前端返回形如 { url, file_id }，但文档未固定字段名，故做兼容解析：
+ * - 取 url / file_id 两个字段（任一缺失都不报错）；
+ * - 兼容「响应体直接是 data」与「data 里再套一层 data」两种包裹；
+ * - 拿不到任何地址时不抛错，只返回空 url，由调用方统一提示（避免各处重复处理）。
+ */
+export async function uploadAdminEssayImageApi(file: File): Promise<{ url: string; file_id?: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    // FormData 交给 fetch 自动带 boundary，不能手动设 Content-Type
+    const data = await request<unknown>("/api/admin/essays/upload-image", {
+        method: "POST",
+        body: formData,
+    });
+
+    const pick = (source: unknown): { url: string; file_id?: string } => {
+        const record = (source ?? {}) as Record<string, unknown>;
+        const url = typeof record.url === "string" ? record.url : "";
+        const fileId = typeof record.file_id === "string" ? record.file_id : undefined;
+        // file_id 兜底当地址用：兼容「只回 file_id」的后端（值本身可能是 URL 或 /api/f/... 路径）
+        return { url: url || fileId || "", file_id: fileId };
+    };
+
+    const outer = pick(data);
+    if (outer.url) return outer;
+    // 极少数情况可能整体包了一层 { data: {...} }
+    return pick((data as { data?: unknown } | null)?.data);
+}
+
 // ===================== 文件管理 FILE =====================
 
 /** 文件管理根路径（后端虚拟路径 URI，默认「我的文件」） */
@@ -1557,7 +1590,7 @@ export interface AdminFileItem {
     size: number;
     created_at: string;
     updated_at: string;
-    /** 图片等可预览文件的缩略图地址（可能缺失） */
+    /** 图片等可预览文件的缩略图地址（可能缺失，也可能是相对路径，展示前过一遍 resolveAssetUrl） */
     thumbnail_url?: string;
     /** 完整虚拟路径，如 anzhiyu://my/images/a.jpg */
     path: string;
@@ -1720,9 +1753,48 @@ export function adminFileDownloadUrl(id: string): string {
 }
 
 /**
+ * 图片预览（大图）地址：复用下载代理 —— 同源、自动带 cookie、原样透传后端二进制，
+ * 所以**不需要额外签名**，可以直接塞进 `<img src>`（Content-Disposition 对 img 无效）。
+ */
+export function adminFilePreviewUrl(id: string): string {
+    return adminFileDownloadUrl(id);
+}
+
+/**
+ * 把「资源路径」补成**能直接粘进浏览器打开的绝对地址**（域名一律取自环境变量，不写死）。
+ *
+ * 为什么需要单独一个函数：后端 `POST /direct-links` 返回的 `link` 是**站内相对路径**
+ * （形如 `/api/f/xxx/name.png`），而 `NEXT_PUBLIC_API_URL` 结尾本身就带 `/api`
+ * （本机 = `https://blog.ciraos.top/api`）—— 直接拼会拼出 `.../api/api/f/xxx` 这种重复前缀。
+ *
+ * 规则（按顺序）：
+ *   1. 已经是绝对地址（`http://` / `https://` / 协议相对 `//`）→ 原样返回
+ *   2. 以 `/api/` 开头（本站同源代理路径）→ 去掉那一段 `/api`，再接到 `NEXT_PUBLIC_API_URL` 后面
+ *   3. 其它以 `/` 开头的路径（如缩略图签名 `/t/xxx`）→ 直接接在 `NEXT_PUBLIC_API_URL` 后面
+ *   4. 其余（既不是绝对地址也不以 `/` 开头）→ 当相对路径处理，补一个 `/` 再拼
+ *
+ * 例：`/api/f/a/1.png` → `https://blog.ciraos.top/api/f/a/1.png`；`/t/sign` → `https://blog.ciraos.top/api/t/sign`。
+ */
+export function toAbsoluteApiUrl(path?: string | null): string {
+    if (!path) return "";
+    const value = path.trim();
+    if (!value) return "";
+    if (/^(https?:)?\/\//i.test(value)) return value;
+    if (value.startsWith("/api/")) return `${API_URL}${value.slice("/api".length)}`;
+    if (value.startsWith("/")) return `${API_URL}${value}`;
+    return `${API_URL}/${value}`;
+}
+
+/**
  * GET /api/admin/thumbnail/[id] 取缩略图签名（远端 GET /thumbnail/:publicID，需登录）。
  * 后端不直接给缩略图地址，而是给一个签名 `sign`，再用 `${API_URL}/t/${sign}` 取图（该路径公开）。
  * 三种可能：200 就绪（有 sign）；202 正在生成；404 没有/已失败。
+ *
+ * 探活结论（2026-10-05，未登录直接打线上 `https://blog.ciraos.top/api`，只读）：
+ *   GET /thumbnail/xxx       → 401（路由存在，需登录）= 下面这条路径就是对的；
+ *   GET /thumbnail/sign/xxx  → 404（**不存在**）；
+ *   而 scripts/swagger.yaml 里只有 `/thumbnail/sign/{publicID}`、没有 `/thumbnail/{id}`，
+ *   且线上列表是单数 `/file`（swagger 写 `/files`）→ 该 swagger 与线上后端不是同一版本，别照它改。
  */
 export async function getAdminThumbnailSignApi(
     id: string

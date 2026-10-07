@@ -68,6 +68,8 @@ export interface AdminCreateEssayRequest {
     from?: string;
     /** 关联链接（可选） */
     link?: string;
+    /** 音乐播放器配置（可选）：官方对话框只支持网易云歌曲 ID，结构为 { id: "1901371647" } */
+    aplayer?: { id?: string };
     /** 排序（可选） */
     sort_order?: number;
     /** 状态：1=发布 2=草稿 3=隐藏 */
@@ -85,6 +87,8 @@ export interface AdminUpdateEssayRequest {
     from?: string;
     /** 关联链接（可选） */
     link?: string;
+    /** 音乐播放器配置（可选）：官方对话框只支持网易云歌曲 ID，结构为 { id: "1901371647" } */
+    aplayer?: { id?: string };
     /** 排序（可选） */
     sort_order?: number;
     /** 状态：1=发布 2=草稿 3=隐藏 */
