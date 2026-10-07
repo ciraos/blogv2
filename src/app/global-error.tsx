@@ -17,11 +17,17 @@ export default function GlobalError({
     }, [error]);
 
     // global-error 会渲染自己全新的 <html>，丢掉了 next-themes 在应用 <html> 上打的 .dark class。
-    // 这里在挂载时读回主题（兼容 system），补上/移除 .dark，让深色用户出错时也按主题显示。
+    // 这里在挂载时读回主题：next-themes 写的 localStorage("theme") 优先（定时主题的结果也落在它上面，
+    // 所以等于跟随站点配置）；**没有记录时跟随系统偏好**，不再写死 light。
     useEffect(() => {
-        const stored = localStorage.getItem("theme") || "light";
+        let stored: string | null = null;
+        try {
+            stored = window.localStorage.getItem("theme");
+        } catch {
+            // 隐私模式：忽略
+        }
         const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        const isDark = stored === "dark" || (stored === "system" && prefersDark);
+        const isDark = stored === "dark" || ((stored === null || stored === "system") && prefersDark);
         document.documentElement.classList.toggle("dark", isDark);
     }, []);
 

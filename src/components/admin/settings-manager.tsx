@@ -39,6 +39,7 @@ import {
     type SettingsListField,
 } from "@/lib/admin-settings";
 import { updateAdminSettingsApi, uploadAdminImageApi } from "@/lib/api";
+import { broadcastSiteConfigUpdate } from "@/lib/site-config-broadcast";
 import { uploadFileToFileManager } from "@/lib/admin-file-upload";
 import type { SiteConfig } from "@/types/site-config";
 import { cn, resolveAssetUrl, toSameOriginMediaUrl } from "@/lib/utils";
@@ -60,6 +61,8 @@ interface SettingsSearchHit {
  * 首屏值来自服务端取的 /public/site-config；保存时只提交改动项
  * （POST /api/admin/settings/update → 远端 /settings/update），保存后 router.refresh() 让
  * 服务端重新取配置，页面与前台立刻用上新值。
+ * 另外向同一浏览器的其它标签页广播本次改动的键（broadcastSiteConfigUpdate）：
+ * 已经打开的前台页面据此自动整页刷新或重取配置，不用用户手动按刷新。
  */
 export function SettingsManager({ config }: { config: SiteConfig }) {
     const router = useRouter();
@@ -112,6 +115,9 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
         setSaving(true);
         try {
             await updateAdminSettingsApi(payload);
+            // 广播本次改动的键：同一浏览器里已打开的前台标签页据此自动刷新
+            // （影响整站外观的键整页 reload，其余只重取配置；见 lib/site-config-broadcast.ts）
+            broadcastSiteConfigUpdate(Object.keys(payload));
             toast.success(`已保存 ${Object.keys(payload).length} 项设置`);
             setBaseline(draft);
             router.refresh();

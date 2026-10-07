@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 
+import { clearAutoThemeManagement } from "@/lib/scheduled-theme";
+
 /**
  * 登录 / 注册 / 激活页共用的品牌卡片外壳（由 (auth)/layout.tsx 包住各页内容）。
  *
@@ -35,8 +37,12 @@ export function AuthCard({
                     type="button"
                     aria-label="深浅色切换"
                     title="深浅色切换"
-                    // 只在点击时读 resolvedTheme（渲染输出不依赖它，见下方 Logo 注释）
-                    onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                    // 只在点击时读 resolvedTheme（渲染输出不依赖它，见下方 Logo 注释）；
+                    // 手动切换会解除「定时主题」托管，避免到时段边界被自动改回去
+                    onClick={() => {
+                        clearAutoThemeManagement();
+                        setTheme(resolvedTheme === "dark" ? "light" : "dark");
+                    }}
                     className="absolute right-4 top-4 z-10 flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                     <Moon className="size-4 dark:hidden" />

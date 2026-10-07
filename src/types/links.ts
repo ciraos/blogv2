@@ -107,3 +107,81 @@ export interface AdminUpdateLinkRequest {
     category_id?: number;
     tag_id?: number;
 }
+
+// ===================== 分类 / 标签（管理端写操作） =====================
+
+/** 创建 / 更新友链分类请求体（POST /links/categories、PUT /links/categories/{id}） */
+export interface LinkCategoryPayload {
+    name: string;
+    /** 后端枚举 card / list，必填 */
+    style: string;
+    description?: string;
+}
+
+/** 创建 / 更新友链标签请求体（POST /links/tags、PUT /links/tags/{id}） */
+export interface LinkTagPayload {
+    name: string;
+    color?: string;
+}
+
+// ===================== 导入 / 导出 =====================
+
+/**
+ * 导入 / 导出共用的友链条目（后端 model.ImportLinkItem）。
+ * GET /links/export 返回的也是这个形状，所以导出的文件可以直接回灌导入。
+ */
+export interface ImportLinkItem {
+    name: string;
+    url: string;
+    rss_url?: string;
+    logo?: string;
+    description?: string;
+    siteshot?: string;
+    email?: string;
+    /** 分类名（分类不存在时是否自动创建由 create_categories 决定） */
+    category_name?: string;
+    tag_name?: string;
+    tag_color?: string;
+    /** 后端枚举：PENDING / APPROVED / REJECTED / INVALID，缺省为 PENDING */
+    status?: string;
+}
+
+/** POST /links/import 请求体 */
+export interface ImportLinksRequest {
+    links: ImportLinkItem[];
+    /** 按 URL 去重 */
+    skip_duplicates?: boolean;
+    /** 分类不存在时自动创建 */
+    create_categories?: boolean;
+    /** 标签不存在时自动创建 */
+    create_tags?: boolean;
+    /** 不允许创建分类时用的兜底分类 id */
+    default_category_id?: number;
+}
+
+export interface ImportLinkFailure {
+    link: ImportLinkItem;
+    reason: string;
+}
+
+export interface ImportLinkSkipped {
+    link: ImportLinkItem;
+    reason: string;
+}
+
+/** POST /links/import 响应：逐项统计，不是全有全无 */
+export interface ImportLinksResponse {
+    total: number;
+    success: number;
+    failed: number;
+    skipped: number;
+    success_list: FriendLink[];
+    failed_list: ImportLinkFailure[];
+    skipped_list: ImportLinkSkipped[];
+}
+
+/** GET /links/export 响应（links 与导入同构） */
+export interface ExportLinksResponse {
+    links: ImportLinkItem[];
+    total: number;
+}

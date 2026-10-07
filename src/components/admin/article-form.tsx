@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { ArrowLeft, Code2, Eye, History, ImagePlus, Loader2, Save, Send, Settings2, X } from "lucide-react";
 import { toast } from "sonner";
 

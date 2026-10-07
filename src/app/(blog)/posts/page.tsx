@@ -25,7 +25,7 @@ export default async function Posts({ searchParams }: { searchParams: Promise<{ 
                 total={total}
                 page={page}
                 pageSize={PAGE_SIZE}
-                makePageHref={(p) => `/?page=${p}`}
+                makePageHref={(p) => `/posts?page=${p}`}
             />
         </PageWithSidebar>
     )

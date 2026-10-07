@@ -1,18 +1,13 @@
 import type { Metadata } from "next";
 import { generateBlogMetadata } from "@/lib/seo";
 
-import {
-    Button
-} from "@/components/ui/button";
-import {
-    FolderDownIcon,
-    FolderOutputIcon,
-    TagIcon
-} from "lucide-react";
+import { CategorySortDialog } from "@/components/admin/category-sort-dialog";
 import { FriendsManager } from "@/components/admin/friends-manager";
 import { LinkCreateButton } from "@/components/admin/link-create-button";
+import { LinkExportButton } from "@/components/admin/link-export-button";
 import { LinkHealthCheckButton } from "@/components/admin/link-health-check-button";
-import { CategorySortDialog } from "@/components/admin/category-sort-dialog";
+import { LinkImportDialog } from "@/components/admin/link-import-dialog";
+import { LinkTaxonomyDialog } from "@/components/admin/link-taxonomy-dialog";
 
 export function generateMetadata(): Promise<Metadata> {
     return generateBlogMetadata("友链管理")
@@ -28,20 +23,13 @@ export default function Friends() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <LinkCreateButton />
-                    <Button variant="outline">
-                        <TagIcon size={4} />
-                        分类标签
-                    </Button>
-                    {/* 分类展示顺序拖拽排序（保存到 localStorage，前台 /link 页生效） */}
+                    {/* 分类 / 标签的新增、改名、删除（后端 /links/categories、/links/tags 的写接口） */}
+                    <LinkTaxonomyDialog />
+                    {/* 分类展示顺序：后端暂无分类排序字段，本弹窗只按 id 展示（创建顺序） */}
                     <CategorySortDialog />
-                    <Button variant="outline">
-                        <FolderDownIcon size={4} />
-                        导入
-                    </Button>
-                    <Button variant="outline">
-                        <FolderOutputIcon size={4} />
-                        导出
-                    </Button>
+                    {/* 导入 / 导出：远端 /links/import、/links/export，两者格式同构，导出文件可直接回灌 */}
+                    <LinkImportDialog />
+                    <LinkExportButton />
                     <LinkHealthCheckButton />
                 </div>
             </div>

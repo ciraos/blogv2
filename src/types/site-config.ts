@@ -26,7 +26,8 @@ export interface SiteConfig {
     CUSTOM_SIDEBAR: unknown[];
     DEFAULT_BIG_PARAM: string;
     DEFAULT_GRAVATAR_TYPE: string;
-    DEFAULT_THEME_MODE: "light" | "dark";
+    /** 默认明暗模式："auto" = 按 THEME_LIGHT_START_TIME / THEME_DARK_START_TIME 定时切换 */
+    DEFAULT_THEME_MODE: "light" | "dark" | "auto";
     DEFAULT_THUMB_PARAM: string;
     ENABLE_BUILTIN_GENERATOR: boolean;
     ENABLE_EXIF_EXTRACTOR: boolean;
@@ -75,6 +76,10 @@ export interface SiteConfig {
     SITE_KEYWORDS: string;
     SITE_URL: string;
     SUB_TITLE: string;
+    /** 定时主题：浅色时段开始（HH:MM），DEFAULT_THEME_MODE = "auto" 时生效 */
+    THEME_LIGHT_START_TIME: string;
+    /** 定时主题：深色时段开始（HH:MM） */
+    THEME_DARK_START_TIME: string;
     UPLOAD_ALLOWED_EXTENSIONS: string;
     UPLOAD_DENIED_EXTENSIONS: string;
     USER_AVATAR: string;

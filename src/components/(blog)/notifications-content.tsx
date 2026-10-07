@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { Bell, Crown, Inbox, MessageSquare, MessagesSquare, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 

@@ -8,10 +8,13 @@ import { SidebarTriggerFallback } from "@/components/sidebar-trigger-fallback";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeScheduleSync } from "@/components/ui/theme-schedule-sync";
+import { TopProgress } from "@/components/ui/top-progress";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ApiError, getUserInfoApi } from "@/lib/api";
 import { resolveAssetUrl } from "@/lib/utils";
 import { resolveAppearance } from "@/lib/appearance";
+import { resolveThemeSchedule } from "@/lib/scheduled-theme";
 import { isAdminUser } from "@/lib/auth";
 import { APP_VERSION_LABEL } from "@/lib/version";
 import { SiteConfigResponse } from "@/types/site-config";
@@ -50,6 +53,8 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
     const config = await getSiteConfigs();
     // 站点外观：按后端 APPEARANCE_SKIN / APPEARANCE_TOKENS 生成主题变量（浅/深各一套）
     const appearance = resolveAppearance(config?.APPEARANCE_SKIN, config?.APPEARANCE_TOKENS);
+    // 定时主题（DEFAULT_THEME_MODE = "auto"）：SSR 首帧按服务器时钟，客户端由 ThemeScheduleSync 校正
+    const schedule = resolveThemeSchedule(config);
 
     // 读取登录 token，获取当前登录用户信息（proxy 已拦截未登录，这里兜底）
     const cookieStore = await cookies();
@@ -84,12 +89,16 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
             <body>
                 <ThemeProvider
                     attribute="class"
-                    defaultTheme={config?.DEFAULT_THEME_MODE ?? "light"}
+                    defaultTheme={schedule.initial}
                     disableTransitionOnChange
                     enableSystem
                     enableColorScheme
                 >
                     <Toaster position="top-right" richColors closeButton />
+                    {/* 顶部进度条：后台页面之间的软导航反馈 */}
+                    <TopProgress />
+                    {/* 定时主题：auto 时按两个时段自动切换（不占 DOM） */}
+                    <ThemeScheduleSync schedule={schedule} />
                     <TooltipProvider>
                         {/* 整页锁 100dvh 且不滚动：滚动交给内容区（以及列表页内部的表格区域） */}
                         <SidebarProvider className="h-dvh overflow-hidden">

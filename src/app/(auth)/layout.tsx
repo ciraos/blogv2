@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import "../globals.css";
 import { AuthCard } from "@/components/(auth)/auth-card";
 import { ThemeProvider } from "@/components/ui/theme-provider";
+import { ThemeScheduleSync } from "@/components/ui/theme-schedule-sync";
+import { TopProgress } from "@/components/ui/top-progress";
 import { resolveAppearance } from "@/lib/appearance";
+import { resolveThemeSchedule } from "@/lib/scheduled-theme";
 import { getSiteConfigs } from "@/lib/site-config";
 import { SiteConfigResponse } from "@/types/site-config";
 
@@ -29,6 +32,8 @@ export default async function AuthLayout({ children }: Readonly<{ children: Reac
     // 与 (blog)/admin 两个 layout 一致。这里以前漏了注入，导致 --primary 退回 globals.css 的
     // 近黑色默认值 —— 登录/注册按钮用的是 bg-primary，所以显示不出主题色。
     const appearance = resolveAppearance(config?.APPEARANCE_SKIN, config?.APPEARANCE_TOKENS);
+    // 定时主题（DEFAULT_THEME_MODE = "auto"）：SSR 首帧按服务器时钟，客户端由 ThemeScheduleSync 校正
+    const schedule = resolveThemeSchedule(config);
 
     return (
         <html lang="zh-CN" suppressHydrationWarning data-skin={appearance.skinId}>
@@ -39,11 +44,17 @@ export default async function AuthLayout({ children }: Readonly<{ children: Reac
 
                 <ThemeProvider
                     attribute="class"
-                    defaultTheme={config?.DEFAULT_THEME_MODE ?? "light"}
+                    defaultTheme={schedule.initial}
                     disableTransitionOnChange
                     enableSystem
                     enableColorScheme
                 >
+                    {/* 顶部进度条：登录/注册之间的软导航反馈 */}
+                    <TopProgress />
+
+                    {/* 定时主题：auto 时按两个时段自动切换（不占 DOM） */}
+                    <ThemeScheduleSync schedule={schedule} />
+
                     <div id="CIRAOS">
 
                         {/* 背景：容器渐变 + 主题色柔光（主色来自外观皮肤，卡片浮在其上） */}

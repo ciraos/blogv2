@@ -11,7 +11,7 @@ import type {
     CommentStatus,
 } from "@/types/comments";
 import type { LoginData, LoginUserInfo } from "@/types/auth";
-import type { AdminCreateLinkRequest, AdminUpdateLinkRequest, FriendLink, LinkCategory, LinkCategoryGroup, LinkListData, LinkListParams, LinkTag } from "@/types/links";
+import type { AdminCreateLinkRequest, AdminUpdateLinkRequest, ExportLinksResponse, FriendLink, ImportLinksRequest, ImportLinksResponse, LinkCategory, LinkCategoryGroup, LinkCategoryPayload, LinkListData, LinkListParams, LinkTag, LinkTagPayload } from "@/types/links";
 import type { AdminCreateEssayRequest, AdminEssayListParams, AdminUpdateEssayRequest, Essay, EssayListData } from "@/types/essays";
 import type {
     AdminMomentItem,
@@ -665,6 +665,88 @@ export async function triggerLinkHealthCheckApi(): Promise<unknown> {
 /** GET /api/admin/links/health-check/status 获取健康检查状态（同源代理，需登录） */
 export async function getLinkHealthCheckStatusApi(): Promise<LinkHealthCheckStatus> {
     return request<LinkHealthCheckStatus>("/api/admin/links/health-check/status", { method: "GET" });
+}
+
+// ===================== 友链分类 / 标签（管理端写操作） =====================
+//
+// 远端路径 /links/categories、/links/tags（含 /{id}）；
+// 同源代理见 src/app/api/admin/links/categories/**、src/app/api/admin/links/tags/**。
+
+/** POST /api/admin/links/categories 新建友链分类（style 必填：card / list） */
+export function createAdminLinkCategoryApi(payload: LinkCategoryPayload): Promise<LinkCategory> {
+    return request<LinkCategory>("/api/admin/links/categories", {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+}
+
+/** PUT /api/admin/links/categories/{id} 更新友链分类 */
+export function updateAdminLinkCategoryApi(id: number | string, payload: LinkCategoryPayload): Promise<LinkCategory> {
+    return request<LinkCategory>(`/api/admin/links/categories/${encodeURIComponent(String(id))}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+    });
+}
+
+/** DELETE /api/admin/links/categories/{id} 删除友链分类 */
+export function deleteAdminLinkCategoryApi(id: number | string): Promise<unknown> {
+    return request<unknown>(`/api/admin/links/categories/${encodeURIComponent(String(id))}`, { method: "DELETE" });
+}
+
+/** POST /api/admin/links/tags 新建友链标签 */
+export function createAdminLinkTagApi(payload: LinkTagPayload): Promise<LinkTag> {
+    return request<LinkTag>("/api/admin/links/tags", {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+}
+
+/** PUT /api/admin/links/tags/{id} 更新友链标签 */
+export function updateAdminLinkTagApi(id: number | string, payload: LinkTagPayload): Promise<LinkTag> {
+    return request<LinkTag>(`/api/admin/links/tags/${encodeURIComponent(String(id))}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+    });
+}
+
+/** DELETE /api/admin/links/tags/{id} 删除友链标签 */
+export function deleteAdminLinkTagApi(id: number | string): Promise<unknown> {
+    return request<unknown>(`/api/admin/links/tags/${encodeURIComponent(String(id))}`, { method: "DELETE" });
+}
+
+// ===================== 友链导入 / 导出 =====================
+//
+// 远端 POST /links/import、GET /links/export；导出返回的 links 与导入同构（可直接回灌）。
+// 同源代理见 src/app/api/admin/links/import、src/app/api/admin/links/export。
+
+/** POST /api/admin/links/import 批量导入友链（逐项统计，不是全有全无） */
+export function importAdminLinksApi(payload: ImportLinksRequest): Promise<ImportLinksResponse> {
+    return request<ImportLinksResponse>("/api/admin/links/import", {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+}
+
+/** 导出友链的筛选条件（与列表接口同口径，留空即全部） */
+export interface ExportAdminLinksParams {
+    name?: string;
+    url?: string;
+    description?: string;
+    status?: string;
+    category_id?: number | string;
+    tag_id?: number | string;
+}
+
+/** GET /api/admin/links/export 导出友链（返回 ImportLinkItem 数组，用于备份/迁移） */
+export function exportAdminLinksApi(params: ExportAdminLinksParams = {}): Promise<ExportLinksResponse> {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null && value !== "") {
+            qs.set(key, String(value));
+        }
+    }
+    const query = qs.toString();
+    return request<ExportLinksResponse>(`/api/admin/links/export${query ? `?${query}` : ""}`, { method: "GET" });
 }
 
 /** POST /api/admin/users 管理员创建用户（同源代理，需登录；浏览器自动携带登录 cookie） */

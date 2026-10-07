@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { ChevronDown, FileText, Menu, Moon, Sun, Tag as TagIcon } from "lucide-react";
 
+import { clearAutoThemeManagement } from "@/lib/scheduled-theme";
+
 import {
     Sheet,
     SheetClose,
@@ -219,7 +221,11 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
                                         {/* 深浅色切换按钮（黑色细边框、无背景、圆角，与下方标签/网站信息风格一致） */}
                                         <button
                                             type="button"
-                                            onClick={() => setTheme(document.documentElement.classList.contains("dark") ? "light" : "dark")}
+                                            onClick={() => {
+                                                // 手动切主题：解除「定时主题」托管（否则到下一个时段边界会被自动改回去）
+                                                clearAutoThemeManagement();
+                                                setTheme(document.documentElement.classList.contains("dark") ? "light" : "dark");
+                                            }}
                                             className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-foreground/25 text-sm transition-colors hover:border-foreground"
                                         >
                                             <Sun className="size-4 dark:hidden" />

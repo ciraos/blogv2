@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { RefreshCcw, Search } from "lucide-react";
+import { RefreshCcw, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -50,15 +50,28 @@ export function FriendsFilters({
     return (
         <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                {/* 搜索框：网站名称 / 网址（可收缩，窄屏换行） */}
+                {/* 搜索框：网站名称 / 网址（可收缩，窄屏换行）。关键词即时生效（见 friends-table 的取数 effect），
+                    所以右侧清空按钮一点就等于把搜索条件也去掉，列表立刻回到全量。 */}
                 <div className="relative w-64 shrink-0">
                     <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                         value={value.keyword}
                         onChange={(e) => onChange({ ...value, keyword: e.target.value })}
                         placeholder="搜索网站名称 / 网址"
-                        className="h-8 pl-8"
+                        className="h-8 pl-8 pr-8"
+                        aria-label="搜索友链"
                     />
+                    {value.keyword && (
+                        <button
+                            type="button"
+                            onClick={() => onChange({ ...value, keyword: "" })}
+                            aria-label="清空搜索"
+                            title="清空搜索"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                            <X size={14} />
+                        </button>
+                    )}
                 </div>
 
                 {/* 友链状态 */}

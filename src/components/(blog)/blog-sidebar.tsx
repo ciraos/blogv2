@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CalendarDays, FileText, MegaphoneIcon, MessageSquare, Tag as TagIcon } from "lucide-react";
+import { CollapsibleAside } from "@/components/(blog)/collapsible-aside";
 import { PostToc } from "@/components/(blog)/post-toc";
 import { AuthorGreeting } from "@/components/(blog)/author-greeting";
 import { Icon } from "@/components/ui/icon";
@@ -317,7 +318,7 @@ export async function BlogSidebar({ config }: { config?: SiteConfig }) {
     }
 
     return (
-        <aside id="blog-sidebar" className="hidden w-75 shrink-0 self-stretch lg:block">
+        <CollapsibleAside>
             {/* self-stretch：aside 撑满正文高度 → sticky 的包含块足够长，长文章 TOC 全程固定；不限高：侧边栏内容完整展示，不内部滚动 */}
             <div className="top-20 space-y-4">
                 {author?.enable !== false && config && <AuthorCard config={config} />}
@@ -348,6 +349,6 @@ export async function BlogSidebar({ config }: { config?: SiteConfig }) {
                     />
                 )}
             </div>
-        </aside>
+        </CollapsibleAside>
     );
 }

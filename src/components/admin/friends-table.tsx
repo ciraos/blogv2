@@ -122,6 +122,8 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
     /** 批量删除进行中 */
     const [batchDeleting, setBatchDeleting] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
+    /** 分类/标签下拉的重新拉取计数（顶部分类标签弹窗改完后由 blog-admin:links-changed 递增） */
+    const [taxonomyKey, setTaxonomyKey] = useState(0);
     const [form, setForm] = useState({
         name: "",
         url: "",
@@ -164,11 +166,14 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [taxonomyKey]);
 
-    // 新建友链成功后刷新列表（LinkCreateButton 派发）
+    // 新建友链 / 改分类标签 / 导入成功后刷新列表（顶部按钮派发）
     useEffect(() => {
-        const onChanged = () => setRefreshKey((k) => k + 1);
+        const onChanged = () => {
+            setRefreshKey((k) => k + 1);
+            setTaxonomyKey((k) => k + 1);
+        };
         window.addEventListener("blog-admin:links-changed", onChanged);
         return () => window.removeEventListener("blog-admin:links-changed", onChanged);
     }, []);

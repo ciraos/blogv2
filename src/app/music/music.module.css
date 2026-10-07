@@ -1,15 +1,19 @@
 /**
  * 音乐馆样式：移植自 anzhiyu-c/anheyu-app-frontend 的
- * src/app/(music)/music/music.module.css（main 分支，31,871 字节 / 1630 行），保持原样以便日后对齐上游。
+ * src/app/(music)/music/music.module.css（main 分支，31,871 字节 / 1630 行），布局与动画数值保持原样以便日后对齐上游。
  *
- * 两处本地适配（都只是补缺省值，未改任何布局/视觉数值）：
- * 1. 上游用主题令牌 --anzhiyu-*；本项目没有这套变量。上游 26 处引用里 25 处自带 fallback，
- *    唯一没写 fallback 的是 .handleBar 的 background（L898），这里补上。
+ * 本地适配（主题口径，2026-10 整理）：
+ * 1. 上游用主题令牌 --anzhiyu-*；本项目没有这套变量，之前靠 fallback 硬撑，
+ *    结果主舞台恒为深色（白字白按钮）而歌单面板恒为浅色（#fff/#333 fallback）。
+ *    现在全部换成 blogv2 的 shadcn 令牌：主舞台用 --foreground/--background 随明暗反转，
+ *    面板用 --card/--border/--foreground/--muted-foreground/--muted/--accent，
+ *    强调色（选中歌曲、滚动条高亮等）用 --primary，半透明色用 color-mix 派生。
+ *    → 深浅色都由站点配置（含 DEFAULT_THEME_MODE = "auto" 的定时切换）决定，本文件不再假设深色。
  * 2. .artworkPlaceholder svg 上游是 rgb(255 255 255 / 30%)，但底座图是白色转盘，
- *    白字在白底上看不见，这里改成深色（见文件末尾「本地适配」段）。
+ *    白字在白底上看不见，这里保留深色（见文件末尾「本地适配」段）。
  *
  * 说明：歌单面板（.playlistContainer ~ .fadeExitActive）目前未启用 —— 本项目继续用 shadcn Drawer，
- * 那一段也因此不受 --anzhiyu-* 缺失影响。
+ * 但其中的令牌也一并换掉了，日后启用不会踩坑。
  */
 
 /* ===================== 动画关键帧 ===================== */
@@ -131,7 +135,7 @@
   min-height: 0;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  color: #fff;
+  color: var(--foreground);
   background: transparent;
 }
 
@@ -181,7 +185,11 @@
 }
 
 .musicHome.noSong .musicBackground {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  background: linear-gradient(
+    135deg,
+    var(--primary) 0%,
+    color-mix(in oklab, var(--primary) 45%, var(--background)) 100%
+  ) !important;
   filter: blur(60px) brightness(0.86) saturate(1.05);
   opacity: 0.8;
 }
@@ -260,7 +268,7 @@
 }
 
 .artworkContainer:focus-visible {
-  outline: 2px solid rgb(255 255 255 / 75%);
+  outline: 2px solid color-mix(in oklab, var(--foreground) 75%, transparent);
   outline-offset: 4px;
 }
 
@@ -390,7 +398,7 @@
   background: transparent;
   border: 3px solid rgb(139 139 139 / 50%);
   border-radius: 50%;
-  box-shadow: 0 0 20px rgb(255 255 255 / 30%);
+  box-shadow: 0 0 20px color-mix(in oklab, var(--foreground) 30%, transparent);
   transform: translate(-50%, -50%);
 }
 
@@ -435,7 +443,7 @@
 
 .waveBar {
   width: 2px;
-  background: white;
+  background: var(--foreground);
   border-radius: 1px;
   animation: wave 1.2s ease-in-out infinite;
 }
@@ -527,7 +535,7 @@
   font-size: 22px;
   font-weight: 500;
   line-height: 1.6;
-  color: rgb(255 255 255 / 40%);
+  color: color-mix(in oklab, var(--foreground) 40%, transparent);
   text-shadow: 0 0 0 transparent;
   transition:
     all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
@@ -539,24 +547,24 @@
 .lyricItem.isCurrent .lyricText {
   font-size: 26px;
   font-weight: 700;
-  color: rgb(255 255 255 / 95%);
+  color: color-mix(in oklab, var(--foreground) 95%, transparent);
   filter: blur(0);
-  text-shadow: 0 0 20px rgb(255 255 255 / 30%);
+  text-shadow: 0 0 20px color-mix(in oklab, var(--foreground) 30%, transparent);
 }
 
 .lyricItem.isPassed .lyricText {
-  color: rgb(255 255 255 / 30%);
+  color: color-mix(in oklab, var(--foreground) 30%, transparent);
   text-shadow: 0 0 0 transparent;
   filter: blur(0.5px);
 }
 
 .lyricItem.isUpcoming .lyricText {
-  color: rgb(255 255 255 / 40%);
+  color: color-mix(in oklab, var(--foreground) 40%, transparent);
   text-shadow: 0 0 0 transparent;
 }
 
 .lyricItem:hover .lyricText {
-  color: rgb(255 255 255 / 70%);
+  color: color-mix(in oklab, var(--foreground) 70%, transparent);
   filter: blur(0);
 }
 
@@ -578,7 +586,7 @@
   font-size: 13px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
-  color: rgb(255 255 255 / 60%);
+  color: color-mix(in oklab, var(--foreground) 60%, transparent);
 }
 
 .progressTrack {
@@ -587,7 +595,7 @@
   height: 6px;
   overflow: visible;
   cursor: pointer;
-  background: rgb(255 255 255 / 20%);
+  background: color-mix(in oklab, var(--foreground) 20%, transparent);
   border-radius: 3px;
   transition: all 0.3s ease-in-out;
 }
@@ -597,7 +605,7 @@
 }
 
 .progressTrack.isLoading {
-  background: rgb(255 255 255 / 15%);
+  background: color-mix(in oklab, var(--foreground) 15%, transparent);
 }
 
 .progressLoading {
@@ -609,9 +617,9 @@
   overflow: hidden;
   background: linear-gradient(
     90deg,
-    rgb(217 217 217 / 30%) 0%,
-    rgb(217 217 217 / 50%) 50%,
-    rgb(217 217 217 / 30%) 100%
+    color-mix(in oklab, var(--foreground) 25%, transparent) 0%,
+    color-mix(in oklab, var(--foreground) 45%, transparent) 50%,
+    color-mix(in oklab, var(--foreground) 25%, transparent) 100%
   );
   border-radius: 3px;
   transition: width 0.3s ease;
@@ -625,7 +633,7 @@
   z-index: 2;
   height: 100%;
   overflow: hidden;
-  background: rgb(255 255 255 / 30%);
+  background: color-mix(in oklab, var(--foreground) 30%, transparent);
   border-radius: 3px;
   transition:
     width 0.2s ease,
@@ -633,8 +641,8 @@
 }
 
 .progressBuffer.hasContent {
-  background: rgb(255 255 255 / 40%);
-  box-shadow: 0 0 4px rgb(255 255 255 / 20%);
+  background: color-mix(in oklab, var(--foreground) 40%, transparent);
+  box-shadow: 0 0 4px color-mix(in oklab, var(--foreground) 20%, transparent);
 }
 
 .progressFill {
@@ -644,9 +652,9 @@
   z-index: 3;
   height: 100%;
   overflow: hidden;
-  background: white;
+  background: var(--foreground);
   border-radius: 3px;
-  box-shadow: 0 0 8px rgb(255 255 255 / 40%);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--foreground) 40%, transparent);
   transition: width 0.1s ease;
 }
 
@@ -664,7 +672,7 @@
   margin-top: -8px;
   margin-left: -8px;
   cursor: pointer;
-  background: #fff !important;
+  background: var(--foreground) !important;
   border-radius: 50%;
   box-shadow: 0 2px 8px rgb(0 0 0 / 30%);
   transition:
@@ -698,7 +706,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--foreground);
   cursor: pointer;
   background: none;
   border: none;
@@ -714,15 +722,15 @@
   width: 56px;
   height: 56px;
   font-size: 20px;
-  color: rgb(0 0 0 / 80%);
-  background: rgb(255 255 255 / 90%);
+  color: var(--background);
+  background: color-mix(in oklab, var(--foreground) 90%, transparent);
   backdrop-filter: blur(10px);
   border-radius: 50%;
   box-shadow: 0 6px 20px rgb(0 0 0 / 25%);
 }
 
 .controlBtn.secondary:hover:not(:disabled) {
-  background: rgb(255 255 255 / 95%);
+  background: var(--foreground);
   box-shadow: 0 8px 24px rgb(0 0 0 / 30%);
   transform: scale(1.05);
 }
@@ -737,8 +745,8 @@
   height: 64px;
   overflow: hidden;
   font-size: 24px;
-  color: black;
-  background: white;
+  color: var(--background);
+  background: var(--foreground);
   border-radius: 50%;
   box-shadow: 0 8px 24px rgb(0 0 0 / 30%);
 }
@@ -753,14 +761,19 @@
 }
 
 .controlBtn.primary.isLoadingBtn {
-  background: linear-gradient(45deg, #f0f0f0 0%, white 50%, #f0f0f0 100%);
+  background: linear-gradient(
+    45deg,
+    color-mix(in oklab, var(--foreground) 70%, var(--background)) 0%,
+    var(--foreground) 50%,
+    color-mix(in oklab, var(--foreground) 70%, var(--background)) 100%
+  );
   background-size: 200% 200%;
   animation: loadingGradient 2s ease-in-out infinite;
 }
 
 .loadingIcon {
   font-size: 20px;
-  color: rgb(0 0 0 / 60%);
+  color: color-mix(in oklab, var(--background) 60%, transparent);
   animation: spin 1s linear infinite;
 }
 
@@ -781,7 +794,7 @@
   height: 120px;
   padding: 10px 8px;
   visibility: hidden;
-  background: rgb(255 255 255 / 95%);
+  background: var(--card);
   backdrop-filter: blur(15px);
   border-radius: 20px;
   box-shadow: 0 8px 32px rgb(0 0 0 / 30%);
@@ -803,7 +816,7 @@
   width: 0;
   height: 0;
   content: "";
-  border-top: 8px solid rgb(255 255 255 / 95%);
+  border-top: 8px solid var(--card);
   border-right: 8px solid transparent;
   border-left: 8px solid transparent;
   transform: translateX(-50%);
@@ -837,8 +850,8 @@
   height: 20px;
   appearance: none;
   cursor: pointer;
-  background: white;
-  border: 2px solid #667eea;
+  background: var(--foreground);
+  border: 2px solid var(--primary);
   border-radius: 50%;
   box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
   transition: all 0.2s ease;
@@ -858,8 +871,8 @@
   width: 20px;
   height: 20px;
   cursor: pointer;
-  background: white;
-  border: 2px solid #667eea;
+  background: var(--foreground);
+  border: 2px solid var(--primary);
   border-radius: 50%;
   box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
   transition: all 0.2s ease;
@@ -895,9 +908,9 @@
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background: var(--anzhiyu-card-bg, #fff);
-  border-left: var(--style-border, 1px solid #e5e7eb);
-  box-shadow: var(--anzhiyu-shadow-blackdeep, 0 8px 32px rgb(0 0 0 / 20%));
+  background: var(--card);
+  border-left: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 20%);
   transform: translateX(100%);
 }
 
@@ -910,15 +923,15 @@
 .handleBar {
   width: 36px;
   height: 4px;
-  /* 本地适配：上游这处没写 fallback，本项目没有 --anzhiyu-gray-op，补一个 */
-  background: var(--anzhiyu-gray-op, rgb(0 0 0 / 12%));
+  /* 上游这里是 --anzhiyu-gray-op（本项目没有），改成前景色派生的半透明 */
+  background: color-mix(in oklab, var(--foreground) 12%, transparent);
   border-radius: 2px;
 }
 
 .playlistHeader {
   padding: 24px 20px;
-  background: var(--anzhiyu-card-bg, #fff);
-  border-bottom: var(--style-border, 1px solid #e5e7eb);
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
 }
 
 .headerContent {
@@ -936,13 +949,13 @@
   font-size: 20px;
   font-weight: 600;
   line-height: 1.3;
-  color: var(--anzhiyu-fontcolor, #333);
+  color: var(--foreground);
 }
 
 .playlistCount {
   font-size: 13px;
   font-weight: 500;
-  color: var(--anzhiyu-secondtext, #999);
+  color: var(--muted-foreground);
 }
 
 .closeBtn {
@@ -951,17 +964,17 @@
   justify-content: center;
   width: 36px;
   height: 36px;
-  color: var(--anzhiyu-fontcolor, #333);
+  color: var(--foreground);
   cursor: pointer;
-  background: var(--anzhiyu-card-btn-bg, #f4f4f5);
+  background: var(--muted);
   border: none;
   border-radius: 8px;
   transition: all 0.2s ease;
 }
 
 .closeBtn:hover {
-  color: var(--anzhiyu-main, #49b1f5);
-  background: var(--anzhiyu-theme-op-light, #e8f4fd);
+  color: var(--primary);
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
   transform: scale(1.05);
 }
 
@@ -989,7 +1002,7 @@
 }
 
 .playlistList::-webkit-scrollbar-thumb {
-  background: var(--anzhiyu-scrollbar, #ccc);
+  background: var(--border);
   border-radius: 3px;
 }
 
@@ -1011,28 +1024,28 @@
 }
 
 .songItem:focus-visible {
-  outline: 2px solid var(--anzhiyu-main, #49b1f5);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
 .songItem:hover {
-  background: var(--anzhiyu-ahoverbg, #f4f4f5);
+  background: var(--accent);
   transform: translateX(2px);
 }
 
 .songItem.isActive {
-  background: var(--anzhiyu-theme-op-light, #e8f4fd);
-  border-color: var(--anzhiyu-theme-op, rgb(73 177 245 / 30%));
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
+  border-color: color-mix(in oklab, var(--primary) 30%, transparent);
 }
 
 .songItem.isActive .songTitle {
   font-weight: 600;
-  color: var(--anzhiyu-main, #49b1f5);
+  color: var(--primary);
 }
 
 .songItem.isActive .number {
   font-weight: 600;
-  color: var(--anzhiyu-main, #49b1f5);
+  color: var(--primary);
 }
 
 .songNumber {
@@ -1047,7 +1060,7 @@
   font-family: "SF Mono", Monaco, Menlo, monospace;
   font-size: 14px;
   font-weight: 500;
-  color: var(--anzhiyu-secondtext, #999);
+  color: var(--muted-foreground);
 }
 
 .songPlayingIndicator {
@@ -1065,7 +1078,7 @@
 
 .songWaveAnimation .songWaveBar {
   width: 2px;
-  background: var(--anzhiyu-main, #49b1f5);
+  background: var(--primary);
   border-radius: 1px;
   animation: waveAnimation 1s ease-in-out infinite;
 }
@@ -1100,7 +1113,7 @@
   font-size: 15px;
   font-weight: 500;
   line-height: 1.4;
-  color: var(--anzhiyu-fontcolor, #333);
+  color: var(--foreground);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1110,7 +1123,7 @@
   overflow: hidden;
   font-size: 13px;
   line-height: 1.3;
-  color: var(--anzhiyu-secondtext, #999);
+  color: var(--muted-foreground);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1121,7 +1134,7 @@
   width: 44px;
   height: 44px;
   overflow: hidden;
-  background: var(--anzhiyu-card-btn-bg, #f4f4f5);
+  background: var(--muted);
   border-radius: 8px;
 }
 
@@ -1143,7 +1156,7 @@
   width: 100%;
   height: 100%;
   font-size: 18px;
-  color: var(--anzhiyu-secondtext, #999);
+  color: var(--muted-foreground);
 }
 
 /* ===================== 淡入淡出过渡 ===================== */
@@ -1386,7 +1399,7 @@
   .timeLabel {
     min-width: 32px;
     font-size: 12px;
-    color: rgb(255 255 255 / 80%);
+    color: color-mix(in oklab, var(--foreground) 80%, transparent);
   }
 
   .controlButtons {
@@ -1429,7 +1442,7 @@
     height: 85vh;
     height: 85dvh;
     max-height: 540px;
-    border-top: var(--style-border, 1px solid #e5e7eb);
+    border-top: 1px solid var(--border);
     border-left: none;
     border-top-left-radius: 24px;
     border-top-right-radius: 24px;

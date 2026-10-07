@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { Bell, Calendar, Camera, ChevronRight, Home, IdCard, Link2, Lock, LogOut, Mail, Pencil, Ticket, User } from "lucide-react";
 import { toast } from "sonner";
 

@@ -12,6 +12,9 @@ import {
     Sun
 } from "lucide-react";
 
+import { useSidebarCollapse } from "@/components/(blog)/sidebar-collapse-provider";
+import { clearAutoThemeManagement } from "@/lib/scheduled-theme";
+
 interface TocItem {
     id: string;
     text: string;
@@ -32,8 +35,8 @@ export function FloatingActions() {
     const [groupOpen, setGroupOpen] = useState(false);
     const [tocOpen, setTocOpen] = useState(false);
     const [showTop, setShowTop] = useState(false);
-    // 侧边栏收缩状态（初始 false=展开；按页面路径分开持久化，各页面独立记忆）
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    // 侧边栏收缩状态：由 SidebarCollapseProvider 持有（按页面路径持久化），这里只读状态 + 触发切换
+    const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useSidebarCollapse();
 
     // 繁简状态（仅按钮 UI，转换逻辑后续接入）
     const [lang, setLang] = useState<"cn" | "tw">("cn");
@@ -42,58 +45,8 @@ export function FloatingActions() {
     const tocRef = useRef<HTMLDivElement | null>(null);
     const rootRef = useRef<HTMLDivElement | null>(null);
 
-    /** 侧边栏收缩 key：每页一个（非全局；旧版全局 key 作迁移来源） */
-    const sidebarKey = (path: string) => `blog-sidebar-collapsed:${path}`;
-    const LEGACY_SIDEBAR_KEY = "blog-sidebar-collapsed";
-
-    /** 侧边栏收缩切换：宽度过渡（300↔0 平滑收起/展开，配合 aside 的 transition）+ 按当前页持久化 */
-    const toggleSidebar = useCallback(() => {
-        const aside = document.getElementById("blog-sidebar");
-        if (!aside) return;
-        const collapsed = aside.dataset.collapsed === "1";
-        aside.dataset.collapsed = collapsed ? "0" : "1";
-        setSidebarCollapsed(!collapsed);
-        try {
-            localStorage.setItem(sidebarKey(pathname), collapsed ? "0" : "1");
-        } catch {
-            // 忽略
-        }
-    }, [pathname]);
-
-    /** 初始 / 路由切换后：读取当前页记录恢复侧边栏收缩状态（无记录时沿用一次旧全局值并迁移）。
-     *  恢复收缩时临时禁用过渡（no-transition），设置完成后下一帧移除 —— 避免页面加载/路由切换播放收起动画。 */
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            try {
-                let saved = localStorage.getItem(sidebarKey(pathname));
-                if (saved === null) {
-                    saved = localStorage.getItem(LEGACY_SIDEBAR_KEY);
-                    if (saved !== null) localStorage.setItem(sidebarKey(pathname), saved);
-                }
-                const aside = document.getElementById("blog-sidebar");
-                if (saved === "1") {
-                    if (aside) {
-                        aside.classList.add("no-transition");
-                        aside.dataset.collapsed = "1";
-                        requestAnimationFrame(() => aside.classList.remove("no-transition"));
-                    }
-                    setSidebarCollapsed(true);
-                } else {
-                    // 展开态：必须把 DOM 上的 data-collapsed 复位为 0，否则 SPA 路由切换时
-                    // 上一页留下的 data-collapsed="1" 会让所有页面都视觉收缩
-                    if (aside) {
-                        aside.classList.add("no-transition");
-                        aside.dataset.collapsed = "0";
-                        requestAnimationFrame(() => aside.classList.remove("no-transition"));
-                    }
-                    setSidebarCollapsed(false);
-                }
-            } catch {
-                // 忽略
-            }
-        }, 0);
-        return () => clearTimeout(timer);
-    }, [pathname]);
+    /** 侧边栏收缩的持久化与「按路径恢复」逻辑已移到 SidebarCollapseProvider，
+     *  这里不再直接改 #blog-sidebar 的 DOM（那会让晚 hydrate 的侧边栏报 hydration 不匹配）。 */
 
     /** 回到顶部（收起目录与展开组） */
     const scrollToTop = useCallback(() => {
@@ -224,7 +177,11 @@ export function FloatingActions() {
                 {/* 深浅色切换（图标/高亮用 CSS dark: 变体切换，避免 useTheme 导致 SSR/客户端水合不一致） */}
                 <button
                     type="button"
-                    onClick={() => setTheme(document.documentElement.classList.contains("dark") ? "light" : "dark")}
+                    onClick={() => {
+                        // 用户手动切主题：解除「定时主题」托管，否则到下一个时段边界会被自动改回去
+                        clearAutoThemeManagement();
+                        setTheme(document.documentElement.classList.contains("dark") ? "light" : "dark");
+                    }}
                     aria-label="深浅色切换"
                     title="切换深浅色"
                     className="flex size-10 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-lg backdrop-blur transition-colors hover:border-primary hover:text-primary dark:border-primary dark:bg-primary dark:text-primary-foreground"

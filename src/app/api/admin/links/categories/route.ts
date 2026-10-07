@@ -3,8 +3,9 @@ import type { NextRequest } from "next/server"
 
 import { API_URL } from "@/lib/api"
 import { ACCESS_TOKEN_KEY } from "@/lib/auth"
+import { authedProxyFetch } from "@/lib/admin-api"
 
-// 管理员友链分类列表：GET 转发到远端 /links/categories（需登录）。
+// 管理员友链分类：GET 转发到远端 /links/categories（需登录）。
 // 后端不开放 CORS 且需鉴权，由本路由读取 httpOnly cookie 中的 token 转发。
 const REMOTE = `${API_URL}/links/categories`
 
@@ -32,4 +33,18 @@ export async function GET(request: NextRequest) {
         )
     }
     return NextResponse.json({ code: 200, message: json?.message || "ok", data: json?.data ?? null })
+}
+
+/**
+ * POST /api/admin/links/categories 新建友链分类（同源代理 → 远端 POST /links/categories）。
+ * body: { name, style: "card" | "list", description? }（style 后端必填）
+ */
+export async function POST(request: NextRequest) {
+    let body: unknown
+    try {
+        body = await request.json()
+    } catch {
+        return NextResponse.json({ code: 400, message: "请求体格式错误", data: null }, { status: 400 })
+    }
+    return authedProxyFetch("/links/categories", { method: "POST", body: JSON.stringify(body) })
 }

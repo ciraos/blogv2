@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { ArrowLeft } from "lucide-react";
 
 /** 返回上一页（浏览器历史存在时才可用） */

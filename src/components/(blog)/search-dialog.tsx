@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { ArrowRight, Loader2, Search, SearchX } from "lucide-react";
 

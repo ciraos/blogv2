@@ -3,13 +3,18 @@ import Header from "@/components/header";
 import { AuthExpiredNotifier } from "@/components/(blog)/auth-expired-notifier";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/ui/theme-provider";
+import { ThemeScheduleSync } from "@/components/ui/theme-schedule-sync";
+import { TopProgress } from "@/components/ui/top-progress";
 import { getHeaderData } from "@/lib/header-data";
 import { getSiteConfigs } from "@/lib/site-config";
+import { resolveThemeSchedule } from "@/lib/scheduled-theme";
 
 export default async function MusicLayout({ children }: Readonly<{ children: React.ReactNode }>) {
     const config = await getSiteConfigs();
     // 与 (blog) 共用同一个 Header 及其取数逻辑（登录态 / 导航菜单 / 搜索 / 用户菜单）
     const { header, authExpired } = await getHeaderData(config);
+    // 定时主题（DEFAULT_THEME_MODE = "auto"）：本页容器强制深色，但仍同步一份状态给 Header 等元素
+    const schedule = resolveThemeSchedule(config);
     return (
         <html
             lang="zh-CN"
@@ -18,17 +23,23 @@ export default async function MusicLayout({ children }: Readonly<{ children: Rea
             <body>
                 <ThemeProvider
                     attribute="class"
-                    defaultTheme={config?.DEFAULT_THEME_MODE ?? "light"}
+                    defaultTheme={schedule.initial}
                     disableTransitionOnChange
                     enableSystem
                     enableColorScheme
                 >
-                    {/* 音乐馆：全屏深色 + 禁止整页滚动（滚动交给歌词区）。
-                        与参照项目 (music)/music-layout.css 一致：layout 是 flex 纵向列、
-                        高度锁 100dvh、overflow hidden。
-                        这里额外加 `dark`：本页不管站点主题都按深色渲染，Header 的胶囊颜色
-                        走的是主题令牌（bg-card），加了 dark 才会是深色胶囊而不是白胶囊。 */}
-                    <div className="dark flex h-dvh max-h-dvh min-h-dvh w-full flex-col overflow-hidden overscroll-none bg-[#16161a] text-white">
+                    {/* 顶部进度条：与 (blog) 一致，覆盖软导航那段反馈 */}
+                    <TopProgress />
+
+                    {/* 定时主题：auto 时按两个时段自动切换（不占 DOM） */}
+                    <ThemeScheduleSync schedule={schedule} />
+
+                    {/* 音乐馆：全屏、禁止整页滚动（滚动交给歌词区）。
+                        与参照项目 (music)/music-layout.css 一致：layout 是 flex 纵向列、高度锁 100dvh、overflow hidden。
+                        主题：**跟随站点配置**（含 DEFAULT_THEME_MODE = "auto" 的定时切换）——
+                        之前这里写死 `dark` 且底色 #16161a / 文字白色，导致本页永远深色；
+                        现在用 --background/--foreground，深浅色由 API 配置决定，播放器样式见 music.module.css。 */}
+                    <div className="flex h-dvh max-h-dvh min-h-dvh w-full flex-col overflow-hidden overscroll-none bg-background text-foreground">
                         <div className="shrink-0">
                             <Header {...header} />
                         </div>
