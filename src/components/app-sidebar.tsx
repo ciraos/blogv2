@@ -92,6 +92,7 @@ const data = {
       icon: (<Settings />),
       items: [
         { title: "系统设置", url: "/admin/settings" },
+        { title: "配置备份", url: "/admin/backup" },
         { title: "SEO 推送", url: "/admin/seo-push", pro: true },
         { title: "存储策略", url: "/admin/storage" },
         { title: "图片样式缓存", url: "/admin/image-styles/cache", pro: true },

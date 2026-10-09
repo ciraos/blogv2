@@ -55,6 +55,13 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   reactStrictMode: false,
 
+  experimental: {
+    // 插件安装包（后端允许 100MB）与配置导入都要经过 src/proxy.ts：Next 会为 proxy 克隆并缓冲请求体，
+    // 默认只缓冲 10MB，且超限时**不报错**而是"只缓冲到上限"再记一条 warning —— 大文件会被静默截断成坏文件。
+    // 所以按后端上限把缓冲提到 100MB。
+    proxyClientMaxBodySize: "100mb",
+  },
+
   // 供 src/proxy.ts 使用的「本站静态路由第一段」名单（构建时扫描 src/app 生成）
   env: {
     APP_STATIC_ROUTE_SEGMENTS: staticRouteSegments.join(","),

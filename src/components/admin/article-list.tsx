@@ -28,7 +28,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
-import { getAdminArticleCategoriesApi, getAdminArticlesApi, getAdminArticleTagsApi } from "@/lib/api";
+import { deleteAdminArticleApi, getAdminArticleCategoriesApi, getAdminArticlesApi, getAdminArticleTagsApi } from "@/lib/api";
 import type { PostCategory, PostItem, PostTag } from "@/types/articles";
 
 const PAGE_SIZE = 20;
@@ -84,6 +84,10 @@ export function ArticleList() {
     const [tags, setTags] = useState<PostTag[]>([]);
     const [catsLoading, setCatsLoading] = useState(true);
     const [tagsLoading, setTagsLoading] = useState(true);
+    /** 删除成功后用自增 key 触发列表重拉 */
+    const [refreshKey, setRefreshKey] = useState(0);
+    /** 正在删除的文章 id（防重复点击） */
+    const [deletingId, setDeletingId] = useState<PostItem["id"] | null>(null);
 
     // 分类/标签下拉数据（挂载时加载一次）
     useEffect(() => {
@@ -158,7 +162,25 @@ export function ArticleList() {
             cancelled = true;
             clearTimeout(timer);
         };
-    }, [page, keyword, status, review, category, tag]);
+    }, [page, keyword, status, review, category, tag, refreshKey]);
+
+    /** 删除文章：确认 → 调接口 → 重拉列表。删掉当前页最后一条时回退一页，避免停在空页 */
+    const handleDelete = async (article: PostItem) => {
+        const title = article.title?.trim() || `#${article.id}`;
+        if (!window.confirm(`确定删除《${title}》吗？\n删除后不可恢复。`)) return;
+        setDeletingId(article.id);
+        try {
+            await deleteAdminArticleApi(article.id);
+            toast.success("已删除");
+            if (list.length === 1 && page > 1) setPage((prev) => prev - 1);
+            else setRefreshKey((prev) => prev + 1);
+        } catch (error) {
+            // 后端失败原因（如"文章不存在"）优先展示，否则给通用提示
+            toast.error(error instanceof Error && error.message ? error.message : "删除失败");
+        } finally {
+            setDeletingId(null);
+        }
+    };
 
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -425,7 +447,8 @@ export function ArticleList() {
                                     aria-label="删除"
                                     title="删除"
                                     className={ACTION_TONE.delete}
-                                    onClick={() => toast.info("删除功能待接入")}
+                                    disabled={deletingId === article.id}
+                                    onClick={() => void handleDelete(article)}
                                 >
                                     <Trash2 className="size-4" />删除
                                 </Button>

@@ -32,9 +32,9 @@ import type { Theme, ThemeListData } from "@/types/themes";
  *
  * 数据源（本轮只做「读」）：
  *  - GET /api/admin/themes/installed → 远端 /theme/installed（已安装主题）
- *  - GET /api/admin/themes/official  → 远端 /theme/official（主题市场 / 官方主题）
- *    ⚠️ 线上探活：/theme/official 目前返回 404（后端尚未提供该路由），
- *    所以「主题市场」Tab 会走错误态：toast.error + 卡片区内可重试的提示，不白屏、不崩。
+ *  - GET /api/admin/themes/official  → 远端 /public/theme/market（主题市场 / 官方主题）
+ *    ⚠️ 历史误判已修正：原先转发到 /theme/official 且用 GET，而后端 /api/theme/official 是 POST（切换主题的动作），
+ *    所以线上一直 404。真实列表接口是公开的 GET /api/public/theme/market（实测 200，字段与本页所需一致）。
  *    两个接口都无分页参数，响应形状均为 { list, total }（见 @/types/themes）。
  *
  * 加载策略：Tab 各自独立请求，切到哪个 Tab 才拉哪个（懒加载），已加载过的不重复请求；
@@ -349,7 +349,7 @@ export function ThemesManager() {
                         <p className="text-xs text-muted-foreground">
                             {tab === "installed"
                                 ? "请检查后端 /theme/installed 接口是否可用"
-                                : "后端 /theme/official 接口当前不可用（线上返回 404）"}
+                                : "请检查后端 /public/theme/market 接口是否可用"}
                         </p>
                         <Button variant="outline" size="sm" className="mt-1 h-7 px-2 text-xs" onClick={() => reload()}>
                             <RefreshCw className="size-3.5" />
@@ -544,7 +544,7 @@ export function ThemesManager() {
                     第 {safePage} / {totalPages} 页
                     <span className="ml-2 text-muted-foreground/70">（接口无分页，当前页为本地切片）</span>
                 </span>
-                <PaginationControls page={safePage} totalPages={totalPages} onPageChange={setPage} disabled />
+                <PaginationControls page={safePage} totalPages={totalPages} onPageChange={setPage} />
             </div>
         </div>
     );

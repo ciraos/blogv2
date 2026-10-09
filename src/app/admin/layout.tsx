@@ -23,17 +23,25 @@ const site_url = process.env.NEXT_PUBLIC_SITE_URL;
 const api_url = process.env.NEXT_PUBLIC_API_URL;
 
 export async function generateMetadata(): Promise<Metadata> {
-    const a = await fetch(`${api_url}/public/site-config`);
-    const data: SiteConfigResponse = await a.json();
-    // console.log(site_url + data.data.ICON_URL);
-    // apple-touch-icon：动态引用后端 logo（PNG 优先），无本地静态文件
-    const appleIcon = site_url + (data.data.LOGO_URL_192x192 || data.data.LOGO_URL || data.data.ICON_URL);
-    return {
-        icons: {
-            icon: site_url + data.data.ICON_URL,
-            apple: appleIcon,
-        },
-    };
+    // 站点配置接口抖一下不该把整个后台打成 500：失败就退回本地默认图标
+    const fallbackIcon = "/favicon.ico";
+    try {
+        const res = await fetch(`${api_url}/public/site-config`);
+        if (!res.ok) throw new Error(`获取配置失败：HTTP ${res.status}`);
+        const data = (await res.json()) as SiteConfigResponse;
+        const icon = data?.data?.ICON_URL;
+        // apple-touch-icon：动态引用后端 logo（PNG 优先），无可用值时退回默认图标
+        const appleIcon = data?.data?.LOGO_URL_192x192 || data?.data?.LOGO_URL || icon;
+        return {
+            icons: {
+                icon: icon ? site_url + icon : fallbackIcon,
+                apple: appleIcon ? site_url + appleIcon : fallbackIcon,
+            },
+        };
+    } catch (error) {
+        console.error("[admin] 生成 metadata 时读取站点配置失败，已退回默认图标：", error);
+        return { icons: { icon: fallbackIcon, apple: fallbackIcon } };
+    }
 }
 
 export async function getSiteConfigs() {
@@ -44,8 +52,9 @@ export async function getSiteConfigs() {
         // console.log(data);
         return data.data;
     } catch (error) {
-        // return { APP_NAME: "博客", ICON_URL: "/favicon.ico", error };
         console.error(error);
+        // 兜底：至少让侧边栏有站点名与图标，避免整块空白（调用方全部用了可选链，兜底对象是安全子集）
+        return { APP_NAME: "博客", ICON_URL: "/favicon.ico" } as SiteConfigResponse["data"];
     }
 }
 

@@ -13,7 +13,8 @@ export default function MemberShips() {
                 <div>
                     <h2 className="text-xl font-semibold tracking-tight">会员管理</h2>
                     <p className="mt-1 text-xs text-muted-foreground">
-                        会员方案与会员列表（后端接口尚未找到，当前为静态外壳：不发请求，按钮均为占位）
+                        会员方案（增删改）与会员列表（筛选 / 分页 / 详情）—— 数据来自后端 PRO 接口
+                        /pro/admin/membership/*，经同源代理 /api/admin/membership/* 转发
                     </p>
                 </div>
             </div>

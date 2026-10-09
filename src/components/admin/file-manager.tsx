@@ -789,8 +789,9 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
         }
     };
 
-    /** 分享：后端目前**没有**文件分享相关接口（swagger / 代理目录里都搜不到），先如实占位 */
-    const shareItem = () => toast.info("分享接口后端暂未提供，待接入");
+    /** 分享：后端**有**接口 —— 官方前端在用 `POST /api/files/share/create`（配套还有我的分享列表/验密码/取下载地址/删除，属 PRO-文件分享模块）。
+     *  我们尚未接；原先注释写的"后端没有分享接口"是错的（当时只查了本地 swagger 与代理目录，而那是部分导出）。 */
+    const shareItem = () => toast.info("分享功能待接入（后端已有接口，本页未接）");
 
     /** 右键菜单的动作集合（菜单只负责排版，动作都在这里，和工具条按钮复用同一批函数） */
     const menuActionsFor = (item: AdminFileItem): ItemMenuActions => ({
