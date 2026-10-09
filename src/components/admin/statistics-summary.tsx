@@ -16,7 +16,6 @@ import {
     Users,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useMasonry } from "@/hooks/use-masonry";
 import type { DateRangeStats, StatisticsSummary, URLStatistics, VisitorAnalytics } from "@/types/statistics";
 
 interface RankItem {
@@ -27,16 +26,16 @@ interface RankItem {
 
 /**
  * 卡片外壳：统一圆角/描边/微阴影，鼠标悬停轻微抬升（紧凑密度：内边距统一 p-4）。
- * **高度完全由内容决定**（不设固定高度、不做卡内滚动）——「一目了然」看全排行；
- * 卡片之间的空洞由统计区的 JS 瀑布流（useMasonry 的 grid-row span）消除。
- * `self-start` 让卡片在跨行网格里保持自身高度、不被拉伸。
+ * **高度由内容决定**（不设固定高度、不做卡内滚动）——「一目了然」看全排行。
+ * 卡片在普通 CSS Grid 里按行铺排（左→右、上→下），单元格不会互相重叠。
  */
-const cardCls = "flex flex-col self-start rounded-xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md";
+const cardCls = "flex flex-col rounded-xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md";
 
-/** 瀑布流容器：列数由 grid-cols-* 决定，行高压成 8px 当「尺子」，卡片按量出的高度跨行（见 useMasonry） */
-const MASONRY_ROW_H = 8;
-const MASONRY_GAP = 12;
-const masonryGridCls = "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3";
+/** 统计卡片容器：CSS 多列瀑布流（columns-*）——卡片高度由内容决定，列内紧密排列、
+ *  **绝不会重叠**，也不会有「行内最高的卡把其它卡顶出空洞」的空隙。
+ *  代价：阅读顺序是**列优先**（先填满第一列再填第二列），不是行优先。
+ *  卡片 `break-inside-avoid` + `mb-3` 保证不被拆列、列内间距 12px（与 gap-3 一致）。 */
+const cardGridCls = "columns-1 gap-3 sm:columns-2 xl:columns-3 [&>*]:mb-3 [&>*]:break-inside-avoid";
 
 function toRank(items: { [k: string]: unknown }[] | null | undefined, nameKey: string, subKey?: string): RankItem[] {
     // 后端空数据可能返回 null（Go nil 切片），统一按空数组处理
@@ -168,7 +167,8 @@ function formatDate(raw: string, mode: "daily" | "weekly" | "monthly"): string {
     return s.slice(0, 10);
 }
 
-/** 趋势卡片：最近几天/周/月的柱状图（渐变柱 + 合计/峰值） */
+/** 趋势卡片：最近几天/周/月的柱状图（渐变柱 + 合计/峰值）。
+ *  柱图容器固定 `h-32`：柱子的高度是百分比，父容器必须有确定高度才解析得出来。 */
 function TrendCard({ data, mode }: { data: DateRangeStats[] | null | undefined; mode: "daily" | "weekly" | "monthly" }) {
     const title = mode === "daily" ? "每日" : mode === "weekly" ? "每周" : "每月";
     const list = (data ?? []).slice(-10);
@@ -194,7 +194,10 @@ function TrendCard({ data, mode }: { data: DateRangeStats[] | null | undefined; 
             {list.length === 0 ? (
                 <p className="py-2 text-xs text-muted-foreground">暂无数据</p>
             ) : (
-                <div className="flex items-end gap-1">
+                // h-32：柱图**必须有确定高度**，柱子的百分比高度才解析得出来
+                // （之前为了填满网格单元格改成 flex-1，父容器高度变成由卡片反推 → 柱子被压扁，
+                //   极端情况下父高为 0 时柱子会塌掉，这就是「柱子不见了」的回归原因）
+                <div className="flex h-32 items-end gap-1">
                     {list.map((d, i) => (
                         <div key={i} className="group flex h-full min-w-0 flex-1 flex-col items-center gap-1.5">
                             <div className="flex w-full flex-1 items-end">
@@ -294,8 +297,6 @@ function Skeleton() {
 /** 杂项：统计概览（基础统计 + 访客分析排行 + 热门页面 + 趋势）。
  *  访问日志卡不在这里 —— 它是仪表盘最后一块**整宽卡片**，由 dashboard 页面单独渲染。 */
 export function StatisticsSummary() {
-    // 真·自适应瀑布流：卡片高度由内容决定，量高后按 grid-row span 铺排（保「左→右、上→下」顺序）
-    const { containerRef, register } = useMasonry(MASONRY_ROW_H, MASONRY_GAP);
     const [data, setData] = useState<StatisticsSummary | null>(null);
     // 三张趋势图单独拉取（summary 只返回 daily，weekly/monthly 需 GET /statistics/trend）
     const [trend, setTrend] = useState<{
@@ -426,20 +427,17 @@ export function StatisticsSummary() {
                 </div>
             )}
 
-            {/* 卡片瀑布流：**唯一**的卡片间距来源是 gap-3（12px）+ useMasonry 的 8px 行尺。
-                每张卡高度完全由内容决定（auto），量高后由 `grid-row: span N` 跨行铺排：
-                顺序仍是「左→右、上→下」，同时矮卡下方不会留大片空洞
-                （之前行内 auto-rows-min + items-start 的空白问题就此解决，且不再有卡内滚动）。
+            {/* 卡片瀑布流：CSS 多列（columns-1 / sm:2 / xl:3）+ 子项 break-inside-avoid ——
+                卡片高度完全由内容决定、列内紧密排列、**绝不重叠**，也没有行内空洞。
+                唯一间距来源是子项 mb-3（12px）。阅读顺序为**列优先**（先填满第一列）。
                 访问日志卡不在这里：它是仪表盘最后一块整宽卡片（见 visitor-logs-card.tsx 顶部约定） */}
-            <div ref={containerRef} className={masonryGridCls} style={{ gridAutoRows: `${MASONRY_ROW_H}px` }}>
+            <div className={cardGridCls}>
                 {visibleTrends.map((t) => (
-                    <div key={t.mode} ref={register} className="min-w-0">
-                        <TrendCard data={t.data} mode={t.mode} />
-                    </div>
+                    <TrendCard key={t.mode} data={t.data} mode={t.mode} />
                 ))}
 
                 {visibleDeviceSections.map((section) => (
-                    <section key={section.title} ref={register} className={`${cardCls} min-w-0`}>
+                    <section key={section.title} className={`${cardCls} min-w-0`}>
                         <GroupTitle icon={SECTION_ICON[section.title] ?? <MonitorSmartphone className="size-3.5" />}>
                             {section.title}
                         </GroupTitle>
@@ -447,7 +445,7 @@ export function StatisticsSummary() {
                     </section>
                 ))}
                     {visibleGeoSections.length > 0 && (
-                        <section ref={register} className={`${cardCls} min-w-0`}>
+                        <section className={`${cardCls} min-w-0`}>
                             <GroupTitle icon={<Globe className="size-3.5" />}>访客画像 · 地域与来源</GroupTitle>
                             {/* 左边占比饼图，右边排名前五的来源网站（颜色深浅与饼图分段一一对应） */}
                             {refererItems.length > 0 ? (
@@ -513,7 +511,7 @@ export function StatisticsSummary() {
                     )}
 
                     {hotPages.length > 0 && (
-                        <section ref={register} className={`${cardCls} min-w-0`}>
+                        <section className={`${cardCls} min-w-0`}>
                             <GroupTitle icon={<Flame className="size-3.5" />}>热门页面 TOP</GroupTitle>
                             <div className="space-y-2.5">
                                 {hotPages.map((item, i) => {
