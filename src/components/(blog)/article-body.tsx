@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef } from "react";
 import katex from "katex";
 
 import { enhanceBlock, type CodeBlockOptions } from "@/lib/code-block";
+import { renderCopyCopyrightText, type ArticleCopyCopyrightConfig } from "@/lib/post-copyright";
 
 /** 标题锚点：给 h1-h4 生成 id 并注入 GitHub 风格的 # 链接 */
 function slugify(text: string): string {
@@ -833,10 +834,13 @@ function enhanceMusic(root: HTMLElement, cleanupFns: (() => void)[]) {
 export function ArticleBody({
     html,
     codeBlock,
+    copyCopyright,
 }: {
     html: string;
     /** 代码块配置（site-config post.code_block）：mac 风格、超过多少行折叠 */
     codeBlock?: { codeMaxLines?: number; macStyle?: boolean };
+    /** 复制正文的版权配置（site-config post.copy.*）：启用时复制正文会在末尾追加版权声明 */
+    copyCopyright?: ArticleCopyCopyrightConfig | null;
 }) {
     const ref = useRef<HTMLDivElement>(null);
 
@@ -848,6 +852,78 @@ export function ArticleBody({
         }),
         [codeBlock?.codeMaxLines, codeBlock?.macStyle]
     );
+
+    // ── 复制正文：post.copy.enable / post.copy.copyright_enable ──
+    // 官方实现（PostContent/index.tsx 第 45-111 行）在 document 上以捕获阶段监听 copy：
+    //   enable === false          → 禁止复制正文
+    //   copyright_enable === true → 选区文本末尾追加 "\n\n---\n" + 版权文案
+    // 这里同样挂在 document 上（选区可能跨正文节点），但只处理落在正文容器内的选择区域。
+    const copyEnable = copyCopyright?.enable;
+    const copyCopyrightEnable = copyCopyright?.copyrightEnable;
+    const copyOriginalTemplate = copyCopyright?.copyrightOriginal;
+    const copyReprintTemplate = copyCopyright?.copyrightReprint;
+    const copySiteName = copyCopyright?.siteName;
+    const copyAuthor = copyCopyright?.author;
+    const copyIsReprint = copyCopyright?.isReprint;
+    const copyCopyrightAuthor = copyCopyright?.copyrightAuthor;
+    const copyCopyrightUrl = copyCopyright?.copyrightUrl;
+
+    useEffect(() => {
+        const root = ref.current;
+        if (!root) return;
+
+        // 配置没取到（undefined）：不拦截、不追加
+        if (copyEnable === undefined) return;
+
+        if (copyEnable === false) {
+            const preventCopy = (e: ClipboardEvent) => {
+                if (root.contains(e.target as Node)) e.preventDefault();
+            };
+            document.addEventListener("copy", preventCopy, true);
+            return () => document.removeEventListener("copy", preventCopy, true);
+        }
+
+        if (copyCopyrightEnable !== true) return;
+
+        const handleCopy = (e: ClipboardEvent) => {
+            const selection = window.getSelection();
+            const selectedText = selection?.toString() ?? "";
+            if (!selection || selectedText.length === 0) return;
+
+            const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+            if (!range) return;
+            const container = range.commonAncestorContainer;
+            const target = container.nodeType === Node.TEXT_NODE ? container.parentElement : (container as HTMLElement);
+            if (!target || !root.contains(target)) return;
+
+            const copyrightText = renderCopyCopyrightText({
+                copyrightOriginal: copyOriginalTemplate,
+                copyrightReprint: copyReprintTemplate,
+                isReprint: copyIsReprint === true,
+                copyrightAuthor: copyCopyrightAuthor,
+                copyrightUrl: copyCopyrightUrl,
+                siteName: copySiteName ?? "",
+                author: copyAuthor ?? "",
+                currentUrl: window.location.href,
+            });
+
+            e.clipboardData?.setData("text/plain", `${selectedText}\n\n---\n${copyrightText}`);
+            e.preventDefault();
+        };
+
+        document.addEventListener("copy", handleCopy, true);
+        return () => document.removeEventListener("copy", handleCopy, true);
+    }, [
+        copyEnable,
+        copyCopyrightEnable,
+        copyOriginalTemplate,
+        copyReprintTemplate,
+        copySiteName,
+        copyAuthor,
+        copyIsReprint,
+        copyCopyrightAuthor,
+        copyCopyrightUrl,
+    ]);
 
     useEffect(() => {
         const root = ref.current;

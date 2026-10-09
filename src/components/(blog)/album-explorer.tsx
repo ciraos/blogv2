@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ExternalLink } from "lucide-react";
 
 import { AlbumWaterfall, type AlbumGridConfig } from "@/components/(blog)/album-waterfall";
+import { PageBanner } from "@/components/(blog)/page-banner";
 import { PaginationControls } from "@/components/pagination-controls";
 import type { Album, AlbumCategory } from "@/lib/api";
-import { resolveAssetUrl } from "@/lib/utils";
 
 /** 相册页附加信息（由服务端传入；过滤条右侧展示） */
 export interface AlbumFooterInfo {
@@ -50,32 +50,15 @@ const SORT_LABELS: Record<SortMode, string> = {
     hot: "热度排序",
 };
 
-/** 顶部横幅（album.banner：背景图 + tip + 标题 + 描述） */
+/** 顶部横幅（album.banner：背景图 + tip + 标题 + 描述）与即刻/朋友圈共用 PageBanner */
 function AlbumBanner({ banner }: { banner: AlbumPageConfig["banner"] }) {
-    const bg = resolveAssetUrl(banner.background);
-    if (!banner.title && !bg) return null;
     return (
-        <div className="relative flex h-56 flex-col justify-between overflow-hidden rounded-xl p-5 text-white md:h-75 md:p-8">
-            {bg && (
-                <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={bg} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                    {/* 遮罩：保证文字可读性 */}
-                    <div className="absolute inset-0 bg-black/35" />
-                </>
-            )}
-            <div className="relative z-10">
-                {banner.tip && <div className="mb-2 text-[.75rem] font-medium text-white/80">{banner.tip}</div>}
-                {banner.title && (
-                    <div className="text-3xl font-bold leading-[1.2] md:text-[2.25rem]">{banner.title}</div>
-                )}
-            </div>
-            {banner.description && (
-                <div className="relative z-10 line-clamp-2 text-[.875rem] leading-normal text-white/90">
-                    {banner.description}
-                </div>
-            )}
-        </div>
+        <PageBanner
+            background={banner.background}
+            tip={banner.tip}
+            title={banner.title}
+            description={banner.description}
+        />
     );
 }
 

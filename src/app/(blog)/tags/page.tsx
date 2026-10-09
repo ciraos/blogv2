@@ -7,12 +7,13 @@ import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 import { getAllPublicArticlesApi, getPublicArticlesApi } from "@/lib/api";
 import { collectTags } from "@/lib/articles";
 import { generateBlogMetadata } from "@/lib/seo";
+import { getSiteConfigs } from "@/lib/site-config";
 
 export async function generateMetadata(): Promise<Metadata> {
     return generateBlogMetadata("标签");
 }
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE_FALLBACK = 10;
 
 interface TagsSearchParams {
     name?: string | string[];
@@ -26,7 +27,10 @@ export default async function Tags({ searchParams }: { searchParams: Promise<Tag
 
     // ===== 某标签下的文章列表 =====
     if (name) {
-        const { list, total } = await getPublicArticlesApi({ page, pageSize: PAGE_SIZE, tag: name });
+        // 每页条数跟 post.default.page_size 走（与首页/文章列表页一致）
+        const configuredPageSize = (await getSiteConfigs())?.post?.default?.page_size;
+        const pageSize = typeof configuredPageSize === "number" && configuredPageSize > 0 ? configuredPageSize : PAGE_SIZE_FALLBACK;
+        const { list, total } = await getPublicArticlesApi({ page, pageSize, tag: name });
         return (
             <PageWithSidebar>
                 <div className="w-full space-y-4">
@@ -40,7 +44,7 @@ export default async function Tags({ searchParams }: { searchParams: Promise<Tag
                         articles={list}
                         total={total}
                         page={page}
-                        pageSize={PAGE_SIZE}
+                        pageSize={pageSize}
                         makePageHref={(p) => `/tags?name=${encodeURIComponent(name)}&page=${p}`}
                         emptyText="该标签暂无文章"
                     />

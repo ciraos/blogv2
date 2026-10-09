@@ -9,13 +9,26 @@ interface TocItem {
     level: number;
 }
 
-/** PC 端文章右侧常驻目录（sticky 跟随滚动），仅 /posts/ 页面渲染 */
-export function PostToc() {
+/** PC 端文章右侧常驻目录（sticky 跟随滚动），仅 /posts/ 页面渲染。
+ *  collapseMode（site-config 的 sidebar.toc.collapseMode）打开时按官方口径折叠：
+ *  只显示顶级标题 + 当前激活项 + 激活项的父级 + 激活项之后最多 3 个子项。
+ *  hashUpdateMode（site-config 的 post.toc.hash_update_mode）为 none 时不写 URL hash（官方：replace=启用 / none=禁用）。 */
+export function PostToc({
+    collapseMode = false,
+    hashUpdateMode = "replace",
+}: {
+    collapseMode?: boolean;
+    hashUpdateMode?: string;
+}) {
     const [tocItems, setTocItems] = useState<TocItem[]>([]);
     const [activeId, setActiveId] = useState<string>("");
     const listRef = useRef<HTMLDivElement | null>(null);
     // 上次收集结果缓存：内容没变化时不重复 setState（observer 触发很频繁）
     const itemsRef = useRef<TocItem[]>([]);
+    // 当前高亮项（用 ref 记住，滚动时才能判断"变了没"并决定要不要写 hash）
+    const activeRef = useRef<string>("");
+    // 是否允许写 URL hash：官方 post.toc.hash_update_mode，none=禁用
+    const hashEnabled = hashUpdateMode !== "none";
     // 客户端路由判断：软导航（文章→首页）时服务端 x-pathname 可能不更新，
     // 这里用 usePathname 兜底，离开文章页立即隐藏目录
     const pathname = usePathname();
@@ -48,14 +61,18 @@ export function PostToc() {
         setTocItems(items);
     }, []);
 
-    /** 点击目录项滚动到标题，并同步 URL hash（锚点可分享） */
-    const scrollToHeading = useCallback((id: string) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-        history.replaceState(null, "", `#${id}`);
-        setActiveId(id);
-    }, []);
+    /** 点击目录项滚动到标题，并同步 URL hash（锚点可分享；hash_update_mode=none 时不写） */
+    const scrollToHeading = useCallback(
+        (id: string) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+            if (hashEnabled) history.replaceState(null, "", `#${id}`);
+            activeRef.current = id;
+            setActiveId(id);
+        },
+        [hashEnabled]
+    );
 
     // 收集时机：
     // 1. 挂载后立即尝试一次（SSR 首屏正文已在 DOM，但标题 id 可能尚未生成）
@@ -93,7 +110,12 @@ export function PostToc() {
             }
             // 只更新高亮，不做 scrollIntoView 跟随——
             // 侧边栏不是滚动容器，scrollIntoView 会滚动整个页面，与用户滚动冲突（页面被拽住）
-            setActiveId((prev) => (current === prev ? prev : current));
+            if (current && current !== activeRef.current) {
+                activeRef.current = current;
+                setActiveId(current);
+                // 滚动驱动的高亮变化同步到 URL hash（官方 post.toc.hash_update_mode=replace 的语义）
+                if (hashEnabled) history.replaceState(null, "", `#${current}`);
+            }
         };
         window.addEventListener("scroll", onScroll, { passive: true });
         return () => {
@@ -101,9 +123,24 @@ export function PostToc() {
             observer.disconnect();
             window.removeEventListener("scroll", onScroll);
         };
-    }, [collectToc, isPost]);
+    }, [collectToc, isPost, hashEnabled]);
 
     if (!isPost || tocItems.length === 0) return null;
+
+    // 折叠模式：可见项过滤（照官方 CardToc 的算法，用标题 id 当 uniqueId）
+    const activeIndex = tocItems.findIndex((item) => item.id === activeId);
+    const minLevel = Math.min(...tocItems.map((item) => item.level));
+    const activeItem = activeIndex >= 0 ? tocItems[activeIndex] : undefined;
+    const visibleItems =
+        !collapseMode || !activeItem
+            ? tocItems
+            : tocItems.filter((item, index) => {
+                  if (item.level === minLevel) return true; // 顶级标题始终显示
+                  if (item.id === activeId) return true; // 激活项
+                  if (index < activeIndex && item.level < activeItem.level) return true; // 激活项的父级
+                  if (index > activeIndex && index <= activeIndex + 3 && item.level > activeItem.level) return true; // 其后最多 3 个子项
+                  return false;
+              });
 
     return (
         <div className="rounded-xl border bg-card p-5 shadow-sm">
@@ -122,7 +159,7 @@ export function PostToc() {
             {/* 目录列表：扁平列表，h2 与 h3 缩进区分，当前项高亮；目录过长时容器内滚动 */}
             <div ref={listRef} className="no-scrollbar max-h-[55vh] overflow-y-auto rounded-lg pr-1">
                 <ul className="space-y-0.5">
-                    {tocItems.map((item) => (
+                    {visibleItems.map((item) => (
                         <li key={item.id}>
                             <button
                                 type="button"

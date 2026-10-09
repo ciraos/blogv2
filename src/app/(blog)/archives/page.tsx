@@ -6,6 +6,7 @@ import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
 import { getPublicArchivesApi, getPublicArticlesApi } from "@/lib/api";
 import { generateBlogMetadata } from "@/lib/seo";
+import { getSiteConfigs } from "@/lib/site-config";
 import type { PostItem } from "@/types/articles";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -113,9 +114,12 @@ export default async function Archives({ searchParams }: { searchParams: Promise
 
     // ===== 按年月筛选的文章列表 =====
     const validMonth = Number.isNaN(month) ? undefined : month;
+    // 每页条数跟 post.default.page_size 走（与首页/文章列表页一致）
+    const configuredPageSize = (await getSiteConfigs())?.post?.default?.page_size;
+    const listPageSize = typeof configuredPageSize === "number" && configuredPageSize > 0 ? configuredPageSize : PAGE_SIZE;
     const { list, total } = await getPublicArticlesApi({
         page,
-        pageSize: PAGE_SIZE,
+        pageSize: listPageSize,
         year,
         month: validMonth,
     });
@@ -134,7 +138,7 @@ export default async function Archives({ searchParams }: { searchParams: Promise
                     articles={list}
                     total={total}
                     page={page}
-                    pageSize={PAGE_SIZE}
+                    pageSize={listPageSize}
                     makePageHref={(p) =>
                         `/archives?year=${year}${validMonth ? `&month=${validMonth}` : ""}&page=${p}`
                     }

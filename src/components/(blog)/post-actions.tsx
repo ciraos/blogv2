@@ -23,6 +23,11 @@ export interface PostActionsConfig {
     showRewardButton: boolean;
     showSubscribeButton: boolean;
     showShareButton: boolean;
+    /**
+     * 版权声明 HTML：由服务端按 post.copyright.*_template 渲染好（占位符已替换）。
+     * 模板本身允许写 <a>，所以这里用 dangerouslySetInnerHTML 渲染。
+     */
+    copyrightHtml: string;
 }
 
 interface PostActionsProps extends PostActionsConfig {
@@ -45,6 +50,7 @@ export function PostActions({
     showRewardButton,
     showSubscribeButton,
     showShareButton,
+    copyrightHtml,
     title,
     url,
 }: PostActionsProps) {
@@ -124,20 +130,14 @@ export function PostActions({
                 </div>
             )}
 
-            <div className="text-center text-xs text-muted-foreground">
-                <span>本文是原创文章，采用</span>
-                <Link
-                    href="https://creativecommons.org/licenses/by-nc-sa/4.0/"
-                    target="_blank"
-                    className="underline decoration-dotted"
-                >
-                    &nbsp;CC BY-NC-SA 4.0 &nbsp;
-                </Link>
-                <span>协议，完整转载请注明来自</span>
-                <Link href={siteUrl} target="_blank" className="underline decoration-dotted">
-                    &nbsp;{siteName}&nbsp;
-                </Link>
-            </div>
+            {/*
+              版权声明：文案/结构全部来自 post.copyright.*_template（服务端渲染好占位符）。
+              [&_a] 让后台模板里的链接继承原来的下划线点线样式，深浅色随 muted-foreground 走。
+            */}
+            <div
+                className="text-center text-xs text-muted-foreground [&_a]:underline [&_a]:decoration-dotted"
+                dangerouslySetInnerHTML={{ __html: copyrightHtml }}
+            />
         </div>
     );
 }

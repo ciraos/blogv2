@@ -28,7 +28,8 @@ export function HomeTop({ homeTop }: { homeTop?: HomeTopConfig }) {
                     {category.length > 0 && (
                         <div className="mt-5 flex flex-wrap gap-3">
                             {category.map((item) => {
-                                // 兼容 hexo 风格路径 /categories/xxx/ → 本应用 query 式 /categories?name=xxx
+                                // 兼容 hexo 风格路径 /categories/xxx（尾部斜杠可选，线上两种写法都有）
+                                // → 本应用 query 式 /categories?name=xxx
                                 const m = /^\/categories\/([^/]+)\/?$/.exec(item.path);
                                 const href = m
                                     ? `/categories?name=${encodeURIComponent(decodeURIComponent(m[1]))}`
@@ -65,7 +66,9 @@ export function HomeTop({ homeTop }: { homeTop?: HomeTopConfig }) {
                         rel={banner.isExternal ? "noopener noreferrer nofollow" : undefined}
                         className="group relative block w-full shrink-0 overflow-hidden rounded-xl border p-5 text-white md:w-64"
                         style={
-                            banner.image
+                            // 对齐官方 HomeTop.tsx 的判定（image && image.trim()）：
+                            // 线上 banner.image 是空串，此时走渐变色兜底，不出现破图/空洞
+                            banner.image?.trim()
                                 ? {
                                       backgroundImage: `url(${banner.image})`,
                                       backgroundSize: "cover",

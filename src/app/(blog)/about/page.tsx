@@ -241,11 +241,19 @@ export default async function About() {
                     )}
                     {enable.map_and_info && page.map && page.self_info && (
                         <div className="item-group flex w-full flex-col justify-between self-start md:min-w-0 md:flex-[61]">
-                            <div
-                                className="about-map relative mb-2 h-60 overflow-hidden rounded-xl border bg-card"
-                                style={{ backgroundImage: `url(${resolveAssetUrl(page.map.background) ?? ""})`, backgroundPosition: "center", backgroundSize: "100%", transition: "all 1s ease-in-out" }}
-                            >
-                                <span className="absolute bottom-0 left-0 w-full bg-white/60 px-8 py-2 text-xl text-foreground backdrop-blur-xl">
+                            <div className="about-map relative mb-2 h-60 overflow-hidden rounded-xl border bg-card">
+                                {/* 官方按 isDark 在 backgroundDark / background 之间切换；这里用 dark: 两层叠放纯 CSS 切换，避免客户端主题状态带来的首帧闪烁 */}
+                                <div
+                                    className="absolute inset-0 bg-center bg-no-repeat dark:hidden"
+                                    style={{ backgroundImage: `url(${resolveAssetUrl(page.map.background) ?? ""})`, backgroundSize: "100%", transition: "all 1s ease-in-out" }}
+                                />
+                                {page.map.backgroundDark && (
+                                    <div
+                                        className="absolute inset-0 hidden bg-center bg-no-repeat dark:block"
+                                        style={{ backgroundImage: `url(${resolveAssetUrl(page.map.backgroundDark) ?? ""})`, backgroundSize: "100%", transition: "all 1s ease-in-out" }}
+                                    />
+                                )}
+                                <span className="absolute bottom-0 left-0 z-10 w-full bg-white/60 px-8 py-2 text-xl text-foreground backdrop-blur-xl dark:bg-black/50">
                                     {page.map.title} <b>{page.map.strengthenTitle}</b>
                                 </span>
                             </div>

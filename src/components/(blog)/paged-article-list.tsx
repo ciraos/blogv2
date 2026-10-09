@@ -1,6 +1,8 @@
 import type { PostItem } from "@/types/articles";
 import { ArticleCard } from "@/components/(blog)/article-card";
 import { NumberedPagination } from "@/components/(blog)/numbered-pagination";
+import { getSiteConfigs } from "@/lib/site-config";
+import { cn, resolveAssetUrl } from "@/lib/utils";
 
 interface PagedArticleListProps {
     articles: PostItem[];
@@ -12,9 +14,16 @@ interface PagedArticleListProps {
     emptyText?: string;
 }
 
-/** 文章卡片网格 + 分页（供首页 / 归档 / 分类 / 标签共用） */
+/**
+ * 文章卡片网格 + 分页（供首页 / 归档 / 分类 / 标签共用）。
+ *
+ * 列表项外观的三个默认值直接在这里读站点配置（post.default.*），
+ * 这样首页等调用方不必各自传参：默认封面 / 双栏布局 / 主色标签。
+ * 注意每页条数（post.default.page_size）不在这里取——它必须在调用方取数前就确定，
+ * 否则 API 拉回来的条数与本组件算出的总页数会对不上。
+ */
 // 列数随内容区宽度自适应：窄 2 列、宽 4 列（container query，见 globals.css .article-grid）
-export function PagedArticleList({
+export async function PagedArticleList({
     articles,
     total,
     page,
@@ -24,6 +33,13 @@ export function PagedArticleList({
 }: PagedArticleListProps) {
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+    const config = await getSiteConfigs();
+    const defaults = config?.post?.default;
+    const defaultCover = resolveAssetUrl(defaults?.cover);
+    // 官方语义：double_column 缺省为 true（多栏卡片流），显式 false 才是单栏
+    const doubleColumn = defaults?.double_column !== false;
+    const enablePrimaryColorTag = defaults?.enable_primary_color_tag === true;
+
     return (
         <div className="w-full space-y-6">
             {articles.length === 0 ? (
@@ -31,9 +47,15 @@ export function PagedArticleList({
                     {page > 1 ? "该页没有文章" : emptyText}
                 </div>
             ) : (
-                <div className="article-grid grid grid-cols-1 gap-4">
+                // 单栏（double_column=false）时不挂 .article-grid，避免 container query 把它撑成多列
+                <div className={cn("grid grid-cols-1 gap-4", doubleColumn && "article-grid")}>
                     {articles.map((article) => (
-                        <ArticleCard key={article.id} article={article} />
+                        <ArticleCard
+                            key={article.id}
+                            article={article}
+                            defaultCover={defaultCover}
+                            enablePrimaryColorTag={enablePrimaryColorTag}
+                        />
                     ))}
                 </div>
             )}

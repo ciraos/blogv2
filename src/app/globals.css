@@ -3553,3 +3553,34 @@ body:has(.one-image-hero) .main {
    主色不再按皮肤写死在这里，而由 src/lib/appearance.ts 依据后端
    APPEARANCE_SKIN / APPEARANCE_TOKENS 生成 CSS 变量，内联到 <html> 的 style 上，
    从而支持任意皮肤值（amber / violet / blue ...），未知皮肤则回退本文件默认主题色。 */
+
+/* ===================== 文章页正文结尾的装饰波浪（post.waves.enable） =====================
+   结构见 components/(blog)/post-waves.tsx：两层 SVG 宽度 200%，
+   波形一个周期 1440 单位（= viewBox 宽的一半），位移 -50% 即无缝循环。
+   只动 transform（合成层），不触发重排；外层容器 overflow-hidden 兜住宽度，不产生横向滚动。 */
+@keyframes post-wave-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+/* 只在用户「没有要求减少动效」时播放：reduce 时保留静态波浪（不加动画即停在初始位置）。
+   注意：站点配置的 RESPECT_REDUCED_MOTION 目前没有挂到 <html> 上（只有 music.module.css
+   按 html.respect-reduced-motion 写过规则，但没人设置该类），所以这里直接以系统偏好为准，
+   对装饰性动画无条件尊重 prefers-reduced-motion。 */
+@media (prefers-reduced-motion: no-preference) {
+  .post-waves__layer {
+    animation: post-wave-drift 14s linear infinite;
+    will-change: transform;
+  }
+
+  /* 后层反向 + 更慢：两层交错，像水面流动 */
+  .post-waves__layer--back {
+    animation-duration: 22s;
+    animation-direction: reverse;
+  }
+}

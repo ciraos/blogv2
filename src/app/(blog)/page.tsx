@@ -1,31 +1,41 @@
 import type { Metadata } from "next";
 
+import { HomeTop } from "@/components/(blog)/home-top";
 import { PagedArticleList } from "@/components/(blog)/paged-article-list";
 import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
 import { getPublicArticlesApi } from "@/lib/api";
 import { generateBlogMetadata } from "@/lib/seo";
+import { getSiteConfigs } from "@/lib/site-config";
 
 export async function generateMetadata(): Promise<Metadata> {
     return generateBlogMetadata();
 }
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE_FALLBACK = 10;
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
     const { page: pageRaw } = await searchParams;
     const page = Math.max(1, parseInt(pageRaw ?? "1", 10) || 1);
 
-    const { list, total } = await getPublicArticlesApi({ page, pageSize: PAGE_SIZE });
+    // 每页条数跟 post.default.page_size 走（与 /posts 一致）；取不到或非法值退回 10。
+    // 配置必须在取文章之前定下来，否则分页总数会跟实际页大小对不上。
+    const config = await getSiteConfigs();
+    const configuredPageSize = config?.post?.default?.page_size;
+    const pageSize = typeof configuredPageSize === "number" && configuredPageSize > 0 ? configuredPageSize : PAGE_SIZE_FALLBACK;
+
+    const { list, total } = await getPublicArticlesApi({ page, pageSize });
 
     return (
         <PageWithSidebar>
             <div className="w-full space-y-12">
+                {/* 首页顶部区：放在文章列表之前（对齐官方 HomePageContent.tsx 第 46-48 行 HomeTop 在 FeedArticleList 之前的挂载位置） */}
+                <HomeTop homeTop={config?.HOME_TOP} />
                 <PagedArticleList
                     articles={list}
                     total={total}
                     page={page}
-                    pageSize={PAGE_SIZE}
+                    pageSize={pageSize}
                     makePageHref={(p) => `/?page=${p}`}
                 />
             </div>

@@ -1,11 +1,22 @@
 import Link from "next/link";
-import { ArrowRight, CalendarDays, FileText, MegaphoneIcon, MessageSquare, Tag as TagIcon } from "lucide-react";
+import { headers } from "next/headers";
+import {
+    ArrowRight,
+    CalendarDays,
+    Clock,
+    ExternalLink,
+    FileText,
+    Link as LinkIcon,
+    Link2,
+    MessageSquare,
+    Tag as TagIcon,
+} from "lucide-react";
 import { CollapsibleAside } from "@/components/(blog)/collapsible-aside";
 import { PostToc } from "@/components/(blog)/post-toc";
 import { AuthorGreeting } from "@/components/(blog)/author-greeting";
 import { Icon } from "@/components/ui/icon";
 import { collectTags } from "@/lib/articles";
-import { getAllPublicArticlesApi, getLatestCommentsApi, getPublicArchivesApi, type RecentComment } from "@/lib/api";
+import { getAllPublicArticlesApi, getLatestCommentsApi, getPublicArchivesApi, getPublicArticlesApi, type RecentComment } from "@/lib/api";
 import { resolveCommentAvatar, type GravatarConfig } from "@/lib/avatar";
 import { resolveAssetUrl } from "@/lib/utils";
 import type { SiteConfig } from "@/types/site-config";
@@ -65,7 +76,11 @@ function AuthorCard({ config }: { config: SiteConfig }) {
                 )}
 
                 <Link href="/about" className="mt-4 block text-center">
-                    <div className="text-xl font-bold tracking-tight">{config.APP_NAME || "博客"}</div>
+                    {/* 名字取 frontDesk.siteOwner.name（官方 AuthorInfoCard 的 ownerName 口径），
+                        缺省才回退站点名 APP_NAME */}
+                    <div className="text-xl font-bold tracking-tight">
+                        {config.frontDesk?.siteOwner?.name || config.APP_NAME || "博客"}
+                    </div>
                     <div className="mt-1 text-xs opacity-75">{config.SUB_TITLE || ""}</div>
                 </Link>
             </div>
@@ -94,8 +109,170 @@ function AuthorCard({ config }: { config: SiteConfig }) {
     );
 }
 
-/** 标签云 */
-async function TagsCard() {
+/** 文档链接卡的图标：只认本项目 iconfont（anzhiyu-icon-*，见 ui/icon.tsx）。
+ *  配置里存的是 iconify 名（ri:xxx / fa6-brands:xxx），本项目没有那套图标源，
+ *  认不出来就退化为 lucide 通用图标（外链用 ExternalLink，其余用 Link），不引新依赖。 */
+function DocLinkIcon({ name, external }: { name?: string; external?: boolean }) {
+    if (name?.startsWith("anzhiyu-icon-")) {
+        return <Icon name={name} className="size-3.5 shrink-0 text-muted-foreground" />;
+    }
+    if (external) return <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />;
+    return <LinkIcon className="size-3.5 shrink-0 text-muted-foreground" />;
+}
+
+/** 文档链接卡（sidebar.doc.links）：external 为真时新窗口打开，否则走站内路由 */
+function DocLinksCard({ links }: { links?: DocLinkItem[] }) {
+    const items = (links ?? []).filter((link) => link?.link);
+    if (items.length === 0) return null;
+
+    return (
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <Link2 className="size-4 text-primary" />
+                文档链接
+            </h3>
+            <ul className="mt-3 space-y-0.5">
+                {items.map((link, index) => {
+                    const label = link.title || link.link;
+                    const className =
+                        "flex items-center gap-2 rounded-md px-1 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-primary";
+                    return (
+                        <li key={`${link.link}-${index}`}>
+                            {link.external ? (
+                                <a href={link.link} target="_blank" rel="noopener noreferrer nofollow" className={className}>
+                                    <DocLinkIcon name={link.icon} external />
+                                    <span className="truncate">{label}</span>
+                                </a>
+                            ) : (
+                                <Link href={link.link} className={className}>
+                                    <DocLinkIcon name={link.icon} />
+                                    <span className="truncate">{label}</span>
+                                </Link>
+                            )}
+                        </li>
+                    );
+                })}
+            </ul>
+        </div>
+    );
+}
+
+/** 微信卡片（sidebar.wechat）：底层模糊背景图 + 正面二维码；
+ *  悬浮时 3D 翻转看背面（纯 CSS：group-hover + preserve-3d，不需要客户端组件）；
+ *  link 非空时整卡可点，新窗口打开（官方 CardWechat 同口径）。 */
+function WechatCard({
+    face,
+    backFace,
+    blurBackground,
+    link,
+}: {
+    face: string;
+    backFace: string;
+    blurBackground: string;
+    link?: string;
+}) {
+    const faceStyle = { backgroundImage: `url(${face})`, backgroundSize: "100%" };
+    const backFaceStyle = { backgroundImage: `url(${backFace})`, backgroundSize: "100%" };
+
+    const inner = (
+        <>
+            {/* 模糊背景：悬浮时下滑淡出（官方 CardWechat 的 ::before 行为） */}
+            {blurBackground && (
+                <div
+                    className="absolute inset-0 bg-cover bg-center transition-all duration-300 group-hover:translate-y-full group-hover:opacity-0"
+                    style={{ backgroundImage: `url(${blurBackground})` }}
+                />
+            )}
+            <div className="relative z-[1] h-[110px] w-[235px] [perspective:1000px]">
+                <div className="h-full w-full transition-transform duration-300 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)]">
+                    {/* 正面 */}
+                    <div className="absolute inset-0 bg-center bg-no-repeat [backface-visibility:hidden]" style={faceStyle} />
+                    {/* 背面（预先翻转 180°，正面朝外时正好背对视线） */}
+                    <div
+                        className="absolute inset-0 bg-center bg-no-repeat [backface-visibility:hidden] [transform:rotateY(180deg)]"
+                        style={backFaceStyle}
+                    />
+                </div>
+            </div>
+        </>
+    );
+
+    const shell =
+        "group relative flex h-[110px] items-center justify-center overflow-hidden rounded-xl border bg-[#57bd6a] shadow-sm dark:bg-[#121121]";
+
+    if (!link) return <div className={shell}>{inner}</div>;
+
+    return (
+        <a href={link} target="_blank" rel="noopener noreferrer nofollow" title="微信公众号" className={shell}>
+            {inner}
+        </a>
+    );
+}
+
+interface DocLinkItem {
+    title?: string;
+    link: string;
+    icon?: string;
+    external?: boolean;
+}
+
+interface CustomSidebarBlock {
+    title: string;
+    content: string;
+    showInPost: boolean;
+}
+
+/** 解析 CUSTOM_SIDEBAR（类型是 unknown[]，官方结构 { title, content, showInPost? }，最多 3 块）。
+ *  后端可能直接给数组，也可能给 JSON 字符串（官方 parseCustomBlocks 兼容两种），空值返回 []。 */
+function parseCustomSidebarBlocks(raw: unknown): CustomSidebarBlock[] {
+    let value: unknown = raw;
+    if (typeof raw === "string") {
+        const trimmed = raw.trim();
+        if (!trimmed || trimmed === "[]") return [];
+        try {
+            value = JSON.parse(trimmed);
+        } catch {
+            return []; // 结构不认识就整体不渲染，避免把脏数据当 HTML 塞进页面
+        }
+    }
+    if (!Array.isArray(value)) return [];
+    // 显式标成 unknown[]（Array.isArray 会把 unknown 收窄成 any[]，这里不给隐式 any 留口子）
+    const list = value as unknown[];
+
+    return list
+        .filter((block): block is Record<string, unknown> => typeof block === "object" && block !== null)
+        .map((block) => ({
+            title: typeof block.title === "string" ? block.title : "",
+            content: typeof block.content === "string" ? block.content : "",
+            // 官方口径：showInPost 缺省 = true（文章页也显示）
+            showInPost: block.showInPost === undefined ? true : Boolean(block.showInPost),
+        }))
+        .filter((block) => block.content.trim().length > 0);
+}
+
+/** 自定义侧边栏块（CUSTOM_SIDEBAR）：按后台顺序渲染，标题可空。
+ *  注意：这是服务端渲染的 HTML，静态标签正常显示，但 <script> 不会执行
+ *  （官方是客户端组件里手动重放 script），需要脚本的自定义块请另作安排。 */
+function CustomSidebarCard({ blocks }: { blocks: CustomSidebarBlock[] }) {
+    if (blocks.length === 0) return null;
+
+    return (
+        <>
+            {blocks.map((block, index) => (
+                <div key={`${block.title}-${index}`} className="rounded-xl border bg-card p-5 shadow-sm">
+                    {block.title && <h3 className="text-sm font-semibold">{block.title}</h3>}
+                    <div
+                        className={`text-sm leading-relaxed text-foreground/90 ${block.title ? "mt-3" : ""}`}
+                        dangerouslySetInnerHTML={{ __html: block.content }}
+                    />
+                </div>
+            ))}
+        </>
+    );
+}
+
+/** 标签云（highlight 里的标签用主色高亮，与其余标签区分） */
+async function TagsCard({ highlight }: { highlight?: string[] }) {
     let tags: ReturnType<typeof collectTags> = [];
     try {
         const articles = await getAllPublicArticlesApi();
@@ -104,6 +281,9 @@ async function TagsCard() {
         // 忽略，标签获取失败时隐藏卡片
     }
     if (tags.length === 0) return null;
+
+    // 配置里的高亮名单（去空白后按名字精确匹配；后端标签名可能带空格，故两边都 trim）
+    const highlighted = new Set((highlight ?? []).map((name) => name.trim()).filter(Boolean));
 
     return (
         <div className="rounded-xl border bg-card p-5 shadow-sm">
@@ -116,13 +296,62 @@ async function TagsCard() {
                     <Link
                         key={tag.id}
                         href={`/tags?name=${encodeURIComponent(tag.name)}`}
-                        className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                        className={
+                            highlighted.has(tag.name.trim())
+                                // 高亮：主色实底 + 主色前景，深浅色都由主题令牌决定
+                                ? "rounded-full bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                                : "rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                        }
                     >
                         {tag.name}
                         <sup className="ml-0.5">{tag.count}</sup>
                     </Link>
                 ))}
             </div>
+        </div>
+    );
+}
+
+/** 最近文章：标题（超长省略）+ 发布日期，点击进入文章详情 */
+async function RecentPostsCard({ count }: { count?: number }) {
+    // 条数兜底 5（配置缺失或非正数时）
+    const limit = typeof count === "number" && count > 0 ? count : 5;
+
+    let posts: Awaited<ReturnType<typeof getPublicArticlesApi>>["list"] = [];
+    try {
+        const data = await getPublicArticlesApi({ pageSize: limit });
+        posts = data.list ?? [];
+    } catch {
+        // 忽略，获取失败时隐藏卡片
+    }
+    if (posts.length === 0) return null;
+
+    const formatDate = (iso: string) => {
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return "";
+        return d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
+    };
+
+    return (
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <Clock className="size-4 text-primary" />
+                最近文章
+            </h3>
+            <ul className="mt-3 space-y-2.5">
+                {posts.map((post) => (
+                    <li key={post.id}>
+                        <Link href={`/posts/${post.id}`} className="group block">
+                            <span className="block truncate text-sm text-foreground/90 transition-colors group-hover:text-primary">
+                                {post.title}
+                            </span>
+                            <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                                {formatDate(post.created_at)}
+                            </span>
+                        </Link>
+                    </li>
+                ))}
+            </ul>
         </div>
     );
 }
@@ -297,12 +526,37 @@ function SiteInfoCard({
     );
 }
 
-/** (blog) 右侧边栏：作者卡 + 标签云 + 归档 + 站点信息（300px，桌面端显示）。
+/** (blog) 右侧边栏：作者卡 + 微信卡 + 自定义块 + 文档链接 + 目录 + 最近文章 + 标签云 + 归档 + 最近评论 + 站点信息
+ *  （300px，桌面端显示；每张卡都由站点配置开关控制）。
+ *  站点公告（SITE_ANNOUNCEMENT）不在侧边栏：后端定义为「展示在导航栏下方」的 HTML 片段，
+ *  改由 (blog)/layout.tsx 的导航下方通栏公告条渲染。
  *  「文章目录」卡片由 PostToc 始终渲染，是否显示由 PostToc 内部按 usePathname 判断——
  *  不依赖服务端 x-pathname（软导航时该值可能不更新，导致目录概率性不显示）。 */
 export async function BlogSidebar({ config }: { config?: SiteConfig }) {
     const author = config?.sidebar?.author;
     const siteinfo = config?.sidebar?.siteinfo;
+    // 侧边栏卡片开关（全部来自站点配置；为真才渲染 —— 关掉时连数据请求都不发）
+    const recentPost = config?.sidebar?.recentPost;
+    const tagsConfig = config?.sidebar?.tags;
+    // 文档链接：external 为真时新窗口打开
+    const docLinks = config?.sidebar?.doc?.links;
+    // 微信卡片：enable 为真才渲染（线上当前是 false）
+    const wechat = config?.sidebar?.wechat;
+
+    // 是否文章详情页：sidebar.custom.showInPost 这个开关（「在文章页面也显示」）需要它。
+    // 用 proxy.ts 全站注入的 x-pathname —— 已在普通请求与 RSC 软导航请求上实测有值；
+    // 即使它偶尔滞后，也只会让自定义块多显示/少显示一张卡，不会影响其它卡片。
+    const pathname = (await headers()).get("x-pathname") ?? "";
+    const isPostPage = /^\/posts\/[^/]+$/.test(pathname);
+
+    // 自定义侧边栏块（CUSTOM_SIDEBAR）：非文章页全部显示；文章页要求总开关开启，
+    // 且只显示该块自身 showInPost 不为 false 的（与官方 CustomSidebarBlocks 口径一致）
+    const customBlocks = parseCustomSidebarBlocks(config?.CUSTOM_SIDEBAR);
+    const visibleCustomBlocks = isPostPage
+        ? config?.sidebar?.custom?.showInPost
+            ? customBlocks.filter((block) => block.showInPost)
+            : []
+        : customBlocks;
 
     // 建站起点：归档最早的月份（近似）
     let earliestCreated: string | undefined;
@@ -322,19 +576,28 @@ export async function BlogSidebar({ config }: { config?: SiteConfig }) {
             {/* self-stretch：aside 撑满正文高度 → sticky 的包含块足够长，长文章 TOC 全程固定；不限高：侧边栏内容完整展示，不内部滚动 */}
             <div className="top-20 space-y-4">
                 {author?.enable !== false && config && <AuthorCard config={config} />}
-                <div className="h-max space-y-4 p-5 bg-card rounded-xl border shadow-sm">
-                    <h3 className="flex items-center gap-2 text-sm font-semibold">
-                        <MegaphoneIcon className="size-4 text-primary" />
-                        公告
-                    </h3>
-                    <div className="mt-3 text-sm">
-                        欢迎来到
-                        <span className="font-semibold text-blue-400">&nbsp;{config?.APP_NAME || "站长"}&nbsp;</span>
-                        的博客啊！
-                    </div>
-                </div>
-                <PostToc />
-                <TagsCard />
+                {/* 微信卡片（sidebar.wechat） */}
+                {wechat?.enable && (
+                    <WechatCard
+                        face={wechat.face}
+                        backFace={wechat.backFace}
+                        blurBackground={wechat.blurBackground}
+                        link={wechat.link}
+                    />
+                )}
+                {/* 自定义侧边栏（CUSTOM_SIDEBAR + sidebar.custom.showInPost） */}
+                <CustomSidebarCard blocks={visibleCustomBlocks} />
+                {/* 文档链接（sidebar.doc.links） */}
+                <DocLinksCard links={docLinks} />
+                {/* 文章目录（sidebar.toc.collapseMode 折叠；post.toc.hash_update_mode 控制是否写 URL hash） */}
+                <PostToc
+                    collapseMode={config?.sidebar?.toc?.collapseMode === true}
+                    hashUpdateMode={config?.post?.toc?.hash_update_mode}
+                />
+                {/* 最近文章（config.sidebar.recentPost） */}
+                {recentPost?.enable && <RecentPostsCard count={recentPost.count} />}
+                {/* 标签云（config.sidebar.tags） */}
+                {tagsConfig?.enable && <TagsCard highlight={tagsConfig.highlight} />}
                 <ArchivesCard displayMonths={config?.sidebar?.archive?.displayMonths || 6} />
                 {/* 最近评论：位于网站信息上方 */}
                 <RecentCommentsCard

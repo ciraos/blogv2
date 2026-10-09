@@ -5,10 +5,12 @@ import { notFound } from "next/navigation";
 import { ArticleBody } from "@/components/(blog)/article-body";
 import { PostActions } from "@/components/(blog)/post-actions";
 import { PostComments } from "@/components/(blog)/post-comments";
+import { PostWaves } from "@/components/(blog)/post-waves";
 import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
 import { ApiError, getCommentsWithChildrenApi, getPublicArticleApi, getPublicSiteConfigApi } from "@/lib/api";
 import { getCommentAuthor } from "@/lib/comment-author";
+import { renderCopyrightHtml, type ArticleCopyCopyrightConfig } from "@/lib/post-copyright";
 import { splitKeywords } from "@/lib/seo";
 import { resolveAssetUrl } from "@/lib/utils";
 
@@ -89,8 +91,10 @@ export default async function Post({ params }: PostPageProps) {
     const cover = resolveAssetUrl(article.cover_url || article.top_img_url);
     const prev = article.prev_article;
     const next = article.next_article;
+    /** 转载文章走转载模板/转载追加文案（官方口径：is_reprint === true） */
+    const isReprint = article.is_reprint === true;
 
-    // 站点配置（版权块/打赏/订阅/分享）：服务端取数后通过 props 传入客户端组件
+    // 站点配置（版权块/打赏/订阅/分享/复制追加版权）：服务端取数后通过 props 传入客户端组件
     let actionsConfig: {
         siteName: string;
         author: string;
@@ -101,22 +105,54 @@ export default async function Post({ params }: PostPageProps) {
         showRewardButton: boolean;
         showSubscribeButton: boolean;
         showShareButton: boolean;
+        /** 版权声明 HTML（post.copyright.*_template 渲染结果，占位符已替换） */
+        copyrightHtml: string;
     } | null = null;
+    // 复制正文时的版权配置（post.copy.*）；null = 配置没取到，客户端不拦截也不追加
+    let copyCopyright: ArticleCopyCopyrightConfig | null = null;
     try {
         const config = await getPublicSiteConfigApi();
+        // 作者名兜底链照官方 PostCopyright/index.tsx 的顺序，但去掉 owner_name 那一级：
+        // 后端公开文章接口只返回 owner_nickname（无 owner_name，实测 2026-10），所以是 昵称 → 前台站长名 → 站点名 → 博主
+        const authorName = article.owner_nickname || config.frontDesk?.siteOwner?.name || config.APP_NAME || "博主";
+        const siteUrl = config.SITE_URL ?? "/";
         actionsConfig = {
             siteName: config.APP_NAME ?? "博客",
-            author: article.owner_nickname || config.APP_NAME || "博主",
+            author: authorName,
             subtitle: config.SUB_TITLE ?? "",
-            siteUrl: config.SITE_URL ?? "/",
+            siteUrl,
             userAvatar: resolveAssetUrl(config.USER_AVATAR),
             icp: config.ICP_NUMBER ?? "",
             showRewardButton: config.post?.copyright?.show_reward_button ?? true,
             showSubscribeButton: config.post?.copyright?.show_subscribe_button ?? true,
             showShareButton: config.post?.copyright?.show_share_button ?? true,
+            // 版权模板：配置为空时回退官方默认模板（等价于此前的写死文案）
+            copyrightHtml: renderCopyrightHtml({
+                originalTemplate: config.post?.copyright?.original_template,
+                reprintTemplateWithUrl: config.post?.copyright?.reprint_template_with_url,
+                reprintTemplateWithoutUrl: config.post?.copyright?.reprint_template_without_url,
+                isReprint,
+                copyrightAuthor: article.copyright_author,
+                copyrightUrl: article.copyright_url,
+                author: authorName,
+                siteUrl,
+            }),
+        };
+        copyCopyright = {
+            // 官方语义：post.copy.enable=false 表示「不允许复制文章内容」，缺省不拦截
+            enable: config.post?.copy?.enable !== false,
+            copyrightEnable: config.post?.copy?.copyright_enable === true,
+            copyrightOriginal: config.post?.copy?.copyright_original ?? "",
+            copyrightReprint: config.post?.copy?.copyright_reprint ?? "",
+            siteName: config.APP_NAME || "本站",
+            // 复制追加文案的 {author} 官方取 frontDesk.siteOwner.name（与版权块的 {author} 不是同一个值）
+            author: config.frontDesk?.siteOwner?.name || "博主",
+            isReprint,
+            copyrightAuthor: article.copyright_author ?? "",
+            copyrightUrl: article.copyright_url ?? "",
         };
     } catch {
-        // 配置获取失败时不渲染版权块（不阻塞文章正文）
+        // 配置获取失败时不渲染版权块、不做复制拦截（不阻塞文章正文）
         actionsConfig = null;
     }
 
@@ -130,6 +166,16 @@ export default async function Post({ params }: PostPageProps) {
         }
     } catch {
         // 配置获取失败时使用默认（不阻塞正文）
+    }
+
+    // 正文结尾的装饰波浪开关（site-config post.waves.enable）。
+    // 上面的 getPublicSiteConfigApi 是同一个 URL 的 GET，Next 在一次渲染内会自动去重，不会多打一次后端。
+    let wavesEnabled = false;
+    try {
+        const config = await getPublicSiteConfigApi();
+        wavesEnabled = config.post?.waves?.enable === true;
+    } catch {
+        // 配置获取失败时不渲染波浪（纯装饰，不能影响正文）
     }
 
     // 评论区：按 target_path 获取本文章评论 + 子评论（博主回复等），失败时降级为空列表
@@ -204,8 +250,11 @@ export default async function Post({ params }: PostPageProps) {
 
                 {/* 后端渲染好的正文 HTML，客户端组件负责代码块高亮 + 复制按钮；正文白底卡片，深浅色随主题切换 */}
                 <div className="mt-6 rounded-xl border border-border/60 bg-card p-5 shadow-sm md:p-8">
-                    <ArticleBody html={article.content_html || ""} codeBlock={codeBlock} />
+                    <ArticleBody html={article.content_html || ""} codeBlock={codeBlock} copyCopyright={copyCopyright} />
                 </div>
+
+                {/* 正文结尾的装饰波浪（post.waves.enable）：纯装饰，不影响正文排版 */}
+                {wavesEnabled && <PostWaves />}
 
                 {/* 文章末尾：版权信息 + 打赏 / 订阅 / 分享（配置由服务端从 site-config 获取） */}
                 {actionsConfig && (

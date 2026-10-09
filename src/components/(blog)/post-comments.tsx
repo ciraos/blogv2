@@ -419,16 +419,25 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
         }
     }
 
-    /** 确认匿名：随机昵称 + 匿名邮箱（comment.anonymous_email，为空回退 blogger_email） */
+    /** 确认匿名：随机昵称 + 匿名邮箱。邮箱兜底链照官方 CommentSection
+     *  （`comment.anonymous_email || frontDesk.siteOwner.email`）的顺序，
+     *  再把本项目原有的 comment.blogger_email 留在最后一环（官方链里没有它，仅作兜底）。 */
     async function confirmAnonymous() {
         let anonEmail = "";
         try {
             const res = await fetch("/api/public/site-config", { cache: "no-store" });
             const json = (await res.json()) as {
-                data?: { comment?: { anonymous_email?: string; blogger_email?: string } };
+                data?: {
+                    comment?: { anonymous_email?: string; blogger_email?: string };
+                    frontDesk?: { siteOwner?: { email?: string } };
+                };
             };
             const commentCfg = json?.data?.comment;
-            anonEmail = commentCfg?.anonymous_email || commentCfg?.blogger_email || "";
+            anonEmail =
+                commentCfg?.anonymous_email ||
+                json?.data?.frontDesk?.siteOwner?.email ||
+                commentCfg?.blogger_email ||
+                "";
         } catch {
             // 拿不到配置则邮箱留空
         }

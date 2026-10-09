@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { MegaphoneIcon } from "lucide-react";
 import "../globals.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -8,7 +9,11 @@ import { TopProgress } from "@/components/ui/top-progress";
 import Header from "@/components/header";
 import { FloatingActions } from "@/components/(blog)/floating-actions";
 import { AuthExpiredNotifier } from "@/components/(blog)/auth-expired-notifier";
+import { FooterBadges } from "@/components/(blog)/footer-badges";
+import { FooterBottomBar } from "@/components/(blog)/footer-bottom-bar";
+import { FooterCustomText } from "@/components/(blog)/footer-custom-text";
 import { FooterRandomLinks } from "@/components/(blog)/footer-random-links";
+import { FooterRuntime } from "@/components/(blog)/footer-runtime";
 import { FooterSocialBar } from "@/components/(blog)/footer-social-bar";
 import { GravatarProvider } from "@/components/(blog)/gravatar-provider";
 import { LiveRefresher } from "@/components/(blog)/live-refresher";
@@ -51,6 +56,33 @@ export async function getSiteConfigs() {
     // return { APP_NAME: "博客", ICON_URL: "/favicon.ico", error };
     console.error(error);
   }
+}
+
+/** 站点公告条（SITE_ANNOUNCEMENT）：后端定义（internal/configdef/definition.go 第 54 行）为
+ *  「站点公告（HTML 片段），展示在导航栏下方；留空不显示」，所以固定渲染在 header 之后、
+ *  首屏大图/正文之前，通栏铺满；空值（trim 后）整条不渲染。
+ *
+ *  为什么是 relative z-10：header 是 sticky 的（z-50），公告条自己不能进 sticky 区域；
+ *  而首屏大图（OneImageHero）用 `-mt-14` 顶到 header 之下、背景是 z-0 的 fixed 图，
+ *  这里提 z-index（与 globals.css 里 `body:has(.one-image-hero) .main{z-index:1}` 同一手法）
+ *  才能稳稳压在背景图之上，而不是被大图盖住。半透明 + backdrop-blur 让它在有大图的页面
+ *  是一层毛玻璃，在普通页面则是一层浅色底，深浅色都由主题令牌决定。 */
+function AnnouncementBar({ html }: { html?: string }) {
+  const value = html?.trim();
+  if (!value) return null;
+
+  return (
+    <div className="relative z-10 w-full border-y border-border/60 bg-muted/70 backdrop-blur-md">
+      <div className="mx-auto flex w-full max-w-300 items-start gap-2 px-4 py-2.5 text-sm text-foreground/90 sm:px-0">
+        <MegaphoneIcon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+        {/* 后台配置的 HTML 片段，官方口径直出（同 footer.custom_text） */}
+        <div
+          className="min-w-0 leading-relaxed [&_a]:text-primary [&_a]:underline"
+          dangerouslySetInnerHTML={{ __html: value }}
+        />
+      </div>
+    </div>
+  );
 }
 
 export default async function BlogLayout({ children }: Readonly<{ children: React.ReactNode; }>) {
@@ -109,6 +141,9 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
             <div id="CIRAOS" className="flex min-h-dvh flex-col">
               <Header {...header} />
 
+              {/* 站点公告条（SITE_ANNOUNCEMENT）：导航正下方的通栏条，位于首屏大图/正文之前 */}
+              <AnnouncementBar html={config?.SITE_ANNOUNCEMENT} />
+
               {/* 页面顶部大图（OneImage）：home/archives/tags/categories 各自 enable 控制；
                   header 透明悬浮其上，滚动离开首屏后恢复 */}
               <OneImageHero oneImage={config?.page?.one_image} appName={config?.APP_NAME ?? "博客"} />
@@ -133,6 +168,12 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
                     right={config?.footer?.socialBar?.right}
                     centerImg={config?.footer?.socialBar?.centerImg}
                   />
+
+                  {/* 运行时间（footer.runtime）+ 自定义文案（footer.custom_text）：
+                      官方 footer.pug 里这两块就排在社交栏之后、项目链接之前 */}
+                  <FooterRuntime config={config?.footer?.runtime} />
+                  <FooterCustomText text={config?.footer?.custom_text} />
+
                   <div className="footer-project">
                     {config?.footer?.project?.list?.length ? (
                       <div className="grid grid-cols-2 gap-6 pt-0 sm:grid-cols-4">
@@ -161,8 +202,20 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
                       </div>
                     ) : null}
                   </div>
-                  <Link href="https://beian.miit.gov.cn" target="_blank" rel="noopener external nofollow noreferrer" className="mt-6 flex items-center justify-center hover:underline">{config?.ICP_NUMBER}</Link>
+
+                  {/* 徽章（footer.badge，官方排在项目链接之后） */}
+                  <FooterBadges config={config?.footer?.badge} />
                 </div>
+                {/* 页脚底栏（通栏，自己铺满宽度）：©年份 · 站长 / 备案 + 运行状态 → 右侧底栏链接 + CC 协议。
+                    对齐官方主题 Blog Footer 的 Bottom Bar，配色走主题令牌，深浅色自适应。 */}
+                <FooterBottomBar
+                  owner={config?.footer?.owner}
+                  bar={config?.footer?.bar}
+                  icpNumber={config?.ICP_NUMBER}
+                  policeRecordNumber={config?.POLICE_RECORD_NUMBER}
+                  policeRecordIcon={config?.POLICE_RECORD_ICON}
+                  kuma={config?.footer?.uptime_kuma}
+                />
               </div>
             </div>
             {/* (blog) 全局右下角悬浮按钮组：外层展开 → 目录（仅文章页）+ 回到顶部 */}
