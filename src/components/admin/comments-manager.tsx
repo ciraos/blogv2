@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
+    Archive,
+    ArchiveRestore,
     Check,
     ChevronDown,
     ChevronUp,
@@ -13,6 +15,7 @@ import {
     RotateCcw,
     Search,
     Trash2,
+    Upload,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -34,6 +37,15 @@ import {
     updateAdminCommentInfoApi,
     updateAdminCommentStatusApi,
 } from "@/lib/api";
+import {
+    MAX_COMMENT_IMPORT_SIZE,
+    exportAdminCommentsApi,
+    formatBytes,
+    importAdminCommentsApi,
+    isSupportedCommentImportFile,
+    type CommentImportOptions,
+    type CommentImportResult,
+} from "@/lib/api-comments-io";
 import type { AdminComment, CommentStatus } from "@/types/comments";
 
 const PAGE_SIZE = 10;
@@ -43,6 +55,42 @@ const STATUS_OPTIONS = [
     { value: "1", label: "已发布" },
     { value: "2", label: "待审核" },
 ];
+
+/* =============================================================================
+ * 评论导出 / 导入（同源代理 → 远端，管理员登录）
+ *
+ * 接口契约（源码证据）：
+ *  - POST /comments/export（internal/infra/router/router.go:287）请求体 { ids: string[] }
+ *    （pkg/handler/comment/dto/dto.go:140-143），空数组 = 导出全部（handler.go:619-622）；
+ *    响应是 **ZIP 文件流**（application/zip + Content-Disposition: attachment;
+ *    filename=comments_export.zip，handler.go:633-638），不是 JSON 信封。
+ *  - POST /comments/import（router.go:288）multipart/form-data，字段 file 必填，
+ *    可选 skip_existing / default_status / keep_create_time（handler.go:657-693）；
+ *    .json 直接解析、.zip 取包内 comments.json（handler.go:706-718）；
+ *    响应 { code, message, data: ImportResult }（handler.go:727-736）。
+ *
+ * ⚠️ 导入是**写库**操作：无论是否识别成功，都必须先过二次确认（确认文案里写明后果），
+ *    且全程只走同源代理，浏览器端不直连远端。
+ * ========================================================================== */
+
+/** 导入结果里最多列出多少条失败原因（后端 error_messages 可能很长） */
+const MAX_SHOWN_IMPORT_ERRORS = 8;
+
+/** 字节数 → 人类可读（沿用 formatBytes，导入框里展示选中文件大小） */
+const MAX_IMPORT_SIZE_TEXT = formatBytes(MAX_COMMENT_IMPORT_SIZE);
+
+/** 用浏览器下载一个 blob（导出评论用） */
+function downloadBlob(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // 立刻回收会让部分浏览器取消下载，交回事件循环后释放更稳
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+}
 
 /** 筛选表单：输入框里的值只有点「查询」/ 回车后才生效，避免每次输入都打接口 */
 interface Filters {
@@ -273,6 +321,21 @@ export function CommentsManager() {
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({ content: "", nickname: "", email: "", website: "" });
 
+    // 导出 / 导入
+    const [exporting, setExporting] = useState(false);
+    const [importOpen, setImportOpen] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    /** 后台导入完成后结果是只读的，单独存一份避免每次重渲染都擦掉 */
+    const [importResult, setImportResult] = useState<CommentImportResult | null>(null);
+    const [importing, setImporting] = useState(false);
+    const [importOptions, setImportOptions] = useState<CommentImportOptions>({
+        // 与后端 DefaultPostForm 的默认值保持一致（handler.go:687-688），只是现在我们显式传
+        skipExisting: true,
+        keepCreateTime: true,
+        defaultStatus: 1,
+    });
+    const importInputRef = useRef<HTMLInputElement | null>(null);
+
     /** 当前页可见的评论 id（含已展开的子评论），用于全选 */
     const visibleIds = useMemo(() => {
         const ids: string[] = [];
@@ -402,6 +465,89 @@ export function CommentsManager() {
         }
     };
 
+    /**
+     * 导出评论：勾选了就只导出勾选的那几条，没勾选就导出全部。
+     * 远端回的是 ZIP 文件流（带 Content-Disposition），这里直接落盘；
+     * 条数按本地口径提示，不去猜远端实际打包了多少条。
+     */
+    const handleExport = async () => {
+        const ids = selected;
+        setExporting(true);
+        try {
+            const { blob, filename } = await exportAdminCommentsApi(ids);
+            const fallback = `comments_export_${new Date().toISOString().slice(0, 10)}.zip`;
+            downloadBlob(blob, filename || fallback);
+            toast.success(ids.length > 0 ? `已导出选中的 ${ids.length} 条评论` : "已开始导出全部评论", {
+                description: "ZIP 内含 comments.json，可直接在「导入」里回灌",
+            });
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "导出失败");
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    /** 关闭导入弹窗时清空选择与上一次结果（避免下次打开看到旧结果） */
+    const resetImport = () => {
+        setImportFile(null);
+        setImportResult(null);
+        if (importInputRef.current) importInputRef.current.value = "";
+    };
+
+    /** 选择文件时就地校验扩展名与体积，不合格立即提示并清空 */
+    const handlePickImportFile = (file: File | undefined) => {
+        if (!file) return;
+        if (!isSupportedCommentImportFile(file.name)) {
+            toast.error("只支持 .json 或 .zip 文件");
+            resetImport();
+            return;
+        }
+        if (file.size > MAX_COMMENT_IMPORT_SIZE) {
+            toast.error(`文件不能超过 ${MAX_IMPORT_SIZE_TEXT}`, { description: `当前 ${formatBytes(file.size)}` });
+            resetImport();
+            return;
+        }
+        setImportFile(file);
+        setImportResult(null);
+    };
+
+    /** 真正提交导入（已过二次确认）——⚠️ 写库，不可撤销 */
+    const handleImport = async () => {
+        if (!importFile) return;
+        setImporting(true);
+        setImportResult(null);
+        try {
+            const res = await importAdminCommentsApi(importFile, importOptions);
+            setImportResult(res);
+            if (res.success_count > 0) {
+                toast.success(`导入完成：成功 ${res.success_count} 条`);
+                reload();
+            } else if (res.failed_count > 0) {
+                toast.warning("没有成功导入任何评论，看看下方失败原因");
+            } else {
+                toast.info("没有新增评论（可能都被跳过了）");
+            }
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "导入失败");
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    /** 二次确认：导入会往评论表写数据，文案里写清后果 */
+    const confirmImport = () => {
+        if (!importFile) return;
+        const ok = window.confirm(
+            `确定导入「${importFile.name}」吗？\n\n` +
+                `这会向评论表写入数据（不可撤销）。\n` +
+                `已存在的评论：${importOptions.skipExisting ? "跳过（按 路径+邮箱+内容 判重）" : "不判重，可能产生重复"}\n` +
+                `创建时间：${importOptions.keepCreateTime ? "保留原时间" : "使用当前时间"}\n` +
+                `默认状态：${importOptions.defaultStatus === 1 ? "已发布" : "待审核"}`
+        );
+        if (!ok) return;
+        void handleImport();
+    };
+
     const openEdit = (comment: AdminComment) => {
         setEditing(comment);
         setForm({
@@ -495,6 +641,35 @@ export function CommentsManager() {
                     {totalWithChildren > total && <>（含回复 {totalWithChildren} 条）</>}
                 </span>
                 <div className="ml-auto flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        disabled={exporting}
+                        title={
+                            selected.length > 0
+                                ? `导出勾选的 ${selected.length} 条评论`
+                                : "未勾选任何评论时导出全部评论"
+                        }
+                        onClick={() => void handleExport()}
+                    >
+                        <Archive className="size-3.5" />
+                        {exporting
+                            ? "导出中…"
+                            : selected.length > 0
+                              ? `导出（${selected.length}）`
+                              : "导出"}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        title="从 .json / .zip 文件导入评论"
+                        onClick={() => setImportOpen(true)}
+                    >
+                        <ArchiveRestore className="size-3.5" />
+                        导入
+                    </Button>
                     <Button
                         variant="outline"
                         size="sm"
@@ -662,6 +837,201 @@ export function CommentsManager() {
                                     {saving ? "保存中…" : "保存"}
                                 </Button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ===== 导入评论弹窗（⚠️ 写库，需二次确认） ===== */}
+            {importOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                    // 请求在途时锁住遮罩点击，避免关掉弹窗后结果无处安放
+                    onMouseDown={() => {
+                        if (!importing) {
+                            setImportOpen(false);
+                            resetImport();
+                        }
+                    }}
+                >
+                    <div
+                        className="w-full max-w-xl rounded-xl border bg-card p-5 shadow-xl"
+                        onMouseDown={(e) => e.stopPropagation()}
+                    >
+                        <div className="mb-4 flex items-center justify-between">
+                            <h3 className="text-base font-semibold">导入评论</h3>
+                            <button
+                                type="button"
+                                disabled={importing}
+                                onClick={() => {
+                                    setImportOpen(false);
+                                    resetImport();
+                                }}
+                                aria-label="关闭"
+                                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="space-y-4 text-sm">
+                            <p className="text-xs text-muted-foreground">
+                                支持 <code>.json</code>（导出的 comments.json）或 <code>.zip</code>
+                                （「导出」下载的整包）。单文件不超过 {MAX_IMPORT_SIZE_TEXT}。导入会写入评论表，请先确认文件内容。
+                            </p>
+
+                            {/* 文件选择 */}
+                            <div className="flex flex-wrap items-center gap-2">
+                                <input
+                                    ref={importInputRef}
+                                    type="file"
+                                    accept=".json,.zip,application/json,application/zip"
+                                    className="hidden"
+                                    onChange={(e) => handlePickImportFile(e.target.files?.[0])}
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={importing}
+                                    onClick={() => importInputRef.current?.click()}
+                                >
+                                    <Upload className="size-3.5" />
+                                    选择文件
+                                </Button>
+                                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                                    {importFile
+                                        ? `${importFile.name}（${formatBytes(importFile.size)}）`
+                                        : "未选择文件"}
+                                </span>
+                                {importFile && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 text-xs"
+                                        disabled={importing}
+                                        onClick={resetImport}
+                                    >
+                                        清空
+                                    </Button>
+                                )}
+                            </div>
+
+                            {/* 导入选项（字段名与后端 handler.go:687-693 一致） */}
+                            <div className="space-y-2 rounded-lg border p-3">
+                                <label className="flex cursor-pointer items-start gap-2 text-xs">
+                                    <Checkbox
+                                        className="mt-0.5"
+                                        checked={importOptions.skipExisting}
+                                        disabled={importing}
+                                        onCheckedChange={(v) =>
+                                            setImportOptions({ ...importOptions, skipExisting: v === true })
+                                        }
+                                    />
+                                    <span>
+                                        跳过已存在的评论
+                                        <span className="ml-1 text-muted-foreground">
+                                            （按 目标路径 + 邮箱 + 内容 判重）
+                                        </span>
+                                    </span>
+                                </label>
+                                <label className="flex cursor-pointer items-start gap-2 text-xs">
+                                    <Checkbox
+                                        className="mt-0.5"
+                                        checked={importOptions.keepCreateTime}
+                                        disabled={importing}
+                                        onCheckedChange={(v) =>
+                                            setImportOptions({ ...importOptions, keepCreateTime: v === true })
+                                        }
+                                    />
+                                    <span>
+                                        保留原创建时间
+                                        <span className="ml-1 text-muted-foreground">（取消则用当前时间）</span>
+                                    </span>
+                                </label>
+                                <div className="flex items-center gap-2 text-xs">
+                                    <span>未带状态的评论导入为</span>
+                                    <Select
+                                        value={String(importOptions.defaultStatus)}
+                                        disabled={importing}
+                                        onValueChange={(v) =>
+                                            setImportOptions({
+                                                ...importOptions,
+                                                defaultStatus: Number(v) === 2 ? 2 : 1,
+                                            })
+                                        }
+                                    >
+                                        <SelectTrigger className="h-7 w-max text-xs">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="1">已发布</SelectItem>
+                                            <SelectItem value="2">待审核</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            {/* 导入结果（后端 dto.ImportResult） */}
+                            {importResult && (
+                                <div className="space-y-2 rounded-lg border p-3 text-xs">
+                                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                                        <span>共 {importResult.total_count} 条</span>
+                                        <span className="text-emerald-600 dark:text-emerald-400">
+                                            成功 {importResult.success_count}
+                                        </span>
+                                        <span
+                                            className={
+                                                importResult.failed_count > 0
+                                                    ? "text-destructive"
+                                                    : "text-muted-foreground"
+                                            }
+                                        >
+                                            失败 {importResult.failed_count}
+                                        </span>
+                                        <span className="text-muted-foreground">
+                                            跳过 {importResult.skipped_count}
+                                        </span>
+                                    </div>
+                                    {(importResult.error_messages?.length ?? 0) > 0 && (
+                                        <ul className="max-h-32 space-y-1 overflow-y-auto text-muted-foreground">
+                                            {importResult.error_messages
+                                                ?.slice(0, MAX_SHOWN_IMPORT_ERRORS)
+                                                .map((msg, i) => (
+                                                    <li key={`${i}-${msg}`}>
+                                                        <span className="text-destructive">失败</span> {msg}
+                                                    </li>
+                                                ))}
+                                            {(importResult.error_messages?.length ?? 0) >
+                                                MAX_SHOWN_IMPORT_ERRORS && (
+                                                <li>
+                                                    …还有{" "}
+                                                    {(importResult.error_messages?.length ?? 0) -
+                                                        MAX_SHOWN_IMPORT_ERRORS}{" "}
+                                                    条
+                                                </li>
+                                            )}
+                                        </ul>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-5 flex justify-end gap-2">
+                            <Button
+                                variant="outline"
+                                disabled={importing}
+                                onClick={() => {
+                                    setImportOpen(false);
+                                    resetImport();
+                                }}
+                            >
+                                关闭
+                            </Button>
+                            <Button disabled={importing || !importFile} onClick={confirmImport}>
+                                {importing ? "导入中…" : "开始导入"}
+                            </Button>
                         </div>
                     </div>
                 </div>

@@ -168,11 +168,14 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
         };
     }, [taxonomyKey]);
 
-    // 新建友链 / 改分类标签 / 导入成功后刷新列表（顶部按钮派发）
+    // 新建友链 / 改分类标签 / 导入成功 / 友链排序保存后刷新列表（顶部按钮与「友链排序」弹窗派发）
     useEffect(() => {
         const onChanged = () => {
             setRefreshKey((k) => k + 1);
             setTaxonomyKey((k) => k + 1);
+            // 顺手清掉表头「按名称排序」这个纯客户端的本地排序：排序弹窗刚刚改了后端顺序，
+            // 如果本地名称排序还在生效，重新拉回来的列表看起来会毫无变化（实际顺序已经变了）。
+            setNameSort("");
         };
         window.addEventListener("blog-admin:links-changed", onChanged);
         return () => window.removeEventListener("blog-admin:links-changed", onChanged);
@@ -385,7 +388,7 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                         <button
                             type="button"
                             onClick={() => setNameSort((v) => (v === "" ? "asc" : v === "asc" ? "desc" : ""))}
-                            title={nameSort === "asc" ? "按名称升序（点击切为降序）" : nameSort === "desc" ? "按名称降序（点击取消排序）" : "按名称首字母排序"}
+                            title={nameSort === "asc" ? "按名称升序（点击切为降序）" : nameSort === "desc" ? "按名称降序（点击取消排序）" : "按名称排序（仅当前页，不改变后端顺序）"}
                             aria-label="按网站名称排序"
                             className={`flex size-6 shrink-0 items-center justify-center rounded transition-colors ${nameSort ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                 }`}

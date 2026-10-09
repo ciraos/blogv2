@@ -47,3 +47,34 @@ export async function authedProxyFetch(path: string, init?: RequestInit): Promis
 
 /** 管理端路由沿用的旧名字（实现与 authedProxyFetch 完全相同） */
 export const adminProxyFetch = authedProxyFetch;
+
+/** 取 cookie 里的登录 token；没有则返回 null（未登录） */
+export async function adminToken(): Promise<string | null> {
+    const cookieStore = await cookies();
+    return cookieStore.get("token")?.value ?? null;
+}
+
+/**
+ * 取远端响应原始流（不解析 JSON、不包裹成我们的 { code, message, data } 信封）。
+ *
+ * 用途：个别接口的响应本身是 HTTP 重定向 / 非 JSON 体，必须原样回给浏览器，
+ * 例如存储策略的 OneDrive 授权 `GET /api/policies/connect/onedrive/:id`
+ * （社区版 handler 可能 302 到微软授权页，也可能返回 JSON `{ data: { url } }`）。
+ *
+ * 返回 null 表示未登录（调用方自行回 401；这里不直接返回 NextResponse，
+ * 是为了让调用方能按需选择 401 文案 / 状态）。网络异常由调用方 catch。
+ */
+export async function rawAdminProxyFetch(path: string, init?: RequestInit): Promise<Response | null> {
+    const token = await adminToken();
+    if (!token) return null;
+
+    const headers = new Headers(init?.headers);
+    headers.set("Authorization", `Bearer ${token}`);
+    if (init?.body && !headers.has("Content-Type")) {
+        headers.set("Content-Type", "application/json");
+    }
+
+    // redirect: "manual" —— 授权链接是 302 时不要把重定向跟到最后，
+    // 原样把 302 + Location 交给浏览器（浏览器才会跳到微软授权页）。
+    return fetch(`${API_URL}${path}`, { ...init, headers, cache: "no-store", redirect: "manual" });
+}

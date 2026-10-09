@@ -77,14 +77,18 @@ function normalizeHexInput(value: string): string {
     return trimmed;
 }
 
-/** 语义色胶囊上的文字色：按相对亮度选黑/白，免得「警告黄」这类亮色上白字看不清 */
+/**
+ * 语义色胶囊上的文字色：按相对亮度选黑/白。
+ * 0.179 是 WCAG 里「黑字/白字哪个对比度更高」的交界点（比拍脑袋的 0.45 靠谱：
+ * 警告黄 #c28b00 亮度 0.30，按要求应该用黑字）。
+ */
 function readableInk(color: string): string {
     if (!HEX6.test(color.trim())) return "#ffffff";
     const body = color.trim().slice(1);
     const [r, g, b] = [0, 2, 4].map((index) => parseInt(body.slice(index, index + 2), 16) / 255);
     const linear = (channel: number) => (channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
     const luminance = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
-    return luminance > 0.45 ? "#111111" : "#ffffff";
+    return luminance > 0.179 ? "#111111" : "#ffffff";
 }
 
 /** 某分支里真正写了值的令牌个数（空白算留空） */
@@ -293,7 +297,14 @@ function TokenModePanel({
                             </span>
 
                             {/* 色块 + 盖在上面的透明原生取色器（官方同款，见文件头注释） */}
-                            <div className="relative size-8 shrink-0" title={`${token.label}：点击取色`}>
+                            <div
+                                className="relative size-8 shrink-0"
+                                title={
+                                    overridden
+                                        ? `${token.label}：已自定义（点右侧 ↩ 回到皮肤色 ${skinColor}）`
+                                        : `${token.label}：跟随皮肤 ${skinColor}，点击取色`
+                                }
+                            >
                                 <input
                                     type="color"
                                     value={toColorInputValue(shown)}
@@ -302,13 +313,18 @@ function TokenModePanel({
                                     className="peer absolute inset-0 size-full cursor-pointer opacity-0"
                                 />
                                 <span
-                                    className="pointer-events-none absolute inset-0 rounded-md border border-black/15 transition-transform peer-hover:scale-105 dark:border-white/20"
+                                    className={cn(
+                                        "pointer-events-none absolute inset-0 rounded-md border border-black/15 transition-transform peer-hover:scale-105 dark:border-white/20",
+                                        // 已自定义的令牌加一圈主色描边，和「跟随皮肤」的行一眼分得开
+                                        overridden && "ring-1 ring-primary/60"
+                                    )}
                                     style={{ background: shown }}
                                 />
-                                {!overridden && (
+                                {/* 只给已自定义的令牌点一颗主色小点：空输入框本身就表示「跟随皮肤」 */}
+                                {overridden && (
                                     <span
-                                        className="pointer-events-none absolute -right-0.5 -top-0.5 size-2 rounded-full border border-card bg-muted-foreground/40"
-                                        title="跟随皮肤（未自定义）"
+                                        className="pointer-events-none absolute -right-0.5 -top-0.5 size-2 rounded-full border border-card bg-primary"
+                                        title="已自定义"
                                     />
                                 )}
                             </div>
@@ -330,7 +346,7 @@ function TokenModePanel({
                                 type="button"
                                 variant="ghost"
                                 size="icon-sm"
-                                className="shrink-0 rounded-md"
+                                className="shrink-0 rounded-md disabled:opacity-25"
                                 disabled={!overridden}
                                 onClick={() => onSet(token.name, "")}
                                 title={overridden ? `恢复皮肤色 ${skinColor}` : "当前已跟随皮肤"}

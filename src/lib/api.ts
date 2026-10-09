@@ -403,7 +403,7 @@ export async function getLinksGroupedByCategoryApi(): Promise<LinkCategoryGroup[
         return null;
     }
 
-    // 按分类分组：分类按 id 升序（保持原有展示顺序），分类内按 id 降序（新加的排前面）
+    // 按分类分组：分类按 id 升序（保持原有展示顺序）；分类内保持后端返回顺序（= sort_order DESC），不再本地重排
     const grouped = new Map<number, LinkCategoryGroup>();
     for (const link of all) {
         const category = link.category;
@@ -414,9 +414,14 @@ export async function getLinksGroupedByCategoryApi(): Promise<LinkCategoryGroup[
         grouped.set(category.id, group);
     }
 
-    return [...grouped.values()]
-        .map((group) => ({ ...group, links: group.links.sort((a, b) => b.id - a.id) }))
-        .sort((a, b) => a.category.id - b.category.id);
+    // 分类内**不再本地重排**（原先是按 id 降序）。
+    // ⚠️ 但要注意：本函数的数据源 `GET /public/links/applications` 后端是 `Order(Desc(id))`（link_repo.go:327），
+    //    查询里**没有 sort_order**（实测该接口返回的 12 条 sort_order 全是 0、id 严格降序），
+    //    所以"后台排序 → 前台生效"做不到，除非后端给该查询加上 `Order(Desc(sort_order), Asc(id))`，
+    //    或前台改走尊重 sort_order 的 `GET /public/links`（那里服务端写死 status=APPROVED，会丢掉失联友链）。
+    //    这里只是不再用本地排序去盖后端顺序，别误以为前台已经能跟随 sort_order。
+    // 分类之间仍按 id 升序（分类没有排序接口，保持原有展示顺序）。
+    return [...grouped.values()].sort((a, b) => a.category.id - b.category.id);
 }
 
 /** 管理员友链列表请求参数（GET /api/admin/links，客户端经同源代理） */

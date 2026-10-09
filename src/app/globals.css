@@ -45,6 +45,10 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* 语义色进 Tailwind 主题：这样 bg-success / text-warning / border-info 等工具类才存在（以前缺失） */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -79,6 +83,11 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  /* 语义色：与 src/lib/appearance.ts 的皮肤默认值同口径（换肤时会被内联样式覆盖）。
+     这三个以前只有 appearance.ts 在写、CSS 里没定义也没进 @theme，导致「成功/警告/信息」令牌保存后完全无效。 */
+  --success: #57bd6a;
+  --warning: #c28b00;
+  --info: #3e86f6;
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
@@ -123,6 +132,10 @@
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  /* 语义色（深色默认值，同 appearance.ts 的 D_SEM） */
+  --success: #3e9f50;
+  --warning: #ffc93e;
+  --info: #0084ff;
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
