@@ -173,7 +173,7 @@ function StatusCard({
     rows: { label: string; value: string }[];
 }) {
     return (
-        <div className="flex flex-col gap-2.5 rounded-xl border bg-card p-3.5">
+        <div className="flex flex-col gap-3 rounded-xl border bg-card p-4">
             <div className="flex items-start justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
@@ -189,7 +189,7 @@ function StatusCard({
                 </span>
             </div>
             {rows.length > 0 && (
-                <div className="space-y-1.5 border-t pt-2.5">
+                <div className="space-y-1.5 border-t pt-2">
                     {rows.map((r) => (
                         <DetailRow key={r.label} label={r.label} value={r.value} />
                     ))}
@@ -377,7 +377,7 @@ export function CacheManager() {
     return (
         <div className="admin-card">
             {/* ===== 标题条 + 刷新：固定在卡片顶部（shrink-0），不随内容滚动 ===== */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2.5">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Layers className="size-3.5" />
                     <span>缓存状态</span>
@@ -391,7 +391,7 @@ export function CacheManager() {
                 <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 px-2 text-xs"
+                    className="h-8 px-2 text-xs"
                     disabled={loading || !!busy}
                     onClick={retry}
                 >
@@ -405,7 +405,7 @@ export function CacheManager() {
                 {loading ? (
                     <div className="grid gap-2.5 p-4 md:grid-cols-2 xl:grid-cols-4" aria-busy="true" aria-label="加载中">
                         {Array.from({ length: 4 }).map((_, i) => (
-                            <div key={i} className="flex flex-col gap-3 rounded-xl border p-3.5">
+                            <div key={i} className="flex flex-col gap-3 rounded-xl border p-4">
                                 <div className="flex items-center gap-2">
                                     <div className="size-8 animate-pulse rounded-lg bg-muted" />
                                     <div className="h-3 w-20 animate-pulse rounded bg-muted" />
@@ -417,7 +417,7 @@ export function CacheManager() {
                     </div>
                 ) : error ? (
                     // 错误态（远端 401 / 404、后端不可达都走这里）：消息 + 重试，页面不白屏
-                    <div className="flex min-h-64 flex-col items-center justify-center gap-2 px-4 py-12 text-center">
+                    <div className="flex min-h-64 flex-col items-center justify-center gap-2 px-4 py-8 text-center">
                         <span className="flex size-12 items-center justify-center rounded-full border bg-destructive/10">
                             <AlertTriangle className="size-5 text-destructive" />
                         </span>
@@ -432,7 +432,7 @@ export function CacheManager() {
                         </Button>
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-4 p-4">
+                    <div className="flex flex-col gap-3 p-4">
                         {/* ---- 状态卡片区 ---- */}
                         <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-4">
                             {cards.map((c) => (
@@ -449,7 +449,7 @@ export function CacheManager() {
 
                         {/* ---- 操作区 ---- */}
                         <section className="rounded-xl border">
-                            <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-4 py-2.5">
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-4 py-2">
                                 <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                                     <Server className="size-4 text-muted-foreground" />
                                     操作
@@ -474,7 +474,7 @@ export function CacheManager() {
                                     </div>
                                     <Button
                                         size="sm"
-                                        className="h-7 shrink-0 px-2 text-xs"
+                                        className="h-8 shrink-0 px-2 text-xs"
                                         disabled={!!busy}
                                         onClick={askRevalidateAll}
                                     >
@@ -519,7 +519,7 @@ export function CacheManager() {
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className={`h-7 shrink-0 px-2 text-xs ${ACTION_TONE.delete}`}
+                                                className={`h-8 shrink-0 px-2 text-xs ${ACTION_TONE.delete}`}
                                                 disabled={disabled}
                                                 title={disabled && !busy ? "后端当前未启用该缓存" : undefined}
                                                 onClick={() => askPurge(action)}
@@ -553,7 +553,7 @@ export function CacheManager() {
                         role="dialog"
                         aria-modal="true"
                         aria-label={pending.title}
-                        className="w-full max-w-md rounded-xl border bg-card p-5 shadow-xl"
+                        className="w-full max-w-md rounded-xl border bg-card p-4 shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-start gap-3">
@@ -567,7 +567,7 @@ export function CacheManager() {
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-5 flex justify-end gap-2">
+                        <div className="mt-3 flex justify-end gap-2">
                             <Button variant="outline" disabled={!!busy} onClick={() => setPending(null)}>
                                 取消
                             </Button>

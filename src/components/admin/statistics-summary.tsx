@@ -16,6 +16,7 @@ import {
     Users,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useMasonry } from "@/hooks/use-masonry";
 import type { DateRangeStats, StatisticsSummary, URLStatistics, VisitorAnalytics } from "@/types/statistics";
 
 interface RankItem {
@@ -24,8 +25,18 @@ interface RankItem {
     count: number;
 }
 
-/** 卡片外壳：统一圆角/描边/微阴影，鼠标悬停轻微抬升 */
-const cardCls = "rounded-xl border bg-card shadow-xs transition-shadow hover:shadow-sm";
+/**
+ * 卡片外壳：统一圆角/描边/微阴影，鼠标悬停轻微抬升（紧凑密度：内边距统一 p-4）。
+ * **高度完全由内容决定**（不设固定高度、不做卡内滚动）——「一目了然」看全排行；
+ * 卡片之间的空洞由统计区的 JS 瀑布流（useMasonry 的 grid-row span）消除。
+ * `self-start` 让卡片在跨行网格里保持自身高度、不被拉伸。
+ */
+const cardCls = "flex flex-col self-start rounded-xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md";
+
+/** 瀑布流容器：列数由 grid-cols-* 决定，行高压成 8px 当「尺子」，卡片按量出的高度跨行（见 useMasonry） */
+const MASONRY_ROW_H = 8;
+const MASONRY_GAP = 12;
+const masonryGridCls = "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3";
 
 function toRank(items: { [k: string]: unknown }[] | null | undefined, nameKey: string, subKey?: string): RankItem[] {
     // 后端空数据可能返回 null（Go nil 切片），统一按空数组处理
@@ -165,8 +176,8 @@ function TrendCard({ data, mode }: { data: DateRangeStats[] | null | undefined; 
     const total = list.reduce((sum, d) => sum + d.views, 0);
     const peak = list.reduce((best, d) => (d.views > best.views ? d : best), list[0] ?? { views: 0 } as DateRangeStats);
     return (
-        <div className={`${cardCls} p-4`}>
-            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+        <div className={cardCls}>
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
                 <h3 className="flex items-center gap-2 text-sm font-semibold">
                     <span className="flex size-6 items-center justify-center rounded-md bg-primary/10 text-primary">
                         <TrendingUp className="size-3.5" />
@@ -183,7 +194,7 @@ function TrendCard({ data, mode }: { data: DateRangeStats[] | null | undefined; 
             {list.length === 0 ? (
                 <p className="py-2 text-xs text-muted-foreground">暂无数据</p>
             ) : (
-                <div className="flex h-32 items-end gap-1">
+                <div className="flex items-end gap-1">
                     {list.map((d, i) => (
                         <div key={i} className="group flex h-full min-w-0 flex-1 flex-col items-center gap-1.5">
                             <div className="flex w-full flex-1 items-end">
@@ -231,7 +242,7 @@ function StatChip({
     const DeltaIcon = tone === "up" ? ArrowUpRight : tone === "down" ? ArrowDownRight : Minus;
 
     return (
-        <div className={`group relative overflow-hidden ${cardCls} p-4`}>
+        <div className={`group relative overflow-hidden ${cardCls}`}>
             {/* 右上角主题色柔光，鼠标悬停时更明显 */}
             <span
                 aria-hidden="true"
@@ -261,26 +272,30 @@ function StatChip({
     );
 }
 
-/** 加载骨架：与真实卡片同尺寸，避免加载时跳一下 */
+/** 加载骨架：与真实卡片大致同尺寸，避免加载时跳一下（不设固定高度，内容自适应） */
 function Skeleton() {
     return (
-        <div className="space-y-4" aria-busy="true" aria-label="统计概览加载中">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div aria-busy="true" aria-label="统计概览加载中">
+            <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="h-[118px] animate-pulse rounded-xl border bg-card" />
+                    <div key={i} className="h-[104px] animate-pulse rounded-xl border bg-card" />
                 ))}
             </div>
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="h-[196px] animate-pulse rounded-xl border bg-card" />
+                    <div key={i} className="h-[180px] animate-pulse rounded-xl border bg-card" />
                 ))}
             </div>
         </div>
     );
 }
 
-/** 杂项：统计概览（基础统计 + 访客分析排行 + 热门页面 + 趋势） */
+
+/** 杂项：统计概览（基础统计 + 访客分析排行 + 热门页面 + 趋势）。
+ *  访问日志卡不在这里 —— 它是仪表盘最后一块**整宽卡片**，由 dashboard 页面单独渲染。 */
 export function StatisticsSummary() {
+    // 真·自适应瀑布流：卡片高度由内容决定，量高后按 grid-row span 铺排（保「左→右、上→下」顺序）
+    const { containerRef, register } = useMasonry(MASONRY_ROW_H, MASONRY_GAP);
     const [data, setData] = useState<StatisticsSummary | null>(null);
     // 三张趋势图单独拉取（summary 只返回 daily，weekly/monthly 需 GET /statistics/trend）
     const [trend, setTrend] = useState<{
@@ -338,7 +353,7 @@ export function StatisticsSummary() {
     }
     if (!data) {
         return (
-            <p className={`${cardCls} p-6 text-center text-sm text-muted-foreground`}>暂无统计概览数据</p>
+            <p className={`${cardCls} px-4 py-8 text-center text-sm text-muted-foreground`}>暂无统计概览数据</p>
         );
     }
 
@@ -395,16 +410,15 @@ export function StatisticsSummary() {
     ].filter((t) => (t.data ?? []).length > 0);
     const hasAnything =
         !!basic || visibleTrends.length > 0 || visibleDeviceSections.length > 0 || visibleGeoSections.length > 0 || hotPages.length > 0;
-
     // 地域卡现在是半宽，列数要按实际有数据的组数收敛（国家/城市常为 null，只剩来源时不要留两个空列）
     const geoSecCols =
         visibleGeoSections.length >= 3 ? "sm:grid-cols-2 lg:grid-cols-3" : visibleGeoSections.length === 2 ? "sm:grid-cols-2" : "";
 
     return (
-        <div className="space-y-4">
-            {/* 基础统计（今日人数/访问，与昨日对比涨跌） */}
+        <div>
+            {/* 基础统计（今日人数/访问，与昨日对比涨跌）：4 张等高磁贴，行内不留空 */}
             {basic && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="mb-3 grid grid-cols-1 auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <StatChip label="今日人数" value={basic.today_visitors} yesterday={basic.yesterday_visitors} icon={<Users className="size-4" />} />
                     <StatChip label="今日访问" value={basic.today_views} yesterday={basic.yesterday_views} icon={<Eye className="size-4" />} />
                     <StatChip label="本月访问" value={basic.month_views} icon={<CalendarDays className="size-4" />} />
@@ -412,15 +426,20 @@ export function StatisticsSummary() {
                 </div>
             )}
 
-            {/* 瀑布流：下面的卡片各自独立成块，按列自然堆叠（CSS columns）；
-                终端三组（浏览器/设备/操作系统）也各自成卡，不再挤在一张大卡片里 */}
-            <div className="columns-1 gap-4 sm:columns-2 xl:columns-3 [&>*]:mb-4 [&>*]:break-inside-avoid">
+            {/* 卡片瀑布流：**唯一**的卡片间距来源是 gap-3（12px）+ useMasonry 的 8px 行尺。
+                每张卡高度完全由内容决定（auto），量高后由 `grid-row: span N` 跨行铺排：
+                顺序仍是「左→右、上→下」，同时矮卡下方不会留大片空洞
+                （之前行内 auto-rows-min + items-start 的空白问题就此解决，且不再有卡内滚动）。
+                访问日志卡不在这里：它是仪表盘最后一块整宽卡片（见 visitor-logs-card.tsx 顶部约定） */}
+            <div ref={containerRef} className={masonryGridCls} style={{ gridAutoRows: `${MASONRY_ROW_H}px` }}>
                 {visibleTrends.map((t) => (
-                    <TrendCard key={t.mode} data={t.data} mode={t.mode} />
+                    <div key={t.mode} ref={register} className="min-w-0">
+                        <TrendCard data={t.data} mode={t.mode} />
+                    </div>
                 ))}
 
                 {visibleDeviceSections.map((section) => (
-                    <section key={section.title} className={`${cardCls} p-4`}>
+                    <section key={section.title} ref={register} className={`${cardCls} min-w-0`}>
                         <GroupTitle icon={SECTION_ICON[section.title] ?? <MonitorSmartphone className="size-3.5" />}>
                             {section.title}
                         </GroupTitle>
@@ -428,7 +447,7 @@ export function StatisticsSummary() {
                     </section>
                 ))}
                     {visibleGeoSections.length > 0 && (
-                        <section className={`${cardCls} p-4 sm:p-5`}>
+                        <section ref={register} className={`${cardCls} min-w-0`}>
                             <GroupTitle icon={<Globe className="size-3.5" />}>访客画像 · 地域与来源</GroupTitle>
                             {/* 左边占比饼图，右边排名前五的来源网站（颜色深浅与饼图分段一一对应） */}
                             {refererItems.length > 0 ? (
@@ -494,9 +513,9 @@ export function StatisticsSummary() {
                     )}
 
                     {hotPages.length > 0 && (
-                        <section className={`${cardCls} p-4 sm:p-5`}>
+                        <section ref={register} className={`${cardCls} min-w-0`}>
                             <GroupTitle icon={<Flame className="size-3.5" />}>热门页面 TOP</GroupTitle>
-                            <div className="space-y-3">
+                            <div className="space-y-2.5">
                                 {hotPages.map((item, i) => {
                                     const max = hotPages[0]?.count || 1;
                                     return (
@@ -524,11 +543,12 @@ export function StatisticsSummary() {
                             </div>
                         </section>
                     )}
+
             </div>
 
             {/* 一个字都没有时给个明确交代，而不是留一片空白 */}
             {!hasAnything && (
-                <p className={`${cardCls} p-6 text-center text-sm text-muted-foreground`}>统计概览暂无数据可展示</p>
+                <p className={`${cardCls} p-4 py-8 text-center text-sm text-muted-foreground`}>统计概览暂无数据可展示</p>
             )}
         </div>
     );

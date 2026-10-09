@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { toast } from "sonner";
 import {
     Banknote,
     CalendarPlus,
-    CircleX,
     Clock,
     Download,
     Eye,
@@ -15,8 +14,8 @@ import {
     RotateCcw,
     Search,
     ShoppingCart,
+    Trash2,
     TriangleAlert,
-    Undo2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -31,6 +30,12 @@ import {
 } from "@/components/ui/select";
 import { ACTION_TONE } from "@/lib/action-tones";
 import { getAdminOrdersApi } from "@/lib/api";
+import {
+    deleteAdminOrderApi,
+    listAdminOrdersByPostApi,
+    orderToDetail,
+    type AdminOrderDetail,
+} from "@/lib/api-orders-products";
 import type {
     AdminOrder,
     AdminOrderListParams,
@@ -40,19 +45,20 @@ import type {
 } from "@/types/orders";
 
 /**
- * 订单管理页：统计磁贴 + 筛选工具栏 + 列表（卡片内滚动、表头吸顶）+ 分页。
+ * 订单管理页：统计磁贴 + 筛选工具栏 + 列表（卡片内滚动、表头吸顶）+ 分页 + 详情弹窗。
  *
- * 接口：远端 PRO 模块 `/pro/admin/orders` → 同源代理 `/api/admin/orders`
- *   （浏览器带登录 cookie 走同源，见 src/app/api/admin/orders/route.ts）。
+ * 接口（权威来源：官方前端快照 scripts/theme/theme-anheyu-next-main/src/lib/api/order.ts）
+ *   GET    /pro/admin/orders          L13-15  列表（走 api.ts 的 getAdminOrdersApi）
+ *   POST   /pro/admin/orders/list     L20-22  带筛选的列表（详情弹窗用它按订单号补全字段）
+ *   DELETE /pro/admin/orders/{id}     L27-29  **软删除**
+ *   浏览器经同源代理 /api/admin/orders* 转发（见 src/app/api/admin/orders/）。
  *   ⚠️ 响应分页字段是 `size`（不是 `page_size`）；请求参数里分页字段才叫 `page_size`。
- *   参数：page / page_size / status / payment_provider / order_type / order_no /
- *        trade_no / user_email / start_date / end_date …
- *   类型定义统一放在 `@/types/orders`（本组件不再内联重复类型）。
  *
- * 本次范围（只做「读」）：
- *   ✅ 首屏加载 + 筛选（查询 / 回车 / 下拉变更）+ 分页切换；loading / 空态 / 错误态齐全；
- *   ⛔ 行内操作（详情 / 关闭 / 退款）与工具栏「刷新 / 导出」仍是占位 toast；
- *   ⛔ 统计磁贴没有独立接口，数值一律显示「—」。
+ * 已接的操作：
+ *   ✅ 列表加载 + 筛选 + 分页 + 详情弹窗 + 软删除（二次确认）+ 导出当前页 CSV（纯前端生成）
+ *   ⛔ 「关闭订单 / 退款」已**删除**：后端没有对应接口（官方 order.ts 里只有列表 / POST 列表 / 软删除），
+ *      留着只能是假按钮。
+ *   ⛔ 统计磁贴只接得上「订单总数」（列表响应 total），其余三项后端没有统计接口，显示「—」。
  *
  * 布局与 globals.css 的 .admin-* 约定一致：卡片直系 flex 子元素里只有 .admin-scroll 一个滚动区。
  */
@@ -98,12 +104,15 @@ const ORDER_TYPE_OPTIONS = (Object.keys(ORDER_TYPE_LABEL) as OrderType[]).map((v
     label: ORDER_TYPE_LABEL[value],
 }));
 
-/** 统计磁贴（本次没有对应接口，数值统一显示 —） */
+/**
+ * 统计磁贴：只有「订单总数」有真数据（列表响应的 total），
+ * 其余三项后端没有统计接口 → 显示「—」并在 title 里说明，不做假数字。
+ */
 const STAT_TILES = [
-    { label: "订单总数", icon: ShoppingCart, tone: "text-foreground" },
-    { label: "已支付金额", icon: Banknote, tone: "text-primary" },
-    { label: "待支付", icon: Clock, tone: "text-amber-600 dark:text-amber-400" },
-    { label: "今日新增", icon: CalendarPlus, tone: "text-emerald-600 dark:text-emerald-400" },
+    { key: "total", label: "订单总数", icon: ShoppingCart, tone: "text-foreground" },
+    { key: "paid", label: "已支付金额", icon: Banknote, tone: "text-primary" },
+    { key: "pending", label: "待支付", icon: Clock, tone: "text-amber-600 dark:text-amber-400" },
+    { key: "today", label: "今日新增", icon: CalendarPlus, tone: "text-emerald-600 dark:text-emerald-400" },
 ] as const;
 
 /** 筛选控件状态：全部以字符串保存（"" = 未选择） */
@@ -168,7 +177,7 @@ function formatDateTime(iso?: string): string {
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-/** 金额展示（两位小数） */
+/** 金额展示（两位小数；订单金额单位是元，见官方 orders/page.tsx L341 直接 toFixed(2)） */
 function money(value: unknown): string {
     const n = Number(value);
     return Number.isFinite(n) ? n.toFixed(2) : "—";
@@ -188,6 +197,33 @@ function orderTypeLabel(type: string) {
     return ORDER_TYPE_LABEL[type as OrderType] ?? (type || "—");
 }
 
+/** CSV 单元格转义（值里可能带逗号/引号/换行） */
+function csvCell(value: unknown): string {
+    const s = value === undefined || value === null ? "" : String(value);
+    return `"${s.replace(/"/g, '""')}"`;
+}
+
+/** 弹窗里的「标签 + 值」小格 */
+function Meta({ label, value }: { label: string; value: ReactNode }) {
+    return (
+        <div className="min-w-0">
+            <p className="text-muted-foreground">{label}</p>
+            <p className="mt-0.5 break-words text-foreground">{value}</p>
+        </div>
+    );
+}
+
+/** 详情弹窗里的「关联对象」：订单类型不同，关联的字段也不同，只渲染有值的那些 */
+function relatedText(detail: AdminOrderDetail): string {
+    const parts: string[] = [];
+    if (detail.article_id) parts.push(`文章 ${detail.article_id}`);
+    if (detail.share_id) parts.push(`分享 ${detail.share_id}`);
+    if (detail.product_id != null) parts.push(`商品 #${detail.product_id}`);
+    if (detail.variant_id != null) parts.push(`型号 #${detail.variant_id}`);
+    if (detail.membership_plan_id != null) parts.push(`会员套餐 #${detail.membership_plan_id}`);
+    return parts.length ? parts.join(" · ") : "—";
+}
+
 export function OrdersManager() {
     // ===== 筛选条件 =====
     // draft：输入框里正在编辑的值；applied：真正发给接口的值。
@@ -202,8 +238,15 @@ export function OrdersManager() {
     const [pageSize] = useState(PAGE_SIZE);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    /** 非筛选类重拉（错误态重试）；变更即触发 effect */
+    /** 非筛选类重拉（错误态重试 / 写操作后刷新 / 工具栏「刷新」）；变更即触发 effect */
     const [reloadKey, setReloadKey] = useState(0);
+
+    // ===== 详情弹窗 / 写操作 =====
+    /** 当前查看的订单（先用列表行兜底，再尝试用 POST /orders/list 补全） */
+    const [detail, setDetail] = useState<AdminOrderDetail | null>(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    /** 正在删除的订单 id（禁用该行按钮，避免重复提交） */
+    const [actingId, setActingId] = useState<number | null>(null);
 
     /** 请求序号：只认最后一次请求的结果，避免快速切筛选/翻页时旧响应覆盖新数据 */
     const reqSeq = useRef(0);
@@ -269,6 +312,90 @@ export function OrdersManager() {
 
     const retry = () => setReloadKey((k) => k + 1);
 
+    /**
+     * 打开详情：先用列表行渲染（立刻出内容），再用带筛选的 POST /orders/list 按订单号补全。
+     * 为什么这么做：官方**没有** GET /orders/{id}，列表项字段比详情少
+     * （user_id / 关联对象 / client_ip / user_agent / expire_time 只有列表接口会给）。
+     * 补全失败不影响弹窗（静默保留列表字段），不弹错误 toast 干扰用户。
+     */
+    const openDetail = async (order: AdminOrder) => {
+        setDetail(orderToDetail(order));
+        if (!order.order_no) return;
+        setDetailLoading(true);
+        try {
+            const data = await listAdminOrdersByPostApi({ order_no: order.order_no, page: 1, page_size: 5 });
+            const fresh = data.orders.find((o) => o.id === order.id) ?? data.orders[0];
+            if (fresh) setDetail(fresh);
+        } catch {
+            // 详情补全失败：保留列表行数据
+        } finally {
+            setDetailLoading(false);
+        }
+    };
+
+    /** 软删除（二次确认）：远端 DELETE /pro/admin/orders/{id}，本轮未实测 */
+    const removeOrder = async (id: number, label: string) => {
+        if (
+            !window.confirm(
+                `确定删除订单「${label}」吗？\n这是软删除：后端仍保留该订单记录，但订单列表里不再显示。`
+            )
+        )
+            return;
+
+        setActingId(id);
+        try {
+            await deleteAdminOrderApi(id);
+            toast.success("订单已删除");
+            if (detail?.id === id) setDetail(null);
+            // 删掉当前页最后一条且后面还有页时回退一页，避免停在空页
+            if (orders.length === 1 && page > 1) setPage((p) => p - 1);
+            else retry();
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "删除订单失败");
+        } finally {
+            setActingId(null);
+        }
+    };
+
+    /**
+     * 导出当前页为 CSV（纯前端生成）。
+     * 后端**没有**订单导出接口（官方 order.ts 全文件只有列表 / POST 列表 / 软删除），
+     * 所以这里照 supports-manager 的做法，用 Blob + 临时 <a download> 在前端拼 CSV，不新增依赖。
+     */
+    const handleExport = () => {
+        if (orders.length === 0) {
+            toast.info("当前页没有可导出的订单");
+            return;
+        }
+        const header = ["订单号", "交易号", "类型", "用户邮箱", "金额", "币种", "支付方式", "状态", "支付时间", "创建时间"];
+        const rows = orders.map((o) =>
+            [
+                o.order_no,
+                o.trade_no,
+                orderTypeLabel(o.order_type),
+                o.user_email,
+                money(o.amount),
+                o.currency,
+                providerLabel(o.payment_provider),
+                statusBadge(o.payment_status).label,
+                formatDateTime(o.pay_time),
+                formatDateTime(o.created_at),
+            ]
+                .map(csvCell)
+                .join(",")
+        );
+        // BOM 让 Excel 正确识别 UTF-8 中文
+        const csv = `\uFEFF${[header.map(csvCell).join(","), ...rows].join("\r\n")}`;
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `orders-page${page}-${new Date().toISOString().slice(0, 10)}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+        toast.success("已导出当前页订单");
+    };
+
     // 移动端(<640px)：grid-cols-1 把每个单元格竖排成卡片；≥640px：恢复表格式列布局。
     // min-w 只写在 sm: 以上 —— 窄屏若也撑宽，卡片就会被拉出横向滚动。
     const rowGrid = "sm:grid-cols-[minmax(0,1fr)_84px_150px_92px_92px_84px_128px_128px_120px]";
@@ -277,15 +404,21 @@ export function OrdersManager() {
     return (
         // admin-card：吃掉剩余高度，列表区域（admin-scroll）在卡片内部滚动，不再顶高整页
         <div className="admin-card">
-            {/* 统计磁贴：固定在卡片顶部（shrink-0），不随列表滚动 */}
+            {/* 统计磁贴：固定在卡片顶部（shrink-0），不随列表滚动。
+                只有「订单总数」有真数据（列表 total），其余三项没有接口 → 「—」 */}
             <div className="grid shrink-0 grid-cols-2 gap-2 border-b p-3 md:grid-cols-4">
                 {STAT_TILES.map((tile) => (
-                    <div key={tile.label} className="rounded-lg border bg-muted/40 px-3 py-2">
+                    <div key={tile.key} className="rounded-lg border bg-muted/40 px-3 py-2">
                         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <tile.icon className="size-3.5 text-muted-foreground/70" />
                             {tile.label}
                         </p>
-                        <p className={`mt-0.5 text-lg font-semibold tabular-nums ${tile.tone}`}>—</p>
+                        <p
+                            className={`mt-0.5 text-lg font-semibold tabular-nums ${tile.tone}`}
+                            title={tile.key === "total" ? "来自订单列表响应的 total" : "后端没有订单统计接口"}
+                        >
+                            {tile.key === "total" ? (loading ? "—" : total) : "—"}
+                        </p>
                     </div>
                 ))}
             </div>
@@ -396,25 +529,15 @@ export function OrdersManager() {
                     </Button>
                 </div>
 
-                {/* 右：刷新 / 导出（仍为占位，本次只做「读」） */}
+                {/* 右：刷新（真重拉）/ 导出（前端 CSV —— 后端没有导出接口） */}
                 <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8"
-                        onClick={() => toast.info("订单刷新待接入")}
-                    >
-                        <RefreshCw size={14} />
+                    <Button variant="outline" size="sm" className="h-8" onClick={retry} disabled={loading}>
+                        <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
                         刷新
                     </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8"
-                        onClick={() => toast.info("订单导出待接入")}
-                    >
+                    <Button variant="outline" size="sm" className="h-8" onClick={handleExport}>
                         <Download size={14} />
-                        导出
+                        导出本页
                     </Button>
                 </div>
             </div>
@@ -423,7 +546,7 @@ export function OrdersManager() {
                 三种状态都渲染在这一个 .admin-scroll 里，外壳结构保持不变。 */}
             <div className="admin-scroll">
                 {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
-                <div className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}>
+                <div className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}>
                     <span>订单号 / 交易号</span>
                     <span>类型</span>
                     <span>用户</span>
@@ -437,7 +560,7 @@ export function OrdersManager() {
 
                 {loading ? (
                     // 加载态：只在表格区给骨架 + spinner，不整页白屏
-                    <div className="flex flex-col items-center justify-center gap-3 px-4 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center gap-3 px-4 py-8 text-center">
                         <Loader2 className="size-5 animate-spin text-muted-foreground" />
                         <p className="text-sm text-muted-foreground">加载中…</p>
                         <div className="w-full max-w-3xl space-y-2" aria-hidden>
@@ -448,7 +571,7 @@ export function OrdersManager() {
                     </div>
                 ) : error ? (
                     // 错误态：可重试（toast 已在请求失败时弹过）
-                    <div className="flex flex-col items-center justify-center gap-2 px-4 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 px-4 py-8 text-center">
                         <div className="flex size-11 items-center justify-center rounded-full border bg-destructive/10">
                             <TriangleAlert className="size-5 text-destructive" />
                         </div>
@@ -461,7 +584,7 @@ export function OrdersManager() {
                     </div>
                 ) : orders.length === 0 ? (
                     // 空态：区分「有筛选但没匹配」与「确实没数据」
-                    <div className="flex flex-col items-center justify-center gap-2 px-4 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 px-4 py-8 text-center">
                         <div className="flex size-11 items-center justify-center rounded-full border bg-muted/40">
                             <ShoppingCart className="size-5 text-muted-foreground/70" />
                         </div>
@@ -535,7 +658,8 @@ export function OrdersManager() {
                                     <span className="mr-1 sm:hidden">创建</span>
                                     {formatDateTime(order.created_at)}
                                 </div>
-                                {/* 操作：详情 / 关闭 / 退款（仍为占位，本次只做「读」） */}
+                                {/* 操作：详情 / 删除（软删除）。
+                                    原来的「关闭订单 / 退款」已删除 —— 后端没有对应接口，留着只能是假按钮 */}
                                 <div className="flex items-center gap-1 sm:justify-end">
                                     <Button
                                         variant="ghost"
@@ -543,29 +667,20 @@ export function OrdersManager() {
                                         aria-label="详情"
                                         title="详情"
                                         className={ACTION_TONE.view}
-                                        onClick={() => toast.info("订单详情待接入")}
+                                        onClick={() => void openDetail(order)}
                                     >
                                         <Eye className="size-4" />
                                     </Button>
                                     <Button
                                         variant="ghost"
                                         size="icon-sm"
-                                        aria-label="关闭订单"
-                                        title="关闭订单"
-                                        className={ACTION_TONE.neutral}
-                                        onClick={() => toast.info("关闭订单待接入")}
-                                    >
-                                        <CircleX className="size-4" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon-sm"
-                                        aria-label="退款"
-                                        title="退款"
+                                        aria-label="删除订单"
+                                        title="删除订单（软删除）"
                                         className={ACTION_TONE.delete}
-                                        onClick={() => toast.info("退款待接入")}
+                                        disabled={actingId === order.id}
+                                        onClick={() => void removeOrder(order.id, order.order_no || `#${order.id}`)}
                                     >
-                                        <Undo2 className="size-4" />
+                                        <Trash2 className="size-4" />
                                     </Button>
                                 </div>
                             </div>
@@ -586,6 +701,95 @@ export function OrdersManager() {
                     disabled={loading}
                 />
             </div>
+
+            {/* ===== 订单详情弹窗 =====
+                官方没有 GET /orders/{id}：先用列表行渲染，再用 POST /orders/list 按订单号补全字段。
+                这里是只读弹窗，写操作只有「删除订单」（二次确认）。 */}
+            {detail && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                    onMouseDown={() => setDetail(null)}
+                >
+                    <div
+                        className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-xl border bg-card p-4 shadow-sm"
+                        onMouseDown={(e) => e.stopPropagation()}
+                    >
+                        <div className="mb-3 flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h3 className="truncate font-mono text-base font-semibold">
+                                        {detail.order_no || `订单 #${detail.id}`}
+                                    </h3>
+                                    <span
+                                        className={`inline-block shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${statusBadge(detail.payment_status).cls}`}
+                                    >
+                                        {statusBadge(detail.payment_status).label}
+                                    </span>
+                                    <span className="inline-block shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                                        {orderTypeLabel(detail.order_type)}
+                                    </span>
+                                    {detailLoading && (
+                                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                            <Loader2 className="size-3 animate-spin" />
+                                            加载完整详情…
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    订单号与交易号来自订单接口；金额单位为元
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setDetail(null)}
+                                aria-label="关闭"
+                                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="min-h-0 flex-1 overflow-auto">
+                            <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs sm:grid-cols-3">
+                                <Meta label="金额" value={`${money(detail.amount)} ${detail.currency || ""}`.trim()} />
+                                <Meta label="支付方式" value={providerLabel(detail.payment_provider)} />
+                                <Meta label="交易号" value={<span className="font-mono">{detail.trade_no || "—"}</span>} />
+                                <Meta label="用户邮箱" value={detail.user_email || "—"} />
+                                <Meta label="用户 ID" value={detail.user_id ?? "—"} />
+                                <Meta label="关联对象" value={relatedText(detail)} />
+                                <Meta label="支付时间" value={formatDateTime(detail.pay_time)} />
+                                <Meta label="创建时间" value={formatDateTime(detail.created_at)} />
+                                <Meta label="更新时间" value={formatDateTime(detail.updated_at)} />
+                                <Meta label="过期时间" value={formatDateTime(detail.expire_time)} />
+                                <Meta label="客户端 IP" value={detail.client_ip || "—"} />
+                                <Meta label="订单 ID" value={detail.id} />
+                            </div>
+
+                            <div className="mt-3 rounded-lg border bg-muted/30 p-3 text-xs">
+                                <p className="text-muted-foreground">User-Agent</p>
+                                <p className="mt-1 break-all text-foreground">{detail.user_agent || "—"}</p>
+                            </div>
+                        </div>
+
+                        <div className="mt-3 flex shrink-0 flex-wrap justify-end gap-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className={ACTION_TONE.delete}
+                                disabled={actingId === detail.id}
+                                onClick={() => void removeOrder(detail.id, detail.order_no || `#${detail.id}`)}
+                            >
+                                <Trash2 className="size-3.5" />
+                                删除订单（软删除）
+                            </Button>
+                            <div className="flex-1" />
+                            <Button variant="outline" onClick={() => setDetail(null)}>
+                                关闭窗口
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

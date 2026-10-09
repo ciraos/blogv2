@@ -398,7 +398,7 @@ export function SupportsManager() {
             </div>
 
             {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动 */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2.5">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2">
                 <div className="flex flex-wrap items-center gap-2">
                     <div className="relative w-56">
                         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -423,7 +423,7 @@ export function SupportsManager() {
                                 setPage(1);
                             }}
                         >
-                            <SelectTrigger className="h-7 w-max text-xs">
+                            <SelectTrigger className="h-8 w-max text-xs">
                                 <SelectValue placeholder="全部" />
                             </SelectTrigger>
                             <SelectContent>
@@ -447,7 +447,7 @@ export function SupportsManager() {
                             }}
                             disabled={typeOptions.length === 0}
                         >
-                            <SelectTrigger className="h-7 w-max text-xs">
+                            <SelectTrigger className="h-8 w-max text-xs">
                                 <SelectValue placeholder={typeOptions.length === 0 ? "暂无可选类型" : "全部"} />
                             </SelectTrigger>
                             <SelectContent>
@@ -486,7 +486,7 @@ export function SupportsManager() {
             {/* 列表：卡片内唯一滚动区（表头吸顶），工具栏与分页都不动 */}
             <div className="admin-scroll">
                 <div
-                    className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}
+                    className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}
                 >
                     <span>工单号</span>
                     <span>主题</span>
@@ -500,9 +500,9 @@ export function SupportsManager() {
                 </div>
 
                 {loading ? (
-                    <div className="py-12 text-center text-sm text-muted-foreground">加载中…</div>
+                    <div className="py-8 text-center text-sm text-muted-foreground">加载中…</div>
                 ) : tickets.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center gap-2 px-4 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 px-4 py-8 text-center">
                         <span className="flex size-11 items-center justify-center rounded-full border bg-muted/60 text-muted-foreground">
                             <Ticket className="size-5" />
                         </span>
@@ -621,7 +621,7 @@ export function SupportsManager() {
             </div>
 
             {/* 分页：固定在卡片底部，不随列表滚动 */}
-            <div className="flex shrink-0 items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2 text-xs text-muted-foreground">
                 <span>
                     第 {page} / {totalPages} 页
                 </span>
@@ -635,10 +635,10 @@ export function SupportsManager() {
                     onMouseDown={() => setDetail(null)}
                 >
                     <div
-                        className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-xl border bg-card p-5 shadow-xl"
+                        className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-xl border bg-card p-4 shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
-                        <div className="mb-4 flex items-start justify-between gap-3">
+                        <div className="mb-3 flex items-start justify-between gap-3">
                             <div className="min-w-0">
                                 <div className="flex items-center gap-2">
                                     <h3 className="truncate text-base font-semibold">{detail.subject || "工单会话"}</h3>
@@ -675,7 +675,7 @@ export function SupportsManager() {
                         </div>
 
                         {/* 会话消息：来自详情接口的 messages */}
-                        <div className="mt-4 min-h-32 flex-1 overflow-auto rounded-lg border bg-muted/30 p-3">
+                        <div className="mt-3 min-h-32 flex-1 overflow-auto rounded-lg border bg-muted/30 p-3">
                             {detailLoading ? (
                                 <p className="py-6 text-center text-xs text-muted-foreground">加载会话记录…</p>
                             ) : (detail.messages?.length ?? 0) === 0 ? (
@@ -714,7 +714,7 @@ export function SupportsManager() {
 
                         {/* 回复区：仅在工单未关闭时给输入框（官方 TicketDetailDrawer.tsx L119 同款约定） */}
                         {detail.status !== "CLOSED" ? (
-                            <div className="mt-4 shrink-0">
+                            <div className="mt-3 shrink-0">
                                 <textarea
                                     value={replyContent}
                                     onChange={(e) => setReplyContent(e.target.value)}
@@ -725,12 +725,12 @@ export function SupportsManager() {
                                 />
                             </div>
                         ) : (
-                            <p className="mt-4 shrink-0 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+                            <p className="mt-3 shrink-0 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
                                 该工单已关闭，如需继续沟通请让用户重新创建工单。
                             </p>
                         )}
 
-                        <div className="mt-4 flex shrink-0 flex-wrap justify-end gap-2">
+                        <div className="mt-3 flex shrink-0 flex-wrap justify-end gap-2">
                             <Button
                                 variant="ghost"
                                 size="sm"

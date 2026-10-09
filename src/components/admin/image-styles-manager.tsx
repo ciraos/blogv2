@@ -269,7 +269,7 @@ function StatTile({
     hint?: string;
 }) {
     return (
-        <div className="flex items-center gap-2.5 rounded-lg border bg-muted/40 px-3 py-2">
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2">
             <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${chip}`}>
                 <Icon className="size-4" />
             </span>
@@ -685,7 +685,7 @@ export function ImageStylesManager() {
                 <Button
                     variant="outline"
                     size="sm"
-                    className="ml-auto h-7 text-xs"
+                    className="ml-auto h-8 text-xs"
                     disabled={busy}
                     onClick={() => void fetchCacheStatus()}
                 >
@@ -729,14 +729,14 @@ export function ImageStylesManager() {
                 </section>
 
                 {loadingStyles && (
-                    <div className="flex flex-col items-center justify-center gap-1.5 py-10 text-sm text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center gap-1.5 py-8 text-sm text-muted-foreground">
                         <RefreshCw className="size-5 animate-spin opacity-60" />
                         <span>正在读取样式配置…</span>
                     </div>
                 )}
 
                 {!loadingStyles && stylesError && (
-                    <div className="flex flex-col items-center justify-center gap-1.5 py-10 text-sm text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center gap-1.5 py-8 text-sm text-muted-foreground">
                         <ImageOff className="size-5 opacity-60" />
                         <span className="text-red-600 dark:text-red-400">{stylesError}</span>
                         <Button
@@ -751,7 +751,7 @@ export function ImageStylesManager() {
                 )}
 
                 {!loadingStyles && !stylesError && !payload && (
-                    <div className="flex flex-col items-center justify-center gap-1.5 py-10 text-sm text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center gap-1.5 py-8 text-sm text-muted-foreground">
                         <ImageOff className="size-5 opacity-60" />
                         <span>请选择存储策略以查看图片样式配置</span>
                     </div>
@@ -1162,7 +1162,7 @@ export function ImageStylesManager() {
             </div>
 
             {/* 底部保存条 */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2 text-xs text-muted-foreground">
                 <span>
                     {payload
                         ? dirty

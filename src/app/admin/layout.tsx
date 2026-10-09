@@ -16,7 +16,6 @@ import { resolveAssetUrl } from "@/lib/utils";
 import { resolveAppearance } from "@/lib/appearance";
 import { resolveThemeSchedule } from "@/lib/scheduled-theme";
 import { isAdminUser } from "@/lib/auth";
-import { APP_VERSION_LABEL } from "@/lib/version";
 import { SiteConfigResponse } from "@/types/site-config";
 
 const site_url = process.env.NEXT_PUBLIC_SITE_URL;
@@ -124,8 +123,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
                                         所以列表页不会出现整页滚动条，页脚就落在卡片正下方。压薄到 h-8 把高度让给表格。 */}
                                     <footer className="mt-2 flex h-8 shrink-0 items-center justify-center gap-3 border-t">
                                         <Link href="https://beian.miit.gov.cn" target="_blank" rel="noopener external nofollow noreferrer" className="text-xs text-muted-foreground hover:underline">{config?.ICP_NUMBER}</Link>
-                                        {/* 前端版本号（package.json → 构建时注入；与后端版本无关，侧边栏也有一份） */}
-                                        <span className="text-xs text-muted-foreground/50">{APP_VERSION_LABEL}</span>
+                                        {/* 版本号只保留侧边栏那一份（用户要求：侧边已有，页脚不再重复） */}
                                     </footer>
                                 </div>
                             </main>

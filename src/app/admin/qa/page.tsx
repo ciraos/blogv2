@@ -31,7 +31,7 @@ export default async function CommunityQa() {
 
     return (
         // 不用 .admin-page：本页是多张卡片纵向堆叠的形状，滚动交给 main（卡片自然高度）
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
             <div className="admin-page-head">
                 <div>
                     <h2 className="text-xl font-semibold tracking-tight">社区问答</h2>

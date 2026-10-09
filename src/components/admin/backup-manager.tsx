@@ -124,12 +124,12 @@ function ConfirmDialog({
             onMouseDown={busy ? undefined : onCancel}
         >
             <div
-                className="w-full max-w-md rounded-xl border bg-card p-5 shadow-xl"
+                className="w-full max-w-md rounded-xl border bg-card p-4 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <h3 className="text-base font-semibold">{title}</h3>
-                <div className="mt-2 space-y-2 text-sm text-muted-foreground">{children}</div>
-                <div className="mt-5 flex justify-end gap-2">
+                <div className="mt-3 space-y-3 text-sm text-muted-foreground">{children}</div>
+                <div className="mt-3 flex justify-end gap-2">
                     <Button variant="outline" size="sm" className="h-8 rounded-lg text-xs" onClick={onCancel} disabled={busy}>
                         取消
                     </Button>
@@ -374,7 +374,7 @@ export function BackupManager() {
             {/* 统计磁贴：固定在卡片顶部（shrink-0），不随列表滚动 */}
             <div className="grid shrink-0 grid-cols-2 gap-2 border-b p-3 md:grid-cols-4">
                 {tiles.map((t) => (
-                    <div key={t.label} className="flex items-center gap-2.5 rounded-lg border bg-muted/40 px-3 py-2">
+                    <div key={t.label} className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2">
                         <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${t.tone}`}>
                             <t.icon className="size-4" />
                         </span>
@@ -387,7 +387,7 @@ export function BackupManager() {
             </div>
 
             {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动 */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2.5">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2">
                 <span className="text-xs text-muted-foreground">
                     共 <span className="font-medium text-foreground">{loading ? "—" : list.length}</span> 个备份
                     <span className="ml-2 text-muted-foreground/70">备份内容为数据库中的系统设置（与「导出配置」一致）</span>
@@ -395,7 +395,7 @@ export function BackupManager() {
                 <div className="flex flex-wrap items-center gap-2">
                     <Button
                         size="sm"
-                        className="h-7 px-2 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                        className="h-8 px-2 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
                         disabled={actionsDisabled}
                         onClick={() => setCreateOpen(true)}
                     >
@@ -405,7 +405,7 @@ export function BackupManager() {
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 px-2 text-xs"
+                        className="h-8 px-2 text-xs"
                         disabled={actionsDisabled}
                         onClick={() => {
                             setCleanKeep("5");
@@ -418,7 +418,7 @@ export function BackupManager() {
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 px-2 text-xs"
+                        className="h-8 px-2 text-xs"
                         disabled={actionsDisabled}
                         onClick={handleExport}
                     >
@@ -428,7 +428,7 @@ export function BackupManager() {
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 px-2 text-xs"
+                        className="h-8 px-2 text-xs"
                         disabled={actionsDisabled}
                         onClick={() => fileInputRef.current?.click()}
                     >
@@ -438,7 +438,7 @@ export function BackupManager() {
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 px-2 text-xs"
+                        className="h-8 px-2 text-xs"
                         disabled={actionsDisabled || loading}
                         onClick={refresh}
                     >
@@ -461,7 +461,7 @@ export function BackupManager() {
             <div className="admin-scroll">
                 {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
                 <div
-                    className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}
+                    className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}
                 >
                     <span>备份文件名</span>
                     <span>大小</span>
@@ -487,7 +487,7 @@ export function BackupManager() {
                     </div>
                 ) : error ? (
                     // 错误态（未登录 / 远端异常）：消息 + 重试，页面不白屏
-                    <div className="flex min-h-64 flex-col items-center justify-center gap-2 px-4 py-12 text-center">
+                    <div className="flex min-h-64 flex-col items-center justify-center gap-2 px-4 py-8 text-center">
                         <span className="flex size-12 items-center justify-center rounded-full border bg-destructive/10">
                             <ServerCrash className="size-5 text-destructive" />
                         </span>
@@ -502,7 +502,7 @@ export function BackupManager() {
                         </Button>
                     </div>
                 ) : list.length === 0 ? (
-                    <div className="flex min-h-64 flex-col items-center justify-center gap-1.5 px-4 py-12 text-sm text-muted-foreground">
+                    <div className="flex min-h-64 flex-col items-center justify-center gap-1.5 px-4 py-8 text-sm text-muted-foreground">
                         <DatabaseBackup className="size-5 opacity-60" />
                         <span>暂无配置备份</span>
                         <span className="text-xs text-muted-foreground/70">
@@ -569,7 +569,7 @@ export function BackupManager() {
             </div>
 
             {/* 卡片底栏：备份数 / 占用空间汇总（固定在底部，不随列表滚动） */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2 text-xs text-muted-foreground">
                 <span>
                     共 {list.length} 个备份 · 占用 {formatBytes(totalSize)}
                     {latest ? ` · 最近 ${formatDateTime(latest.created_at)}` : ""}

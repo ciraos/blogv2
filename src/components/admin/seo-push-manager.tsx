@@ -116,7 +116,7 @@ function CheckRow({ check }: { check: SeoCheck }) {
                 )}
             </button>
             {open && hasEvidence && (
-                <ul className="space-y-1 border-t bg-muted/30 px-4 py-2.5">
+                <ul className="space-y-1 border-t bg-muted/30 px-4 py-2">
                     {check.evidence?.map((line, index) => (
                         <li key={`${check.id}-${index}`} className="break-all font-mono text-[11px] leading-relaxed text-muted-foreground">
                             {line}
@@ -131,7 +131,7 @@ function CheckRow({ check }: { check: SeoCheck }) {
 /** 小标题：卡片内的分节标题（左侧有强调条） */
 function SectionTitle({ icon: Icon, title, hint }: { icon: LucideIcon; title: string; hint?: string }) {
     return (
-        <div className="flex items-center gap-2 border-b bg-muted/40 px-4 py-2.5">
+        <div className="flex items-center gap-2 border-b bg-muted/40 px-4 py-2">
             <Icon className="size-4 text-muted-foreground" />
             <h3 className="text-sm font-medium">{title}</h3>
             {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
@@ -180,9 +180,9 @@ export function SeoPushManager() {
     }, [runCheck]);
 
     return (
-        <div className="flex flex-col gap-4 pb-4">
+        <div className="flex flex-col gap-3 pb-4">
             {/* ---- 后端能力说明：诚实标注，不含任何伪造的推送记录 ---- */}
-            <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3.5 py-3">
+            <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                 <div className="space-y-1 text-xs leading-relaxed">
                     <p className="font-medium text-amber-700 dark:text-amber-300">
@@ -196,13 +196,13 @@ export function SeoPushManager() {
             </div>
 
             {/* ---- 配置区（只读） ---- */}
-            <section className="rounded-xl border bg-card">
+            <section className="rounded-xl border bg-card shadow-sm">
                 <SectionTitle icon={KeyRound} title="百度推送配置（只读）" hint="seo.baidu.* · 官方 setting-keys.ts:312-314，标记为 Pro" />
                 <div className="divide-y">
                     {SEO_KEYS.map((item) => {
                         const live = data?.seoKeys.find((entry) => entry.key === item.key);
                         return (
-                            <div key={item.key} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
+                            <div key={item.key} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2">
                                 <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">{item.key}</code>
                                 <span className="text-sm">{item.label}</span>
                                 <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={item.desc}>
@@ -221,7 +221,7 @@ export function SeoPushManager() {
                         );
                     })}
                 </div>
-                <div className="space-y-1.5 border-t bg-muted/30 px-4 py-2.5 text-xs text-muted-foreground">
+                <div className="space-y-1.5 border-t bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
                     <p>
                         为什么这里读不到值：站点公开配置接口 <code className="font-mono">GET /api/public/site-config</code> 实测
                         <span className="text-foreground"> 不返回 seo.* 节点</span>，而本前端「系统设置」的字段清单里也没有收录这三个键。
@@ -229,7 +229,7 @@ export function SeoPushManager() {
                     </p>
                     <p>修改方式：在后端管理端（官方后台）的系统设置里维护这三个键；本站前端后台的配置读写由你自行处理。</p>
                     <div className="pt-1">
-                        <Button asChild variant="outline" size="sm" className="h-7 text-xs">
+                        <Button asChild variant="outline" size="sm" className="h-8 text-xs">
                             <Link href="/admin/settings">
                                 <Settings className="size-3.5" />
                                 打开系统设置
@@ -240,8 +240,8 @@ export function SeoPushManager() {
             </section>
 
             {/* ---- 本地体检 ---- */}
-            <section className="rounded-xl border bg-card">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-4 py-2.5">
+            <section className="rounded-xl border bg-card shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-4 py-2">
                     <div className="flex items-center gap-2">
                         <ShieldCheck className="size-4 text-muted-foreground" />
                         <h3 className="text-sm font-medium">本地体检清单</h3>
@@ -256,7 +256,7 @@ export function SeoPushManager() {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 text-xs"
+                            className="h-8 text-xs"
                             disabled={loading}
                             onClick={() => void runCheck(true)}
                         >
@@ -267,12 +267,12 @@ export function SeoPushManager() {
                 </div>
 
                 {loading && !data ? (
-                    <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+                    <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
                         <Loader2 className="size-4 animate-spin" />
                         正在抓取 sitemap / robots / 订阅源与页面 meta…
                     </div>
                 ) : failed && !data ? (
-                    <div className="flex flex-col items-center gap-1 py-10 text-sm text-muted-foreground">
+                    <div className="flex flex-col items-center gap-1 py-8 text-sm text-muted-foreground">
                         <XCircle className="size-5 text-red-500" />
                         {failed}
                     </div>
@@ -372,7 +372,7 @@ export function SeoPushManager() {
                         {data.robots && (
                             <div className="border-t">
                                 <SectionTitle icon={ShieldCheck} title="robots.txt 原文" hint={data.robots.url} />
-                                <pre className="admin-scroll max-h-56 overflow-auto bg-muted/30 px-4 py-2.5 font-mono text-[11px] leading-relaxed">
+                                <pre className="admin-scroll max-h-56 overflow-auto bg-muted/30 px-4 py-2 font-mono text-[11px] leading-relaxed">
                                     {data.robots.text || "（空）"}
                                 </pre>
                                 {data.robots.suspiciousDisallows.length > 0 && (
@@ -397,7 +397,7 @@ export function SeoPushManager() {
                                     }
                                 />
                                 {data.sitemap.urls.length > 0 ? (
-                                    <ul className="space-y-1 px-4 py-2.5">
+                                    <ul className="space-y-1 px-4 py-2">
                                         {data.sitemap.urls.map((url) => (
                                             <li key={url} className="break-all font-mono text-[11px] text-muted-foreground">
                                                 {url}
@@ -405,7 +405,7 @@ export function SeoPushManager() {
                                         ))}
                                     </ul>
                                 ) : (
-                                    <p className="px-4 py-2.5 text-xs text-muted-foreground">
+                                    <p className="px-4 py-2 text-xs text-muted-foreground">
                                         {data.sitemap.error ?? "没有解析到任何 <loc>"}
                                     </p>
                                 )}
@@ -416,7 +416,7 @@ export function SeoPushManager() {
             </section>
 
             {/* ---- 站长平台入口 ---- */}
-            <section className="rounded-xl border bg-card">
+            <section className="rounded-xl border bg-card shadow-sm">
                 <SectionTitle
                     icon={ExternalLink}
                     title="站长平台入口"
@@ -429,7 +429,7 @@ export function SeoPushManager() {
                             href={link.href}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="group flex items-start gap-2.5 rounded-lg border bg-muted/30 px-3 py-2.5 transition-colors hover:bg-muted"
+                            className="group flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 transition-colors hover:bg-muted"
                         >
                             <span className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${link.tone}`}>
                                 <ExternalLink className="size-3.5" />
@@ -443,7 +443,7 @@ export function SeoPushManager() {
                         </a>
                     ))}
                 </div>
-                <p className="border-t px-4 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+                <p className="border-t px-4 py-2 text-[11px] leading-relaxed text-muted-foreground">
                     说明：这些平台需要你先完成站点所有权验证（DNS / 文件 / meta 标签），再提交
                     <code className="mx-1 font-mono">{data?.siteUrl || "本站"}/sitemap.xml</code>
                     或逐条提交 URL。本页只提供入口与体检结论，不会替你提交，也不会显示「已提交 N 条」这类无法核实的数字。

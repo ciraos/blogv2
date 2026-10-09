@@ -433,7 +433,7 @@ export function MembershipsManager() {
                         type="button"
                         onClick={() => setTab("plans")}
                         className={cn(
-                            "flex h-9 items-center gap-1.5 px-3 text-xs transition-colors",
+                            "flex h-8 items-center gap-1.5 px-3 text-xs transition-colors",
                             tab === "plans" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-primary"
                         )}
                     >
@@ -445,7 +445,7 @@ export function MembershipsManager() {
                         type="button"
                         onClick={() => setTab("members")}
                         className={cn(
-                            "flex h-9 items-center gap-1.5 px-3 text-xs transition-colors",
+                            "flex h-8 items-center gap-1.5 px-3 text-xs transition-colors",
                             tab === "members" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-primary"
                         )}
                     >
@@ -466,7 +466,7 @@ export function MembershipsManager() {
                                         setPlanPage(1);
                                     }}
                                 >
-                                    <SelectTrigger className="h-9 w-24 rounded-xl text-xs">
+                                    <SelectTrigger className="h-8 w-24 rounded-xl text-xs">
                                         <SelectValue placeholder="全部" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -488,20 +488,20 @@ export function MembershipsManager() {
                                         setPlanPage(1);
                                     }}
                                     placeholder="搜索方案名称…"
-                                    className="h-9 w-40 rounded-xl pl-8 text-xs"
+                                    className="h-8 w-40 rounded-xl pl-8 text-xs"
                                 />
                             </div>
                             <Button
                                 variant="outline"
-                                size="icon-sm"
+                                size="icon"
                                 aria-label="刷新"
                                 title="刷新"
-                                className="size-9 rounded-xl"
+                                className="rounded-xl"
                                 onClick={() => setRefreshKey((k) => k + 1)}
                             >
                                 <RefreshCw className="size-4" />
                             </Button>
-                            <Button size="sm" className="h-9 rounded-xl text-xs" onClick={openCreate}>
+                            <Button size="sm" className="h-8 rounded-xl text-xs" onClick={openCreate}>
                                 <Plus className="size-3.5" />
                                 新增方案
                             </Button>
@@ -517,7 +517,7 @@ export function MembershipsManager() {
                                         setMemberPage(1);
                                     }}
                                 >
-                                    <SelectTrigger className="h-9 w-24 rounded-xl text-xs">
+                                    <SelectTrigger className="h-8 w-24 rounded-xl text-xs">
                                         <SelectValue placeholder="全部" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -536,15 +536,15 @@ export function MembershipsManager() {
                                     value={memberKeyword}
                                     onChange={(e) => setMemberKeyword(e.target.value)}
                                     placeholder="按用户 ID / 方案名过滤本页…"
-                                    className="h-9 w-52 rounded-xl pl-8 text-xs"
+                                    className="h-8 w-52 rounded-xl pl-8 text-xs"
                                 />
                             </div>
                             <Button
                                 variant="outline"
-                                size="icon-sm"
+                                size="icon"
                                 aria-label="刷新"
                                 title="刷新"
-                                className="size-9 rounded-xl"
+                                className="rounded-xl"
                                 onClick={() => setRefreshKey((k) => k + 1)}
                             >
                                 <RefreshCw className="size-4" />
@@ -560,7 +560,7 @@ export function MembershipsManager() {
                     {/* 唯一的滚动区：表头吸顶，工具栏与分页都不动 */}
                     <div className="admin-scroll">
                         <div
-                            className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${planMinW} ${planGrid}`}
+                            className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground sm:grid ${planMinW} ${planGrid}`}
                         >
                             <span>方案名称</span>
                             <span>价格（元）</span>
@@ -571,9 +571,9 @@ export function MembershipsManager() {
                         </div>
 
                         {plansLoading ? (
-                            <div className="py-12 text-center text-sm text-muted-foreground">加载中…</div>
+                            <div className="py-8 text-center text-sm text-muted-foreground">加载中…</div>
                         ) : pagedPlans.length === 0 ? (
-                            <div className="flex min-h-56 flex-col items-center justify-center gap-1.5 px-4 py-12 text-sm text-muted-foreground">
+                            <div className="flex min-h-56 flex-col items-center justify-center gap-1.5 px-4 py-8 text-sm text-muted-foreground">
                                 <Layers className="size-8 opacity-40" />
                                 <span>
                                     {planStatus !== "all" || planKeyword
@@ -662,7 +662,7 @@ export function MembershipsManager() {
                     </div>
 
                     {/* 分页：固定在卡片底部；套餐接口无分页字段，按已加载列表本地分页 */}
-                    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
+                    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2 text-xs text-muted-foreground">
                         <span>
                             共 {filteredPlans.length} 个方案 · 第 {planSafePage} / {planTotalPages} 页
                         </span>
@@ -681,7 +681,7 @@ export function MembershipsManager() {
                 <>
                     <div className="admin-scroll">
                         <div
-                            className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${memberMinW} ${memberGrid}`}
+                            className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground sm:grid ${memberMinW} ${memberGrid}`}
                         >
                             <span>用户</span>
                             <span>方案</span>
@@ -693,9 +693,9 @@ export function MembershipsManager() {
                         </div>
 
                         {membersLoading ? (
-                            <div className="py-12 text-center text-sm text-muted-foreground">加载中…</div>
+                            <div className="py-8 text-center text-sm text-muted-foreground">加载中…</div>
                         ) : visibleMembers.length === 0 ? (
-                            <div className="flex min-h-56 flex-col items-center justify-center gap-1.5 px-4 py-12 text-sm text-muted-foreground">
+                            <div className="flex min-h-56 flex-col items-center justify-center gap-1.5 px-4 py-8 text-sm text-muted-foreground">
                                 <Users className="size-8 opacity-40" />
                                 <span>
                                     {memberStatus !== "all" || memberKeyword ? "没有匹配的会员" : "暂无会员数据"}
@@ -759,7 +759,7 @@ export function MembershipsManager() {
                         )}
                     </div>
 
-                    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
+                    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2 text-xs text-muted-foreground">
                         <span>
                             共 {membersTotal} 位会员 · 第 {memberPage} / {memberTotalPages} 页
                         </span>
@@ -777,10 +777,10 @@ export function MembershipsManager() {
             {(editingPlan || createOpen) && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={closeDialog}>
                     <div
-                        className="w-full max-w-xl rounded-xl border bg-card p-5 shadow-xl"
+                        className="w-full max-w-xl rounded-xl border bg-card p-4 shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
-                        <div className="mb-4 flex items-center justify-between">
+                        <div className="mb-3 flex items-center justify-between">
                             <h3 className="text-base font-semibold">
                                 {editingPlan ? `编辑方案「${editingPlan.name}」` : "新增会员方案"}
                             </h3>
@@ -806,7 +806,7 @@ export function MembershipsManager() {
                                 <label className="block">
                                     <span className="mb-1 block text-xs font-medium text-muted-foreground">状态</span>
                                     <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                                        <SelectTrigger className="w-full">
+                                        <SelectTrigger className="h-8 w-full">
                                             <SelectValue placeholder="选择状态" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -894,10 +894,10 @@ export function MembershipsManager() {
             {detail && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={() => setDetail(null)}>
                     <div
-                        className="w-full max-w-lg rounded-xl border bg-card p-5 shadow-xl"
+                        className="w-full max-w-lg rounded-xl border bg-card p-4 shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
-                        <div className="mb-4 flex items-center justify-between">
+                        <div className="mb-3 flex items-center justify-between">
                             <h3 className="text-base font-semibold">会员详情 · 用户 #{detail.user_id ?? "—"}</h3>
                             <button
                                 type="button"
@@ -940,7 +940,7 @@ export function MembershipsManager() {
                             <Meta label="到期时间" value={formatDateTime(detail.expire_time)} />
                             <Meta label="创建时间" value={formatDateTime(detail.created_at)} />
                         </div>
-                        <div className="mt-4 flex justify-end">
+                        <div className="mt-3 flex justify-end">
                             <Button variant="outline" onClick={() => setDetail(null)}>
                                 关闭
                             </Button>

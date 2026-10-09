@@ -13,7 +13,8 @@ export default function Orders() {
                 <div>
                     <h2 className="text-xl font-semibold tracking-tight">订单管理</h2>
                     <p className="mt-1 text-xs text-muted-foreground">
-                        订单列表（后端 PRO 模块 /pro/admin/orders）；筛选、详情、关闭、退款暂为占位，接口接入后生效
+                        订单列表（后端 PRO 模块 /pro/admin/orders）；支持筛选、详情弹窗、软删除与当前页 CSV 导出。
+                        后端没有「关闭订单 / 退款」接口，故不再提供这两个按钮
                     </p>
                 </div>
             </div>

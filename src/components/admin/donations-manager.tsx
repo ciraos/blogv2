@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Gift, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Download, Gift, Pencil, Plus, RefreshCw, Trash2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,9 +23,25 @@ import {
     getDonationTotalApi,
     updateAdminDonationApi,
 } from "@/lib/api";
+import {
+    MAX_DONATION_IMPORT_SIZE,
+    downloadBlobFile,
+    exportAdminDonationsApi,
+    formatBytes,
+    importAdminDonationsApi,
+    isSupportedDonationImportFile,
+    type DonationImportOptions,
+    type DonationImportResult,
+} from "@/lib/api-donations-io";
 import type { Donation } from "@/types/donations";
 
 const PAGE_SIZE = 10;
+
+/** 导入结果里最多列出多少条失败原因（后端 errors 可能很长） */
+const MAX_SHOWN_IMPORT_ERRORS = 8;
+
+/** 导入文件体积上限的可读文案（导入弹窗里展示） */
+const MAX_IMPORT_SIZE_TEXT = formatBytes(MAX_DONATION_IMPORT_SIZE);
 
 const STATUS_OPTIONS = [
     { value: "1", label: "显示" },
@@ -73,7 +89,7 @@ const EMPTY_FORM = {
 };
 
 /**
- * 打赏管理页：统计磁贴 + 状态筛选 + 列表（多选批量删除）+ 新增/编辑弹窗 + 删除。
+ * 打赏管理页：统计磁贴 + 状态筛选 + 列表（多选批量删除）+ 新增/编辑弹窗 + 删除 + 导出/导入。
  * 接口为后端 PRO 模块（/pro/admin/donations），经同源代理 /api/admin/donations 转发。
  */
 export function DonationsManager() {
@@ -89,6 +105,20 @@ export function DonationsManager() {
     /** 多选（批量删除） */
     const [selected, setSelected] = useState<Set<number>>(new Set());
     const [deleting, setDeleting] = useState(false);
+
+    // ===== 导出 / 导入 =====
+    const [exporting, setExporting] = useState(false);
+    const [importOpen, setImportOpen] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    /** 导入结果是只读的，单独存一份避免重渲染被擦掉 */
+    const [importResult, setImportResult] = useState<DonationImportResult | null>(null);
+    const [importing, setImporting] = useState(false);
+    const [importOptions, setImportOptions] = useState<DonationImportOptions>({
+        // 与官方 DonationImportDialog.tsx:98-99 的默认值一致
+        skipExisting: true,
+        defaultStatus: 0,
+    });
+    const importInputRef = useRef<HTMLInputElement | null>(null);
 
     // ===== 新增 / 编辑弹窗 =====
     const [editing, setEditing] = useState<Donation | null>(null);
@@ -252,6 +282,94 @@ export function DonationsManager() {
         else setRefreshKey((k) => k + 1);
     };
 
+    /**
+     * 导出打赏记录：勾选了就只导出勾选的那几条，没勾选就导出全部。
+     * 远端回的是文件流（官方下载名 donations-YYYY-MM-DD.json），这里优先用远端的
+     * Content-Disposition 文件名，取不到再按日期兜底。
+     */
+    const handleExport = async () => {
+        const ids = [...selected];
+        setExporting(true);
+        try {
+            const { blob, filename } = await exportAdminDonationsApi(ids);
+            const fallback = `donations-${new Date().toISOString().slice(0, 10)}.json`;
+            downloadBlobFile(blob, filename || fallback);
+            toast.success(ids.length > 0 ? `已导出选中的 ${ids.length} 条打赏记录` : "已导出全部打赏记录", {
+                description: "JSON 文件可直接在「导入」里回灌",
+            });
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "导出失败");
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    /** 关闭导入弹窗时清空选择与上一次结果（避免下次打开看到旧结果） */
+    const resetImport = () => {
+        setImportFile(null);
+        setImportResult(null);
+        if (importInputRef.current) importInputRef.current.value = "";
+    };
+
+    /** 选择文件时就地校验扩展名与体积，不合格立即提示并清空 */
+    const handlePickImportFile = (file: File | undefined) => {
+        if (!file) return;
+        if (!isSupportedDonationImportFile(file.name)) {
+            toast.error("只支持 .json（或 .txt）文件");
+            resetImport();
+            return;
+        }
+        if (file.size > MAX_DONATION_IMPORT_SIZE) {
+            toast.error(`文件不能超过 ${MAX_IMPORT_SIZE_TEXT}`, { description: `当前 ${formatBytes(file.size)}` });
+            resetImport();
+            return;
+        }
+        setImportFile(file);
+        setImportResult(null);
+    };
+
+    /** 真正提交导入（已过二次确认）——⚠️ 写库，不可撤销 */
+    const handleImport = async () => {
+        if (!importFile) return;
+        setImporting(true);
+        setImportResult(null);
+        try {
+            const res = await importAdminDonationsApi(importFile, importOptions);
+            setImportResult(res);
+            if (res.success_count > 0) {
+                toast.success(`导入完成：成功 ${res.success_count} 条`);
+                setRefreshKey((k) => k + 1);
+            } else if (res.failed_count > 0) {
+                toast.warning("没有成功导入任何记录，看看下方失败原因");
+            } else {
+                toast.info("没有新增记录（可能都被跳过了）");
+            }
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "导入失败");
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    /** 二次确认：导入会往打赏表写数据，文案里写清后果 */
+    const confirmImport = () => {
+        if (!importFile) return;
+        const ok = window.confirm(
+            `确定导入「${importFile.name}」吗？\n\n` +
+                `这会向打赏记录表写入数据（不可撤销）。\n` +
+                `已存在的记录：${importOptions.skipExisting ? "跳过" : "不判重，可能产生重复"}\n` +
+                `默认状态：${
+                    importOptions.defaultStatus === 0
+                        ? "保持原状态"
+                        : importOptions.defaultStatus === 1
+                          ? "统一设为显示"
+                          : "统一设为隐藏"
+                }`
+        );
+        if (!ok) return;
+        void handleImport();
+    };
+
     const allSelected = list.length > 0 && list.every((item) => selected.has(item.id));
     const toggleAll = () => {
         setSelected(allSelected ? new Set() : new Set(list.map((item) => item.id)));
@@ -338,6 +456,33 @@ export function DonationsManager() {
                             {deleting ? "删除中…" : `批量删除（${selected.size}）`}
                         </Button>
                     )}
+                    {/* 导出：勾选了就导出勾选的，没勾选就导出全部（远端 GET export 的语义） */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={exporting}
+                        className="h-7 px-2 text-xs"
+                        title={selected.size > 0 ? `导出已勾选的 ${selected.size} 条` : "未勾选任何记录时导出全部"}
+                        onClick={handleExport}
+                    >
+                        <Download className="size-3.5" />
+                        {exporting ? "导出中…" : selected.size > 0 ? `导出（${selected.size}）` : "导出"}
+                    </Button>
+                    {/* 导入：弹窗内选文件 + 二次确认；导入会批量写打赏表 */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={importing}
+                        className="h-7 px-2 text-xs"
+                        title="从 JSON 文件导入打赏记录"
+                        onClick={() => {
+                            resetImport();
+                            setImportOpen(true);
+                        }}
+                    >
+                        <Upload className="size-3.5" />
+                        导入
+                    </Button>
                     <Button
                         size="sm"
                         className="h-7 px-2 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
@@ -557,6 +702,182 @@ export function DonationsManager() {
                                     {saving ? "保存中…" : editing ? "保存修改" : "创建记录"}
                                 </Button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ===== 导入打赏记录弹窗（⚠️ 写库，需二次确认） ===== */}
+            {importOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                    // 请求在途时锁住遮罩点击，避免关掉弹窗后结果无处安放
+                    onMouseDown={() => {
+                        if (!importing) {
+                            setImportOpen(false);
+                            resetImport();
+                        }
+                    }}
+                >
+                    <div
+                        className="w-full max-w-xl rounded-xl border bg-card p-4 shadow-xl"
+                        onMouseDown={(e) => e.stopPropagation()}
+                    >
+                        <div className="mb-3 flex items-center justify-between">
+                            <h3 className="text-base font-semibold">导入打赏记录</h3>
+                            <button
+                                type="button"
+                                disabled={importing}
+                                onClick={() => {
+                                    setImportOpen(false);
+                                    resetImport();
+                                }}
+                                aria-label="关闭"
+                                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="space-y-3 text-sm">
+                            <p className="text-xs text-muted-foreground">
+                                支持 <code>.json</code>（「导出」得到的文件）：顶层为{" "}
+                                <code>{`{ donations: [...] }`}</code> 或直接是数组。单文件不超过{" "}
+                                {MAX_IMPORT_SIZE_TEXT}。导入会写入打赏记录表，请先确认文件内容。
+                            </p>
+
+                            {/* 文件选择 */}
+                            <div className="flex flex-wrap items-center gap-2">
+                                <input
+                                    ref={importInputRef}
+                                    type="file"
+                                    accept=".json,.txt,application/json"
+                                    className="hidden"
+                                    onChange={(e) => handlePickImportFile(e.target.files?.[0])}
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={importing}
+                                    onClick={() => importInputRef.current?.click()}
+                                >
+                                    <Upload className="size-3.5" />
+                                    选择文件
+                                </Button>
+                                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                                    {importFile
+                                        ? `${importFile.name}（${formatBytes(importFile.size)}）`
+                                        : "未选择文件"}
+                                </span>
+                                {importFile && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 text-xs"
+                                        disabled={importing}
+                                        onClick={resetImport}
+                                    >
+                                        清空
+                                    </Button>
+                                )}
+                            </div>
+
+                            {/* 导入选项：字段名与官方一致（skip_existing / default_status） */}
+                            <div className="space-y-2 rounded-lg border p-3">
+                                <label className="flex cursor-pointer items-start gap-2 text-xs">
+                                    <Checkbox
+                                        className="mt-0.5"
+                                        checked={importOptions.skipExisting}
+                                        disabled={importing}
+                                        onCheckedChange={(v) =>
+                                            setImportOptions({ ...importOptions, skipExisting: v === true })
+                                        }
+                                    />
+                                    <span>跳过已存在的记录</span>
+                                </label>
+                                <div className="flex items-center gap-2 text-xs">
+                                    <span>文件里没写状态的记录导入为</span>
+                                    <Select
+                                        value={String(importOptions.defaultStatus)}
+                                        disabled={importing}
+                                        onValueChange={(v) => {
+                                            const n = Number(v);
+                                            setImportOptions({
+                                                ...importOptions,
+                                                defaultStatus: n === 1 ? 1 : n === 2 ? 2 : 0,
+                                            });
+                                        }}
+                                    >
+                                        <SelectTrigger className="h-7 w-max text-xs">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="0">保持原状态</SelectItem>
+                                            <SelectItem value="1">统一设为显示</SelectItem>
+                                            <SelectItem value="2">统一设为隐藏</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            {/* 导入结果（官方 ImportDonationResult） */}
+                            {importResult && (
+                                <div className="space-y-2 rounded-lg border p-3 text-xs">
+                                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                                        <span>共 {importResult.total_count} 条</span>
+                                        <span className="text-emerald-600 dark:text-emerald-400">
+                                            成功 {importResult.success_count}
+                                        </span>
+                                        <span
+                                            className={
+                                                importResult.failed_count > 0
+                                                    ? "text-destructive"
+                                                    : "text-muted-foreground"
+                                            }
+                                        >
+                                            失败 {importResult.failed_count}
+                                        </span>
+                                        <span className="text-muted-foreground">
+                                            跳过 {importResult.skipped_count}
+                                        </span>
+                                    </div>
+                                    {(importResult.errors?.length ?? 0) > 0 && (
+                                        <ul className="max-h-32 space-y-1 overflow-y-auto text-muted-foreground">
+                                            {importResult.errors
+                                                ?.slice(0, MAX_SHOWN_IMPORT_ERRORS)
+                                                .map((msg, i) => (
+                                                    <li key={`${i}-${msg}`}>
+                                                        <span className="text-destructive">失败</span> {msg}
+                                                    </li>
+                                                ))}
+                                            {(importResult.errors?.length ?? 0) > MAX_SHOWN_IMPORT_ERRORS && (
+                                                <li>
+                                                    …还有{" "}
+                                                    {(importResult.errors?.length ?? 0) - MAX_SHOWN_IMPORT_ERRORS} 条
+                                                </li>
+                                            )}
+                                        </ul>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-4 flex justify-end gap-2">
+                            <Button
+                                variant="outline"
+                                disabled={importing}
+                                onClick={() => {
+                                    setImportOpen(false);
+                                    resetImport();
+                                }}
+                            >
+                                关闭
+                            </Button>
+                            <Button disabled={importing || !importFile} onClick={confirmImport}>
+                                {importing ? "导入中…" : "开始导入"}
+                            </Button>
                         </div>
                     </div>
                 </div>

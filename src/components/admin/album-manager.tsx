@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Download,
+    FileUp,
     FolderTree,
     ImagePlus,
     Images,
@@ -36,6 +37,8 @@ import {
     updateAdminAlbumCategoryApi,
 } from "@/lib/api";
 import type { AdminAlbum, AdminAlbumCategory } from "@/lib/api";
+import { exportAdminAlbumsApi, importAdminAlbumsFileApi } from "@/lib/api-album-io";
+import type { AdminAlbumExportFormat, AdminAlbumFileImportResult } from "@/lib/api-album-io";
 import { cn, resolveAssetUrl } from "@/lib/utils";
 import { ACTION_TONE } from "@/lib/action-tones";
 
@@ -69,11 +72,26 @@ const splitTags = (tags?: string): string[] =>
         .map((t) => t.trim())
         .filter(Boolean);
 
+/** 用浏览器下载一个 blob（导出相册用，同源代理原样透传文件流） */
+function downloadBlob(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // 立刻回收会让部分浏览器取消下载，交回事件循环后释放更稳
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
 /**
  * 相册管理（对齐官方后台：图片 + 分类两组接口）
  * 图片：GET /albums/get · POST /albums/add · PUT /albums/update/:id · DELETE /albums/delete/:id
- *       · DELETE /albums/batch-delete · POST /albums/batch-import
+ *       · DELETE /albums/batch-delete · POST /albums/batch-import（按 URL 导入）
+ *       · POST /albums/import（文件导入，multipart）· POST /albums/export（导出文件流）
  * 分类：GET/POST /album-categories · PUT/DELETE /album-categories/:id
+ * ⚠️ 导入 / 导出都是写库或重活：导入**未在线上实测**（线上只做 GET 探测）。
  */
 export function AlbumManager() {
     const [tab, setTab] = useState<"images" | "categories">("images");
@@ -92,6 +110,10 @@ export function AlbumManager() {
     const [busy, setBusy] = useState(false);
     const [editing, setEditing] = useState<AdminAlbum | null>(null);
     const [importOpen, setImportOpen] = useState(false);
+    /** 文件导入（.json / .zip）弹窗 */
+    const [fileImportOpen, setFileImportOpen] = useState(false);
+    /** 导出弹窗 */
+    const [exportOpen, setExportOpen] = useState(false);
     const [categoryDialog, setCategoryDialog] = useState<AdminAlbumCategory | "new" | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
     const [preview, setPreview] = useState<AdminAlbum | null>(null);
@@ -278,6 +300,24 @@ export function AlbumManager() {
                                 <Upload className="size-3.5" />
                                 批量导入
                             </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 rounded-xl text-xs"
+                                onClick={() => setFileImportOpen(true)}
+                            >
+                                <FileUp className="size-3.5" />
+                                文件导入
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 rounded-xl text-xs"
+                                onClick={() => setExportOpen(true)}
+                            >
+                                <Download className="size-3.5" />
+                                导出{selected.length > 0 ? `（${selected.length}）` : ""}
+                            </Button>
                         </>
                     ) : (
                         <>
@@ -442,7 +482,7 @@ export function AlbumManager() {
             {/* ===== 分类 Tab ===== */}
             {tab === "categories" && (
                 <div className="admin-scroll">
-                    <div className="admin-sticky-head hidden min-w-[560px] grid-cols-[60px_1fr_1fr_90px_140px] items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid">
+                    <div className="admin-sticky-head hidden min-w-[560px] grid-cols-[60px_1fr_1fr_90px_140px] items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground sm:grid">
                         <span>ID</span>
                         <span>名称</span>
                         <span>描述</span>
@@ -469,7 +509,7 @@ export function AlbumManager() {
                                     <span className="flex justify-end gap-1">
                                         <Button
                                             variant="ghost"
-                                            size="icon-sm"
+                                            size="icon"
                                             aria-label="编辑分类"
                                             title="编辑"
                                             className={ACTION_TONE.edit}
@@ -479,7 +519,7 @@ export function AlbumManager() {
                                         </Button>
                                         <Button
                                             variant="ghost"
-                                            size="icon-sm"
+                                            size="icon"
                                             aria-label="删除分类"
                                             title="删除"
                                             className={ACTION_TONE.delete}
@@ -558,7 +598,7 @@ export function AlbumManager() {
                 />
             )}
 
-            {/* ===== 批量导入 ===== */}
+            {/* ===== 批量导入（按 URL） ===== */}
             {importOpen && (
                 <AlbumImportDialog
                     categories={categories}
@@ -569,6 +609,24 @@ export function AlbumManager() {
                         setImportOpen(false);
                         reload();
                     }}
+                />
+            )}
+
+            {/* ===== 文件导入（.json / .zip） ===== */}
+            {fileImportOpen && (
+                <AlbumFileImportDialog
+                    categories={categories}
+                    onClose={() => setFileImportOpen(false)}
+                    onDone={reload}
+                />
+            )}
+
+            {/* ===== 导出（JSON / ZIP 文件流） ===== */}
+            {exportOpen && (
+                <AlbumExportDialog
+                    selectedIds={selected}
+                    total={total}
+                    onClose={() => setExportOpen(false)}
                 />
             )}
 
@@ -641,7 +699,7 @@ function AlbumEditorDialog({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
             <div
-                className="flex max-h-[88vh] w-full max-w-xl flex-col rounded-xl border bg-card p-5 shadow-xl"
+                className="flex max-h-[88vh] w-full max-w-xl flex-col rounded-xl border bg-card p-4 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <div className="mb-3 flex items-center justify-between gap-2">
@@ -733,7 +791,7 @@ function AlbumEditorDialog({
                     </div>
                 </div>
 
-                <div className="mt-4 flex justify-end gap-2">
+                <div className="mt-3 flex justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={onClose}>
                         取消
                     </Button>
@@ -804,7 +862,7 @@ function AlbumImportDialog({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
             <div
-                className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-xl border bg-card p-5 shadow-xl"
+                className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-xl border bg-card p-4 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <div className="mb-3 flex items-center justify-between gap-2">
@@ -867,7 +925,7 @@ function AlbumImportDialog({
                     </label>
                 </div>
 
-                <div className="mt-4 flex justify-end gap-2">
+                <div className="mt-3 flex justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={onClose}>
                         取消
                     </Button>
@@ -927,7 +985,7 @@ function CategoryDialog({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
             <div
-                className="w-full max-w-sm rounded-xl border bg-card p-5 shadow-xl"
+                className="w-full max-w-sm rounded-xl border bg-card p-4 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <h3 className="mb-3 text-base font-semibold">{isNew ? "新建相册分类" : `编辑分类 #${category.id}`}</h3>
@@ -952,12 +1010,341 @@ function CategoryDialog({
                         />
                     </label>
                 </div>
-                <div className="mt-4 flex justify-end gap-2">
+                <div className="mt-3 flex justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={onClose}>
                         取消
                     </Button>
                     <Button size="sm" disabled={busy} onClick={() => void save()}>
                         {busy ? "保存中…" : isNew ? "创建" : "保存"}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * 文件导入：上传 .json / .zip（远端 POST /albums/import，multipart）。
+ *
+ * 契约（pkg/handler/album/handler.go:505-601）：
+ *  - file 必填，按扩展名分支：.json 直接解析、.zip 取包内 albums.json；
+ *  - skip_existing（默认 true，本地始终显式传）、overwrite_existing（默认 false）、
+ *    default_category_id（可选）；
+ *  - 返回 { total_count, success_count, skipped_count, failed_count, created_ids, errors? }。
+ *
+ * ⚠️ 会写相册表：提交前必须过二次确认（确认文案里写清文件、策略与后果）；
+ *    本轮实现未在线上实测（线上只做 GET 探测）。
+ */
+function AlbumFileImportDialog({
+    categories,
+    onClose,
+    onDone,
+}: {
+    categories: AdminAlbumCategory[];
+    onClose: () => void;
+    onDone: () => void;
+}) {
+    const [file, setFile] = useState<File | null>(null);
+    const [skipExisting, setSkipExisting] = useState(true);
+    const [overwriteExisting, setOverwriteExisting] = useState(false);
+    const [categoryId, setCategoryId] = useState("none");
+    const [busy, setBusy] = useState(false);
+    /** 导入结果（非空时弹窗切成结果视图） */
+    const [result, setResult] = useState<AdminAlbumFileImportResult | null>(null);
+
+    /** 选文件：只收 .json / .zip，与远端分支口径一致（handler.go:562-575） */
+    const pickFile = (input: HTMLInputElement) => {
+        const next = input.files?.[0] ?? null;
+        if (!next) {
+            setFile(null);
+            return;
+        }
+        const lower = next.name.toLowerCase();
+        if (!lower.endsWith(".json") && !lower.endsWith(".zip")) {
+            toast.error("仅支持 .json 或 .zip 文件");
+            input.value = "";
+            setFile(null);
+            return;
+        }
+        if (next.size > 50 * 1024 * 1024) {
+            toast.error("文件大小不能超过 50MB");
+            input.value = "";
+            setFile(null);
+            return;
+        }
+        setFile(next);
+    };
+
+    const submit = async () => {
+        if (!file) {
+            toast.error("请先选择相册数据文件");
+            return;
+        }
+        const categoryLabel =
+            categoryId === "none"
+                ? "不设置默认分类"
+                : categories.find((c) => String(c.id) === categoryId)?.name ?? `#${categoryId}`;
+        if (
+            !window.confirm(
+                `确定导入文件「${file.name}」（${formatSize(file.size)}）吗？\n` +
+                    `重复项：${skipExisting ? "跳过" : overwriteExisting ? "覆盖" : "照常新增"}；` +
+                    `默认分类：${categoryLabel}。\n导入会写入相册库，此操作不可撤销。`
+            )
+        ) {
+            return;
+        }
+        setBusy(true);
+        try {
+            const res = await importAdminAlbumsFileApi({
+                file,
+                skipExisting,
+                overwriteExisting,
+                defaultCategoryId: categoryId === "none" ? null : Number(categoryId),
+            });
+            setResult(res);
+            toast.success(
+                `导入完成：成功 ${res.success_count} · 跳过 ${res.skipped_count} · 失败 ${res.failed_count}（共 ${res.total_count}）`
+            );
+            onDone();
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "导入失败");
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
+            <div
+                className="flex max-h-[88vh] w-full max-w-xl flex-col rounded-xl border bg-card p-4 shadow-xl"
+                onMouseDown={(e) => e.stopPropagation()}
+            >
+                <div className="mb-3 flex items-center justify-between gap-2">
+                    <h3 className="text-base font-semibold">文件导入相册</h3>
+                    <button
+                        type="button"
+                        aria-label="关闭"
+                        onClick={onClose}
+                        className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                        <X className="size-4" />
+                    </button>
+                </div>
+
+                {result ? (
+                    <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {[
+                                { label: "成功", value: result.success_count, cls: "text-green-600 dark:text-green-400" },
+                                { label: "跳过", value: result.skipped_count, cls: "text-amber-600 dark:text-amber-400" },
+                                { label: "失败", value: result.failed_count, cls: "text-red-600 dark:text-red-400" },
+                                { label: "总计", value: result.total_count, cls: "text-foreground" },
+                            ].map((cell) => (
+                                // 指标块：与列表页统计磁贴同一套密度（px-3 py-2 + text-lg）
+                                <div key={cell.label} className="rounded-lg border bg-muted/40 px-3 py-2 text-center">
+                                    <p className={`text-lg font-semibold tabular-nums ${cell.cls}`}>{cell.value}</p>
+                                    <p className="mt-0.5 text-xs text-muted-foreground">{cell.label}</p>
+                                </div>
+                            ))}
+                        </div>
+                        {result.errors?.length ? (
+                            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+                                <p className="mb-1 text-xs font-medium text-destructive">
+                                    失败原因（{result.errors.length}）
+                                </p>
+                                <ul className="max-h-40 space-y-1 overflow-y-auto text-xs text-muted-foreground">
+                                    {result.errors.slice(0, 8).map((msg, i) => (
+                                        <li key={`${msg}-${i}`} className="break-all">
+                                            {msg}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ) : null}
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    setResult(null);
+                                    setFile(null);
+                                }}
+                            >
+                                继续导入
+                            </Button>
+                            <Button size="sm" onClick={onClose}>
+                                完成
+                            </Button>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        <p className="mb-3 text-xs text-muted-foreground">
+                            上传导出的相册数据文件（.json 或 .zip，单文件不超过 50MB）；ZIP 内需要包含 albums.json。
+                            该操作会写入相册库，重复项按下面选择的策略处理。
+                        </p>
+
+                        <div className="rounded-lg border border-dashed p-4">
+                            <input
+                                type="file"
+                                accept=".json,.zip"
+                                onChange={(e) => pickFile(e.target)}
+                                className="block w-full text-xs file:mr-3 file:rounded-md file:border file:bg-muted file:px-3 file:py-1.5 file:text-xs hover:file:bg-muted/70"
+                            />
+                            <p className="mt-2 text-xs text-muted-foreground">
+                                {file ? `已选择：${file.name}（${formatSize(file.size)}）` : "尚未选择文件"}
+                            </p>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <label className="flex items-start gap-2 rounded-lg border p-2.5 text-xs">
+                                <Checkbox
+                                    checked={skipExisting}
+                                    onCheckedChange={(v) => {
+                                        const next = v === true;
+                                        setSkipExisting(next);
+                                        // 与官方前端一致：开启「跳过已存在」时关掉「覆盖已存在」
+                                        if (next) setOverwriteExisting(false);
+                                    }}
+                                    aria-label="跳过已存在"
+                                />
+                                <span>
+                                    <span className="block font-medium text-foreground">跳过已存在</span>
+                                    <span className="block text-muted-foreground">重复项直接跳过，适合增量导入</span>
+                                </span>
+                            </label>
+                            <label className="flex items-start gap-2 rounded-lg border p-2.5 text-xs">
+                                <Checkbox
+                                    checked={overwriteExisting}
+                                    disabled={skipExisting}
+                                    onCheckedChange={(v) => setOverwriteExisting(v === true)}
+                                    aria-label="覆盖已存在"
+                                />
+                                <span>
+                                    <span className="block font-medium text-foreground">覆盖已存在</span>
+                                    <span className="block text-muted-foreground">用于修正旧数据，风险更高</span>
+                                </span>
+                            </label>
+                        </div>
+
+                        <label className="mt-3 block">
+                            <span className="mb-1 block text-xs font-medium text-muted-foreground">默认分类</span>
+                            <Select value={categoryId} onValueChange={setCategoryId}>
+                                <SelectTrigger className="h-9 w-full text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">不设置默认分类</SelectItem>
+                                    {categories.map((c) => (
+                                        <SelectItem key={c.id} value={String(c.id)}>
+                                            {c.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </label>
+
+                        <div className="mt-3 flex justify-end gap-2">
+                            <Button variant="outline" size="sm" onClick={onClose}>
+                                取消
+                            </Button>
+                            <Button size="sm" disabled={busy || !file} onClick={() => void submit()}>
+                                {busy ? "导入中…" : "开始导入"}
+                            </Button>
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
+
+/**
+ * 导出相册：POST /albums/export → 远端文件流（json 是裸导出结构、zip 是压缩包，
+ * 两者都带 Content-Disposition），同源代理原样透传，这里落盘下载。
+ * 勾选了图片就只导出勾选的，否则导出全部（与官方 AlbumExportDialog 口径一致）。
+ */
+function AlbumExportDialog({
+    selectedIds,
+    total,
+    onClose,
+}: {
+    selectedIds: number[];
+    total: number;
+    onClose: () => void;
+}) {
+    const [format, setFormat] = useState<AdminAlbumExportFormat>("json");
+    const [busy, setBusy] = useState(false);
+
+    const hasSelection = selectedIds.length > 0;
+    const exportCount = hasSelection ? selectedIds.length : total;
+
+    const handleExport = async () => {
+        setBusy(true);
+        try {
+            const { blob, filename } = await exportAdminAlbumsApi({
+                albumIds: hasSelection ? selectedIds : [],
+                format,
+            });
+            const fallback = `albums-export-${new Date().toISOString().slice(0, 10)}.${format}`;
+            downloadBlob(blob, filename || fallback);
+            toast.success(hasSelection ? `已导出选中的 ${selectedIds.length} 张` : "已导出全部图片", {
+                description: format === "zip" ? "ZIP 内含 albums.json，可在「文件导入」里回灌" : "JSON 可直接在「文件导入」里回灌",
+            });
+            onClose();
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "导出失败");
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
+            <div
+                className="w-full max-w-md rounded-xl border bg-card p-4 shadow-xl"
+                onMouseDown={(e) => e.stopPropagation()}
+            >
+                <div className="mb-3 flex items-center justify-between gap-2">
+                    <h3 className="text-base font-semibold">导出相册</h3>
+                    <button
+                        type="button"
+                        aria-label="关闭"
+                        onClick={onClose}
+                        className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                        <X className="size-4" />
+                    </button>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                    {hasSelection
+                        ? `即将导出选中的 ${selectedIds.length} 张图片。`
+                        : `未选择具体项，将导出全部图片（共 ${total} 张）。`}
+                </p>
+
+                <label className="mt-3 block">
+                    <span className="mb-1 block text-xs font-medium text-muted-foreground">导出格式</span>
+                    <Select value={format} onValueChange={(v) => setFormat(v as AdminAlbumExportFormat)}>
+                        <SelectTrigger className="h-9 w-full text-xs">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="json">JSON（纯文本）</SelectItem>
+                            <SelectItem value="zip">ZIP（压缩包）</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                        本次导出数据量：{exportCount} 张
+                    </span>
+                </label>
+
+                <div className="mt-3 flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={onClose}>
+                        取消
+                    </Button>
+                    <Button size="sm" disabled={busy} onClick={() => void handleExport()}>
+                        {busy ? "导出中…" : "导出"}
                     </Button>
                 </div>
             </div>

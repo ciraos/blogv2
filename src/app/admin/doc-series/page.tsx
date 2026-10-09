@@ -13,7 +13,7 @@ export default function DocSeries() {
                 <div>
                     <h2 className="text-xl font-semibold tracking-tight">文档系列</h2>
                     <p className="mt-1 text-xs text-muted-foreground">
-                        管理文档系列（封面、简介、排序与收录文档），接口接入前为静态外壳
+                        新增 / 编辑 / 删除文档系列（名称、简介、封面、排序），并可查看与调整系列下的文章
                     </p>
                 </div>
             </div>

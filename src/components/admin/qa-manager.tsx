@@ -105,9 +105,9 @@ export function QaManager({
     messagePath: string | null;
 }) {
     return (
-        <div className="flex flex-col gap-4 pb-4">
+        <div className="flex flex-col gap-3 pb-4">
             {/* ---- 后端能力说明：诚实标注 ---- */}
-            <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3.5 py-3">
+            <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                 <div className="space-y-1 text-xs leading-relaxed">
                     <p className="font-medium text-amber-700 dark:text-amber-300">
@@ -122,8 +122,8 @@ export function QaManager({
             </div>
 
             {/* ---- 配置开关（只读） ---- */}
-            <section className="rounded-xl border bg-card">
-                <div className="flex flex-wrap items-center gap-2 border-b bg-muted/40 px-4 py-2.5">
+            <section className="rounded-xl border bg-card shadow-sm">
+                <div className="flex flex-wrap items-center gap-2 border-b bg-muted/40 px-4 py-2">
                     <Info className="size-4 text-muted-foreground" />
                     <h3 className="text-sm font-medium">配置状态（只读）</h3>
                     <span className="text-xs text-muted-foreground">
@@ -151,13 +151,13 @@ export function QaManager({
                             : (configMessage ?? "站点公开配置暂时不可用，无法确认当前值。")}
                     </span>
                 </div>
-                <div className="space-y-1 border-t bg-muted/30 px-4 py-2.5 text-xs text-muted-foreground">
+                <div className="space-y-1 border-t bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
                     <p>
                         这个键在站点配置里真实存在（公开配置会返回该节点），但既没有配套的管理接口，也没有前台页面消费它 ——
                         它当前只是一个「备而不用」的开关。
                     </p>
                     <div className="pt-1">
-                        <Button asChild variant="outline" size="sm" className="h-7 text-xs">
+                        <Button asChild variant="outline" size="sm" className="h-8 text-xs">
                             <Link href="/admin/settings">
                                 系统设置
                                 <ArrowRight className="size-3.5" />
@@ -168,8 +168,8 @@ export function QaManager({
             </section>
 
             {/* ---- 可行的实现路径（复用评论系统） ---- */}
-            <section className="rounded-xl border bg-card">
-                <div className="flex flex-wrap items-center gap-2 border-b bg-muted/40 px-4 py-2.5">
+            <section className="rounded-xl border bg-card shadow-sm">
+                <div className="flex flex-wrap items-center gap-2 border-b bg-muted/40 px-4 py-2">
                     <Lightbulb className="size-4 text-muted-foreground" />
                     <h3 className="text-sm font-medium">可行实现路径：复用评论系统</h3>
                     <span className="text-xs text-muted-foreground">下面每条机制都是本仓库已在用的真实能力</span>
@@ -188,7 +188,7 @@ export function QaManager({
                         </div>
                     ))}
                 </div>
-                <p className="border-t px-4 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+                <p className="border-t px-4 py-2 text-[11px] leading-relaxed text-muted-foreground">
                     结论：问答不需要新后端 —— 用一个约定的 <code className="font-mono">target_path</code>
                     （例如 <code className="font-mono">/qa</code>）就能让「提问（顶层评论）+ 回答（子评论）」跑在同一套评论数据上，
                     审核与置顶直接用后台评论管理。真正缺的只有前台那一页 UI。
@@ -196,8 +196,8 @@ export function QaManager({
             </section>
 
             {/* ---- 落地步骤清单（明确区分已做 / 未做） ---- */}
-            <section className="rounded-xl border bg-card">
-                <div className="flex flex-wrap items-center gap-2 border-b bg-muted/40 px-4 py-2.5">
+            <section className="rounded-xl border bg-card shadow-sm">
+                <div className="flex flex-wrap items-center gap-2 border-b bg-muted/40 px-4 py-2">
                     <FileQuestion className="size-4 text-muted-foreground" />
                     <h3 className="text-sm font-medium">如果要真正开通问答，还差什么</h3>
                 </div>
@@ -224,15 +224,15 @@ export function QaManager({
             </section>
 
             {/* ---- 相关入口（真实存在的路由，点得进去） ---- */}
-            <section className="rounded-xl border bg-card">
-                <div className="flex flex-wrap items-center gap-2 border-b bg-muted/40 px-4 py-2.5">
+            <section className="rounded-xl border bg-card shadow-sm">
+                <div className="flex flex-wrap items-center gap-2 border-b bg-muted/40 px-4 py-2">
                     <Route className="size-4 text-muted-foreground" />
                     <h3 className="text-sm font-medium">相关入口</h3>
                 </div>
                 <div className="grid gap-2 p-3 sm:grid-cols-2">
                     <Link
                         href="/admin/comments"
-                        className="group flex items-start gap-2.5 rounded-lg border bg-muted/30 px-3 py-2.5 transition-colors hover:bg-muted"
+                        className="group flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 transition-colors hover:bg-muted"
                     >
                         <MessagesSquare className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                         <span className="min-w-0">
@@ -244,7 +244,7 @@ export function QaManager({
                     </Link>
                     <Link
                         href={RECENT_COMMENTS_PATH}
-                        className="group flex items-start gap-2.5 rounded-lg border bg-muted/30 px-3 py-2.5 transition-colors hover:bg-muted"
+                        className="group flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 transition-colors hover:bg-muted"
                     >
                         <MessageCircle className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                         <span className="min-w-0">
@@ -257,7 +257,7 @@ export function QaManager({
                     {messagePath && (
                         <Link
                             href={messagePath}
-                            className="group flex items-start gap-2.5 rounded-lg border bg-muted/30 px-3 py-2.5 transition-colors hover:bg-muted"
+                            className="group flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 transition-colors hover:bg-muted"
                         >
                             <Globe className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                             <span className="min-w-0">
@@ -269,7 +269,7 @@ export function QaManager({
                         </Link>
                     )}
                 </div>
-                <p className="border-t px-4 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+                <p className="border-t px-4 py-2 text-[11px] leading-relaxed text-muted-foreground">
                     前台问答路由（<code className="font-mono">/qa</code>）尚不存在，这里就不给出站链接了 ——
                     放一个点进去是 404 的「问答入口」比不放更糟。
                     {siteUrl ? `收录相关的检查请见 SEO 推送页（本站：${siteUrl}）。` : ""}

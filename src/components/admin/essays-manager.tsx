@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
+    Download,
     Eye,
     Image as ImageIcon,
     Link as LinkIcon,
@@ -12,11 +13,13 @@ import {
     Plus,
     RefreshCw,
     Trash2,
+    Upload,
     Video as VideoIcon,
     X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
 import { ACTION_TONE } from "@/lib/action-tones";
@@ -34,10 +37,27 @@ import {
     updateAdminEssayApi,
     uploadAdminEssayImageApi,
 } from "@/lib/api";
+import {
+    MAX_ESSAY_IMPORT_SIZE,
+    batchDeleteAdminEssaysApi,
+    downloadBlobFile,
+    exportAdminEssaysApi,
+    formatBytes,
+    importAdminEssaysApi,
+    isSupportedEssayImportFile,
+    type EssayImportOptions,
+    type EssayImportResult,
+} from "@/lib/api-essays-io";
 import { cn, toSameOriginMediaUrl } from "@/lib/utils";
 import type { AdminCreateEssayRequest, Essay } from "@/types/essays";
 
 const PAGE_SIZE = 10;
+
+/** 导入结果里最多列出多少条失败原因（后端 errors 可能很长） */
+const MAX_SHOWN_IMPORT_ERRORS = 8;
+
+/** 导入文件体积上限的可读文案（导入弹窗里展示） */
+const MAX_IMPORT_SIZE_TEXT = formatBytes(MAX_ESSAY_IMPORT_SIZE);
 
 /** 说说内容上限（与官方发布说说对话框一致：正文 5000 字，附带「N / 5000」字数统计） */
 const CONTENT_MAX = 5000;
@@ -131,7 +151,7 @@ function formatTime(iso?: string): string {
     return `${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-/** 说说管理页：状态筛选 + 列表 + 发布/编辑弹窗 + 删除 */
+/** 说说管理页：状态筛选 + 列表（多选批量删除）+ 发布/编辑弹窗 + 删除 + 导出/导入 */
 export function EssaysManager() {
     const [list, setList] = useState<Essay[]>([]);
     const [total, setTotal] = useState(0);
@@ -139,6 +159,24 @@ export function EssaysManager() {
     const [statusFilter, setStatusFilter] = useState(""); // "" 全部
     const [loading, setLoading] = useState(true);
     const [refreshKey, setRefreshKey] = useState(0);
+
+    // ===== 多选 / 批量删除 =====
+    const [selected, setSelected] = useState<Set<number>>(new Set());
+    const [deleting, setDeleting] = useState(false);
+
+    // ===== 导出 / 导入 =====
+    const [exporting, setExporting] = useState(false);
+    const [importOpen, setImportOpen] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    /** 导入结果是只读的，单独存一份避免重渲染被擦掉 */
+    const [importResult, setImportResult] = useState<EssayImportResult | null>(null);
+    const [importing, setImporting] = useState(false);
+    const [importOptions, setImportOptions] = useState<EssayImportOptions>({
+        // 与官方 components/admin/essays/ImportDialog.tsx:29-30 的默认值一致
+        skipExisting: true,
+        defaultStatus: 1,
+    });
+    const importInputRef = useRef<HTMLInputElement | null>(null);
 
     // ===== 编辑弹窗状态 =====
     const [preview, setPreview] = useState<Essay | null>(null);
@@ -303,10 +341,143 @@ export function EssaysManager() {
         try {
             await deleteAdminEssayApi(essay.id);
             toast.success("删除成功");
+            setSelected((prev) => {
+                const next = new Set(prev);
+                next.delete(essay.id);
+                return next;
+            });
             setRefreshKey((k) => k + 1);
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "删除失败");
         }
+    };
+
+    const allSelected = list.length > 0 && list.every((item) => selected.has(item.id));
+    const toggleAll = () => {
+        setSelected(allSelected ? new Set() : new Set(list.map((item) => item.id)));
+    };
+    const toggleOne = (id: number) => {
+        setSelected((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    /**
+     * 批量删除（远端有专门的批量端点，一次请求删完）：
+     * 成功清空勾选并刷新；失败**保留勾选**，方便直接重试。
+     */
+    const handleBatchDelete = async () => {
+        const ids = [...selected];
+        if (ids.length === 0) return;
+        if (!window.confirm(`确定删除选中的 ${ids.length} 条说说吗？\n删除后不可恢复。`)) return;
+        setDeleting(true);
+        try {
+            await batchDeleteAdminEssaysApi(ids);
+            toast.success(`已删除 ${ids.length} 条说说`);
+            setSelected(new Set());
+            // 删掉当前页全部且不在第一页时回退一页，避免停在空页
+            if (list.length === ids.length && page > 1) setPage((p) => p - 1);
+            else setRefreshKey((k) => k + 1);
+        } catch (e) {
+            // 失败保留勾选：不 setSelected(new Set())，也不刷新
+            toast.error(e instanceof Error ? e.message : "批量删除失败");
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    /**
+     * 导出说说：远端只支持按 id 导出 ZIP，所以必须先勾选（官方界面同样要求，
+     * use-essays-page.ts:130-135）。文件名优先用远端 Content-Disposition，取不到按日期兜底。
+     */
+    const handleExport = async () => {
+        const ids = [...selected];
+        if (ids.length === 0) {
+            toast.info("请先勾选要导出的说说");
+            return;
+        }
+        setExporting(true);
+        try {
+            const { blob, filename } = await exportAdminEssaysApi(ids);
+            const fallback = `essays-export-${new Date().toISOString().slice(0, 10)}.zip`;
+            downloadBlobFile(blob, filename || fallback);
+            toast.success(`已导出 ${ids.length} 条说说`, {
+                description: "ZIP 文件可直接在「导入」里回灌",
+            });
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "导出失败");
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    /** 关闭导入弹窗时清空选择与上一次结果（避免下次打开看到旧结果） */
+    const resetImport = () => {
+        setImportFile(null);
+        setImportResult(null);
+        if (importInputRef.current) importInputRef.current.value = "";
+    };
+
+    /** 选择文件时就地校验扩展名与体积，不合格立即提示并清空 */
+    const handlePickImportFile = (file: File | undefined) => {
+        if (!file) return;
+        if (!isSupportedEssayImportFile(file.name)) {
+            toast.error("只支持 .json 或 .zip 文件");
+            resetImport();
+            return;
+        }
+        if (file.size > MAX_ESSAY_IMPORT_SIZE) {
+            toast.error(`文件不能超过 ${MAX_IMPORT_SIZE_TEXT}`, { description: `当前 ${formatBytes(file.size)}` });
+            resetImport();
+            return;
+        }
+        setImportFile(file);
+        setImportResult(null);
+    };
+
+    /** 真正提交导入（已过二次确认）——⚠️ 写库，不可撤销 */
+    const handleImport = async () => {
+        if (!importFile) return;
+        setImporting(true);
+        setImportResult(null);
+        try {
+            const res = await importAdminEssaysApi(importFile, importOptions);
+            setImportResult(res);
+            if (res.success_count > 0) {
+                toast.success(`导入完成：成功 ${res.success_count} 条`);
+                setRefreshKey((k) => k + 1);
+            } else if (res.failed_count > 0) {
+                toast.warning("没有成功导入任何说说，看看下方失败原因");
+            } else {
+                toast.info("没有新增说说（可能都被跳过了）");
+            }
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "导入失败");
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    /** 二次确认：导入会往说说表写数据，文案里写清后果 */
+    const confirmImport = () => {
+        if (!importFile) return;
+        const ok = window.confirm(
+            `确定导入「${importFile.name}」吗？\n\n` +
+                `这会向说说表写入数据（不可撤销）。\n` +
+                `已存在的说说：${importOptions.skipExisting ? "跳过（按内容 + 创建时间判重）" : "不判重，可能产生重复"}\n` +
+                `默认状态：${
+                    importOptions.defaultStatus === 1
+                        ? "已发布"
+                        : importOptions.defaultStatus === 2
+                          ? "草稿"
+                          : "隐藏"
+                }`
+        );
+        if (!ok) return;
+        void handleImport();
     };
 
     // 状态筛选变化时回到第一页
@@ -350,8 +521,8 @@ export function EssaysManager() {
 
     // 移动端(<640px)：grid-cols-1 把每个单元格竖排成卡片；≥640px：恢复表格式列布局。
     // min-w 只写在 sm: 以上 —— 窄屏若也撑宽，卡片就会被拉出横向滚动。
-    const rowGrid = "sm:grid-cols-[minmax(0,1fr)_96px_64px_112px_128px_96px]";
-    const rowMinW = "sm:min-w-[800px]";
+    const rowGrid = "sm:grid-cols-[16px_minmax(0,1fr)_96px_64px_112px_128px_96px]";
+    const rowMinW = "sm:min-w-[820px]";
 
     return (
         // admin-card：吃掉剩余高度，列表区域（admin-scroll）在卡片内部滚动，不再顶高整页
@@ -385,6 +556,45 @@ export function EssaysManager() {
                     </span>
                 </div>
                 <div className="flex items-center gap-2">
+                    {selected.size > 0 && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={deleting}
+                            className="h-7 px-2 text-xs text-red-600 hover:text-red-600 dark:text-red-400"
+                            onClick={handleBatchDelete}
+                        >
+                            <Trash2 className="size-3.5" />
+                            {deleting ? "删除中…" : `批量删除（${selected.size}）`}
+                        </Button>
+                    )}
+                    {/* 导出：远端只支持按 id 导出，未勾选时给出提示（官方同一行为） */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={exporting}
+                        className="h-7 px-2 text-xs"
+                        title={selected.size > 0 ? `导出已勾选的 ${selected.size} 条` : "请先勾选要导出的说说"}
+                        onClick={handleExport}
+                    >
+                        <Download className="size-3.5" />
+                        {exporting ? "导出中…" : selected.size > 0 ? `导出（${selected.size}）` : "导出"}
+                    </Button>
+                    {/* 导入：弹窗内选文件 + 二次确认；导入会批量写说说表 */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={importing}
+                        className="h-7 px-2 text-xs"
+                        title="从 JSON / ZIP 文件导入说说"
+                        onClick={() => {
+                            resetImport();
+                            setImportOpen(true);
+                        }}
+                    >
+                        <Upload className="size-3.5" />
+                        导入
+                    </Button>
                     <Button
                         size="sm"
                         className="h-7 px-2 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
@@ -409,6 +619,9 @@ export function EssaysManager() {
             <div className="admin-scroll">
                 {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
                 <div className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}>
+                    <span className="flex items-center">
+                        <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="全选本页" />
+                    </span>
                     <span>内容</span>
                     <span>媒体</span>
                     <span className="text-center">状态</span>
@@ -431,6 +644,14 @@ export function EssaysManager() {
                                 key={essay.id}
                                 className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
                             >
+                                {/* 多选：批量删除 / 导出都基于这一列 */}
+                                <span className="flex items-center gap-2">
+                                    <Checkbox
+                                        checked={selected.has(essay.id)}
+                                        onCheckedChange={() => toggleOne(essay.id)}
+                                        aria-label={`选择说说 #${essay.id}`}
+                                    />
+                                </span>
                                 {/* 内容：移动端卡片的第一行，给两行更易读；桌面仍只一行 */}
                                 <div className="min-w-0 max-w-[420px]">
                                     <div className="line-clamp-2 whitespace-pre-line break-words text-foreground sm:line-clamp-1">
@@ -799,6 +1020,187 @@ export function EssaysManager() {
                                 <span>{preview.from ? `来源：${preview.from}` : ""}</span>
                                 <span>发布于 {formatDate(preview.created_at)} {formatTime(preview.created_at)}</span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ===== 导入说说弹窗（⚠️ 写库，需二次确认） ===== */}
+            {importOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                    // 请求在途时锁住遮罩点击，避免关掉弹窗后结果无处安放
+                    onMouseDown={() => {
+                        if (!importing) {
+                            setImportOpen(false);
+                            resetImport();
+                        }
+                    }}
+                >
+                    <div
+                        className="w-full max-w-xl rounded-xl border bg-card p-4 shadow-xl"
+                        onMouseDown={(e) => e.stopPropagation()}
+                    >
+                        <div className="mb-3 flex items-center justify-between">
+                            <h3 className="text-base font-semibold">导入说说</h3>
+                            <button
+                                type="button"
+                                disabled={importing}
+                                onClick={() => {
+                                    setImportOpen(false);
+                                    resetImport();
+                                }}
+                                aria-label="关闭"
+                                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="space-y-3 text-sm">
+                            <p className="text-xs text-muted-foreground">
+                                支持 <code>.json</code> 或 <code>.zip</code>
+                                （「导出」下载的整包）。单文件不超过 {MAX_IMPORT_SIZE_TEXT}
+                                。导入会写入说说表，请先确认文件内容。
+                            </p>
+
+                            {/* 文件选择 */}
+                            <div className="flex flex-wrap items-center gap-2">
+                                <input
+                                    ref={importInputRef}
+                                    type="file"
+                                    accept=".json,.zip,application/json,application/zip"
+                                    className="hidden"
+                                    onChange={(e) => handlePickImportFile(e.target.files?.[0])}
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={importing}
+                                    onClick={() => importInputRef.current?.click()}
+                                >
+                                    <Upload className="size-3.5" />
+                                    选择文件
+                                </Button>
+                                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                                    {importFile
+                                        ? `${importFile.name}（${formatBytes(importFile.size)}）`
+                                        : "未选择文件"}
+                                </span>
+                                {importFile && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 text-xs"
+                                        disabled={importing}
+                                        onClick={resetImport}
+                                    >
+                                        清空
+                                    </Button>
+                                )}
+                            </div>
+
+                            {/* 导入选项：字段名与官方一致（skip_existing / default_status） */}
+                            <div className="space-y-2 rounded-lg border p-3">
+                                <label className="flex cursor-pointer items-start gap-2 text-xs">
+                                    <Checkbox
+                                        className="mt-0.5"
+                                        checked={importOptions.skipExisting}
+                                        disabled={importing}
+                                        onCheckedChange={(v) =>
+                                            setImportOptions({ ...importOptions, skipExisting: v === true })
+                                        }
+                                    />
+                                    <span>
+                                        跳过已存在的说说
+                                        <span className="ml-1 text-muted-foreground">（按内容 + 创建时间判重）</span>
+                                    </span>
+                                </label>
+                                <div className="flex items-center gap-2 text-xs">
+                                    <span>文件里没写状态的说说导入为</span>
+                                    <Select
+                                        value={String(importOptions.defaultStatus)}
+                                        disabled={importing}
+                                        onValueChange={(v) => {
+                                            const n = Number(v);
+                                            setImportOptions({
+                                                ...importOptions,
+                                                defaultStatus: n === 2 ? 2 : n === 3 ? 3 : 1,
+                                            });
+                                        }}
+                                    >
+                                        <SelectTrigger className="h-7 w-max text-xs">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {STATUS_OPTIONS.map((o) => (
+                                                <SelectItem key={o.value} value={o.value}>
+                                                    {o.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            {/* 导入结果（官方 ImportEssayResult） */}
+                            {importResult && (
+                                <div className="space-y-2 rounded-lg border p-3 text-xs">
+                                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                                        <span>共 {importResult.total_count} 条</span>
+                                        <span className="text-emerald-600 dark:text-emerald-400">
+                                            成功 {importResult.success_count}
+                                        </span>
+                                        <span
+                                            className={
+                                                importResult.failed_count > 0
+                                                    ? "text-destructive"
+                                                    : "text-muted-foreground"
+                                            }
+                                        >
+                                            失败 {importResult.failed_count}
+                                        </span>
+                                        <span className="text-muted-foreground">
+                                            跳过 {importResult.skipped_count}
+                                        </span>
+                                    </div>
+                                    {(importResult.errors?.length ?? 0) > 0 && (
+                                        <ul className="max-h-32 space-y-1 overflow-y-auto text-muted-foreground">
+                                            {importResult.errors
+                                                ?.slice(0, MAX_SHOWN_IMPORT_ERRORS)
+                                                .map((msg, i) => (
+                                                    <li key={`${i}-${msg}`}>
+                                                        <span className="text-destructive">失败</span> {msg}
+                                                    </li>
+                                                ))}
+                                            {(importResult.errors?.length ?? 0) > MAX_SHOWN_IMPORT_ERRORS && (
+                                                <li>
+                                                    …还有{" "}
+                                                    {(importResult.errors?.length ?? 0) - MAX_SHOWN_IMPORT_ERRORS} 条
+                                                </li>
+                                            )}
+                                        </ul>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-4 flex justify-end gap-2">
+                            <Button
+                                variant="outline"
+                                disabled={importing}
+                                onClick={() => {
+                                    setImportOpen(false);
+                                    resetImport();
+                                }}
+                            >
+                                关闭
+                            </Button>
+                            <Button disabled={importing || !importFile} onClick={confirmImport}>
+                                {importing ? "导入中…" : "开始导入"}
+                            </Button>
                         </div>
                     </div>
                 </div>

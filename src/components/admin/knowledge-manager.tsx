@@ -740,7 +740,7 @@ export function KnowledgeManager() {
             )}
 
             {/* 工具栏 */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2.5">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2">
                 <div className="flex flex-1 flex-wrap items-center gap-2">
                     <div className="relative w-56">
                         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -971,7 +971,7 @@ export function KnowledgeManager() {
                                 </span>
                             )}
                         </div>
-                        <Button variant="ghost" size="icon-sm" aria-label="关闭详情" onClick={() => setDetail(null)}>
+                        <Button variant="ghost" size="icon" aria-label="关闭详情" onClick={() => setDetail(null)}>
                             <X className="size-4" />
                         </Button>
                     </div>
@@ -984,7 +984,7 @@ export function KnowledgeManager() {
             {/* 列表：卡片内唯一滚动区 */}
             <div className="admin-scroll">
                 <div
-                    className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}
+                    className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}
                 >
                     <span className="flex items-center gap-2">
                         <Checkbox
@@ -1005,12 +1005,12 @@ export function KnowledgeManager() {
                 </div>
 
                 {loading ? (
-                    <div className="flex flex-col items-center justify-center gap-1.5 py-12 text-sm text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center gap-1.5 py-8 text-sm text-muted-foreground">
                         <RefreshCw className="size-5 animate-spin opacity-60" />
                         <span>正在读取知识库文档…</span>
                     </div>
                 ) : visibleDocuments.length === 0 ? (
-                    <div className="flex min-h-64 flex-col items-center justify-center gap-2 px-4 py-12 text-center">
+                    <div className="flex min-h-64 flex-col items-center justify-center gap-2 px-4 py-8 text-center">
                         <span className="flex size-12 items-center justify-center rounded-full border bg-muted/60">
                             <FileSearch className="size-5 text-muted-foreground/60" />
                         </span>
@@ -1047,7 +1047,7 @@ export function KnowledgeManager() {
             </div>
 
             {/* 分页 */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2 text-xs text-muted-foreground">
                 <div className="flex items-center gap-3">
                     <span>
                         共 {total} 条 · 第 {page}/{totalPages} 页
@@ -1059,7 +1059,7 @@ export function KnowledgeManager() {
                             setPage(1);
                         }}
                     >
-                        <SelectTrigger className="h-7 w-max text-xs" aria-label="每页条数">
+                        <SelectTrigger className="h-8 w-max text-xs" aria-label="每页条数">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

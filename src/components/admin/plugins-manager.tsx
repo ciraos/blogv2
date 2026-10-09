@@ -103,7 +103,7 @@ function StatTile({
     tone: string;
 }) {
     return (
-        <div className="flex items-center gap-2.5 rounded-lg border bg-muted/40 px-3 py-2">
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2">
             <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${tone}`}>
                 <Icon className="size-4" />
             </span>
@@ -139,7 +139,7 @@ function Modal({
         >
             <div
                 className={cn(
-                    "flex max-h-[86vh] w-full flex-col rounded-xl border bg-card p-5 shadow-xl",
+                    "flex max-h-[86vh] w-full flex-col rounded-xl border bg-card p-4 shadow-xl",
                     wide ? "max-w-2xl" : "max-w-xl"
                 )}
                 onMouseDown={(e) => e.stopPropagation()}
@@ -189,7 +189,7 @@ function ConfirmDialog({
 }) {
     return (
         <Modal title={title} onClose={busy ? () => {} : onCancel}>
-            <div className="space-y-4">
+            <div className="space-y-3">
                 <div className="flex items-start gap-2 text-sm text-muted-foreground">
                     <TriangleAlert
                         className={cn("mt-0.5 size-4 shrink-0", danger ? "text-red-500" : "text-amber-500")}
@@ -268,7 +268,7 @@ function InstallDialog({
             description="上传插件 zip 安装包（后端接口要求 multipart 字段名 file，且只接受 .zip）"
             onClose={busy ? () => {} : onClose}
         >
-            <div className="space-y-4">
+            <div className="space-y-3">
                 <label className="block">
                     <span className="mb-1 block text-xs font-medium text-muted-foreground">
                         安装包（zip，≤ 10MB）
@@ -278,7 +278,7 @@ function InstallDialog({
                         accept=".zip,application/zip"
                         disabled={busy}
                         onChange={(e) => pick(e.target.files?.[0] ?? null)}
-                        className="h-9 py-1 text-xs"
+                        className="h-8 py-1 text-xs"
                     />
                 </label>
 
@@ -409,7 +409,7 @@ function ConfigDialog({
             onClose={saving ? () => {} : onClose}
             wide
         >
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {hasSchema ? (
                     <div className="space-y-3">
                         {schema.map((field) => {
@@ -426,7 +426,7 @@ function ConfigDialog({
                                     </span>
                                     {field.type === "select" ? (
                                         <Select value={value} onValueChange={setValue}>
-                                            <SelectTrigger className="w-full">
+                                            <SelectTrigger className="h-8 w-full">
                                                 <SelectValue placeholder="请选择" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -442,7 +442,7 @@ function ConfigDialog({
                                             value={value === "" ? "false" : value}
                                             onValueChange={setValue}
                                         >
-                                            <SelectTrigger className="w-full">
+                                            <SelectTrigger className="h-8 w-full">
                                                 <SelectValue placeholder="请选择" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -662,7 +662,7 @@ export function PluginsManager() {
             </div>
 
             {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动 */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2.5">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2">
                 <div className="flex flex-wrap items-center gap-2">
                     <div className="relative w-52">
                         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -673,7 +673,7 @@ export function PluginsManager() {
                                 setKeyword(e.target.value);
                             }}
                             placeholder="搜索插件名称、id、简介、作者"
-                            className="h-7 pl-8 pr-7 text-xs"
+                            className="h-8 pl-8 pr-7 text-xs"
                             aria-label="搜索插件"
                         />
                         {input && (
@@ -692,7 +692,7 @@ export function PluginsManager() {
                     </div>
 
                     <Select value={status} onValueChange={setStatus}>
-                        <SelectTrigger className="h-7 w-26 shrink-0 text-xs" aria-label="状态筛选">
+                        <SelectTrigger className="h-8 w-26 shrink-0 text-xs" aria-label="状态筛选">
                             <SelectValue placeholder="全部状态" />
                         </SelectTrigger>
                         <SelectContent>
@@ -713,7 +713,7 @@ export function PluginsManager() {
                 <div className="flex items-center gap-2">
                     <Button
                         size="sm"
-                        className="h-7 px-2 text-xs"
+                        className="h-8 px-2 text-xs"
                         onClick={() => setInstallOpen(true)}
                     >
                         <Download className="size-3.5" />
@@ -722,7 +722,7 @@ export function PluginsManager() {
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 px-2 text-xs"
+                        className="h-8 px-2 text-xs"
                         disabled={loading}
                         onClick={() => void load()}
                     >
@@ -740,7 +740,7 @@ export function PluginsManager() {
             <div className="admin-scroll">
                 {/* 表头：移动端隐藏（卡片自带行内信息），≥sm 才以 grid 显示 */}
                 <div
-                    className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}
+                    className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}
                 >
                     <span>插件</span>
                     <span>版本</span>
@@ -750,12 +750,12 @@ export function PluginsManager() {
                 </div>
 
                 {loading && plugins === null ? (
-                    <div className="flex flex-col items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
                         <Loader2 className="size-5 animate-spin opacity-60" />
                         <span>正在加载插件列表…</span>
                     </div>
                 ) : error ? (
-                    <div className="flex flex-col items-center justify-center gap-2 py-12 text-sm">
+                    <div className="flex flex-col items-center justify-center gap-2 py-8 text-sm">
                         <TriangleAlert className="size-6 text-destructive" />
                         <p className="text-destructive">{error}</p>
                         <p className="text-xs text-muted-foreground">
@@ -764,7 +764,7 @@ export function PluginsManager() {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="mt-1 h-7 px-2 text-xs"
+                            className="mt-1 h-8 px-2 text-xs"
                             onClick={() => void load()}
                         >
                             <RefreshCw className="size-3.5" />
@@ -772,7 +772,7 @@ export function PluginsManager() {
                         </Button>
                     </div>
                 ) : rows.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center gap-1.5 py-12 text-sm text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center gap-1.5 py-8 text-sm text-muted-foreground">
                         <Puzzle className="size-5 opacity-60" />
                         <span>{hasFilter ? "没有匹配的插件" : "暂无插件"}</span>
                         <span className="text-xs text-muted-foreground/70">
@@ -907,7 +907,7 @@ export function PluginsManager() {
             </div>
 
             {/* 底部：固定在卡片底（后端列表接口无分页参数，这里只报数） */}
-            <div className="flex shrink-0 items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2 text-xs text-muted-foreground">
                 <span>
                     共 {plugins ? source.length : "—"} 个插件
                     <span className="ml-2 text-muted-foreground/70">
