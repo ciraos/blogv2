@@ -6,7 +6,6 @@ import {
     ArrowDown,
     ArrowUp,
     ChevronRight,
-    Eraser,
     ImageIcon,
     Loader2,
     Menu,
@@ -26,18 +25,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
     ALL_SETTINGS_FIELDS,
-    APPEARANCE_TOKEN_FIELDS,
+    APPEARANCE_SKIN_KEY,
+    SETTINGS_GROUP_ORDER,
     SETTINGS_SECTIONS,
     SKIN_OPTIONS,
     buildSettingsBaseline,
     buildSettingsPayload,
     isFieldDirty,
     skinPreviewColor,
+    type AppearanceTokenBranches,
     type SettingsField,
     type SettingsFormValue,
     type SettingsGroup,
     type SettingsListField,
+    type SettingsSection,
 } from "@/lib/admin-settings";
+import { TokenColorEditor } from "@/components/admin/token-color-editor";
 import { updateAdminSettingsApi, uploadAdminImageApi } from "@/lib/api";
 import { broadcastSiteConfigUpdate } from "@/lib/site-config-broadcast";
 import { uploadFileToFileManager } from "@/lib/admin-file-upload";
@@ -210,37 +213,60 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
         return () => window.removeEventListener("keydown", onKeyDown);
     }, [dirtyFields.length, saving, handleSave]);
 
+    /** 左侧导航按 section.group 聚拢；分组顺序取 SETTINGS_GROUP_ORDER（对齐官方后台的设置导航） */
+    const navGroups = useMemo(() => {
+        const map = new Map<string, SettingsSection[]>();
+        for (const section of SETTINGS_SECTIONS as SettingsSection[]) {
+            const list = map.get(section.group);
+            if (list) list.push(section);
+            else map.set(section.group, [section]);
+        }
+        // 先按官方顺序输出已列出的分组；schema 里出现但没列进顺序表的补在后面，避免新增分区从导航里消失
+        const ordered: string[] = [...SETTINGS_GROUP_ORDER];
+        for (const label of map.keys()) if (!ordered.includes(label)) ordered.push(label);
+        return ordered.filter((label) => map.has(label)).map((label) => ({ label, sections: map.get(label) ?? [] }));
+    }, []);
+
     /** 左侧导航（桌面栏与移动端抽屉共用） */
     const navList = (
         <nav aria-label="设置分区" className="space-y-0.5">
-            {SETTINGS_SECTIONS.map((section) => {
-                const SectionIcon = section.icon;
-                const active = tab === section.id;
-                const dirty = section.groups.flatMap((g) => g.fields).some((f) => dirtyKeys.has(f.key));
-                return (
-                    <button
-                        key={section.id}
-                        type="button"
-                        onClick={() => goToSection(section.id)}
-                        aria-current={active ? "page" : undefined}
-                        className={cn(
-                            "group flex w-full items-center gap-2.5 rounded-full px-3 py-[7px] text-[13px] transition-all duration-150",
-                            active
-                                ? "bg-primary/10 font-medium text-primary"
-                                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                        )}
-                    >
-                        <SectionIcon
-                            className={cn(
-                                "size-4 shrink-0",
-                                active ? "text-primary" : "text-muted-foreground/70 group-hover:text-muted-foreground"
-                            )}
-                        />
-                        <span className="truncate">{section.label}</span>
-                        {dirty && <span className="ml-auto size-1.5 shrink-0 rounded-full bg-primary" aria-label="有改动" />}
-                    </button>
-                );
-            })}
+            {navGroups.map((navGroup, groupIndex) => (
+                <div key={navGroup.label} className={groupIndex > 0 ? "pt-4" : ""}>
+                    <p className="mb-1 px-3 text-[11px] font-medium tracking-wide text-muted-foreground/60">{navGroup.label}</p>
+                    <div className="space-y-0.5">
+                        {navGroup.sections.map((section) => {
+                            const SectionIcon = section.icon;
+                            const active = tab === section.id;
+                            const dirty = section.groups.flatMap((g) => g.fields).some((f) => dirtyKeys.has(f.key));
+                            return (
+                                <button
+                                    key={section.id}
+                                    type="button"
+                                    onClick={() => goToSection(section.id)}
+                                    aria-current={active ? "page" : undefined}
+                                    className={cn(
+                                        "group flex w-full items-center gap-2.5 rounded-full px-3 py-[7px] text-[13px] transition-all duration-150",
+                                        active
+                                            ? "bg-primary/10 font-medium text-primary"
+                                            : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                                    )}
+                                >
+                                    <SectionIcon
+                                        className={cn(
+                                            "size-4 shrink-0",
+                                            active ? "text-primary" : "text-muted-foreground/70 group-hover:text-muted-foreground"
+                                        )}
+                                    />
+                                    <span className="truncate">{section.label}</span>
+                                    {dirty && (
+                                        <span className="ml-auto size-1.5 shrink-0 rounded-full bg-primary" aria-label="有改动" />
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
         </nav>
     );
 
@@ -432,8 +458,7 @@ function SettingsGroupCard({
     onChange: (key: string, value: SettingsFormValue) => void;
 }) {
     const dirtyCount = group.fields.filter((field) => isFieldDirty(field, draft, baseline)).length;
-    // 标记为「前台暂未渲染」的分组默认收起：它们同样可编辑，但不该一上来占满整屏
-    const [open, setOpen] = useState(!group.notRendered);
+    const [open, setOpen] = useState(true);
 
     return (
         <section className="rounded-xl border border-border/60 bg-card p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:shadow-none">
@@ -448,14 +473,8 @@ function SettingsGroupCard({
                         className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")}
                     />
                     <h3 className="truncate text-[14px] font-semibold tracking-tight text-foreground/85">{group.label}</h3>
-                    {group.notRendered && (
-                        <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                            前台暂未渲染
-                        </span>
-                    )}
                     <span className="shrink-0 text-[11px] text-muted-foreground/70">{group.fields.length} 项</span>
                 </button>
-                {group.note && <span className="shrink-0 text-[11px] text-muted-foreground">{group.note}</span>}
                 {dirtyCount > 0 && (
                     <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                         {dirtyCount} 项未保存
@@ -467,12 +486,21 @@ function SettingsGroupCard({
                     {group.fields.map((field) => (
                         <div
                             key={field.key}
-                            className={cn(field.wide || field.type === "list" || field.type === "tokens" ? "lg:col-span-2" : "")}
+                            className={cn(
+                                field.wide ||
+                                    field.type === "list" ||
+                                    field.type === "stringlist" ||
+                                    field.type === "tokens" ||
+                                    field.type === "json"
+                                    ? "lg:col-span-2"
+                                    : ""
+                            )}
                         >
                             <FieldControl
                                 field={field}
                                 value={draft[field.key]}
                                 dirty={isFieldDirty(field, draft, baseline)}
+                                skinId={String(draft[APPEARANCE_SKIN_KEY] ?? "")}
                                 onChange={(value) => onChange(field.key, value)}
                             />
                         </div>
@@ -488,39 +516,52 @@ function FieldControl({
     field,
     value,
     dirty,
+    skinId,
     onChange,
 }: {
     field: SettingsField;
     value: SettingsFormValue;
     dirty: boolean;
+    /** 草稿里当前选中的皮肤 id：配色令牌编辑器用它算「留空 = 跟随皮肤」的回退色 */
+    skinId?: string;
     onChange: (value: SettingsFormValue) => void;
 }) {
     const label = (
-        <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            {field.label}
+        // 标签与 hint 都压成单行：没有 hint 的字段不会留空行，同一行里的输入框也能对齐
+        // （hint 太长时截断成省略号，鼠标悬停看全文）
+        <span className="mb-1.5 flex items-center gap-x-1.5 text-xs font-medium text-muted-foreground">
+            <span className="shrink-0 whitespace-nowrap">{field.label}</span>
             {Array.isArray(value) && value.length > 0 && (
-                <span className="font-normal text-muted-foreground/60">（{value.length} 条）</span>
+                <span className="shrink-0 font-normal text-muted-foreground/60">（{value.length} 条）</span>
             )}
-            {dirty && <span className="size-1.5 rounded-full bg-primary" aria-label="已改动" />}
-            {field.hint && <span className="font-normal text-muted-foreground/70">· {field.hint}</span>}
+            {dirty && <span className="size-1.5 shrink-0 rounded-full bg-primary" aria-label="已改动" />}
+            {field.hint && (
+                <span className="min-w-0 flex-1 truncate font-normal text-muted-foreground/70" title={field.hint}>
+                    · {field.hint}
+                </span>
+            )}
         </span>
     );
 
     if (field.type === "boolean") {
         return (
-            <label className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm">
+            <label className="flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm">
                 <Checkbox
                     checked={value === true}
                     onCheckedChange={(checked) => onChange(checked === true)}
                     aria-label={field.label}
                 />
-                <span>{field.label}</span>
-                {field.hint && <span className="ml-auto text-xs text-muted-foreground">{field.hint}</span>}
+                <span className="shrink-0 whitespace-nowrap">{field.label}</span>
+                {field.hint && (
+                    <span className="ml-auto min-w-0 truncate text-right text-xs text-muted-foreground" title={field.hint}>
+                        {field.hint}
+                    </span>
+                )}
             </label>
         );
     }
 
-    if (field.key === "APPEARANCE_SKIN") {
+    if (field.type === "skin") {
         return (
             <div>
                 {label}
@@ -530,13 +571,13 @@ function FieldControl({
     }
 
     if (field.type === "tokens") {
+        // 值可能是 string[]（同一个联合类型里的其它分支），先收窄成令牌分支再交给编辑器
+        const branches: AppearanceTokenBranches =
+            value && typeof value === "object" && !Array.isArray(value) ? (value as AppearanceTokenBranches) : {};
         return (
             <div>
                 {label}
-                <TokensEditor
-                    value={(value && typeof value === "object" && !Array.isArray(value) ? value : {}) as { light?: Record<string, string>; dark?: Record<string, string> }}
-                    onChange={onChange}
-                />
+                <TokenColorEditor value={branches} onChange={onChange} skinId={skinId} />
             </div>
         );
     }
@@ -551,6 +592,76 @@ function FieldControl({
                     onChange={(next) => onChange(next)}
                 />
             </div>
+        );
+    }
+
+    if (field.type === "stringlist") {
+        return (
+            <div>
+                {label}
+                <StringListEditor
+                    value={Array.isArray(value) ? (value as string[]) : []}
+                    onChange={(next) => onChange(next)}
+                    placeholder={field.placeholder}
+                />
+            </div>
+        );
+    }
+
+    if (field.type === "color") {
+        const current = String(value ?? "");
+        return (
+            <label className="block">
+                {label}
+                <div className="flex items-center gap-2">
+                    <input
+                        type="color"
+                        aria-label={field.label}
+                        value={/^#[0-9a-f]{6}$/i.test(current.trim()) ? current.trim() : "#000000"}
+                        onChange={(e) => onChange(e.target.value)}
+                        className="size-9 shrink-0 cursor-pointer rounded-lg border bg-transparent"
+                    />
+                    <Input
+                        value={current}
+                        onChange={(e) => onChange(e.target.value)}
+                        placeholder={field.placeholder ?? "#39c5bb"}
+                        className="h-9 flex-1 text-sm"
+                    />
+                </div>
+            </label>
+        );
+    }
+
+    if (field.type === "json") {
+        const text = String(value ?? "");
+        let invalid = false;
+        if (text.trim()) {
+            try {
+                JSON.parse(text);
+            } catch {
+                invalid = true;
+            }
+        }
+        return (
+            <label className="block">
+                {label}
+                <textarea
+                    value={text}
+                    onChange={(e) => onChange(e.target.value)}
+                    rows={6}
+                    spellCheck={false}
+                    placeholder={field.placeholder ?? "[]"}
+                    className={cn(
+                        "w-full rounded-lg border border-input bg-transparent px-3 py-2 font-mono text-xs leading-relaxed outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+                        invalid && "border-destructive"
+                    )}
+                />
+                {invalid && (
+                    <span className="mt-1 block text-[11px] text-destructive">
+                        JSON 格式有误，请修正后再保存（否则后端拿到的是坏数据）
+                    </span>
+                )}
+            </label>
         );
     }
 
@@ -736,74 +847,6 @@ function ImageUploadButton({
     );
 }
 
-/** 配色令牌编辑：浅色 / 深色两列，留空表示用皮肤默认 */
-function TokensEditor({
-    value,
-    onChange,
-}: {
-    value: { light?: Record<string, string>; dark?: Record<string, string> };
-    onChange: (value: SettingsFormValue) => void;
-}) {
-    const setToken = (mode: "light" | "dark", name: string, next: string) => {
-        const branch = { ...(value?.[mode] ?? {}) };
-        if (next.trim() === "") delete branch[name];
-        else branch[name] = next.trim();
-        const out: { light?: Record<string, string>; dark?: Record<string, string> } = { ...value };
-        if (Object.keys(branch).length === 0) delete out[mode];
-        else out[mode] = branch;
-        onChange(out);
-    };
-
-    return (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {(["light", "dark"] as const).map((mode) => (
-                <div key={mode} className="rounded-lg border p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                        <span className="text-xs font-medium">{mode === "light" ? "浅色模式" : "深色模式"}</span>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 rounded-md px-1.5 text-[11px]"
-                            disabled={!value?.[mode] || Object.keys(value[mode] ?? {}).length === 0}
-                            onClick={() => {
-                                const out = { ...value };
-                                delete out[mode];
-                                onChange(Object.keys(out).length ? out : {});
-                            }}
-                        >
-                            <Eraser className="size-3" />
-                            全部清除
-                        </Button>
-                    </div>
-                    <div className="space-y-1.5">
-                        {APPEARANCE_TOKEN_FIELDS.map((token) => {
-                            const current = value?.[mode]?.[token.name] ?? "";
-                            return (
-                                <div key={token.name} className="flex items-center gap-2">
-                                    <span className="w-20 shrink-0 text-xs text-muted-foreground">{token.label}</span>
-                                    <input
-                                        type="color"
-                                        aria-label={`${token.label}（${mode === "light" ? "浅色" : "深色"}）`}
-                                        value={/^#[0-9a-f]{6}$/i.test(current) ? current : "#000000"}
-                                        onChange={(e) => setToken(mode, token.name, e.target.value)}
-                                        className="size-7 shrink-0 cursor-pointer rounded border bg-transparent"
-                                    />
-                                    <Input
-                                        value={current}
-                                        onChange={(e) => setToken(mode, token.name, e.target.value)}
-                                        placeholder="留空 = 皮肤默认"
-                                        className="h-7 flex-1 text-xs"
-                                    />
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-}
-
 /** 列表编辑（支持一层嵌套，如页脚项目分组里的链接列表） */
 function ListEditor({
     itemFields,
@@ -848,13 +891,12 @@ function ListEditor({
                             <div className="min-w-0 flex-1 space-y-2">
                                 <div className={cn("grid grid-cols-1 gap-2", columns)}>
                                     {flatFields.map((sub) => (
-                                        <Input
+                                        <ListSubField
                                             key={sub.name}
-                                            value={String(item[sub.name] ?? "")}
-                                            onChange={(e) => update(index, sub.name, e.target.value)}
-                                            placeholder={sub.placeholder ?? sub.label}
-                                            aria-label={`${sub.label}（第 ${index + 1} 项）`}
-                                            className="h-8 text-xs"
+                                            sub={sub}
+                                            value={item[sub.name]}
+                                            index={index}
+                                            onChange={(next) => update(index, sub.name, next)}
                                         />
                                     ))}
                                 </div>
@@ -916,13 +958,144 @@ function ListEditor({
                 type="button"
                 onClick={() => {
                     const blank: Record<string, unknown> = {};
-                    for (const sub of itemFields) blank[sub.name] = sub.nested ? [] : "";
+                    for (const sub of itemFields) blank[sub.name] = sub.nested ? [] : sub.type === "boolean" ? false : "";
                     onChange([...value, blank]);
                 }}
                 className="flex w-full items-center justify-center gap-1 rounded-b-lg border-t border-dashed px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
                 <Plus className="size-3" />
                 {addLabel}
+            </button>
+        </div>
+    );
+}
+
+/** 列表项里的一个子字段：按 sub.type 渲染成文本 / 数字 / 颜色 / 开关 */
+function ListSubField({
+    sub,
+    value,
+    index,
+    onChange,
+}: {
+    sub: SettingsListField;
+    value: unknown;
+    index: number;
+    onChange: (next: unknown) => void;
+}) {
+    const aria = `${sub.label}（第 ${index + 1} 项）`;
+
+    if (sub.type === "boolean") {
+        return (
+            <label className="flex h-8 items-center gap-2 rounded-lg border px-2.5 text-xs">
+                <Checkbox checked={value === true} onCheckedChange={(checked) => onChange(checked === true)} aria-label={aria} />
+                <span className="truncate text-muted-foreground">{sub.label}</span>
+            </label>
+        );
+    }
+
+    if (sub.type === "color") {
+        const current = String(value ?? "");
+        return (
+            <span className="flex items-center gap-2">
+                <input
+                    type="color"
+                    aria-label={aria}
+                    value={/^#[0-9a-f]{6}$/i.test(current.trim()) ? current.trim() : "#000000"}
+                    onChange={(e) => onChange(e.target.value)}
+                    className="size-8 shrink-0 cursor-pointer rounded border bg-transparent"
+                />
+                <Input
+                    value={current}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder={sub.placeholder ?? sub.label}
+                    aria-label={aria}
+                    className="h-8 flex-1 text-xs"
+                />
+            </span>
+        );
+    }
+
+    return (
+        <Input
+            type={sub.type === "number" ? "number" : "text"}
+            value={String(value ?? "")}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={sub.placeholder ?? sub.label}
+            aria-label={aria}
+            className="h-8 text-xs"
+        />
+    );
+}
+
+/** 字符串数组编辑（友链申请条件、作者技能、关于页技能等）：一行一条，可增删 / 上下移 */
+function StringListEditor({
+    value,
+    onChange,
+    placeholder,
+}: {
+    value: string[];
+    onChange: (value: string[]) => void;
+    placeholder?: string;
+}) {
+    const update = (index: number, next: string) => onChange(value.map((item, i) => (i === index ? next : item)));
+    const move = (index: number, delta: number) => {
+        const next = [...value];
+        const target = index + delta;
+        if (target < 0 || target >= next.length) return;
+        [next[index], next[target]] = [next[target], next[index]];
+        onChange(next);
+    };
+
+    return (
+        <div className="rounded-lg border">
+            {value.length === 0 ? (
+                <p className="px-3 py-2 text-xs text-muted-foreground">还没有条目</p>
+            ) : (
+                <div className="divide-y">
+                    {value.map((item, index) => (
+                        <div key={index} className="flex items-center gap-2 p-2">
+                            <span className="hidden w-4 shrink-0 text-[11px] tabular-nums text-muted-foreground/50 sm:block">{index + 1}</span>
+                            <Input
+                                value={item}
+                                onChange={(e) => update(index, e.target.value)}
+                                placeholder={placeholder ?? "一条内容"}
+                                aria-label={`第 ${index + 1} 条`}
+                                className="h-8 flex-1 text-xs"
+                            />
+                            <Button variant="ghost" size="icon-sm" aria-label="上移" title="上移" disabled={index === 0} onClick={() => move(index, -1)}>
+                                <ArrowUp className="size-3.5" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label="下移"
+                                title="下移"
+                                disabled={index === value.length - 1}
+                                onClick={() => move(index, 1)}
+                            >
+                                <ArrowDown className="size-3.5" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label="删除这一条"
+                                title="删除这一条"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => onChange(value.filter((_, i) => i !== index))}
+                            >
+                                <Trash2 className="size-3.5" />
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            )}
+            <button
+                type="button"
+                onClick={() => onChange([...value, ""])}
+                className="flex w-full items-center justify-center gap-1 rounded-b-lg border-t border-dashed px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+                <Plus className="size-3" />
+                添加一条
             </button>
         </div>
     );

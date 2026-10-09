@@ -29,6 +29,8 @@ export interface SiteConfig {
     /** 默认明暗模式："auto" = 按 THEME_LIGHT_START_TIME / THEME_DARK_START_TIME 定时切换 */
     DEFAULT_THEME_MODE: "light" | "dark" | "auto";
     DEFAULT_THUMB_PARAM: string;
+    /** 官方主题的「右侧悬浮菜单」总开关（本站前台用自己的悬浮按钮组，未读取该键） */
+    DISABLE_RIGHT_MENU: boolean;
     ENABLE_BUILTIN_GENERATOR: boolean;
     ENABLE_EXIF_EXTRACTOR: boolean;
     ENABLE_EXTERNAL_LINK_WARNING: boolean;
@@ -44,6 +46,12 @@ export interface SiteConfig {
     FFMPEG_CAPTURE_TIME: string;
     FFMPEG_MAX_FILE_SIZE: number;
     FFMPEG_SUPPORTED_EXTS: string;
+    /** 节庆烟花入口（官方主题的用户主动触发功能） */
+    fireworks: {
+        button_text: string;
+        enable: boolean;
+        message: string;
+    };
     FRIEND_LINK_APPLY_CONDITION: string[];
     FRIEND_LINK_APPLY_CUSTOM_CODE: string;
     FRIEND_LINK_APPLY_CUSTOM_CODE_HTML: string;
@@ -93,6 +101,10 @@ export interface SiteConfig {
     article: ArticleConfig;
     captcha: CaptchaConfig;
     comment: CommentConfig;
+    /** 社区问答（PRO 模块；本站后台那个页面还是「开发中」占位） */
+    community_qa: {
+        enable: boolean;
+    };
     equipment: EquipmentConfig;
     essay: EssayConfig;
     footer: FooterConfig;
@@ -330,11 +342,27 @@ export interface CommentConfig {
     master_tag: string;
     page_size: number;
     placeholder: string;
+    /** 随机精选评论（官方主题的「随机夸夸」开关） */
+    random_praise: boolean;
     show_region: boolean;
     show_ua: boolean;
 }
 
 // ===================== 装备/好物 =====================
+/** 单件装备（官方装备页的条目结构） */
+export interface EquipmentItem {
+    description: string;
+    image: string;
+    link: string;
+    name: string;
+    specification: string;
+}
+/** 装备分组（一个分组里若干件装备） */
+export interface EquipmentGroup {
+    description: string;
+    equipment_list: EquipmentItem[];
+    title: string;
+}
 export interface EquipmentConfig {
     banner: {
         background: string;
@@ -342,7 +370,7 @@ export interface EquipmentConfig {
         tip: string;
         title: string;
     };
-    list: unknown[];
+    list: EquipmentGroup[];
 }
 
 // ===================== 即刻短文 ESSAY =====================
@@ -590,6 +618,10 @@ export interface PostConfig {
         show_share_button: boolean;
         show_subscribe_button: boolean;
     };
+    /** 中文简繁转换（官方主题的阅读增强，本站前台未实现） */
+    chinese_conversion: boolean;
+    /** 评论弹窗模式（官方主题的阅读增强，本站前台未实现） */
+    comment_dialog: boolean;
     default: {
         cover: string;
         double_column: boolean;
@@ -600,7 +632,11 @@ export interface PostConfig {
     page404: {
         default_image: string;
     };
+    /** 沉浸式阅读模式（官方主题的阅读增强，本站前台未实现） */
+    reading_mode: boolean;
     reward: PostRewardConfig;
+    /** 平滑滚动（官方主题的阅读增强，本站前台未实现） */
+    smooth_scroll: boolean;
     subscribe: {
         button_text: string;
         dialog_desc: string;

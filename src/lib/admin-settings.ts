@@ -6,19 +6,65 @@
 //  - 保存：POST /settings/update，只提交改动项；字符串原样提交，
 //    布尔提交 "true"/"false"，列表/对象提交 JSON.stringify 后的字符串。
 //
-// 第一批只做 4 个分区：站点信息、Logo 与图标、外观、页脚。
+// 分区（左侧导航按 SETTINGS_GROUP_ORDER 的分组聚拢）：
+//   站点信息：基本信息、Logo 与图标；
+//   外观配置：换肤与配色、首页设置、导航与页头、顶栏用户面板、侧边栏、页面大图、页脚；
+//   内容管理：文章配置、文件处理；用户通知：评论系统；三方服务：第三方登录；
+//   页面显示：关于页面、各页面横幅与前台站长信息；高级功能：注册与外链、AI 功能、人机验证、微信分享、其它开关。
 
 import type { LucideIcon } from "lucide-react";
-import { Globe, Image as ImageIcon, Paintbrush, PanelBottom } from "lucide-react";
+import {
+    Backpack,
+    FileImage,
+    FileText,
+    GalleryHorizontalEnd,
+    Globe,
+    House,
+    IdCard,
+    Image as ImageIcon,
+    Images,
+    KeyRound,
+    LayoutDashboard,
+    Link2,
+    Menu,
+    MessageCircle,
+    MessageSquare,
+    MessagesSquare,
+    Music,
+    NotebookPen,
+    Paintbrush,
+    PanelBottom,
+    PanelLeft,
+    Share2,
+    ShieldCheck,
+    SlidersHorizontal,
+    Sparkles,
+    UserPlus,
+    UserRound,
+} from "lucide-react";
 
-import { BUILT_IN_SKINS } from "@/lib/appearance";
+import { BUILT_IN_SKINS, DEFAULT_SKIN_ID, type AppearanceModeTokens } from "@/lib/appearance";
 
-export type SettingsFieldType = "text" | "textarea" | "number" | "boolean" | "select" | "image" | "list" | "tokens";
+export type SettingsFieldType =
+    | "text"
+    | "textarea"
+    | "number"
+    | "boolean"
+    | "select"
+    | "image"
+    | "list"
+    | "tokens"
+    | "stringlist"
+    | "color"
+    | "json"
+    | "skin";
 
 /** 列表项里的字段定义（type=list 时表示嵌套一层列表，如 footer.project.list[].links） */
 export interface SettingsListField {
     name: string;
     label: string;
+    /** 列表项子字段的控件类型（默认 text）；color 用于 CREATIVITY.creativity_list[].color 这类十六进制色值 */
+    type?: "text" | "number" | "color" | "boolean";
     placeholder?: string;
     wide?: boolean;
     nested?: SettingsListField[];
@@ -41,16 +87,14 @@ export interface SettingsField {
 export interface SettingsGroup {
     id: string;
     label: string;
-    /** 组级说明（短句） */
-    note?: string;
-    /** 该组字段后端/官方前端在用，但本站前台暂未渲染（页面上只显示一个小标记） */
-    notRendered?: boolean;
     fields: SettingsField[];
 }
 
 export interface SettingsSection {
     id: string;
     label: string;
+    /** 左侧导航的归属分组（如「外观配置」）；导航按分组聚拢显示，避免十几个分区平铺 */
+    group: string;
     /** 左侧导航图标（对齐官方后台一栏一项带图标） */
     icon: LucideIcon;
     /** 搜索用关键词（分区级；分组/字段名也会参与匹配） */
@@ -87,23 +131,158 @@ export function skinPreviewColor(id: string, mode: "light" | "dark" = "light"): 
     return BUILT_IN_SKINS[id]?.[mode]?.primary ?? "#999999";
 }
 
-/** 可自定义的配色令牌（对应 APPEARANCE_TOKENS 的 light/dark 分支键名） */
-export const APPEARANCE_TOKEN_FIELDS = [
-    { name: "primary", label: "主色" },
-    { name: "primaryForeground", label: "主色前景" },
-    { name: "accent", label: "强调色" },
-    { name: "success", label: "成功" },
-    { name: "warning", label: "警告" },
-    { name: "danger", label: "危险" },
-    { name: "info", label: "信息" },
-] as const;
+/** 外观相关的配置键（字段定义与令牌编辑器共用，避免各处写错字符串） */
+export const APPEARANCE_SKIN_KEY = "APPEARANCE_SKIN";
+export const APPEARANCE_TOKENS_KEY = "APPEARANCE_TOKENS";
 
-const NOT_RENDERED_DESC = "带「前台暂未渲染」标记的分组：后端与官方前端在用，本站前台还没渲染，先保证可配置。";
+/**
+ * 单个可自定义配色令牌的元数据。
+ * 名字必须与后端令牌字段同名，因为键名直接落到 APPEARANCE_TOKENS 里。
+ */
+export interface AppearanceTokenField {
+    /** 令牌键名（= APPEARANCE_TOKENS 的 light/dark 分支字段名） */
+    name: keyof AppearanceModeTokens;
+    label: string;
+    /** 这个令牌管什么（官方快照没有这层说明，是为了让取色时不用去猜加的） */
+    desc: string;
+}
+
+/**
+ * 可自定义的配色令牌清单。
+ * 口径以后端为准：scripts/anheyu/anheyu-app-main/internal/configdef/definition.go:53 的注释写明
+ * APPEARANCE_TOKENS 默认 "{}"、结构 {"light":{...},"dark":{...}}、字段含
+ * primary、primaryForeground、success、warning、danger、info、accent —— 与这里 7 项一一对应。
+ * 顺序上把 accent 挨着 primary 放，方便对着主色一起调。
+ */
+export const APPEARANCE_TOKEN_FIELDS: readonly AppearanceTokenField[] = [
+    { name: "primary", label: "主色", desc: "按钮、链接、选中态的主色" },
+    { name: "primaryForeground", label: "主色前景", desc: "主色底上的文字/图标色，要和主色拉开对比" },
+    { name: "accent", label: "强调色", desc: "焦点环等次级强调（本站映射到 --ring）" },
+    { name: "success", label: "成功", desc: "成功状态" },
+    { name: "warning", label: "警告", desc: "警告状态" },
+    { name: "danger", label: "危险", desc: "错误/删除等危险操作（映射到 --destructive）" },
+    { name: "info", label: "信息", desc: "信息提示" },
+];
+
+/**
+ * 令牌 → 本站 CSS 变量名，仅供后台展示（让用户知道改的是哪个变量）。
+ * 取值口径同 src/lib/appearance.ts 的 TOKEN_TO_VAR（那里没导出，所以这里重列一份展示用）。
+ */
+export const APPEARANCE_TOKEN_CSS_VARS: Record<keyof AppearanceModeTokens, string> = {
+    primary: "--primary",
+    primaryForeground: "--primary-foreground",
+    accent: "--ring",
+    danger: "--destructive",
+    success: "--success",
+    warning: "--warning",
+    info: "--info",
+};
+
+/**
+ * APPEARANCE_TOKENS 的值结构：在皮肤预设之上按明暗两套分支局部覆盖。
+ * 这里只是类型描述，不改变序列化：保存时仍由 buildSettingsPayload 序列化成 JSON 字符串提交。
+ */
+export interface AppearanceTokenBranches {
+    light?: Record<string, string>;
+    dark?: Record<string, string>;
+}
+
+/** 皮肤 id 归一：未知/为空回退默认皮肤（与 appearance.ts 的 resolveAppearance 同一口径） */
+export function normalizeSkinId(skinId: string | null | undefined): string {
+    const requested = skinId?.trim() ?? "";
+    // 用 hasOwn 而不是直接取属性：像 "toString" 这种原型链上的名字不能当成合法皮肤 id
+    return Object.hasOwn(BUILT_IN_SKINS, requested) ? requested : DEFAULT_SKIN_ID;
+}
+
+/** 皮肤的显示名（未知/为空时按默认皮肤显示） */
+export function skinLabel(skinId: string | null | undefined): string {
+    const id = normalizeSkinId(skinId);
+    return SKIN_OPTIONS.find((skin) => skin.value === id)?.label ?? id;
+}
+
+/** 皮肤预设自身的浅/深两套令牌（不含用户覆盖）：也就是「留空 = 跟随皮肤」时页面真正用的颜色 */
+export function skinPresetTokens(skinId: string | null | undefined): { light: AppearanceModeTokens; dark: AppearanceModeTokens } {
+    return BUILT_IN_SKINS[normalizeSkinId(skinId)];
+}
+
+/** 只保留白名单令牌、且值为非空字符串的覆盖项（与 appearance.ts 的 sanitizeBranch 同口径） */
+function pickTokenOverrides(branch?: Record<string, string>): Partial<AppearanceModeTokens> {
+    const out: Partial<AppearanceModeTokens> = {};
+    if (!branch) return out;
+    for (const { name } of APPEARANCE_TOKEN_FIELDS) {
+        const value = branch[name];
+        if (typeof value === "string" && value.trim() !== "") out[name] = value.trim();
+    }
+    return out;
+}
+
+/**
+ * 合并「皮肤预设 + 用户覆盖」，得到某模式下真正生效的令牌，供后台取色时实时预览。
+ * 合并顺序与 src/lib/appearance.ts 的 resolveAppearance 一致（预设在前、覆盖在后），
+ * 这样预览看到的颜色就是保存后前台会用到的颜色。
+ */
+export function resolveTokenPreview(
+    skinId: string | null | undefined,
+    tokens: AppearanceTokenBranches
+): { light: AppearanceModeTokens; dark: AppearanceModeTokens } {
+    const preset = skinPresetTokens(skinId);
+    return {
+        light: { ...preset.light, ...pickTokenOverrides(tokens?.light) },
+        dark: { ...preset.dark, ...pickTokenOverrides(tokens?.dark) },
+    };
+}
+
+// ---- 页面大图 page.one_image：媒体类型下拉项（与 types 里的 "image" | "video" 一致）----
+const ONE_IMAGE_MEDIA_TYPES = [
+    { value: "image", label: "图片" },
+    { value: "video", label: "视频" },
+];
+
+/**
+ * page.one_image 单页大图字段（首页 / 归档 / 分类 / 标签四页结构完全一致）。
+ * 前台 components/(blog)/one-image-hero.tsx 逐字段读取：enable、mainTitle、subTitle、background、
+ * mobileBackground、mediaType、mobileMediaType、videoAutoplay/Loop/Muted、mobileVideoAutoplay/Loop/Muted、
+ * hitokoto、typingEffect（另 header.tsx 读 enable 决定页头是否透明悬浮）。
+ */
+function oneImagePageFields(page: "home" | "archives" | "categories" | "tags"): SettingsField[] {
+    const key = (name: string) => `page.one_image.config.${page}.${name}`;
+    return [
+        { key: key("enable"), label: "启用大图", type: "boolean", hint: "关闭后该页不显示大图" },
+        { key: key("mainTitle"), label: "主标题", type: "text", hint: "留空则用站点名称（APP_NAME）" },
+        {
+            key: key("subTitle"),
+            label: "副标题",
+            type: "text",
+            hint: "留空则不显示；开启「一言」时副标题被一言句子替换（不会回落到站点副标题）",
+        },
+        { key: key("background"), label: "桌面端背景", type: "image", hint: "支持图片地址或视频地址" },
+        {
+            key: key("mobileBackground"),
+            label: "移动端背景",
+            type: "image",
+            hint: "支持图片地址或视频地址；留空回落桌面端背景",
+        },
+        { key: key("mediaType"), label: "桌面端媒体类型", type: "select", options: ONE_IMAGE_MEDIA_TYPES },
+        { key: key("mobileMediaType"), label: "移动端媒体类型", type: "select", options: ONE_IMAGE_MEDIA_TYPES },
+        { key: key("videoAutoplay"), label: "桌面视频自动播放", type: "boolean" },
+        { key: key("videoLoop"), label: "桌面视频循环播放", type: "boolean" },
+        { key: key("videoMuted"), label: "桌面视频静音", type: "boolean" },
+        { key: key("mobileVideoAutoplay"), label: "移动视频自动播放", type: "boolean" },
+        { key: key("mobileVideoLoop"), label: "移动视频循环播放", type: "boolean" },
+        { key: key("mobileVideoMuted"), label: "移动视频静音", type: "boolean" },
+        { key: key("hitokoto"), label: "使用一言", type: "boolean", hint: "开启后用一言接口返回的句子替换副标题" },
+        { key: key("typingEffect"), label: "打字机效果", type: "boolean" },
+    ];
+}
+
+/** 左侧导航的分组顺序（对齐官方后台「设置」导航的分组） */
+export const SETTINGS_GROUP_ORDER = ["站点信息", "外观配置", "内容管理", "用户通知", "三方服务", "页面显示", "高级功能"] as const;
 
 export const SETTINGS_SECTIONS: SettingsSection[] = [
     {
         id: "site",
-        label: "站点信息",
+        label: "基本信息",
+        group: "站点信息",
         icon: Globe,
         keywords: ["站点", "名称", "标题", "描述", "关键词", "地址", "备案", "头像", "gravatar", "关于"],
         desc: "站点名称、描述、备案与站长信息；前台标题、页脚备案、评论头像都读这里。",
@@ -143,6 +322,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     {
         id: "logo",
         label: "Logo 与图标",
+        group: "站点信息",
         icon: ImageIcon,
         keywords: ["logo", "图标", "favicon", "pwa", "横版"],
         desc: "站点 Logo 与浏览器/PWA 图标；改完刷新页面即可看到。",
@@ -169,7 +349,8 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     },
     {
         id: "appearance",
-        label: "外观",
+        label: "换肤与配色",
+        group: "外观配置",
         icon: Paintbrush,
         keywords: ["换肤", "皮肤", "主题", "配色", "颜色", "明暗", "深色", "浅色", "动效"],
         desc: "换肤与默认明暗模式；皮肤只影响主色与语义色，可再按令牌微调。",
@@ -178,8 +359,20 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                 id: "skin",
                 label: "换肤与配色",
                 fields: [
-                    { key: "APPEARANCE_SKIN", label: "皮肤", type: "select", options: SKIN_OPTIONS.map((s) => ({ value: s.value, label: s.label })) },
-                    { key: "APPEARANCE_TOKENS", label: "自定义配色令牌", type: "tokens", wide: true, hint: "留空表示用皮肤自带颜色" },
+                    {
+                        key: APPEARANCE_SKIN_KEY,
+                        label: "皮肤",
+                        type: "skin",
+                        wide: true,
+                        hint: "内置 8 套配色方案；卡片上两枚圆点是它浅色/深色的主色",
+                    },
+                    {
+                        key: APPEARANCE_TOKENS_KEY,
+                        label: "自定义配色令牌",
+                        type: "tokens",
+                        wide: true,
+                        hint: "逐项取色或填十六进制；留空 = 跟随皮肤；保存后前台生效",
+                    },
                 ],
             },
             {
@@ -217,11 +410,288 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
         ],
     },
     {
+        id: "home",
+        label: "首页设置",
+        group: "外观配置",
+        icon: House,
+        keywords: ["首页", "公告", "home", "banner", "分类入口", "HOME_TOP", "公告栏"],
+        desc: "站点公告与首页顶部区（标题、分类入口、右侧卡片）。",
+        groups: [
+            {
+                id: "announcement",
+                label: "站点公告",
+                fields: [{ key: "SITE_ANNOUNCEMENT", label: "站点公告", type: "textarea", wide: true }],
+            },
+            {
+                id: "top-text",
+                label: "首页标题区",
+                fields: [
+                    { key: "HOME_TOP.title", label: "主标题", type: "text" },
+                    { key: "HOME_TOP.subTitle", label: "副标题", type: "text" },
+                    { key: "HOME_TOP.siteText", label: "站点小字", type: "text" },
+                ],
+            },
+            {
+                id: "top-banner",
+                label: "首页右侧卡片",
+                fields: [
+                    { key: "HOME_TOP.banner.title", label: "卡片标题", type: "text" },
+                    { key: "HOME_TOP.banner.tips", label: "角标文案", type: "text" },
+                    { key: "HOME_TOP.banner.link", label: "跳转链接", type: "text" },
+                    { key: "HOME_TOP.banner.image", label: "卡片背景图", type: "image" },
+                    { key: "HOME_TOP.banner.isExternal", label: "新标签页打开", type: "boolean" },
+                ],
+            },
+            {
+                id: "top-category",
+                label: "首页分类入口",
+                fields: [
+                    {
+                        key: "HOME_TOP.category",
+                        label: "分类入口",
+                        type: "list",
+                        hint: "背景支持图片地址或 linear-gradient(...)",
+                        itemFields: [
+                            { name: "name", label: "名称", placeholder: "分类" },
+                            { name: "path", label: "路径", placeholder: "/categories/xxx" },
+                            { name: "icon", label: "图标 class" },
+                            { name: "background", label: "背景", placeholder: "图片地址或 linear-gradient(...)" },
+                            { name: "isExternal", label: "新标签页打开", type: "boolean" },
+                        ],
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: "header",
+        label: "导航与页头",
+        group: "外观配置",
+        icon: Menu,
+        keywords: ["导航", "菜单", "页头", "顶栏", "header", "时钟", "旅行"],
+        desc: "站点头部导航菜单与页头附加项；导航菜单直接决定前台顶栏和移动端抽屉里的结构。",
+        groups: [
+            {
+                id: "menu",
+                label: "导航菜单",
+                fields: [
+                    {
+                        key: "header.menu",
+                        label: "导航菜单",
+                        type: "list",
+                        hint: "两层结构：分组（title）→ 分组内菜单项（items）",
+                        itemFields: [
+                            { name: "title", label: "分组名称", placeholder: "导航" },
+                            {
+                                name: "items",
+                                label: "分组内菜单项",
+                                nested: [
+                                    { name: "title", label: "标题", placeholder: "首页" },
+                                    { name: "path", label: "路径", placeholder: "/" },
+                                    { name: "icon", label: "图标 class", placeholder: "iconfont icon-home" },
+                                    { name: "isExternal", label: "新标签页打开", type: "boolean" },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                id: "nav",
+                label: "页头附加项",
+                fields: [
+                    { key: "header.nav.clock", label: "显示时钟", type: "boolean" },
+                    { key: "header.nav.travelling", label: "显示旅行足迹", type: "boolean" },
+                    { key: "header.nav.menu", label: "附加菜单", type: "json", hint: "类型为 unknown[]，结构含义待确认", placeholder: "[]" },
+                ],
+            },
+        ],
+    },
+    {
+        id: "userpanel",
+        label: "顶栏用户面板",
+        group: "外观配置",
+        icon: LayoutDashboard,
+        keywords: ["用户", "面板", "userpanel", "菜单", "通知", "发布", "顶栏"],
+        desc: "登录后右上角用户菜单里显示哪些入口（发布类入口仅管理员可见）。",
+        groups: [
+            {
+                id: "menu",
+                label: "用户菜单入口",
+                fields: [
+                    { key: "userpanel.show_user_center", label: "显示用户中心", type: "boolean" },
+                    { key: "userpanel.show_notifications", label: "显示通知", type: "boolean" },
+                    { key: "userpanel.show_publish_article", label: "显示发布文章", type: "boolean", hint: "仅管理员" },
+                    { key: "userpanel.show_publish_essay", label: "显示发布说说", type: "boolean", hint: "仅管理员" },
+                    { key: "userpanel.show_admin_dashboard", label: "显示后台入口", type: "boolean", hint: "仅管理员" },
+                ],
+            },
+        ],
+    },
+    {
+        id: "sidebar",
+        label: "侧边栏",
+        group: "外观配置",
+        icon: PanelLeft,
+        keywords: ["侧边栏", "sidebar", "作者卡", "归档", "标签云", "目录", "网站信息", "微信", "天气"],
+        desc: "博客右侧边栏的各个卡片：作者卡、归档、标签云、网站信息、目录、自定义侧边栏、微信与天气。",
+        groups: [
+            {
+                id: "author",
+                label: "作者卡片",
+                fields: [
+                    { key: "sidebar.author.enable", label: "显示作者卡片", type: "boolean" },
+                    { key: "sidebar.author.description", label: "悬浮描述", type: "textarea", wide: true, hint: "支持 HTML" },
+                    { key: "sidebar.author.skills", label: "技能词", type: "stringlist", hint: "顶部问候语点击循环展示", placeholder: "一条技能" },
+                    { key: "sidebar.author.statusImg", label: "头像状态角标", type: "image" },
+                    { key: "sidebar.author.social", label: "社交链接", type: "json", hint: "键为平台名，值为 { icon, link }，含义待确认", placeholder: "{}" },
+                ],
+            },
+            {
+                id: "archive",
+                label: "归档卡片",
+                fields: [{ key: "sidebar.archive.displayMonths", label: "显示月份数", type: "number", placeholder: "6", hint: "0 表示不限制" }],
+            },
+            {
+                id: "siteinfo",
+                label: "网站信息卡片",
+                fields: [
+                    { key: "sidebar.siteinfo.totalPostCount", label: "文章总数", type: "number" },
+                    { key: "sidebar.siteinfo.totalWordCount", label: "全站字数", type: "number" },
+                    { key: "sidebar.siteinfo.runtimeEnable", label: "显示建站天数", type: "boolean" },
+                ],
+            },
+            {
+                id: "recent-post",
+                label: "最近文章",
+                fields: [
+                    { key: "sidebar.recentPost.enable", label: "显示最近文章", type: "boolean" },
+                    { key: "sidebar.recentPost.count", label: "显示条数", type: "number" },
+                ],
+            },
+            {
+                id: "tags",
+                label: "标签云",
+                fields: [
+                    { key: "sidebar.tags.enable", label: "显示标签云", type: "boolean" },
+                    { key: "sidebar.tags.highlight", label: "高亮标签", type: "stringlist", placeholder: "一个标签名", hint: "填标签名，命中的标签用主色高亮" },
+                ],
+            },
+            {
+                id: "series",
+                label: "系列",
+                fields: [{ key: "sidebar.series.postCount", label: "显示文章数", type: "number" }],
+            },
+            {
+                id: "custom",
+                label: "自定义侧边栏",
+                fields: [{ key: "sidebar.custom.showInPost", label: "文章页显示", type: "boolean" }],
+            },
+            {
+                id: "toc",
+                label: "文章目录",
+                fields: [{ key: "sidebar.toc.collapseMode", label: "默认折叠", type: "boolean" }],
+            },
+            {
+                id: "doc",
+                label: "文档链接",
+                fields: [
+                    {
+                        key: "sidebar.doc.links",
+                        label: "文档链接",
+                        type: "list",
+                        itemFields: [
+                            { name: "title", label: "标题" },
+                            { name: "link", label: "链接" },
+                            { name: "icon", label: "图标 class" },
+                            { name: "external", label: "外链", type: "boolean" },
+                        ],
+                    },
+                ],
+            },
+            {
+                id: "wechat",
+                label: "微信卡片",
+                fields: [
+                    { key: "sidebar.wechat.enable", label: "显示微信卡片", type: "boolean" },
+                    { key: "sidebar.wechat.face", label: "正面图", type: "image" },
+                    { key: "sidebar.wechat.backFace", label: "背面图", type: "image" },
+                    { key: "sidebar.wechat.blurBackground", label: "模糊背景图", type: "image" },
+                    { key: "sidebar.wechat.link", label: "跳转链接", type: "text" },
+                ],
+            },
+            {
+                id: "weather",
+                label: "天气卡片",
+                fields: [
+                    { key: "sidebar.weather.enable", label: "显示天气卡片", type: "boolean" },
+                    {
+                        key: "sidebar.weather.enable_page",
+                        label: "显示范围",
+                        type: "text",
+                        placeholder: "all",
+                        hint: "all = 所有页面；其余取值含义待确认",
+                    },
+                    {
+                        key: "sidebar.weather.rectangle",
+                        label: "默认地区坐标",
+                        type: "text",
+                        placeholder: "112.6534116,27.96920845",
+                        hint: "经度,纬度",
+                    },
+                    { key: "sidebar.weather.default_rectangle", label: "固定用默认地区", type: "boolean", hint: "开启后忽略访客定位" },
+                    { key: "sidebar.weather.loading", label: "加载中动画图", type: "image" },
+                    {
+                        key: "sidebar.weather.qweather_api_host",
+                        label: "和风天气 API 域名",
+                        type: "text",
+                        hint: "和风控制台里的专用域名（不含 key；key 属敏感项，不在此维护）",
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: "one-image",
+        label: "页面大图",
+        group: "外观配置",
+        icon: GalleryHorizontalEnd,
+        keywords: ["大图", "one_image", "OneImage", "背景图", "视频背景", "打字机", "一言", "首页", "归档", "分类", "标签", "hero"],
+        desc: "首页 / 归档页 / 分类页 / 标签页顶部整屏大图（前台 one-image-hero.tsx 真实使用，四页字段一致）；桌面端与移动端可各配图片或视频。",
+        groups: [
+            { id: "home", label: "首页大图", fields: oneImagePageFields("home") },
+            { id: "archives", label: "归档页大图", fields: oneImagePageFields("archives") },
+            { id: "categories", label: "分类页大图", fields: oneImagePageFields("categories") },
+            { id: "tags", label: "标签页大图", fields: oneImagePageFields("tags") },
+            {
+                id: "hitokoto",
+                label: "一言与打字机",
+                fields: [
+                    {
+                        key: "page.one_image.hitokoto_api",
+                        label: "一言接口地址",
+                        type: "text",
+                        placeholder: "https://v1.hitokoto.cn/",
+                        hint: "留空则用 https://v1.hitokoto.cn/；返回 JSON 里的 hitokoto 字段作为句子",
+                    },
+                    {
+                        key: "page.one_image.typing_speed",
+                        label: "打字速度",
+                        type: "number",
+                        placeholder: "100",
+                        hint: "每个字的间隔（毫秒），留空或 0 时按 100 处理",
+                    },
+                ],
+            },
+        ],
+    },
+    {
         id: "footer",
         label: "页脚",
+        group: "外观配置",
         icon: PanelBottom,
         keywords: ["页脚", "footer", "社交", "图标", "项目", "友链", "运行时间", "徽章", "kuma", "备案"],
-        desc: `页脚社交栏、项目链接、底部信息条、运行时间与徽章。${NOT_RENDERED_DESC}`,
+        desc: "页脚社交栏、项目链接、底部信息条、运行时间与徽章。",
         groups: [
             {
                 id: "social",
@@ -272,7 +742,6 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
             {
                 id: "bar",
                 label: "底部信息条",
-                notRendered: true,
                 fields: [
                     { key: "footer.owner.name", label: "站长名称", type: "text" },
                     { key: "footer.owner.since", label: "建站年份", type: "number", placeholder: "2024" },
@@ -294,7 +763,6 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
             {
                 id: "runtime",
                 label: "运行时间",
-                notRendered: true,
                 fields: [
                     { key: "footer.runtime.enable", label: "显示运行时间", type: "boolean" },
                     { key: "footer.runtime.launch_time", label: "建站时间", type: "text", placeholder: "2024-01-01T00:00:00+08:00" },
@@ -307,7 +775,6 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
             {
                 id: "badge",
                 label: "徽章",
-                notRendered: true,
                 fields: [
                     { key: "footer.badge.enable", label: "显示徽章", type: "boolean" },
                     {
@@ -326,10 +793,975 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
             {
                 id: "kuma",
                 label: "Uptime Kuma",
-                notRendered: true,
                 fields: [
                     { key: "footer.uptime_kuma.enable", label: "显示监控", type: "boolean" },
-                    { key: "footer.uptime_kuma.page_url", label: "监控页地址", type: "text", placeholder: "https://status.example.com" },
+                    {
+                        key: "footer.uptime_kuma.page_url",
+                        label: "监控页地址",
+                        type: "text",
+                        placeholder: "https://status.example.com/status/main",
+                        hint: "填完整状态页地址（含 /status/<slug>）：页脚的状态点会按它自动推导心跳接口，实时显示运行状态",
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: "post",
+        label: "文章配置",
+        group: "内容管理",
+        icon: FileText,
+        keywords: ["文章", "post", "代码块", "版权", "目录", "波浪", "404"],
+        desc: "文章详情页的代码块、底部按钮、版权模板、目录锚点、波浪动效与 404 默认图。",
+        groups: [
+            {
+                id: "code-block",
+                label: "代码块",
+                fields: [
+                    { key: "post.code_block.code_max_lines", label: "折叠行数阈值", type: "number", placeholder: "15", hint: "超过该行数折叠，显示「展开」按钮" },
+                    { key: "post.code_block.mac_style", label: "Mac 风格圆点", type: "boolean" },
+                ],
+            },
+            {
+                id: "copyright-buttons",
+                label: "文章底部按钮",
+                fields: [
+                    { key: "post.copyright.show_reward_button", label: "显示打赏按钮", type: "boolean" },
+                    { key: "post.copyright.show_share_button", label: "显示分享按钮", type: "boolean" },
+                    { key: "post.copyright.show_subscribe_button", label: "显示订阅按钮", type: "boolean" },
+                ],
+            },
+            {
+                id: "copyright-template",
+                label: "版权文案模板",
+                fields: [
+                    { key: "post.copyright.original_template", label: "原创模板", type: "textarea", wide: true },
+                    { key: "post.copyright.reprint_template_with_url", label: "转载模板（带原链）", type: "textarea", wide: true },
+                    { key: "post.copyright.reprint_template_without_url", label: "转载模板（无原链）", type: "textarea", wide: true },
+                ],
+            },
+            {
+                id: "copy",
+                label: "复制版权",
+                fields: [
+                    { key: "post.copy.enable", label: "启用", type: "boolean" },
+                    { key: "post.copy.copyright_enable", label: "追加版权信息", type: "boolean" },
+                    { key: "post.copy.copyright_original", label: "原创追加文案", type: "textarea", wide: true },
+                    { key: "post.copy.copyright_reprint", label: "转载追加文案", type: "textarea", wide: true },
+                ],
+            },
+            {
+                id: "default",
+                label: "文章列表默认",
+                fields: [
+                    { key: "post.default.cover", label: "默认封面", type: "image" },
+                    { key: "post.default.double_column", label: "双列布局", type: "boolean" },
+                    { key: "post.default.enable_primary_color_tag", label: "标签用主题色", type: "boolean" },
+                    { key: "post.default.page_size", label: "每页数量", type: "number" },
+                ],
+            },
+            {
+                id: "toc",
+                label: "目录锚点",
+                fields: [{ key: "post.toc.hash_update_mode", label: "锚点更新方式", type: "text", hint: "类型是字符串，取值待确认" }],
+            },
+            {
+                id: "waves",
+                label: "波浪动效",
+                fields: [
+                    {
+                        key: "post.waves.enable",
+                        label: "文章底部波浪动效",
+                        type: "boolean",
+                        hint: "正文卡片下方的一层装饰波浪（跟随主题色，系统开启「减少动态效果」时静止）",
+                    },
+                ],
+            },
+            {
+                id: "page404",
+                label: "404 页面",
+                fields: [{ key: "post.page404.default_image", label: "默认配图", type: "image" }],
+            },
+            {
+                id: "post-reading",
+                label: "阅读增强",
+                fields: [
+                    { key: "post.reading_mode", label: "沉浸式阅读模式", type: "boolean", hint: "本站前台未实现，开启无效果" },
+                    { key: "post.smooth_scroll", label: "平滑滚动", type: "boolean", hint: "本站前台未实现，开启无效果" },
+                    { key: "post.chinese_conversion", label: "中文简繁转换", type: "boolean", hint: "本站前台未实现，开启无效果" },
+                    { key: "post.comment_dialog", label: "评论弹窗模式", type: "boolean", hint: "本站前台未实现，开启无效果" },
+                ],
+            },
+            {
+                id: "post-subscribe",
+                label: "文章订阅与过期",
+                fields: [
+                    { key: "post.subscribe.enable", label: "启用文章订阅功能", type: "boolean" },
+                    { key: "post.subscribe.button_text", label: "订阅按钮文案", type: "text", hint: "本站前台未读取该键" },
+                    { key: "post.subscribe.dialog_title", label: "订阅弹窗标题", type: "text", hint: "本站前台未读取该键" },
+                    { key: "post.subscribe.dialog_desc", label: "订阅弹窗说明", type: "textarea", wide: true, hint: "本站前台未读取该键" },
+                    {
+                        key: "post.expiration_time",
+                        label: "文章过期时间（天）",
+                        type: "number",
+                        hint: "超过该天数后前台提示「内容可能已过时」；0 表示不提示",
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: "features-register",
+        label: "注册与外链",
+        group: "高级功能",
+        icon: UserPlus,
+        keywords: ["注册", "用户注册", "开放注册", "外链", "跳转提示", "enable", "registration", "external"],
+        desc: "开放用户注册与外链跳转提示页两个开关。",
+        groups: [
+            {
+                id: "site-register",
+                label: "站点与注册",
+                fields: [
+                    {
+                        key: "ENABLE_REGISTRATION",
+                        label: "开放用户注册",
+                        type: "boolean",
+                    },
+                    {
+                        key: "ENABLE_EXTERNAL_LINK_WARNING",
+                        label: "外链跳转提示页",
+                        type: "boolean",
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: "features-oauth",
+        label: "第三方登录",
+        group: "三方服务",
+        icon: KeyRound,
+        keywords: ["第三方登录", "oauth", "github", "google", "logto", "microsoft", "oidc", "qq", "rainbow", "微信登录"],
+        desc: "GitHub / Google / Logto / Microsoft / OIDC / QQ / Rainbow / 微信 八种第三方登录的启用开关。",
+        groups: [
+            {
+                id: "oauth",
+                label: "第三方登录",
+                fields: [
+                    { key: "oauth.github.enable", label: "启用 GitHub 登录", type: "boolean", hint: "含义待确认" },
+                    { key: "oauth.google.enable", label: "启用 Google 登录", type: "boolean", hint: "含义待确认" },
+                    { key: "oauth.logto.enable", label: "启用 Logto 登录", type: "boolean", hint: "含义待确认" },
+                    { key: "oauth.microsoft.enable", label: "启用 Microsoft 登录", type: "boolean", hint: "含义待确认" },
+                    { key: "oauth.oidc.enable", label: "启用 OIDC 登录", type: "boolean", hint: "含义待确认" },
+                    { key: "oauth.qq.enable", label: "启用 QQ 登录", type: "boolean", hint: "含义待确认" },
+                    { key: "oauth.rainbow.enable", label: "启用 Rainbow 登录", type: "boolean", hint: "含义待确认" },
+                    { key: "oauth.wechat.enable", label: "启用微信登录", type: "boolean", hint: "含义待确认" },
+                ],
+            },
+            {
+                id: "oauth-name",
+                label: "登录按钮名称",
+                fields: [
+                    { key: "oauth.github.display_name", label: "GitHub", type: "text", placeholder: "GitHub" },
+                    { key: "oauth.google.display_name", label: "Google", type: "text", placeholder: "Google" },
+                    { key: "oauth.logto.display_name", label: "Logto", type: "text", placeholder: "Logto" },
+                    { key: "oauth.microsoft.display_name", label: "Microsoft", type: "text", placeholder: "Microsoft" },
+                    { key: "oauth.oidc.display_name", label: "OIDC", type: "text", placeholder: "OIDC" },
+                    { key: "oauth.qq.display_name", label: "QQ", type: "text", placeholder: "QQ" },
+                    { key: "oauth.rainbow.display_name", label: "Rainbow", type: "text", placeholder: "Rainbow" },
+                    { key: "oauth.wechat.display_name", label: "微信", type: "text", placeholder: "微信" },
+                ],
+            },
+            {
+                id: "oauth-rainbow",
+                label: "Rainbow 附加配置",
+                fields: [
+                    { key: "oauth.rainbow.callback_url", label: "回调地址", type: "text", placeholder: "https://example.com/callback" },
+                    { key: "oauth.rainbow.login_methods", label: "登录方式", type: "text", hint: "取值含义待确认（后端无注释）" },
+                ],
+            },
+        ],
+    },
+    {
+        id: "features-comment",
+        label: "评论系统",
+        group: "用户通知",
+        icon: MessageSquare,
+        keywords: ["评论", "comment", "互动", "多作者", "multi_author"],
+        desc: "评论区行为：开关、显示项、输入限制与身份文案，以及文章多作者。",
+        groups: [
+            {
+                id: "comment-switch",
+                label: "评论开关",
+                fields: [
+                    { key: "comment.enable", label: "启用评论功能", type: "boolean" },
+                    { key: "comment.login_required", label: "登录后才能评论", type: "boolean" },
+                    { key: "comment.allow_image_upload", label: "允许评论传图", type: "boolean" },
+                    { key: "comment.barrage_enable", label: "弹幕模式", type: "boolean" },
+                    { key: "comment.random_praise", label: "随机精选评论", type: "boolean", hint: "本站前台未读取该键" },
+                ],
+            },
+            {
+                id: "comment-display",
+                label: "评论显示",
+                fields: [
+                    { key: "comment.page_size", label: "每页评论数", type: "number", placeholder: "10" },
+                    { key: "comment.show_ua", label: "显示 UA（浏览器/系统）", type: "boolean" },
+                    { key: "comment.show_region", label: "显示 IP 归属地", type: "boolean" },
+                    { key: "comment.master_tag", label: "博主标签文案", type: "text", placeholder: "博主" },
+                ],
+            },
+            {
+                id: "comment-input",
+                label: "评论输入与身份",
+                fields: [
+                    { key: "comment.placeholder", label: "输入框占位文案", type: "textarea", wide: true },
+                    { key: "comment.limit_length", label: "单条最大字数", type: "number", placeholder: "10000" },
+                    { key: "comment.emoji_cdn", label: "表情包配置地址", type: "text", hint: "Twikoo/表情包 JSON 的地址" },
+                    { key: "comment.blogger_email", label: "博主邮箱", type: "text", hint: "判断「博主」标识用" },
+                    { key: "comment.anonymous_email", label: "匿名邮箱", type: "text", hint: "留空使用默认" },
+                ],
+            },
+            {
+                id: "comment-multi-author",
+                label: "文章多作者",
+                fields: [
+                    { key: "article.multi_author.enable", label: "启用文章多作者", type: "boolean", hint: "含义待确认" },
+                    { key: "article.multi_author.need_review", label: "多作者需要审核", type: "boolean", hint: "本站前台未读取该键" },
+                ],
+            },
+        ],
+    },
+    {
+        id: "features-media",
+        label: "文件处理",
+        group: "内容管理",
+        icon: FileImage,
+        keywords: ["媒体", "媒体处理", "缩略图", "生成器", "EXIF", "音乐", "封面", "FFmpeg", "VIPS", "LibRaw"],
+        desc: "上传与媒体处理管线：各生成器开关、体积上限与支持的扩展名（都由后端处理，本站前台不读取）。",
+        groups: [
+            {
+                id: "upload",
+                label: "上传限制与默认参数",
+                fields: [
+                    { key: "UPLOAD_ALLOWED_EXTENSIONS", label: "允许上传的扩展名", type: "text", placeholder: "留空表示不限制；逗号分隔", hint: "留空=按黑名单，填了=只允许这些" },
+                    { key: "UPLOAD_DENIED_EXTENSIONS", label: "禁止上传的扩展名", type: "text", placeholder: "逗号分隔" },
+                    { key: "BUILTIN_MAX_FILE_SIZE", label: "内置处理体积上限（字节）", type: "number", hint: "78643200 = 75 MB" },
+                    { key: "BUILTIN_DIRECT_SERVE_EXTS", label: "直出扩展名", type: "text", placeholder: "avif,webp", hint: "这些格式不转码、直接返回原文件" },
+                    { key: "DEFAULT_BIG_PARAM", label: "默认大图参数", type: "text" },
+                    { key: "DEFAULT_THUMB_PARAM", label: "默认缩略图参数", type: "text" },
+                ],
+            },
+            {
+                id: "media-builtin",
+                label: "内置缩略图生成器",
+                fields: [{ key: "ENABLE_BUILTIN_GENERATOR", label: "启用内置生成器", type: "boolean" }],
+            },
+            {
+                id: "media-vips",
+                label: "VIPS 缩略图生成器",
+                fields: [
+                    { key: "ENABLE_VIPS_GENERATOR", label: "启用 VIPS 生成器", type: "boolean" },
+                    { key: "VIPS_MAX_FILE_SIZE", label: "体积上限（字节）", type: "number" },
+                    { key: "VIPS_SUPPORTED_EXTS", label: "支持的扩展名", type: "textarea", wide: true, hint: "逗号分隔；VIPS 处理 RAW 等格式" },
+                ],
+            },
+            {
+                id: "media-ffmpeg",
+                label: "FFmpeg 视频缩略图",
+                fields: [
+                    { key: "ENABLE_FFMPEG_GENERATOR", label: "启用 FFmpeg 生成器", type: "boolean" },
+                    { key: "FFMPEG_MAX_FILE_SIZE", label: "体积上限（字节）", type: "number", hint: "10737418240 = 10 GB" },
+                    { key: "FFMPEG_CAPTURE_TIME", label: "截帧时间点", type: "text", placeholder: "00:00:01.00" },
+                    { key: "FFMPEG_SUPPORTED_EXTS", label: "支持的扩展名", type: "textarea", wide: true, hint: "逗号分隔" },
+                ],
+            },
+            {
+                id: "media-libraw",
+                label: "LibRaw 相机 RAW 缩略图",
+                fields: [
+                    { key: "ENABLE_LIBRAW_GENERATOR", label: "启用 LibRaw 生成器", type: "boolean" },
+                    { key: "LIBRAW_MAX_FILE_SIZE", label: "体积上限（字节）", type: "number" },
+                    { key: "LIBRAW_SUPPORTED_EXTS", label: "支持的扩展名", type: "textarea", wide: true, hint: "逗号分隔" },
+                ],
+            },
+            {
+                id: "media-exif",
+                label: "EXIF 提取",
+                fields: [
+                    { key: "ENABLE_EXIF_EXTRACTOR", label: "启用 EXIF 提取", type: "boolean" },
+                    { key: "EXIF_MAX_SIZE_LOCAL", label: "本地文件体积上限（字节）", type: "number" },
+                    { key: "EXIF_MAX_SIZE_REMOTE", label: "远端文件体积上限（字节）", type: "number" },
+                    { key: "EXIF_USE_BRUTE_FORCE", label: "暴力扫描（慢但更全）", type: "boolean" },
+                ],
+            },
+            {
+                id: "media-music",
+                label: "音乐封面与元数据",
+                fields: [
+                    { key: "ENABLE_MUSIC_COVER_GENERATOR", label: "启用歌曲封面提取", type: "boolean" },
+                    { key: "MUSIC_COVER_MAX_FILE_SIZE", label: "封面体积上限（字节）", type: "number" },
+                    { key: "MUSIC_COVER_SUPPORTED_EXTS", label: "封面支持的扩展名", type: "text", placeholder: "mp3,m4a,ogg,flac" },
+                    { key: "ENABLE_MUSIC_EXTRACTOR", label: "启用音乐元数据提取", type: "boolean" },
+                    { key: "MUSIC_MAX_SIZE_LOCAL", label: "本地音乐体积上限（字节）", type: "number" },
+                    { key: "MUSIC_MAX_SIZE_REMOTE", label: "远端音乐体积上限（字节）", type: "number" },
+                ],
+            },
+        ],
+    },
+    {
+        id: "features-ai",
+        label: "AI 功能",
+        group: "高级功能",
+        icon: Sparkles,
+        keywords: ["AI", "ai_assistant", "AI 助手", "AI 播客", "podcast"],
+        desc: "AI 助手与 AI 播客的开关、文案与建议（本站前台没有 AI 界面，改动只影响后端与官方前端）。",
+        groups: [
+            {
+                id: "ai-switch",
+                label: "功能开关",
+                fields: [
+                    { key: "ai_assistant.enable", label: "启用 AI 助手", type: "boolean", hint: "含义待确认" },
+                    { key: "ai_podcast.enable", label: "启用 AI 播客", type: "boolean", hint: "含义待确认" },
+                ],
+            },
+            {
+                id: "ai-assistant",
+                label: "AI 助手文案",
+                fields: [
+                    { key: "ai_assistant.name", label: "助手名称", type: "text", placeholder: "AI 助手" },
+                    { key: "ai_assistant.welcome", label: "欢迎语", type: "textarea", wide: true },
+                    {
+                        key: "ai_assistant.chat_suggestions",
+                        label: "对话建议",
+                        type: "stringlist",
+                        placeholder: "一条建议问题",
+                        hint: "聊天输入框上方的建议",
+                    },
+                    { key: "ai_assistant.search_suggestions", label: "搜索建议", type: "stringlist", placeholder: "一条建议" },
+                ],
+            },
+            {
+                id: "ai-podcast",
+                label: "AI 播客按钮",
+                fields: [
+                    { key: "ai_podcast.button_text", label: "按钮文案", type: "text", placeholder: "AI 播客" },
+                    {
+                        key: "ai_podcast.button_icon",
+                        label: "按钮图标",
+                        type: "text",
+                        placeholder: "ri:mic-fill",
+                        hint: "官方用 iconify 名（ri:xxx），本站图标源没有这套图标",
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: "features-captcha",
+        label: "人机验证",
+        group: "高级功能",
+        icon: ShieldCheck,
+        keywords: ["人机验证", "验证", "turnstile", "cloudflare", "captcha"],
+        desc: "验证服务选择与图片验证码参数；Turnstile 的 site key 属敏感项，不在此维护。",
+        groups: [
+            {
+                id: "captcha-provider",
+                label: "验证方式",
+                fields: [
+                    {
+                        key: "captcha.provider",
+                        label: "验证服务",
+                        type: "select",
+                        options: [
+                            { value: "none", label: "不启用" },
+                            { value: "geetest", label: "极验 Geetest" },
+                            { value: "turnstile", label: "Cloudflare Turnstile" },
+                        ],
+                    },
+                    {
+                        key: "turnstile.enable",
+                        label: "启用 Cloudflare Turnstile",
+                        type: "boolean",
+                        hint: "后端注释：已废弃，请改用上面的「验证服务」",
+                    },
+                ],
+            },
+            {
+                id: "image-captcha",
+                label: "图片验证码",
+                fields: [
+                    { key: "image_captcha.length", label: "验证码位数", type: "number", placeholder: "4" },
+                    { key: "image_captcha.expire", label: "有效期（秒）", type: "number", placeholder: "300" },
+                ],
+            },
+        ],
+    },
+    {
+        id: "features-share",
+        label: "微信分享",
+        group: "高级功能",
+        icon: Share2,
+        keywords: ["微信分享", "分享", "share", "wechat"],
+        desc: "文章与页面的微信分享功能开关。",
+        groups: [
+            {
+                id: "share",
+                label: "微信分享",
+                fields: [
+                    { key: "wechat.share.enable", label: "启用微信分享功能", type: "boolean" },
+                ],
+            },
+        ],
+    },
+    {
+        id: "features-misc",
+        label: "其它开关",
+        group: "高级功能",
+        icon: SlidersHorizontal,
+        keywords: ["其它", "开关", "音乐播放器", "music", "社区问答", "烟花", "fireworks", "community_qa"],
+        desc: "零散的功能开关与文案：音乐播放器、社区问答、节庆烟花入口及其按钮/祝福文案。",
+        groups: [
+            {
+                id: "misc",
+                label: "其它",
+                fields: [
+                    { key: "music.player.enable", label: "启用音乐播放器功能", type: "boolean" },
+                    { key: "community_qa.enable", label: "启用社区问答", type: "boolean", hint: "本站前台未读取该键" },
+                    { key: "fireworks.enable", label: "启用节庆烟花入口", type: "boolean", hint: "本站前台未读取该键" },
+                    { key: "DISABLE_RIGHT_MENU", label: "隐藏右侧悬浮菜单", type: "boolean", hint: "本站前台用的是自己的悬浮按钮组，未读取该键" },
+                ],
+            },
+            {
+                id: "fireworks-text",
+                label: "节庆烟花文案",
+                fields: [
+                    { key: "fireworks.button_text", label: "按钮文案", type: "text", placeholder: "节日快乐" },
+                    { key: "fireworks.message", label: "祝福文案", type: "textarea", wide: true },
+                ],
+            },
+        ],
+    },
+    {
+        id: "about",
+        label: "关于页面",
+        group: "页面显示",
+        icon: UserRound,
+        keywords: ["关于", "about", "自我介绍", "技能", "性格", "座右铭", "生涯", "追番", "音乐", "地图"],
+        desc: "关于页的全部文案与模块开关：头像区、自我介绍、技能图标、统计、地图、性格、座右铭、Buff、游戏、追番、技术偏好、音乐。",
+        groups: [
+            {
+                id: "creativity",
+                label: "技能展示图标",
+                fields: [
+                    {
+                        key: "CREATIVITY.creativity_list",
+                        label: "技能图标列表",
+                        type: "list",
+                        itemFields: [
+                            { name: "name", label: "名称", placeholder: "Vue" },
+                            { name: "icon", label: "图标地址", placeholder: "图片地址" },
+                            { name: "color", label: "底色", type: "color", placeholder: "#39c5bb" },
+                        ],
+                    },
+                ],
+            },
+            {
+                id: "creativity-text",
+                label: "技能展示标题",
+                fields: [
+                    { key: "CREATIVITY.title", label: "标题", type: "text" },
+                    { key: "CREATIVITY.subtitle", label: "副标题", type: "text" },
+                ],
+            },
+            {
+                id: "hero",
+                label: "关于页头部",
+                fields: [
+                    { key: "about.page.name", label: "名字", type: "text" },
+                    { key: "about.page.description", label: "一句话介绍", type: "textarea", wide: true },
+                    { key: "about.page.avatar_img", label: "头像", type: "image", hint: "站点信息里填了站长头像时以站长头像优先" },
+                    { key: "about.page.statistics_background", label: "统计卡片背景图", type: "image" },
+                ],
+            },
+            {
+                id: "hero-subtitle",
+                label: "关于页副标题",
+                fields: [{ key: "about.page.subtitle", label: "副标题", type: "text" }],
+            },
+            {
+                id: "self-info",
+                label: "个人信息",
+                fields: [
+                    { key: "about.page.self_info.tips1", label: "标签一", type: "text", placeholder: "生于" },
+                    { key: "about.page.self_info.contentYear", label: "标签一内容", type: "text", placeholder: "2000" },
+                    { key: "about.page.self_info.tips2", label: "标签二", type: "text", placeholder: "毕业于" },
+                    { key: "about.page.self_info.content2", label: "标签二内容", type: "text" },
+                    { key: "about.page.self_info.tips3", label: "标签三", type: "text", placeholder: "现在职业" },
+                    { key: "about.page.self_info.content3", label: "标签三内容", type: "text" },
+                ],
+            },
+            {
+                id: "personalities",
+                label: "性格与照片",
+                fields: [
+                    { key: "about.page.personalities.tips", label: "小字提示", type: "text" },
+                    { key: "about.page.personalities.authorName", label: "昵称", type: "text" },
+                    { key: "about.page.personalities.nameUrl", label: "昵称跳转链接", type: "text" },
+                    { key: "about.page.personalities.personalityType", label: "性格类型", type: "text", placeholder: "INFP" },
+                    { key: "about.page.personalities.personalityTypeColor", label: "性格类型颜色", type: "color", placeholder: "#ac899c" },
+                    { key: "about.page.personalities.personalityImg", label: "性格配图", type: "image" },
+                    { key: "about.page.personalities.photoUrl", label: "照片", type: "image" },
+                ],
+            },
+            {
+                id: "about-site-tips",
+                label: "站点关键词轮播",
+                fields: [
+                    { key: "about.page.about_site_tips.tips", label: "小字提示", type: "text" },
+                    { key: "about.page.about_site_tips.title1", label: "标题第一行", type: "text" },
+                    { key: "about.page.about_site_tips.title2", label: "标题第二行", type: "text" },
+                    {
+                        key: "about.page.about_site_tips.word",
+                        label: "轮播词",
+                        type: "stringlist",
+                        hint: "至少两条才会显示轮播",
+                        placeholder: "一条词",
+                    },
+                ],
+            },
+            {
+                id: "skills",
+                label: "技能标签",
+                fields: [
+                    { key: "about.page.avatar_skills_left", label: "头像左侧技能", type: "stringlist", placeholder: "一条技能" },
+                    { key: "about.page.avatar_skills_right", label: "头像右侧技能", type: "stringlist", placeholder: "一条技能" },
+                    { key: "about.page.skills_tips.tips", label: "小字提示", type: "text" },
+                    { key: "about.page.skills_tips.title", label: "标题", type: "text" },
+                ],
+            },
+            {
+                id: "enable",
+                label: "模块开关（生效中）",
+                fields: [
+                    { key: "about.page.enable.author_box", label: "作者头像框", type: "boolean" },
+                    { key: "about.page.enable.page_content", label: "自我介绍卡", type: "boolean" },
+                    { key: "about.page.enable.skills", label: "技能展示", type: "boolean" },
+                    { key: "about.page.enable.careers", label: "生涯", type: "boolean" },
+                    { key: "about.page.enable.statistic", label: "访问统计", type: "boolean" },
+                    { key: "about.page.enable.map_and_info", label: "地图与个人信息", type: "boolean" },
+                    { key: "about.page.enable.personality", label: "性格", type: "boolean" },
+                    { key: "about.page.enable.photo", label: "照片", type: "boolean" },
+                    { key: "about.page.enable.maxim", label: "座右铭", type: "boolean" },
+                    { key: "about.page.enable.buff", label: "Buff 卡片", type: "boolean" },
+                    { key: "about.page.enable.game", label: "游戏", type: "boolean" },
+                    { key: "about.page.enable.comic", label: "追番", type: "boolean" },
+                    { key: "about.page.enable.like_tech", label: "技术偏好", type: "boolean" },
+                    { key: "about.page.enable.music", label: "音乐", type: "boolean" },
+                ],
+            },
+            {
+                id: "enable-extra",
+                label: "模块开关（未渲染）",
+                fields: [
+                    { key: "about.page.enable.comment", label: "评论区", type: "boolean" },
+                    { key: "about.page.enable.custom_code", label: "自定义代码模块", type: "boolean" },
+                ],
+            },
+            {
+                id: "buff",
+                label: "Buff 卡片",
+                fields: [
+                    { key: "about.page.buff.tips", label: "小字提示", type: "text" },
+                    { key: "about.page.buff.top", label: "上行文案", type: "text" },
+                    { key: "about.page.buff.bottom", label: "下行文案", type: "text" },
+                ],
+            },
+            {
+                id: "maxim",
+                label: "座右铭",
+                fields: [
+                    { key: "about.page.maxim.tips", label: "小字提示", type: "text" },
+                    { key: "about.page.maxim.top", label: "上行文案", type: "text" },
+                    { key: "about.page.maxim.bottom", label: "下行文案", type: "text" },
+                ],
+            },
+            {
+                id: "careers",
+                label: "生涯",
+                fields: [
+                    { key: "about.page.careers.title", label: "标题", type: "text" },
+                    { key: "about.page.careers.tips", label: "小字提示", type: "text" },
+                    { key: "about.page.careers.img", label: "右下角配图", type: "image" },
+                    {
+                        key: "about.page.careers.list",
+                        label: "生涯条目",
+                        type: "list",
+                        itemFields: [
+                            { name: "desc", label: "描述" },
+                            { name: "color", label: "圆点颜色", type: "color", placeholder: "#357ef5" },
+                        ],
+                    },
+                ],
+            },
+            {
+                id: "comic",
+                label: "追番",
+                fields: [
+                    { key: "about.page.comic.title", label: "标题", type: "text" },
+                    { key: "about.page.comic.tips", label: "小字提示", type: "text" },
+                    {
+                        key: "about.page.comic.list",
+                        label: "追番条目",
+                        type: "list",
+                        itemFields: [
+                            { name: "name", label: "名称" },
+                            { name: "cover", label: "封面地址", placeholder: "图片地址" },
+                            { name: "href", label: "跳转链接" },
+                        ],
+                    },
+                ],
+            },
+            {
+                id: "game",
+                label: "游戏",
+                fields: [
+                    { key: "about.page.game.title", label: "标题", type: "text" },
+                    { key: "about.page.game.tips", label: "小字提示", type: "text" },
+                    { key: "about.page.game.background", label: "背景图", type: "image" },
+                    { key: "about.page.game.uid", label: "UID", type: "text" },
+                ],
+            },
+            {
+                id: "like",
+                label: "技术偏好",
+                fields: [
+                    { key: "about.page.like.title", label: "标题", type: "text" },
+                    { key: "about.page.like.tips", label: "小字提示", type: "text" },
+                    { key: "about.page.like.bottom", label: "底部文案", type: "text" },
+                    { key: "about.page.like.background", label: "背景图", type: "image" },
+                ],
+            },
+            {
+                id: "map",
+                label: "地图与信息",
+                fields: [
+                    { key: "about.page.map.title", label: "地图标题", type: "text" },
+                    { key: "about.page.map.strengthenTitle", label: "地图加粗标题", type: "text" },
+                    { key: "about.page.map.background", label: "地图背景图", type: "image" },
+                ],
+            },
+            {
+                id: "map-extra",
+                label: "地图深色背景",
+                fields: [{ key: "about.page.map.backgroundDark", label: "深色模式背景图", type: "image", hint: "取值含义待确认" }],
+            },
+            {
+                id: "music",
+                label: "音乐卡片",
+                fields: [
+                    { key: "about.page.music.title", label: "标题", type: "text" },
+                    { key: "about.page.music.tips", label: "小字提示", type: "text" },
+                    { key: "about.page.music.link", label: "更多推荐链接", type: "text" },
+                    { key: "about.page.music.background", label: "背景图", type: "image" },
+                ],
+            },
+        ],
+    },
+    {
+        id: "banner-album",
+        label: "相册页面",
+        group: "页面显示",
+        icon: Images,
+        keywords: ["相册", "album", "横幅", "banner", "背景图", "标题", "瀑布流", "列数", "分页", "评论"],
+        desc: "相册页：顶部横幅、列表分页与瀑布流列数，以及图片参数与接口。",
+        groups: [
+            {
+                id: "album",
+                label: "相册横幅",
+                fields: [
+                    { key: "album.banner.title", label: "标题", type: "text" },
+                    { key: "album.banner.tip", label: "小字提示", type: "text" },
+                    { key: "album.banner.description", label: "描述", type: "text" },
+                    { key: "album.banner.background", label: "背景图", type: "image" },
+                ],
+            },
+            {
+                id: "album-list",
+                label: "列表与分页",
+                fields: [
+                    { key: "album.page_size", label: "每页图片数", type: "number", placeholder: "24" },
+                    {
+                        key: "album.layout_mode",
+                        label: "列表布局",
+                        type: "select",
+                        options: [
+                            { value: "grid", label: "网格" },
+                            { value: "waterfall", label: "瀑布流" },
+                        ],
+                        hint: "本站相册页目前固定用瀑布流，未读取该键",
+                    },
+                    { key: "album.about_link", label: "「关于」跳转", type: "text", placeholder: "留空用站点信息里的关于页链接" },
+                    { key: "album.enable_comment", label: "显示评论区", type: "boolean" },
+                ],
+            },
+            {
+                id: "album-waterfall",
+                label: "瀑布流列数与间距",
+                fields: [
+                    { key: "album.waterfall.column_count.large", label: "大屏列数", type: "number", placeholder: "4" },
+                    { key: "album.waterfall.column_count.medium", label: "中屏列数", type: "number", placeholder: "3" },
+                    { key: "album.waterfall.column_count.small", label: "小屏列数", type: "number", placeholder: "1" },
+                    { key: "album.waterfall.gap", label: "图片间距（px）", type: "number", placeholder: "16" },
+                ],
+            },
+            {
+                id: "album-misc",
+                label: "图片参数与接口",
+                fields: [
+                    { key: "album.default_big_param", label: "默认大图参数", type: "text", hint: "本站前台未读取该键" },
+                    { key: "album.default_thumb_param", label: "默认缩略图参数", type: "text", hint: "本站前台未读取该键" },
+                    { key: "album.api_url", label: "相册接口地址", type: "text", hint: "留空用站点接口；本站前台未读取该键" },
+                ],
+            },
+        ],
+    },
+    {
+        id: "banner-essay",
+        label: "即刻页面",
+        group: "页面显示",
+        icon: NotebookPen,
+        keywords: ["即刻", "说说", "essay", "横幅", "banner", "分页", "加载更多", "每页数量"],
+        desc: "即刻（说说）页顶部横幅的文案与背景，以及每页条数与分页方式。",
+        groups: [
+            {
+                id: "essay",
+                label: "即刻横幅",
+                fields: [
+                    { key: "essay.home_enable", label: "显示横幅", type: "boolean" },
+                    { key: "essay.title", label: "标题", type: "text" },
+                    { key: "essay.subtitle", label: "副标题", type: "text" },
+                    { key: "essay.tips", label: "小字提示", type: "text" },
+                    { key: "essay.button_text", label: "按钮文案", type: "text" },
+                    { key: "essay.button_link", label: "按钮链接", type: "text" },
+                    { key: "essay.top_background", label: "背景图", type: "image" },
+                ],
+            },
+            {
+                id: "essay-page",
+                label: "即刻分页",
+                fields: [
+                    { key: "essay.limit", label: "每页数量", type: "number" },
+                    {
+                        key: "essay.pagination_mode",
+                        label: "分页方式",
+                        type: "select",
+                        options: [
+                            { value: "pagination", label: "页码分页" },
+                            { value: "loadmore", label: "加载更多" },
+                        ],
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: "banner-moments",
+        label: "朋友圈页",
+        group: "页面显示",
+        icon: MessagesSquare,
+        keywords: ["朋友圈", "好友圈", "moments", "横幅", "banner", "每页条数"],
+        desc: "朋友圈页顶部横幅、好友圈开关与每页条数。",
+        groups: [
+            {
+                id: "moments",
+                label: "朋友圈横幅",
+                fields: [
+                    { key: "moments.enable", label: "启用好友圈", type: "boolean" },
+                    { key: "moments.title", label: "标题", type: "text" },
+                    { key: "moments.subtitle", label: "副标题", type: "text" },
+                    { key: "moments.tips", label: "小字提示", type: "text" },
+                    { key: "moments.button_text", label: "按钮文案", type: "text" },
+                    { key: "moments.button_link", label: "按钮链接", type: "text" },
+                    { key: "moments.display_limit", label: "每页条数", type: "number", hint: "同时作为抓取与分页大小" },
+                    { key: "moments.top_background", label: "背景图", type: "image" },
+                ],
+            },
+        ],
+    },
+    {
+        id: "banner-equipment",
+        label: "装备页面",
+        group: "页面显示",
+        icon: Backpack,
+        keywords: ["装备", "equipment", "横幅", "banner", "背景图"],
+        desc: "装备页顶部横幅的标题、小字提示、描述与背景图。",
+        groups: [
+            {
+                id: "equipment",
+                label: "装备页横幅",
+                fields: [
+                    { key: "equipment.banner.title", label: "标题", type: "text" },
+                    { key: "equipment.banner.tip", label: "小字提示", type: "text" },
+                    { key: "equipment.banner.description", label: "描述", type: "text" },
+                    { key: "equipment.banner.background", label: "背景图", type: "image" },
+                ],
+            },
+            {
+                id: "equipment-list",
+                label: "装备清单",
+                fields: [
+                    {
+                        key: "equipment.list",
+                        label: "装备分组",
+                        type: "list",
+                        wide: true,
+                        hint: "本站前台未读取该键",
+                        itemFields: [
+                            { name: "title", label: "分组标题", placeholder: "日常使用" },
+                            { name: "description", label: "分组描述" },
+                            {
+                                name: "equipment_list",
+                                label: "装备条目",
+                                nested: [
+                                    { name: "name", label: "名称", placeholder: "Redmi K80" },
+                                    { name: "specification", label: "规格", placeholder: "标准版" },
+                                    { name: "description", label: "描述" },
+                                    { name: "image", label: "图片地址" },
+                                    { name: "link", label: "链接" },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: "banner-recent-comments",
+        label: "最近评论页",
+        group: "页面显示",
+        icon: MessageCircle,
+        keywords: ["最近评论", "评论", "recent_comments", "横幅", "banner"],
+        desc: "最近评论页顶部横幅的标题、小字提示、描述与背景图。",
+        groups: [
+            {
+                id: "recent-comments",
+                label: "最近评论横幅",
+                fields: [
+                    { key: "recent_comments.banner.title", label: "标题", type: "text" },
+                    { key: "recent_comments.banner.tip", label: "小字提示", type: "text" },
+                    { key: "recent_comments.banner.description", label: "描述", type: "text" },
+                    { key: "recent_comments.banner.background", label: "背景图", type: "image" },
+                ],
+            },
+        ],
+    },
+    {
+        id: "banner-frontdesk",
+        label: "前台站长信息",
+        group: "页面显示",
+        icon: IdCard,
+        keywords: ["站长", "前台", "frontDesk", "siteOwner", "名称", "邮箱"],
+        desc: "前台展示的站长名称与站长邮箱。",
+        groups: [
+            {
+                id: "frontdesk",
+                label: "前台站长信息",
+                fields: [
+                    { key: "frontDesk.siteOwner.name", label: "站长名称", type: "text" },
+                    { key: "frontDesk.siteOwner.email", label: "站长邮箱", type: "text" },
+                ],
+            },
+        ],
+    },
+    {
+        id: "music",
+        label: "音乐馆",
+        group: "页面显示",
+        icon: Music,
+        keywords: ["音乐", "music", "唱片", "vinyl", "音源", "meting", "播放器", "歌单", "歌词"],
+        desc: "音乐馆页面：唱片机 5 层图的图片地址、音源解析服务；播放器歌单那组本站前台未读取。",
+        groups: [
+            {
+                id: "vinyl",
+                label: "唱片机图片",
+                fields: [
+                    { key: "music.vinyl.background", label: "背景图", type: "image", hint: "留空回落官方默认图" },
+                    { key: "music.vinyl.outer", label: "唱片外圈", type: "image" },
+                    { key: "music.vinyl.inner", label: "唱片内圈", type: "image" },
+                    { key: "music.vinyl.needle", label: "唱针", type: "image" },
+                    { key: "music.vinyl.groove", label: "纹路", type: "image" },
+                ],
+            },
+            {
+                id: "api",
+                label: "音源解析服务",
+                fields: [
+                    { key: "music.api.base_url", label: "解析服务地址", type: "text", placeholder: "https://metings.qjqq.cn" },
+                    {
+                        key: "music.api.meting_server",
+                        label: "音源",
+                        type: "text",
+                        placeholder: "netease",
+                        hint: "常见：netease / tencent / kugou / kuwo / baidu",
+                    },
+                    { key: "music.api.protocol", label: "接口协议", type: "text", placeholder: "legacy", hint: "常见：legacy / meting" },
+                ],
+            },
+            {
+                id: "player",
+                label: "播放器歌单",
+                fields: [
+                    { key: "music.player.playlist_id", label: "歌单 ID", type: "number", hint: "本站前台歌单来自后端接口，未读取该键" },
+                    { key: "music.player.custom_playlist", label: "自定义歌单", type: "text", hint: "本站前台未读取该键" },
+                    { key: "music.capsule.custom_playlist", label: "胶囊自定义歌单", type: "text", hint: "本站前台未读取该键" },
+                ],
+            },
+        ],
+    },
+    {
+        id: "friend-apply",
+        label: "友链申请",
+        group: "页面显示",
+        icon: Link2,
+        keywords: ["友链", "申请", "friend", "link", "条件", "占位", "默认分类"],
+        desc: "友链页的申请条件、申请表单占位文案与后端默认分类（占位文案本站前台还没读）。",
+        groups: [
+            {
+                id: "condition",
+                label: "申请条件",
+                fields: [
+                    {
+                        key: "FRIEND_LINK_APPLY_CONDITION",
+                        label: "申请条件",
+                        type: "stringlist",
+                        placeholder: "一条条件",
+                        hint: "前台按 HTML 渲染，只写自己信任的内容",
+                    },
+                ],
+            },
+            {
+                id: "placeholder",
+                label: "表单占位文案",
+                fields: [
+                    { key: "FRIEND_LINK_PLACEHOLDER_NAME", label: "名称", type: "text", hint: "本站申请表单占位目前是写死的，改这里暂不生效" },
+                    { key: "FRIEND_LINK_PLACEHOLDER_URL", label: "网址", type: "text", hint: "同上" },
+                    { key: "FRIEND_LINK_PLACEHOLDER_LOGO", label: "头像", type: "text", hint: "同上" },
+                    { key: "FRIEND_LINK_PLACEHOLDER_DESCRIPTION", label: "描述", type: "text", hint: "同上" },
+                    { key: "FRIEND_LINK_PLACEHOLDER_SITESHOT", label: "截图", type: "text", hint: "同上" },
+                ],
+            },
+            {
+                id: "default",
+                label: "默认分类",
+                fields: [
+                    {
+                        key: "FRIEND_LINK_DEFAULTCATEGORY",
+                        label: "默认分类 ID",
+                        type: "number",
+                        hint: "后端建友链时使用；值是友链分类 ID（在友链管理页能看到）",
+                    },
                 ],
             },
         ],
@@ -341,8 +1773,13 @@ export const ALL_SETTINGS_FIELDS: SettingsField[] = SETTINGS_SECTIONS.flatMap((s
     section.groups.flatMap((group) => group.fields)
 );
 
-/** 表单值：文本/数字/图片/下拉 = string；开关 = boolean；列表 = 数组；令牌 = { light, dark } */
-export type SettingsFormValue = string | boolean | Record<string, unknown>[] | { light?: Record<string, string>; dark?: Record<string, string> };
+/** 表单值：文本/数字/图片/下拉/颜色 = string；开关 = boolean；列表 = 数组；令牌 = { light, dark }；json = 文本 */
+export type SettingsFormValue =
+    | string
+    | boolean
+    | string[]
+    | Record<string, unknown>[]
+    | AppearanceTokenBranches;
 
 /** 按点号路径从 site-config 取值（如 footer.socialBar.left） */
 export function readConfigPath(config: unknown, key: string): unknown {
@@ -377,10 +1814,29 @@ export function toFormValue(field: SettingsField, raw: unknown): SettingsFormVal
         const parsed = parseJson(raw);
         return Array.isArray(parsed) ? (parsed as Record<string, unknown>[]) : [];
     }
+    if (field.type === "stringlist") {
+        // 接口一般直接给数组；也兼容后端存成 JSON 字符串、或用户按「一行一条」写的纯文本
+        const parsed = parseJson(raw);
+        if (Array.isArray(parsed)) return parsed.map((item) => String(item));
+        if (typeof raw === "string" && raw.trim()) {
+            return raw
+                .split("\n")
+                .map((line) => line.trim())
+                .filter(Boolean);
+        }
+        return [];
+    }
+    if (field.type === "json") {
+        // 对象/数组字段：接口可能给对象，也可能给 JSON 字符串；统一格式化成可编辑的缩进文本
+        if (raw === undefined || raw === null || raw === "") return "";
+        const parsed = parseJson(raw);
+        if (parsed === undefined || parsed === null) return String(raw);
+        return JSON.stringify(parsed, null, 2);
+    }
     if (field.type === "tokens") {
         const parsed = parseJson(raw);
         if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-        return parsed as { light?: Record<string, string>; dark?: Record<string, string> };
+        return parsed as AppearanceTokenBranches;
     }
     if (raw === undefined || raw === null) return "";
     return String(raw);
@@ -400,7 +1856,7 @@ export function isFieldDirty(field: SettingsField, draft: Record<string, Setting
     return JSON.stringify(draft[field.key]) !== JSON.stringify(baseline[field.key]);
 }
 
-/** 按官方口径构造保存载荷：布尔 → "true"/"false"；列表/令牌 → JSON 字符串；其余原样 */
+/** 按官方口径构造保存载荷：布尔 → "true"/"false"；列表/令牌 → JSON 字符串；json 原样提交（本身就是 JSON 文本）；其余原样 */
 export function buildSettingsPayload(
     fields: SettingsField[],
     draft: Record<string, SettingsFormValue>
@@ -409,7 +1865,8 @@ export function buildSettingsPayload(
     for (const field of fields) {
         const value = draft[field.key];
         if (field.type === "boolean") payload[field.key] = value ? "true" : "false";
-        else if (field.type === "list" || field.type === "tokens") payload[field.key] = JSON.stringify(value ?? (field.type === "list" ? [] : {}));
+        else if (field.type === "list" || field.type === "stringlist") payload[field.key] = JSON.stringify(value ?? []);
+        else if (field.type === "tokens") payload[field.key] = JSON.stringify(value ?? {});
         else payload[field.key] = String(value ?? "");
     }
     return payload;
