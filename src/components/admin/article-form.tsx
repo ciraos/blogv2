@@ -7,6 +7,7 @@ import {
     CalendarDays,
     ChevronDown,
     Code2,
+    ExternalLink,
     Eye,
     History,
     ImagePlus,
@@ -30,10 +31,16 @@ import {
     getAdminArticleApi,
     getAdminArticleCategoriesApi,
     getAdminArticleTagsApi,
+    getAdminDocSeriesApi,
     updateAdminArticleApi,
     uploadAdminImageApi,
     type AdminArticlePayload,
 } from "@/lib/api";
+import {
+    generateArticleSummaryApi,
+    getAIWritingConfigApi,
+    isAIWritingConfigured,
+} from "@/lib/api-ai";
 import type { PostCategory, PostTag } from "@/types/articles";
 
 /**
@@ -43,11 +50,13 @@ import type { PostCategory, PostTag } from "@/types/articles";
  *  - 高度：lg 下整格锁成滚动容器高度（grid lg:h-full），左栏正文块撑满剩余高度（编辑器内部滚），
  *    右栏设置项自己滚（lg:overflow-y-auto）——避免右栏更长时把左栏拖出一大片空白。
  *  - 右栏：两个 Tab（文章设置 / SEO 分析），下面是状态按钮行 + 一组可折叠卡片（SettingCard）。
- *    卡片顺序：发布时间 / 基础 / 摘要 & SEO / 显示 / 会员权限 / 全文隐藏 / 高级。
- *    后端没有对应字段的项目（定时、自定义发布日期、会员可见、全文隐藏、单章 JS、文档模式）
- *    一律不做假输入框：禁用 + 灰字说明为什么（NotSupportedNote）。
- * 设置项（可提交）：状态、分类/标签、封面与顶部大图（走 /api/admin/articles/upload）、摘要、关键词/永久链接、
- *        首页展示与排序、主色、原创与版权、IP 属地。
+ *    卡片顺序：发布时间 / 定时发布（仅状态=定时时出现）/ 基础 / 摘要 & SEO / 显示 / 会员权限 / 全文隐藏 / 高级。
+ *    后端仍然没有对应字段的项目（自定义发布日期、会员可见、全文隐藏、单章 JS）一律不做假输入框：
+ *    禁用 + 灰字说明为什么（NotSupportedNote）。
+ *  - 三处已接通的真实功能：①「AI 生成摘要」走 AI 写作通道 + customPrompt（右栏「摘要 & SEO」卡）；
+ *    ②定时发布（状态按钮 + 「定时发布」卡 + 提交 scheduled_at）；③文档模式改为入口，链到 /admin/doc-series。
+ * 设置项（可提交）：状态、定时发布时间、分类/标签、封面与顶部大图（走 /api/admin/articles/upload）、摘要、
+ *        关键词/永久链接、首页展示与排序、主色、原创与版权、IP 属地。
  * 未保存拦截：beforeunload（刷新/关闭）+ 返回列表前的确认。
  *
  * 关于 content_html：后端 model.CreateArticleRequest 同时接受 content_html 与 content_md，但 swagger 未写明
@@ -55,7 +64,56 @@ import type { PostCategory, PostTag } from "@/types/articles";
  * 避免出现「存进去了但前台空白」。
  */
 type Mode = "create" | "edit";
-type Status = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+type Status = "DRAFT" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED";
+
+/**
+ * 后端 ArticleResponse 实际会返回、但前端 ArticleDetail 里没声明的几个字段。
+ * 这里显式窄化读取（不用 any），供定时回填与文档模式现状展示用：
+ * pkg/domain/model/article.go:190（scheduled_at）、:207-209（is_doc / doc_series_id）。
+ */
+type ArticleExtraFields = {
+    status?: string;
+    scheduled_at?: string | null;
+    is_doc?: boolean;
+    doc_series_id?: string;
+};
+
+/** 定时发布快捷时间（对齐官方 EditorSidebar.tsx:72-79 的 QUICK_TIMES） */
+const QUICK_SCHEDULE: { label: string; hours: number }[] = [
+    { label: "1 小时后", hours: 1 },
+    { label: "3 小时后", hours: 3 },
+    { label: "6 小时后", hours: 6 },
+    { label: "明天", hours: 24 },
+    { label: "后天", hours: 48 },
+    { label: "一周后", hours: 168 },
+];
+
+/**
+ * Date / RFC3339 → datetime-local 需要的**本地**值（"YYYY-MM-DDTHH:mm"）。
+ * 官方用的是 toISOString().slice(0,16)（UTC 值），时区不为 0 时会和用户看到的差几小时；
+ * 而 .toISOString() 又是提交给后端要的 RFC3339 的来源，所以两个方向都收在这里。
+ */
+function toLocalInputValue(input: string | Date): string {
+    const d = typeof input === "string" ? new Date(input) : input;
+    if (Number.isNaN(d.getTime())) return "";
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/**
+ * datetime-local 的本地值 → 后端要的 RFC3339（UTC、秒级，如 2026-01-01T02:00:00Z）。
+ * 后端是 time.Parse(time.RFC3339, ...)，裸的 "2026-01-01T10:00" 会被判「无效的定时发布时间格式」；
+ * datetime-local 只到分钟，所以去掉毫秒即可得到标准 RFC3339。
+ */
+function toRFC3339(localValue: string): string {
+    const d = new Date(localValue);
+    return Number.isNaN(d.getTime()) ? "" : d.toISOString().replace(/\.\d{3}Z$/, "Z");
+}
+
+/** 摘要是一行一条的 string[]：流式片段里的换行/连续空格先压成单行再写进文本框 */
+function toSingleLine(text: string): string {
+    return text.replace(/\s+/g, " ").trimStart();
+}
 
 /** 极简 Markdown → HTML（仅用于本地预览，最终以后端渲染为准） */
 function mdToHtml(md: string): string {
@@ -194,9 +252,9 @@ function SwitchRow({
 
 /**
  * 状态按钮行（官方右栏版式）：发布 / 草稿 / 定时 / 归档。
- * 只有发布/草稿/归档是现有提交载荷（AdminArticlePayload.status）真正支持的枚举值；
- * 「定时」还要求时间字段（scheduled_at / custom_published_at），载荷里没有声明，
- * 所以按本项目一贯的「诚实呈现」做成禁用 + tooltip，不凭空造输入框。
+ * 四个值都是 AdminArticlePayload.status 支持的枚举；「定时」选中的同时必须给出 scheduled_at
+ * （已声明进载荷，见 src/lib/api.ts），所以选中后会出现「定时发布」卡收集时间，
+ * 提交前的校验在 save() 里（缺时间 / 时间不是将来 → 直接拦下，不发给后端）。
  */
 const STATUS_OPTIONS: {
     key: string;
@@ -222,11 +280,10 @@ const STATUS_OPTIONS: {
     },
     {
         key: "scheduled",
-        value: null,
+        value: "SCHEDULED",
         label: "定时",
-        activeCls: "",
-        disabled: true,
-        title: "后端 status 有 SCHEDULED，但定时时间字段（scheduled_at / custom_published_at）不在前端提交载荷里，暂不可用",
+        activeCls: "border-sky-500/60 bg-sky-500/10 text-sky-600 dark:text-sky-400",
+        title: "定时发布：在下方「定时发布」卡里选好将来的时间，再到顶栏点「定时发布」提交",
     },
     {
         key: "archived",
@@ -369,9 +426,21 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
     /** 右栏两个 Tab：文章设置 / SEO 分析（官方右栏版式） */
     const [settingsTab, setSettingsTab] = useState<"settings" | "seo">("settings");
     const [htmlLen, setHtmlLen] = useState<number | null>(null);
+    /** 定时发布时间：存 datetime-local 的本地值（"YYYY-MM-DDTHH:mm"），提交时才转 RFC3339 */
+    const [scheduledAt, setScheduledAt] = useState("");
+    /** AI 写作是否启用：null = 还没读到配置（按「未知」处理，点击时让后端的文案说话） */
+    const [aiWritingEnabled, setAiWritingEnabled] = useState<boolean | null>(null);
+    const [summaryGenerating, setSummaryGenerating] = useState(false);
+    /** 编辑态文章的「文档模式」现状（后端返回、前端类型未声明，见 ArticleExtraFields） */
+    const [docInfo, setDocInfo] = useState<{ isDoc: boolean; seriesId: string } | null>(null);
+    /** 上面那个系列的**名字**（只读列表里查出来的；查不到就退回显示 id） */
+    const [docSeriesName, setDocSeriesName] = useState<string | null>(null);
     // 新建成功后记住新 id，后续保存走 PUT；baseline 用于未保存判断
     const savedIdRef = useRef<string | undefined>(articleId);
     const baselineRef = useRef<string>("");
+    // 摘要生成：controller 用于「停止」，before 存生成前的原文用于失败回滚
+    const summaryControllerRef = useRef<AbortController | null>(null);
+    const summaryBeforeRef = useRef("");
     // 本地草稿（localStorage 自动保存，防误关/崩溃丢内容）；contentRef 供粘贴上传后回填光标位置
     const draftKey = `article-draft:${mode}:${articleId ?? "new"}`;
     const [draftAt, setDraftAt] = useState<number | null>(null);
@@ -381,6 +450,9 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
             title: title.trim(),
             content_md: contentMd,
             status: next,
+            // 只在定时状态提交 scheduled_at；其它状态给 undefined（JSON.stringify 会丢掉这个键），
+            // 后端在「状态从 SCHEDULED 改成别的」时会自己清空 scheduled_at（service.go:1592-1596）
+            scheduled_at: next === "SCHEDULED" && scheduledAt ? toRFC3339(scheduledAt) : undefined,
             post_category_ids: categoryIds,
             post_tag_ids: tagIds,
             summaries: summary
@@ -406,9 +478,15 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
         [
             title, contentMd, categoryIds, tagIds, summary, coverUrl, topImgUrl, primaryColor, colorManual,
             isReprint, copyright, copyrightAuthor, copyrightAuthorHref, copyrightUrl, keywords, abbrlink,
-            ipLocation, showOnHome, pinSort, homeSort,
+            ipLocation, showOnHome, pinSort, homeSort, scheduledAt,
         ]
     );
+
+    /**
+     * 顶栏「发布」按钮与 Ctrl+Enter 的落点：状态选了「定时」就按 SCHEDULED 提交。
+     * 否则定时会被顶栏按钮的 PUBLISHED 覆盖掉（状态与时间必须一致，后端也会自己归一化）。
+     */
+    const publishStatus: Status = status === "SCHEDULED" ? "SCHEDULED" : "PUBLISHED";
 
     const currentSignature = useMemo(() => JSON.stringify(buildPayload(status)), [buildPayload, status]);
     // 读 ref 只为算「有没有未保存修改」：baseline 参与判断但不参与渲染输出，
@@ -444,7 +522,21 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                     if (cancelled) return;
                     setTitle(a.title ?? "");
                     setContentMd(a.content_md ?? "");
-                    setStatus((["PUBLISHED", "ARCHIVED"].includes(a.status) ? a.status : "DRAFT") as Status);
+                    // 后端 ArticleResponse 有 status / scheduled_at / is_doc / doc_series_id，
+                    // 但前端 ArticleDetail 类型只声明了 status 的三个值 —— 一次显式窄化全读出来
+                    const extra = a as unknown as ArticleExtraFields;
+                    setStatus(
+                        extra.status === "PUBLISHED" || extra.status === "ARCHIVED" || extra.status === "SCHEDULED"
+                            ? extra.status
+                            : "DRAFT"
+                    );
+                    // 定时时间回填：后端给的是 RFC3339（UTC），datetime-local 要本地值
+                    setScheduledAt(extra.scheduled_at ? toLocalInputValue(extra.scheduled_at) : "");
+                    setDocInfo(
+                        extra.is_doc || extra.doc_series_id
+                            ? { isDoc: !!extra.is_doc, seriesId: extra.doc_series_id ?? "" }
+                            : null
+                    );
                     setSummary((a.summaries ?? []).join("\n"));
                     setCategoryIds((a.post_categories ?? []).map((c) => String(c.id)));
                     setTagIds((a.post_tags ?? []).map((t) => String(t.id)));
@@ -482,11 +574,52 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
         baselineRef.current = currentSignature;
     }, [loading, currentSignature]);
 
+    /**
+     * 读一次 AI 写作配置（只读 GET /api/admin/ai/writing/config，**不是**生成请求、不计费）。
+     * 用途只是把「后端未启用」在点击前就摆出来；读不到就按未知处理（null），点击时仍然放行，
+     * 由后端返回的 401/403 文案解释原因 —— 不静默失败，也不提前挡死。
+     */
+    useEffect(() => {
+        let cancelled = false;
+        getAIWritingConfigApi()
+            .then((cfg) => {
+                if (!cancelled) setAiWritingEnabled(isAIWritingConfigured(cfg));
+            })
+            .catch(() => {
+                if (!cancelled) setAiWritingEnabled(null);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    // 切页/卸载时掐断进行中的摘要流，避免往已卸载的组件里 setState
+    useEffect(() => () => summaryControllerRef.current?.abort(), []);
+
+    // 文章已在某系列里时，把系列名查出来（只读 GET 列表；查不到就退回显示 id，不影响功能）
+    useEffect(() => {
+        const id = docInfo?.seriesId;
+        if (!id) return;
+        let cancelled = false;
+        getAdminDocSeriesApi({ page: 1, pageSize: 100 })
+            .then((res) => {
+                if (!cancelled) setDocSeriesName(res?.list?.find((s) => s.id === id)?.name ?? null);
+            })
+            .catch(() => {
+                if (!cancelled) setDocSeriesName(null);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [docInfo]);
+
     /** 把一份 payload 灌回表单（恢复本地草稿用） */
     const applyDraft = useCallback((d: AdminArticlePayload) => {
         setTitle(d.title ?? "");
         setContentMd(d.content_md ?? "");
         setStatus((d.status ?? "DRAFT") as Status);
+        // 本地草稿里存的是提交用的 RFC3339，回填成 datetime-local 的本地值
+        setScheduledAt(d.scheduled_at ? toLocalInputValue(d.scheduled_at) : "");
         setSummary((d.summaries ?? []).join("\n"));
         setCategoryIds(d.post_category_ids ?? []);
         setTagIds(d.post_tag_ids ?? []);
@@ -576,10 +709,92 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
         setSummary(plain.slice(0, 300));
     };
 
+    /** 停止摘要生成：abort 后 streamAIWriting 会静默退出（不算错误），已生成的部分留在框里 */
+    const stopSummaryGeneration = useCallback(() => {
+        summaryControllerRef.current?.abort();
+        summaryControllerRef.current = null;
+        setSummaryGenerating(false);
+    }, []);
+
+    /**
+     * 「AI 生成摘要」：走 AI 写作通道 + customPrompt（src/lib/api-ai.ts 的 generateArticleSummaryApi），
+     * 流式结果**实时覆盖**写进摘要框（摘要一行一条，所以边收边压成单行）。
+     * 生成中再点一次 = 停止：已生成的部分保留，用户自己决定要不要留。
+     */
+    const generateSummary = () => {
+        if (summaryGenerating) {
+            stopSummaryGeneration();
+            toast.info("已停止生成", { description: "已生成的部分留在摘要框里，可自行修改或清空" });
+            return;
+        }
+        if (aiWritingEnabled === false) {
+            toast.error("后端未启用 AI 写作", {
+                description: "到「设置 → 高级功能 → AI 功能」里启用 AI 写作后再试；这里不会静默失败",
+            });
+            return;
+        }
+        const body = contentMd.trim();
+        if (body.length < 50) {
+            toast.error("正文太短，先写点内容再让 AI 写摘要");
+            return;
+        }
+        // 生成前的摘要原文：失败时回滚，避免留下一段半截的摘要被顺手保存
+        summaryBeforeRef.current = summary;
+        // 防连点：state 更新是异步的，同一帧里点两次会开出两条流，先掐断旧的
+        summaryControllerRef.current?.abort();
+        let acc = "";
+        setSummaryGenerating(true);
+        summaryControllerRef.current = generateArticleSummaryApi(
+            { title, content: body },
+            {
+                onChunk: (chunk) => {
+                    acc += chunk;
+                    setSummary(toSingleLine(acc));
+                },
+                onDone: (full) => {
+                    summaryControllerRef.current = null;
+                    setSummaryGenerating(false);
+                    const text = toSingleLine(full).trim();
+                    if (!text) {
+                        setSummary(summaryBeforeRef.current);
+                        toast.error("AI 没有返回内容，摘要框已恢复原样");
+                        return;
+                    }
+                    setSummary(text);
+                    toast.success("摘要已生成（覆盖了摘要框原内容，保存后生效）");
+                },
+                onError: (e) => {
+                    summaryControllerRef.current = null;
+                    setSummaryGenerating(false);
+                    setSummary(summaryBeforeRef.current);
+                    toast.error(e.message || "摘要生成失败", {
+                        description: e.status ? `HTTP ${e.status}（摘要框已恢复原样）` : "摘要框已恢复原样",
+                    });
+                },
+            }
+        );
+    };
+
     const save = async (next: Status) => {
         if (!title.trim()) {
             toast.error("请先填写标题");
             return;
+        }
+        if (next === "SCHEDULED") {
+            // 定时发布的两条硬约束（后端 service.go:1574-1588 也一样会校验，这里提前拦住省一次失败请求）
+            if (!scheduledAt) {
+                toast.error("请先选定时发布时间", { description: "在「定时发布」卡里填时间，或用快捷按钮" });
+                return;
+            }
+            const at = new Date(scheduledAt).getTime();
+            if (!Number.isFinite(at)) {
+                toast.error("定时发布时间格式不对，请重新选择");
+                return;
+            }
+            if (at <= Date.now()) {
+                toast.error("定时发布时间必须是将来时间", { description: "过时间点后端也会拒绝，改一个将来的时间" });
+                return;
+            }
         }
         if (abbrlink && !/^[A-Za-z0-9_-]+$/.test(abbrlink)) {
             toast.error("自定义链接只能包含字母、数字、下划线和短横线");
@@ -616,7 +831,15 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
             if (contentMd.trim() && len === 0) {
                 toast.warning("已保存，但后端没有返回渲染好的正文（content_html 为空），前台可能显示空白");
             } else {
-                toast.success(next === "PUBLISHED" ? "已发布" : next === "ARCHIVED" ? "已归档" : "已存为草稿");
+                toast.success(
+                    next === "PUBLISHED"
+                        ? "已发布"
+                        : next === "ARCHIVED"
+                          ? "已归档"
+                          : next === "SCHEDULED"
+                            ? `已定时发布：${new Date(scheduledAt).toLocaleString("zh-CN", { hour12: false })} 到点后由后端发布`
+                            : "已存为草稿"
+                );
             }
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "保存失败");
@@ -625,7 +848,7 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
         }
     };
 
-    // 快捷键：Ctrl/Cmd+S 存草稿、Ctrl/Cmd+Enter 发布。
+    // 快捷键：Ctrl/Cmd+S 存草稿、Ctrl/Cmd+Enter 提交（状态选了「定时」时就是定时发布，与顶栏按钮一致）。
     // 必须放在 save 声明之后：effect 里引用它，放前面会被 react-hooks 判为「访问未声明变量」。
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
@@ -636,7 +859,7 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                 void save("DRAFT");
             } else if (e.key === "Enter") {
                 e.preventDefault();
-                void save("PUBLISHED");
+                void save(publishStatus);
             }
         };
         window.addEventListener("keydown", onKeyDown);
@@ -717,9 +940,21 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                         {saving === "DRAFT" ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
                         存草稿
                     </Button>
-                    <Button onClick={() => save("PUBLISHED")} disabled={saving !== null} title="Ctrl+Enter">
-                        {saving === "PUBLISHED" ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-                        发布
+                    {/* 状态选「定时」时，这里就是「定时发布」（提交 status=SCHEDULED + scheduled_at），
+                        标签与图标跟着变，避免用户以为点的是立即发布 */}
+                    <Button
+                        onClick={() => save(publishStatus)}
+                        disabled={saving !== null}
+                        title={status === "SCHEDULED" ? "按「定时发布」提交（Ctrl+Enter）" : "Ctrl+Enter"}
+                    >
+                        {saving === publishStatus ? (
+                            <Loader2 className="size-4 animate-spin" />
+                        ) : status === "SCHEDULED" ? (
+                            <CalendarDays className="size-4" />
+                        ) : (
+                            <Send className="size-4" />
+                        )}
+                        {status === "SCHEDULED" ? "定时发布" : "发布"}
                     </Button>
                 </div>
             </div>
@@ -882,7 +1117,8 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                                         })}
                                     </div>
 
-                                    {/* 发布时间：后端有 custom_published_at / scheduled_at，载荷没声明 → 禁用呈现不造假输入 */}
+                                    {/* 发布时间：自定义发布日期（custom_published_at）仍未进载荷 → 只做禁用呈现；
+                                        定时发布已经能用，放在紧随其后的独立卡里（见下） */}
                                     <SettingCard title="发布时间">
                                         <Field label="自定义发布日期">
                                             <div className="relative">
@@ -897,10 +1133,56 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                                             用于前台列表、归档与排序的发布日期（对应文章创建时间）；留空则使用保存时的当前时间。
                                         </p>
                                         <NotSupportedNote>
-                                            后端有 custom_published_at / scheduled_at（status 也支持 SCHEDULED），但前端提交载荷 AdminArticlePayload
-                                            里没声明这些字段（要先扩 src/lib/api.ts），所以本卡与上面的「定时」按钮都只做禁用呈现，不提交无效数据。
+                                            后端还有 custom_published_at（自定义发布日期），但前端提交载荷 AdminArticlePayload
+                                            里仍没声明它，所以这个输入框保持禁用；定时发布不受影响 —— 状态选「定时」后会出现「定时发布」卡
+                                            （scheduled_at 已加进载荷）。
                                         </NotSupportedNote>
                                     </SettingCard>
+
+                                    {/* 定时发布：只在状态选「定时」时出现（对齐官方 EditorSidebar.tsx:930-958）。
+                                        时间必须是将来时间，提交前在 save() 里拦一道，后端也会再校验一次。 */}
+                                    {status === "SCHEDULED" && (
+                                        <SettingCard title="定时发布">
+                                            <Field label="发布时间">
+                                                <div className="relative">
+                                                    <Input
+                                                        type="datetime-local"
+                                                        value={scheduledAt}
+                                                        onChange={(e) => setScheduledAt(e.target.value)}
+                                                        aria-label="定时发布时间"
+                                                        className="h-9 pl-8"
+                                                    />
+                                                    <CalendarDays
+                                                        className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+                                                        aria-hidden
+                                                    />
+                                                </div>
+                                            </Field>
+                                            <div>
+                                                <span className="mb-1 block text-xs text-muted-foreground">快捷设定</span>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {QUICK_SCHEDULE.map((q) => (
+                                                        <button
+                                                            key={q.hours}
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setScheduledAt(
+                                                                    toLocalInputValue(new Date(Date.now() + q.hours * 3_600_000))
+                                                                )
+                                                            }
+                                                            className="rounded-md border border-input px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                                        >
+                                                            {q.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <p className="text-[11px] leading-relaxed text-muted-foreground">
+                                                到点后由后端发布：提交的是 RFC3339 时间与 status=SCHEDULED，后端按时间点自动转为已发布。
+                                                时间必须是将来时间，否则顶栏点「定时发布」时会先被拦下。
+                                            </p>
+                                        </SettingCard>
+                                    )}
 
                                     {/* 基础：分类 / 标签（下拉 + 可删标签）/ 封面与顶部大图 / 转载与版权 */}
                                     <SettingCard title="基础">
@@ -1049,31 +1331,53 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                                                     size="sm"
                                                     className="h-8 px-2 text-[11px]"
                                                     onClick={fillSummaryFromContent}
+                                                    disabled={summaryGenerating}
+                                                    title={summaryGenerating ? "正在生成摘要，先停止再取正文" : "把正文压成纯文本后截前 300 字"}
                                                 >
                                                     取正文前 300 字
                                                 </Button>
-                                                {/* 摘要接口未确认存在（api-ai.ts 记录 /api/pro/admin/ai/summary 系列探测全是 404）：
-                                                    按「诚实呈现」做成禁用 + PRO 徽标，不发请求 */}
+                                                {/* AI 生成摘要：没有独立的摘要接口（/api/pro/admin/ai/summary 探测 404），
+                                                    走的是 AI 写作通道 + customPrompt（src/lib/api-ai.ts 的 generateArticleSummaryApi）。
+                                                    生成中同一个按钮就是「停止生成」；PRO 徽标保留（走的仍是 PRO 通道）。 */}
                                                 <Button
                                                     type="button"
                                                     variant="outline"
                                                     size="sm"
-                                                    className="h-8 gap-1 px-2 text-[11px]"
-                                                    disabled
-                                                    title="后端未提供摘要接口（探测 /api/pro/admin/ai/summary 为 404），本按钮不会发请求"
+                                                    className={`h-8 gap-1 px-2 text-[11px] ${
+                                                        summaryGenerating ? "border-primary/50 text-primary" : ""
+                                                    }`}
+                                                    aria-busy={summaryGenerating}
+                                                    onClick={generateSummary}
+                                                    title={
+                                                        summaryGenerating
+                                                            ? "点击停止生成（已生成的部分留在摘要框里）"
+                                                            : aiWritingEnabled === false
+                                                              ? "后端未启用 AI 写作，点了会明确提示而不是静默失败"
+                                                              : "走 PRO 的 AI 写作通道按正文生成摘要，结果会覆盖摘要框里的内容"
+                                                    }
                                                 >
-                                                    <WandSparkles className="size-3.5" />
-                                                    AI 生成摘要
-                                                    <ProBadge />
+                                                    {summaryGenerating ? (
+                                                        <Loader2 className="size-3.5 animate-spin" />
+                                                    ) : (
+                                                        <WandSparkles className="size-3.5" />
+                                                    )}
+                                                    {summaryGenerating ? "停止生成" : "AI 生成摘要"}
+                                                    {!summaryGenerating && <ProBadge />}
                                                 </Button>
                                             </div>
+                                            <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground">
+                                                {aiWritingEnabled === false
+                                                    ? "后端未启用 AI 写作（配置里 enabled=false）：点按钮会明确提示，不会静默失败。"
+                                                    : "AI 摘要走 PRO 写作通道，流式结果会覆盖摘要框原内容；生成中可点「停止生成」，停止后保留已生成的部分。"}
+                                            </p>
                                             <textarea
                                                 id="article-summary"
                                                 value={summary}
                                                 onChange={(e) => setSummary(e.target.value)}
+                                                readOnly={summaryGenerating}
                                                 rows={4}
                                                 placeholder="一行一条，留空则前台按正文自动截取"
-                                                className="w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-xs outline-none focus-visible:border-ring"
+                                                className="w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-xs outline-none focus-visible:border-ring read-only:bg-muted/30"
                                             />
                                             <button
                                                 type="button"
@@ -1209,12 +1513,29 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                                             </div>
                                         </div>
                                         <div>
-                                            <SwitchRow label="文档模式" description="作为系列文档的一部分" checked={false} disabled />
-                                            <div className="mt-1.5">
-                                                <NotSupportedNote>
-                                                    后端有 is_doc / doc_series_id / doc_sort，但前端载荷未声明，本项禁用。
-                                                </NotSupportedNote>
-                                            </div>
+                                            {/* 文档模式：做成「入口」而不是表单开关。
+                                                加入/移出系列是 PUT /articles/{id} 的 is_doc / doc_series_id，
+                                                文档系列管理页已经把这套写接口做全了（按系列加入 / 移出文章），
+                                                这里再放一个下拉就得再造一遍系列列表 + 新建文章时还没有 id，反而更糟。 */}
+                                            <span className="mb-1 block text-xs text-muted-foreground">文档模式</span>
+                                            <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground">
+                                                把文章加入 / 移出文档系列在「文档系列管理」里操作（按系列加入或移出文章，
+                                                走的就是 {"PUT /articles/{id}"} 的 is_doc / doc_series_id）。
+                                            </p>
+                                            {mode === "edit" && docInfo && (
+                                                <p className="mb-2 rounded-md border border-dashed px-2 py-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                                                    当前状态：{docInfo.isDoc ? "已标记为文档" : "未标记为文档"}
+                                                    {docInfo.seriesId
+                                                        ? `，所属系列：${docSeriesName ?? docInfo.seriesId}${docSeriesName ? "" : "（系列名未查到，显示的是系列 ID）"}`
+                                                        : "，未加入任何系列"}
+                                                </p>
+                                            )}
+                                            <Button variant="outline" size="sm" className="h-8 gap-1 text-[11px]" asChild>
+                                                <Link href="/admin/doc-series">
+                                                    <ExternalLink className="size-3.5" />
+                                                    打开文档系列管理
+                                                </Link>
+                                            </Button>
                                         </div>
                                     </SettingCard>
                                 </>

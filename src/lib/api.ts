@@ -489,6 +489,12 @@ export interface AdminArticlePayload {
     title: string;
     content_md: string;
     status?: "DRAFT" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED";
+    /**
+     * 定时发布时间（RFC3339 字符串，如 2026-01-01T10:00:00Z；不是 datetime-local 的裸值）。
+     * 后端 service.go 用 time.Parse(time.RFC3339) 解析：格式不合法报「无效的定时发布时间格式」，
+     * 早于当前时间报「定时发布时间必须是未来时间」，解析通过后会把 status 归一化成 SCHEDULED。
+     */
+    scheduled_at?: string;
     post_category_ids?: string[];
     post_tag_ids?: string[];
     summaries?: string[];

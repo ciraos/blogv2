@@ -12,6 +12,8 @@
 //
 // 因此本文件把「写作」当完整能力实现；同组的 summary/assistant/podcast 因为没有拿到任何
 // 路由证据（全部 404），一律不做伪造调用（详见报告「未实现」一节）。
+// 例外：「AI 生成摘要」不新建接口，而是**复用写作通道** —— 把摘要指令塞进 customPrompt
+// 发一次写作请求（见文件末尾 buildArticleSummaryParams / generateArticleSummaryApi）。
 //
 // 本文件只打本站同源代理 /api/admin/ai/*（代理读 httpOnly cookie 带 Bearer 转发，
 // 见 src/app/api/admin/ai/**/route.ts），与 src/lib/api-knowledge.ts 同一套写法，
@@ -334,4 +336,83 @@ export function streamAIWriting(params: AIWritingParams, callbacks: AIWritingCal
     })();
 
     return controller;
+}
+
+// ===================== 文章摘要（复用写作通道，不新建接口） =====================
+//
+// 线上只有 /pro/admin/ai/writing 一个 AI 通道（summary/assistant/podcast 探测全 404，见文件头证据链），
+// 所以「AI 生成摘要」= 一次带 customPrompt 的写作请求：参数构造在下面，SSE 解析/错误处理全部复用
+// streamAIWriting（**没有**第二份解析器）。
+
+/**
+ * 摘要指令。后端只有一个自定义提示词入口（customPrompt，没有独立的 system 角色），
+ * 所以「单段、100-200 字、不带 Markdown」这些约束只能写进提示词里。
+ */
+export const ARTICLE_SUMMARY_PROMPT =
+    "请为下面的文章正文写一段摘要。" +
+    "要求：100-200 字、单段连续文本、不要换行、不要任何 Markdown 标记、不要小标题或列表、" +
+    "客观中性地概括文章讲了什么；直接输出摘要正文本身，不要前后缀说明，也不要重复标题。";
+
+/**
+ * 送去生成摘要的正文上限（字符）。长文整篇塞进请求体既慢又没必要，
+ * 超出时只截前 N 字并在提示里注明「已截断」，避免模型把截断处当结尾。
+ */
+const SUMMARY_CONTENT_LIMIT = 6000;
+
+/** 摘要生成入参 */
+export interface AISummaryParams {
+    /** 文章标题（当写作主题用，后端 topic 是必填项） */
+    title?: string;
+    /** 正文 Markdown 原文 */
+    content: string;
+}
+
+/**
+ * 把「标题 + 正文」拼成写作接口的请求体。
+ * **导出是为了单测**：参数构造的正确性用本函数直接断言（线上生成是计费写操作，按铁律不实测）。
+ *
+ * 几个刻意的取舍：
+ *  - topic：写作通道的 topic 相当于「写作主题」，空着可能被后端拒；优先用文章标题，
+ *    标题为空时退化成正文首行（去掉 # 与图片语法），仍为空才用兜底词。
+ *  - customPrompt：摘要指令 + 正文（只能这么拼，原因见 ARTICLE_SUMMARY_PROMPT）。
+ *  - length: "short"：写作通道自己的篇幅档，用 short 兜住「摘要别写成长文」。
+ *  - useTags: false：摘要里不该出现 tip/folding 这类标签插件。
+ *  - 不传 style：避免后端的风格模板和提示词里的「客观中性」互相打架。
+ */
+export function buildArticleSummaryParams({ title, content }: AISummaryParams): AIWritingParams {
+    const body = content.trim();
+    const clipped =
+        body.length > SUMMARY_CONTENT_LIMIT
+            ? `${body.slice(0, SUMMARY_CONTENT_LIMIT)}\n\n（正文过长，以上只是前 ${SUMMARY_CONTENT_LIMIT} 字）`
+            : body;
+    const topicFromBody = body
+        .replace(/^#{1,6}\s*/gm, "")
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    return {
+        topic: (title ?? "").trim() || topicFromBody.slice(0, 50) || "文章摘要",
+        length: "short",
+        useTags: false,
+        customPrompt: `${ARTICLE_SUMMARY_PROMPT}\n\n文章正文：\n${clipped}`,
+    };
+}
+
+/** 摘要生成回调（与写作通道同形：chunk 是流式片段，done 是拼好的全文） */
+export interface AISummaryCallbacks {
+    onChunk: (chunk: string) => void;
+    onDone: (fullText: string) => void;
+    onError: (error: AIWritingApiError) => void;
+}
+
+/**
+ * 生成文章摘要（SSE 流式）：参数按 buildArticleSummaryParams 拼，其余直接交给 streamAIWriting。
+ * @returns AbortController —— 调用方 abort() 即停止；停止不算失败，onError 不会被调用。
+ */
+export function generateArticleSummaryApi(params: AISummaryParams, callbacks: AISummaryCallbacks): AbortController {
+    return streamAIWriting(buildArticleSummaryParams(params), {
+        onChunk: callbacks.onChunk,
+        onDone: callbacks.onDone,
+        onError: callbacks.onError,
+    });
 }
