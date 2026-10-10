@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { HomeTop } from "@/components/(blog)/home-top";
 import { PagedArticleList } from "@/components/(blog)/paged-article-list";
 import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
@@ -29,8 +28,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
     return (
         <PageWithSidebar>
             <div className="w-full space-y-12">
-                {/* 首页顶部区：放在文章列表之前（对齐官方 HomePageContent.tsx 第 46-48 行 HomeTop 在 FeedArticleList 之前的挂载位置） */}
-                <HomeTop homeTop={config?.HOME_TOP} />
+                {/* 首页顶部区（HOME_TOP：标题/副标题/站点文字/分类入口/主题 banner）按用户要求不再在首页展示。
+                    配置键 HOME_TOP.* 仍保留在设置页；组件 home-top.tsx 保留但暂无引用，日后想恢复挂载一行即可。 */}
                 <PagedArticleList
                     articles={list}
                     total={total}
