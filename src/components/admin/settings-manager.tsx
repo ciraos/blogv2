@@ -24,6 +24,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
+    AI_SETTINGS_FIELDS,
+    AI_SETTINGS_KEYS,
     ALL_SETTINGS_FIELDS,
     APPEARANCE_SKIN_KEY,
     SETTINGS_GROUP_ORDER,
@@ -32,7 +34,9 @@ import {
     buildSettingsBaseline,
     buildSettingsPayload,
     isFieldDirty,
+    readConfigPath,
     skinPreviewColor,
+    toFormValue,
     type AppearanceTokenBranches,
     type SettingsField,
     type SettingsFormValue,
@@ -40,6 +44,7 @@ import {
     type SettingsListField,
     type SettingsSection,
 } from "@/lib/admin-settings";
+import { AiSettingsPanel } from "@/components/admin/ai-settings-panel";
 import { TokenColorEditor } from "@/components/admin/token-color-editor";
 import { updateAdminSettingsApi, uploadAdminImageApi } from "@/lib/api";
 import { broadcastSiteConfigUpdate } from "@/lib/site-config-broadcast";
@@ -48,6 +53,33 @@ import type { SiteConfig } from "@/types/site-config";
 import { cn, resolveAssetUrl, toSameOriginMediaUrl } from "@/lib/utils";
 
 type Draft = Record<string, SettingsFormValue>;
+
+/**
+ * 把「鉴权后才读得到的 AI 后台专有键」（ai_summary_*、ai_writing_*、embedding_*、播客音频参数、
+ * 三个 Prompt 等）合并进草稿/基线。
+ *
+ * 为什么需要这一步：设置页首屏值来自公开的 /public/site-config，而线上实测它只下发
+ * ai_assistant 的 5 个键与 ai_podcast 的 3 个键（那些后台专有键根本不在公开响应里），
+ * 不补读的话面板会把「已配置的模型/密钥」显示成空态。
+ *
+ * 只补**当前为空**的键：绝不覆盖公开配置已有的值，也绝不覆盖用户正在输入的草稿。
+ */
+function mergeAiRemoteValues(base: Draft, remote: Draft | null): Draft {
+    if (!remote) return base;
+    const isEmptyValue = (value: SettingsFormValue | undefined): boolean => {
+        if (typeof value === "boolean") return false; // 布尔未配置时后端也不回值，false 不作「空」处理
+        if (Array.isArray(value)) return value.length === 0;
+        return String(value ?? "").trim() === "";
+    };
+    const next = { ...base };
+    for (const field of AI_SETTINGS_FIELDS) {
+        if (!isEmptyValue(next[field.key])) continue;
+        const fetched = remote[field.key];
+        if (fetched === undefined || isEmptyValue(fetched)) continue;
+        next[field.key] = fetched;
+    }
+    return next;
+}
 
 /** 搜索结果：定位到某个分区（分组/字段名也参与匹配） */
 interface SettingsSearchHit {
@@ -81,13 +113,57 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
     const [search, setSearch] = useState("");
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const contentRef = useRef<HTMLDivElement>(null);
+    // AI 后台专有键的真实值（读一次，之后补进基线/草稿；读不到就保持 null → 面板显示空态）
+    const [aiRemote, setAiRemote] = useState<Draft | null>(null);
 
     // 服务端配置变化（router.refresh 之后）→ 渲染期对齐基线，避免在 effect 里同步 setState
     if (syncKey !== initialKey) {
         setSyncKey(initialKey);
-        setBaseline(initial);
-        setDraft(initial);
+        setBaseline(mergeAiRemoteValues(initial, aiRemote));
+        setDraft(mergeAiRemoteValues(initial, aiRemote));
     }
+
+    // 挂载时按 AI 面板的键去读一次（走既有同源代理 → 远端 /settings/update 同族的 get-by-keys）。
+    // 这是只读 POST（远端要求 POST + 登录），不写任何配置。
+    useEffect(() => {
+        let cancelled = false;
+        void (async () => {
+            try {
+                const res = await fetch("/api/admin/settings/get-by-keys", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ keys: AI_SETTINGS_KEYS }),
+                    cache: "no-store",
+                });
+                if (!res.ok) return;
+                const json = (await res.json()) as { data?: unknown };
+                if (cancelled) return;
+                const values: Draft = {};
+                for (const field of AI_SETTINGS_FIELDS) {
+                    const raw = readConfigPath(json.data, field.key);
+                    if (raw === undefined || raw === null) continue;
+                    values[field.key] = toFormValue(field, raw);
+                }
+                setAiRemote(values);
+            } catch {
+                // 读失败就算了：面板按空态显示，不编造「已配置」
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    // 读回来后补进基线/草稿（只补空键，见 mergeAiRemoteValues）
+    useEffect(() => {
+        if (!aiRemote) return;
+        // 延后到下一个 tick：effect 内同步 setState 会触发级联渲染（react-hooks/set-state-in-effect）
+        const timer = setTimeout(() => {
+            setBaseline((prev) => mergeAiRemoteValues(prev, aiRemote));
+            setDraft((prev) => mergeAiRemoteValues(prev, aiRemote));
+        }, 0);
+        return () => clearTimeout(timer);
+    }, [aiRemote]);
 
     const dirtyFields = useMemo(
         () => ALL_SETTINGS_FIELDS.filter((field) => isFieldDirty(field, draft, baseline)),
@@ -482,30 +558,36 @@ function SettingsGroupCard({
                 )}
             </header>
             {open && (
-                <div className="grid grid-cols-1 gap-x-5 gap-y-5 md:grid-cols-2">
-                    {group.fields.map((field) => (
-                        <div
-                            key={field.key}
-                            className={cn(
-                                field.wide ||
-                                    field.type === "list" ||
-                                    field.type === "stringlist" ||
-                                    field.type === "tokens" ||
-                                    field.type === "json"
-                                    ? "lg:col-span-2"
-                                    : ""
-                            )}
-                        >
-                            <FieldControl
-                                field={field}
-                                value={draft[field.key]}
-                                dirty={isFieldDirty(field, draft, baseline)}
-                                skinId={String(draft[APPEARANCE_SKIN_KEY] ?? "")}
-                                onChange={(value) => onChange(field.key, value)}
-                            />
-                        </div>
-                    ))}
-                </div>
+                // AI 区整块交给 AiSettingsPanel（官方那套「模块标题 + PRO 标 + 开关行 + 提示条 +
+                // Prompt 建议卡」的跨字段结构，逐字段渲染表达不了）；草稿/保存仍走同一套机制。
+                group.fields.some((field) => field.aiModule) ? (
+                    <AiSettingsPanel fields={group.fields} draft={draft} baseline={baseline} onChange={onChange} />
+                ) : (
+                    <div className="grid grid-cols-1 gap-x-5 gap-y-5 md:grid-cols-2">
+                        {group.fields.map((field) => (
+                            <div
+                                key={field.key}
+                                className={cn(
+                                    field.wide ||
+                                        field.type === "list" ||
+                                        field.type === "stringlist" ||
+                                        field.type === "tokens" ||
+                                        field.type === "json"
+                                        ? "lg:col-span-2"
+                                        : ""
+                                )}
+                            >
+                                <FieldControl
+                                    field={field}
+                                    value={draft[field.key]}
+                                    dirty={isFieldDirty(field, draft, baseline)}
+                                    skinId={String(draft[APPEARANCE_SKIN_KEY] ?? "")}
+                                    onChange={(value) => onChange(field.key, value)}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                )
             )}
         </section>
     );

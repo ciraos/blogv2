@@ -1,9 +1,10 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { ImagePlus, Loader2 } from "lucide-react";
+import { ImagePlus, Loader2, WandSparkles } from "lucide-react";
 import { toast } from "sonner";
 
+import { AIWritingDialog } from "@/components/admin/ai-writing-dialog";
 import { uploadAdminImageApi } from "@/lib/api";
 
 // 编辑器依赖 DOM，必须客户端渲染（服务端渲染会直接报 window 未定义）
@@ -31,6 +32,9 @@ export function MarkdownEditor({
     const wrapRef = useRef<HTMLDivElement>(null);
     const fileRef = useRef<HTMLInputElement>(null);
     const [uploading, setUploading] = useState(false);
+    // AI 写作弹窗开关（生成结果同样追加到正文末尾，和图片插入一个策略：
+    // 编辑器内部的 textarea 光标位置拿不到，插到中间反而更不可预期）
+    const [aiOpen, setAiOpen] = useState(false);
     // 用 ref 存最新 value，避免把 value 挂进 onPaste/upload 的依赖里反复重建。
     // 在 effect 里同步（渲染期不能读写 ref，react-hooks/refs）
     const valueRef = useRef(value);
@@ -139,6 +143,16 @@ export function MarkdownEditor({
                         {uploading ? "上传中…" : "插入图片"}
                     </button>
                     <span className="text-[11px] text-muted-foreground">也可以直接 Ctrl+V 粘贴截图，会自动上传</span>
+                    {/* AI 写作（PRO 接口 POST /api/pro/admin/ai/writing，同源代理透传 SSE）：
+                        生成结果追加到正文末尾，插入逻辑与上面的图片插入一致 */}
+                    <button
+                        type="button"
+                        onClick={() => setAiOpen(true)}
+                        className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                    >
+                        <WandSparkles className="size-3.5" />
+                        AI 写作
+                    </button>
                 </div>
                 <span className="text-[11px] tabular-nums text-muted-foreground">{value.length} 字</span>
             </div>
@@ -152,6 +166,12 @@ export function MarkdownEditor({
                     void uploadFiles(Array.from(e.target.files ?? []));
                     if (fileRef.current) fileRef.current.value = "";
                 }}
+            />
+            {/* AI 写作弹窗：生成 Markdown 草稿并追加到正文末尾（值取自 ref，避免闭包拿到旧值） */}
+            <AIWritingDialog
+                open={aiOpen}
+                onOpenChange={setAiOpen}
+                onInsert={(md) => onChange(`${valueRef.current}${valueRef.current.endsWith("\n") || !valueRef.current ? "" : "\n"}${md}\n`)}
             />
         </div>
     );

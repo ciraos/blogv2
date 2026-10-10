@@ -97,6 +97,27 @@ export interface SiteConfig {
     about: AboutPageConfig;
     ai_assistant: AiAssistantConfig;
     ai_podcast: AiPodcastConfig;
+    /**
+     * AI 摘要 / AI 写作（PRO）。
+     * ⚠️ 官方键名是**扁平 snake_case**（快照 setting-keys.ts:474-485：ai_summary_provider、
+     * ai_writing_api_key …），不是嵌套对象；而且它们属于后台专有键，公开 /public/site-config
+     * 不下发（线上实测），只有鉴权后的 POST /settings/get-by-keys 能读到。
+     * 所以这里按可选字段登记，只为让设置页的键名有类型依据。
+     */
+    ai_summary_provider?: string;
+    /** 凭据类：只写不回显 */
+    ai_summary_api_key?: string;
+    ai_summary_api_url?: string;
+    ai_summary_model?: string;
+    ai_summary_system_prompt?: string;
+    ai_writing_provider?: string;
+    /** 凭据类：只写不回显 */
+    ai_writing_api_key?: string;
+    ai_writing_api_url?: string;
+    ai_writing_model?: string;
+    ai_writing_system_prompt?: string;
+    ai_writing_max_tokens?: string;
+    ai_writing_temperature?: string;
     album: AlbumConfig;
     article: ArticleConfig;
     captcha: CaptchaConfig;
@@ -275,19 +296,52 @@ export interface AboutPageConfig {
 }
 
 // ===================== AI助手 =====================
+/**
+ * AI 助手配置（PRO）。
+ * ⚠️ 公开的 /public/site-config 只下发 enable/name/welcome/chat_suggestions/search_suggestions
+ * 这 5 个前台要用的键（线上实测 2026-10）；下面 embedding 系列、vector_store 与三个 prompt
+ * 属于**后台专有键**，只出现在需要鉴权的 POST /settings/get-by-keys 响应里
+ * （官方键名见快照 setting-keys.ts:500-511）。
+ */
 export interface AiAssistantConfig {
     chat_suggestions: string[];
+    /** 启用 AI 助手（前台据此显示入口） */
     enable: boolean;
     name: string;
     search_suggestions: string[];
     welcome: string;
+    /** 以下为后台专有键：检索增强（RAG）用的向量化配置 */
+    embedding_provider?: string;
+    /** 凭据类：后端只写不回显（回显时是掩码 ********），本站设置页按只写方式处理 */
+    embedding_api_key?: string;
+    embedding_model?: string;
+    vector_store?: string;
+    system_prompt?: string;
+    user_prompt?: string;
+    no_context_prompt?: string;
 }
 
 // ===================== AI播客 =====================
+/**
+ * AI 播客配置（PRO）。
+ * 公开 site-config 只下发 enable/button_text/button_icon（线上实测）；
+ * provider、speaker1/2、audio 系列等是后台专有键（官方 setting-keys.ts:486-499）。
+ * ⚠️ 官方另有 app_id / access_key / resource_id 三个凭据键，按本站「凭据类不进设置页」的政策，
+ * 这里不登记、设置页也不渲染（要维护请走官方后台）。
+ */
 export interface AiPodcastConfig {
     button_icon: string;
     button_text: string;
     enable: boolean;
+    /** 以下为后台专有键：语音合成参数 */
+    provider?: string;
+    speaker1?: string;
+    speaker2?: string;
+    use_head_music?: boolean;
+    use_tail_music?: boolean;
+    audio_format?: string;
+    sample_rate?: number;
+    speech_rate?: number;
 }
 
 // ===================== 相册 ALBUM =====================

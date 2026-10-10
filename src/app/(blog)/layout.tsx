@@ -8,6 +8,7 @@ import { ThemeScheduleSync } from "@/components/ui/theme-schedule-sync";
 import { TopProgress } from "@/components/ui/top-progress";
 import Header from "@/components/header";
 import { FloatingActions } from "@/components/(blog)/floating-actions";
+import { AiAssistantLauncher } from "@/components/(blog)/ai-assistant-launcher";
 import { AuthExpiredNotifier } from "@/components/(blog)/auth-expired-notifier";
 import { FooterBadges } from "@/components/(blog)/footer-badges";
 import { FooterBottomBar } from "@/components/(blog)/footer-bottom-bar";
@@ -220,6 +221,16 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
             </div>
             {/* (blog) 全局右下角悬浮按钮组：外层展开 → 目录（仅文章页）+ 回到顶部 */}
             <FloatingActions />
+            {/* AI 助手悬浮入口（左下角，避免与右下角悬浮组重叠）：
+                未开启（ai_assistant.enable = false）时组件内部直接返回 null；
+                当前后端没有对话接口，所以面板只呈现后台配置的名称/欢迎语/建议词 + 真实的状态说明 */}
+            <AiAssistantLauncher
+                enabled={config?.ai_assistant?.enable}
+                name={config?.ai_assistant?.name}
+                welcome={config?.ai_assistant?.welcome}
+                chatSuggestions={config?.ai_assistant?.chat_suggestions}
+                searchSuggestions={config?.ai_assistant?.search_suggestions}
+            />
           </SidebarCollapseProvider>
         </ThemeProvider>
       </body>

@@ -57,7 +57,16 @@ export type SettingsFieldType =
     | "stringlist"
     | "color"
     | "json"
-    | "skin";
+    | "skin"
+    /**
+     * AI 区专用：整块交给 src/components/admin/ai-settings-panel.tsx 渲染（官方 AI 设置面板的
+     * 分模块布局：AI 摘要 / AI 写作 / AI 播客 / AI 助手），草稿与保存仍走本文件的
+     * buildSettingsBaseline / isFieldDirty / buildSettingsPayload，不另造一套提交逻辑。
+     */
+    | "ai";
+
+/** type="ai" 时的控件细类（面板按它决定渲染成什么输入框；model = 可选可输入的下拉+自由文本） */
+export type SettingsAiControl = "text" | "password" | "number" | "textarea" | "select" | "model";
 
 /** 列表项里的字段定义（type=list 时表示嵌套一层列表，如 footer.project.list[].links） */
 export interface SettingsListField {
@@ -82,6 +91,15 @@ export interface SettingsField {
     itemFields?: SettingsListField[];
     /** 独占整行 */
     wide?: boolean;
+    /** type="ai"：该字段归属的模块（面板按模块分块渲染） */
+    aiModule?: "summary" | "writing" | "podcast" | "assistant";
+    /** type="ai"：控件细类 */
+    aiControl?: SettingsAiControl;
+    /**
+     * 敏感项（API Key 之类）：回显掩码、未改动不提交。
+     * 判据见 isFieldDirty：基线是掩码而草稿为空/未动时不算改动，避免把掩码写回后端。
+     */
+    sensitive?: boolean;
 }
 
 export interface SettingsGroup {
@@ -277,6 +295,123 @@ function oneImagePageFields(page: "home" | "archives" | "categories" | "tags"): 
 
 /** 左侧导航的分组顺序（对齐官方后台「设置」导航的分组） */
 export const SETTINGS_GROUP_ORDER = ["站点信息", "外观配置", "内容管理", "用户通知", "三方服务", "页面显示", "高级功能"] as const;
+
+// ===================== AI 相关选项表（对齐官方 AISettingsForm.tsx:63-181） =====================
+// 为什么把选项放在这里而不是面板组件里：键名/选项都是「后端认识什么」的事实，
+// 与 SETTINGS_SECTIONS 的字段声明放一起才好对照官方 setting-descriptors.ts；面板只管布局与交互。
+
+/** 敏感项掩码（远端同一常量 constant.SecretValueMask；存储策略页也是这个值） */
+export const SETTINGS_SECRET_MASK = "********";
+
+/** AI 服务商（官方 6 个；线上 GET /api/pro/admin/ai/writing/config 的 supported_providers 实测完全一致） */
+export const AI_PROVIDER_OPTIONS: { value: string; label: string }[] = [
+    { value: "glm", label: "智谱 GLM" },
+    { value: "openai", label: "OpenAI" },
+    { value: "qwen", label: "通义千问" },
+    { value: "claude", label: "Claude" },
+    { value: "deepseek", label: "DeepSeek" },
+    { value: "doubao", label: "豆包" },
+];
+
+/** 各服务商常用模型（官方同款；只是候选，输入框允许直接写自定义模型名） */
+export const AI_PROVIDER_MODEL_OPTIONS: Record<string, { value: string; label: string }[]> = {
+    glm: [
+        { value: "glm-4-flash", label: "GLM-4-Flash" },
+        { value: "glm-4-air", label: "GLM-4-Air" },
+        { value: "glm-4-airx", label: "GLM-4-AirX" },
+        { value: "glm-4-long", label: "GLM-4-Long" },
+        { value: "glm-4-plus", label: "GLM-4-Plus" },
+        { value: "glm-4", label: "GLM-4" },
+        { value: "glm-4v", label: "GLM-4V" },
+    ],
+    openai: [
+        { value: "gpt-4o-mini", label: "GPT-4o Mini" },
+        { value: "gpt-4o", label: "GPT-4o" },
+        { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
+        { value: "gpt-4", label: "GPT-4" },
+        { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
+    ],
+    qwen: [
+        { value: "qwen-turbo", label: "Qwen Turbo" },
+        { value: "qwen-plus", label: "Qwen Plus" },
+        { value: "qwen-max", label: "Qwen Max" },
+        { value: "qwen-long", label: "Qwen Long" },
+    ],
+    claude: [
+        { value: "claude-3-5-haiku-latest", label: "Claude 3.5 Haiku" },
+        { value: "claude-3-5-sonnet-latest", label: "Claude 3.5 Sonnet" },
+        { value: "claude-3-opus-latest", label: "Claude 3 Opus" },
+    ],
+    deepseek: [
+        { value: "deepseek-chat", label: "DeepSeek Chat" },
+        { value: "deepseek-coder", label: "DeepSeek Coder" },
+        { value: "deepseek-reasoner", label: "DeepSeek Reasoner" },
+    ],
+    doubao: [
+        { value: "doubao-seed-1-6-251015", label: "Doubao-Seed-1.6 (251015)" },
+        { value: "doubao-seed-1-6-lite-251015", label: "Doubao-Seed-1.6-lite" },
+        { value: "doubao-seed-1-6-flash-250828", label: "Doubao-Seed-1.6-flash" },
+        { value: "doubao-1-5-pro-32k-250115", label: "Doubao-1.5-pro-32k" },
+    ],
+};
+
+/** 向量化服务商（官方嵌入模型选择） */
+export const AI_EMBEDDING_PROVIDER_OPTIONS: { value: string; label: string }[] = [
+    { value: "siliconflow", label: "硅基流动（推荐）" },
+    { value: "zhipu", label: "智谱 AI" },
+    { value: "openai", label: "OpenAI" },
+    { value: "qwen", label: "通义千问" },
+    { value: "ollama", label: "Ollama（本地）" },
+];
+
+export const AI_EMBEDDING_MODEL_OPTIONS: Record<string, { value: string; label: string }[]> = {
+    siliconflow: [
+        { value: "BAAI/bge-m3", label: "BGE-M3（推荐）" },
+        { value: "BAAI/bge-large-zh-v1.5", label: "BGE-Large-zh" },
+    ],
+    zhipu: [{ value: "embedding-3", label: "Embedding-3" }],
+    openai: [
+        { value: "text-embedding-3-small", label: "text-embedding-3-small" },
+        { value: "text-embedding-3-large", label: "text-embedding-3-large" },
+    ],
+    qwen: [{ value: "text-embedding-v2", label: "text-embedding-v2" }],
+    ollama: [
+        { value: "nomic-embed-text", label: "nomic-embed-text" },
+        { value: "bge-m3", label: "bge-m3" },
+    ],
+};
+
+/** 向量库（官方：内嵌 / pgvector / Qdrant） */
+export const AI_VECTOR_STORE_OPTIONS: { value: string; label: string }[] = [
+    { value: "embedded", label: "内嵌存储（推荐）" },
+    { value: "pgvector", label: "pgvector" },
+    { value: "qdrant", label: "Qdrant" },
+];
+
+/** 播客语音服务商（官方目前只有火山引擎豆包） */
+export const AI_PODCAST_PROVIDER_OPTIONS: { value: string; label: string }[] = [
+    { value: "doubao", label: "豆包（火山引擎）" },
+];
+
+export const AI_PODCAST_SPEAKER_OPTIONS: { value: string; label: string }[] = [
+    { value: "zh_male_dayixiansheng_v2_saturn_bigtts", label: "大义先生（男声）" },
+    { value: "zh_female_mizaitongxue_v2_saturn_bigtts", label: "米仔同学（女声）" },
+    { value: "zh_male_liufei_v2_saturn_bigtts", label: "刘飞（男声）" },
+    { value: "zh_male_xiaolei_v2_saturn_bigtts", label: "小雷（男声）" },
+];
+
+export const AI_PODCAST_AUDIO_FORMAT_OPTIONS: { value: string; label: string }[] = [
+    { value: "mp3", label: "MP3" },
+    { value: "ogg_opus", label: "OGG Opus" },
+    { value: "pcm", label: "PCM" },
+    { value: "aac", label: "AAC" },
+];
+
+export const AI_PODCAST_SAMPLE_RATE_OPTIONS: { value: string; label: string }[] = [
+    { value: "16000", label: "16000 Hz" },
+    { value: "24000", label: "24000 Hz（推荐）" },
+    { value: "48000", label: "48000 Hz" },
+];
 
 export const SETTINGS_SECTIONS: SettingsSection[] = [
     {
@@ -502,7 +637,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                 fields: [
                     { key: "header.nav.clock", label: "显示时钟", type: "boolean" },
                     { key: "header.nav.travelling", label: "显示旅行足迹", type: "boolean" },
-                    { key: "header.nav.menu", label: "附加菜单", type: "json", hint: "类型为 unknown[]，结构含义待确认", placeholder: "[]" },
+                    { key: "header.nav.menu", label: "附加菜单", type: "json", hint: "类型为 unknown[]", placeholder: "[]" },
                 ],
             },
         ],
@@ -544,7 +679,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                     { key: "sidebar.author.description", label: "悬浮描述", type: "textarea", wide: true, hint: "支持 HTML" },
                     { key: "sidebar.author.skills", label: "技能词", type: "stringlist", hint: "顶部问候语点击循环展示", placeholder: "一条技能" },
                     { key: "sidebar.author.statusImg", label: "头像状态角标", type: "image" },
-                    { key: "sidebar.author.social", label: "社交链接", type: "json", hint: "键为平台名，值为 { icon, link }，含义待确认", placeholder: "{}" },
+                    { key: "sidebar.author.social", label: "社交链接", type: "json", hint: "键为平台名，值为 { icon, link }", placeholder: "{}" },
                 ],
             },
             {
@@ -630,7 +765,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                         label: "显示范围",
                         type: "text",
                         placeholder: "all",
-                        hint: "all = 所有页面；其余取值含义待确认",
+                        hint: "all = 所有页面",
                     },
                     {
                         key: "sidebar.weather.rectangle",
@@ -948,14 +1083,14 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                 id: "oauth",
                 label: "第三方登录",
                 fields: [
-                    { key: "oauth.github.enable", label: "启用 GitHub 登录", type: "boolean", hint: "含义待确认" },
-                    { key: "oauth.google.enable", label: "启用 Google 登录", type: "boolean", hint: "含义待确认" },
-                    { key: "oauth.logto.enable", label: "启用 Logto 登录", type: "boolean", hint: "含义待确认" },
-                    { key: "oauth.microsoft.enable", label: "启用 Microsoft 登录", type: "boolean", hint: "含义待确认" },
-                    { key: "oauth.oidc.enable", label: "启用 OIDC 登录", type: "boolean", hint: "含义待确认" },
-                    { key: "oauth.qq.enable", label: "启用 QQ 登录", type: "boolean", hint: "含义待确认" },
-                    { key: "oauth.rainbow.enable", label: "启用 Rainbow 登录", type: "boolean", hint: "含义待确认" },
-                    { key: "oauth.wechat.enable", label: "启用微信登录", type: "boolean", hint: "含义待确认" },
+                    { key: "oauth.github.enable", label: "启用 GitHub 登录", type: "boolean" },
+                    { key: "oauth.google.enable", label: "启用 Google 登录", type: "boolean" },
+                    { key: "oauth.logto.enable", label: "启用 Logto 登录", type: "boolean" },
+                    { key: "oauth.microsoft.enable", label: "启用 Microsoft 登录", type: "boolean" },
+                    { key: "oauth.oidc.enable", label: "启用 OIDC 登录", type: "boolean" },
+                    { key: "oauth.qq.enable", label: "启用 QQ 登录", type: "boolean" },
+                    { key: "oauth.rainbow.enable", label: "启用 Rainbow 登录", type: "boolean" },
+                    { key: "oauth.wechat.enable", label: "启用微信登录", type: "boolean" },
                 ],
             },
             {
@@ -977,7 +1112,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                 label: "Rainbow 附加配置",
                 fields: [
                     { key: "oauth.rainbow.callback_url", label: "回调地址", type: "text", placeholder: "https://example.com/callback" },
-                    { key: "oauth.rainbow.login_methods", label: "登录方式", type: "text", hint: "取值含义待确认（后端无注释）" },
+                    { key: "oauth.rainbow.login_methods", label: "登录方式", type: "text" },
                 ],
             },
         ],
@@ -1026,7 +1161,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                 id: "comment-multi-author",
                 label: "文章多作者",
                 fields: [
-                    { key: "article.multi_author.enable", label: "启用文章多作者", type: "boolean", hint: "含义待确认" },
+                    { key: "article.multi_author.enable", label: "启用文章多作者", type: "boolean" },
                     { key: "article.multi_author.need_review", label: "多作者需要审核", type: "boolean", hint: "本站前台未读取该键" },
                 ],
             },
@@ -1114,44 +1249,300 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
         label: "AI 功能",
         group: "高级功能",
         icon: Sparkles,
-        keywords: ["AI", "ai_assistant", "AI 助手", "AI 播客", "podcast"],
-        desc: "AI 助手与 AI 播客的开关、文案与建议（本站前台没有 AI 界面，改动只影响后端与官方前端）。",
+        keywords: [
+            "AI",
+            "ai_assistant",
+            "ai_podcast",
+            "ai_writing",
+            "ai_summary",
+            "AI 助手",
+            "AI 播客",
+            "AI 写作",
+            "AI 摘要",
+            "podcast",
+            "prompt",
+            "embedding",
+            "向量",
+        ],
+        desc: "AI 摘要 / 写作 / 播客 / 助手与检索增强（PRO）。凭据类字段只写不回显；未单独配置的模块沿用后端默认。",
         groups: [
             {
-                id: "ai-switch",
-                label: "功能开关",
+                // 整块交给 src/components/admin/ai-settings-panel.tsx 渲染（官方 AI 设置面板的分模块布局）。
+                // 字段仍逐个登记在这里：草稿基线、改动判定、保存载荷都复用 settings-manager 的既有机制。
+                id: "ai-panel",
+                label: "AI 配置",
                 fields: [
-                    { key: "ai_assistant.enable", label: "启用 AI 助手", type: "boolean", hint: "含义待确认" },
-                    { key: "ai_podcast.enable", label: "启用 AI 播客", type: "boolean", hint: "含义待确认" },
-                ],
-            },
-            {
-                id: "ai-assistant",
-                label: "AI 助手文案",
-                fields: [
-                    { key: "ai_assistant.name", label: "助手名称", type: "text", placeholder: "AI 助手" },
-                    { key: "ai_assistant.welcome", label: "欢迎语", type: "textarea", wide: true },
+                    // ---------- AI 摘要（PRO，官方扁平键名） ----------
+                    {
+                        key: "ai_summary_provider",
+                        label: "提供商",
+                        type: "ai",
+                        aiModule: "summary",
+                        aiControl: "select",
+                        options: AI_PROVIDER_OPTIONS,
+                        placeholder: "请选择提供商",
+                    },
+                    {
+                        key: "ai_summary_api_key",
+                        label: "API Key",
+                        type: "ai",
+                        aiModule: "summary",
+                        aiControl: "password",
+                        sensitive: true,
+                        placeholder: "留空使用全局 API Key",
+                    },
+                    {
+                        key: "ai_summary_api_url",
+                        label: "API URL",
+                        type: "ai",
+                        aiModule: "summary",
+                        aiControl: "text",
+                        placeholder: "https://api.openai.com/v1",
+                    },
+                    {
+                        key: "ai_summary_model",
+                        label: "模型",
+                        type: "ai",
+                        aiModule: "summary",
+                        aiControl: "model",
+                        hint: "可从列表选择，也可直接输入自定义模型名称",
+                    },
+                    {
+                        key: "ai_summary_system_prompt",
+                        label: "System Prompt",
+                        type: "ai",
+                        aiModule: "summary",
+                        aiControl: "textarea",
+                        wide: true,
+                    },
+
+                    // ---------- AI 写作（PRO，官方扁平键名） ----------
+                    {
+                        key: "ai_writing_provider",
+                        label: "提供商",
+                        type: "ai",
+                        aiModule: "writing",
+                        aiControl: "select",
+                        options: AI_PROVIDER_OPTIONS,
+                        placeholder: "请选择提供商",
+                    },
+                    {
+                        key: "ai_writing_api_key",
+                        label: "API Key",
+                        type: "ai",
+                        aiModule: "writing",
+                        aiControl: "password",
+                        sensitive: true,
+                        placeholder: "留空使用全局 API Key",
+                    },
+                    {
+                        key: "ai_writing_api_url",
+                        label: "API URL",
+                        type: "ai",
+                        aiModule: "writing",
+                        aiControl: "text",
+                        placeholder: "https://api.openai.com/v1",
+                    },
+                    {
+                        key: "ai_writing_model",
+                        label: "模型",
+                        type: "ai",
+                        aiModule: "writing",
+                        aiControl: "model",
+                        hint: "可从列表选择，也可直接输入自定义模型名称",
+                    },
+                    {
+                        key: "ai_writing_max_tokens",
+                        label: "Max Tokens",
+                        type: "ai",
+                        aiModule: "writing",
+                        aiControl: "number",
+                        placeholder: "4096",
+                    },
+                    {
+                        key: "ai_writing_temperature",
+                        label: "Temperature",
+                        type: "ai",
+                        aiModule: "writing",
+                        aiControl: "number",
+                        placeholder: "0.7",
+                    },
+                    {
+                        key: "ai_writing_system_prompt",
+                        label: "System Prompt",
+                        type: "ai",
+                        aiModule: "writing",
+                        aiControl: "textarea",
+                        wide: true,
+                    },
+
+                    // ---------- AI 播客（PRO；凭据键 app_id / access_key / resource_id 按政策不在此维护） ----------
+                    {
+                        key: "ai_podcast.enable",
+                        label: "启用 AI 播客",
+                        type: "boolean",
+                        aiModule: "podcast",
+                        hint: "开启后文章页将显示 AI 播客生成按钮",
+                    },
+                    {
+                        key: "ai_podcast.provider",
+                        label: "提供商",
+                        type: "ai",
+                        aiModule: "podcast",
+                        aiControl: "select",
+                        options: AI_PODCAST_PROVIDER_OPTIONS,
+                        placeholder: "请选择提供商",
+                        hint: "当前播客能力基于火山引擎豆包语音服务",
+                    },
+                    {
+                        key: "ai_podcast.speaker1",
+                        label: "说话人 1",
+                        type: "ai",
+                        aiModule: "podcast",
+                        aiControl: "select",
+                        options: AI_PODCAST_SPEAKER_OPTIONS,
+                        placeholder: "请选择音色",
+                    },
+                    {
+                        key: "ai_podcast.speaker2",
+                        label: "说话人 2",
+                        type: "ai",
+                        aiModule: "podcast",
+                        aiControl: "select",
+                        options: AI_PODCAST_SPEAKER_OPTIONS,
+                        placeholder: "请选择音色",
+                    },
+                    { key: "ai_podcast.use_head_music", label: "使用片头音乐", type: "boolean", aiModule: "podcast" },
+                    { key: "ai_podcast.use_tail_music", label: "使用片尾音乐", type: "boolean", aiModule: "podcast" },
+                    {
+                        key: "ai_podcast.audio_format",
+                        label: "音频格式",
+                        type: "ai",
+                        aiModule: "podcast",
+                        aiControl: "select",
+                        options: AI_PODCAST_AUDIO_FORMAT_OPTIONS,
+                        placeholder: "请选择格式",
+                    },
+                    {
+                        key: "ai_podcast.sample_rate",
+                        label: "采样率",
+                        type: "ai",
+                        aiModule: "podcast",
+                        aiControl: "select",
+                        options: AI_PODCAST_SAMPLE_RATE_OPTIONS,
+                        placeholder: "请选择采样率",
+                    },
+                    {
+                        key: "ai_podcast.speech_rate",
+                        label: "语速",
+                        type: "ai",
+                        aiModule: "podcast",
+                        aiControl: "number",
+                        placeholder: "0",
+                        hint: "豆包语音的 speech_rate，0 为正常语速",
+                    },
+                    {
+                        key: "ai_podcast.button_text",
+                        label: "按钮文案",
+                        type: "ai",
+                        aiModule: "podcast",
+                        aiControl: "text",
+                        placeholder: "AI 播客",
+                    },
+                    {
+                        key: "ai_podcast.button_icon",
+                        label: "按钮图标",
+                        type: "ai",
+                        aiModule: "podcast",
+                        aiControl: "text",
+                        placeholder: "ri:mic-fill",
+                        hint: "官方用 iconify 名（ri:xxx）；本站前台没有该图标源，会退化为 lucide 麦克风图标",
+                    },
+
+                    // ---------- AI 助手（PRO） ----------
+                    {
+                        key: "ai_assistant.enable",
+                        label: "启用 AI 助手",
+                        type: "boolean",
+                        aiModule: "assistant",
+                        hint: "开启后站点将显示 AI 助手入口",
+                    },
+                    { key: "ai_assistant.name", label: "助手名称", type: "ai", aiModule: "assistant", aiControl: "text", placeholder: "AI 助手" },
+                    { key: "ai_assistant.welcome", label: "欢迎语", type: "ai", aiModule: "assistant", aiControl: "textarea", wide: true },
                     {
                         key: "ai_assistant.chat_suggestions",
                         label: "对话建议",
                         type: "stringlist",
+                        aiModule: "assistant",
                         placeholder: "一条建议问题",
-                        hint: "聊天输入框上方的建议",
+                        hint: "前台助手面板里的「常见问题」快捷提问，每行一条",
                     },
-                    { key: "ai_assistant.search_suggestions", label: "搜索建议", type: "stringlist", placeholder: "一条建议" },
-                ],
-            },
-            {
-                id: "ai-podcast",
-                label: "AI 播客按钮",
-                fields: [
-                    { key: "ai_podcast.button_text", label: "按钮文案", type: "text", placeholder: "AI 播客" },
                     {
-                        key: "ai_podcast.button_icon",
-                        label: "按钮图标",
-                        type: "text",
-                        placeholder: "ri:mic-fill",
-                        hint: "官方用 iconify 名（ri:xxx），本站图标源没有这套图标",
+                        key: "ai_assistant.search_suggestions",
+                        label: "搜索建议",
+                        type: "stringlist",
+                        aiModule: "assistant",
+                        placeholder: "一条建议",
+                        hint: "前台助手面板里的「去站内搜索」快捷词，每行一条",
+                    },
+                    {
+                        key: "ai_assistant.embedding_provider",
+                        label: "向量化服务商",
+                        type: "ai",
+                        aiModule: "assistant",
+                        aiControl: "select",
+                        options: AI_EMBEDDING_PROVIDER_OPTIONS,
+                        placeholder: "请选择向量化服务商",
+                    },
+                    {
+                        key: "ai_assistant.embedding_api_key",
+                        label: "向量化 API Key",
+                        type: "ai",
+                        aiModule: "assistant",
+                        aiControl: "password",
+                        sensitive: true,
+                        placeholder: "已配置则留空不修改",
+                    },
+                    {
+                        key: "ai_assistant.embedding_model",
+                        label: "向量化模型",
+                        type: "ai",
+                        aiModule: "assistant",
+                        aiControl: "model",
+                        hint: "可从列表选择，也可直接输入自定义模型名称",
+                    },
+                    {
+                        key: "ai_assistant.vector_store",
+                        label: "向量库",
+                        type: "ai",
+                        aiModule: "assistant",
+                        aiControl: "select",
+                        options: AI_VECTOR_STORE_OPTIONS,
+                        placeholder: "请选择向量库",
+                    },
+                    {
+                        key: "ai_assistant.system_prompt",
+                        label: "System Prompt",
+                        type: "ai",
+                        aiModule: "assistant",
+                        aiControl: "textarea",
+                        wide: true,
+                    },
+                    {
+                        key: "ai_assistant.user_prompt",
+                        label: "User Prompt（带上下文）",
+                        type: "ai",
+                        aiModule: "assistant",
+                        aiControl: "textarea",
+                        wide: true,
+                    },
+                    {
+                        key: "ai_assistant.no_context_prompt",
+                        label: "No Context Prompt（无检索结果）",
+                        type: "ai",
+                        aiModule: "assistant",
+                        aiControl: "textarea",
+                        wide: true,
                     },
                 ],
             },
@@ -1454,7 +1845,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
             {
                 id: "map-extra",
                 label: "地图深色背景",
-                fields: [{ key: "about.page.map.backgroundDark", label: "深色模式背景图", type: "image", hint: "取值含义待确认" }],
+                fields: [{ key: "about.page.map.backgroundDark", label: "深色模式背景图", type: "image" }],
             },
             {
                 id: "music",
@@ -1773,6 +2164,21 @@ export const ALL_SETTINGS_FIELDS: SettingsField[] = SETTINGS_SECTIONS.flatMap((s
     section.groups.flatMap((group) => group.fields)
 );
 
+/**
+ * AI 面板的字段（带 aiModule 的都是）——给两处用：
+ *  1) AiSettingsPanel 分组渲染；
+ *  2) settings-manager 挂载时按这批键去 POST /settings/get-by-keys 补齐「公开 site-config 不下发」的
+ *     后台专有键（ai_summary_*、ai_writing_*、embedding_*、播客音频参数、三个 prompt 等）。
+ */
+export const AI_SETTINGS_FIELDS: SettingsField[] = ALL_SETTINGS_FIELDS.filter((field) => Boolean(field.aiModule));
+/** 上述字段的后端键（去重） */
+export const AI_SETTINGS_KEYS: string[] = Array.from(new Set(AI_SETTINGS_FIELDS.map((field) => field.key)));
+
+/** 后端对敏感项的回显占位（只写不回显）；空串 = 未配置 */
+export function isSecretMask(value: unknown): boolean {
+    return typeof value === "string" && /^\*+$/.test(value.trim());
+}
+
 /** 表单值：文本/数字/图片/下拉/颜色 = string；开关 = boolean；列表 = 数组；令牌 = { light, dark }；json = 文本 */
 export type SettingsFormValue =
     | string
@@ -1853,7 +2259,15 @@ export function buildSettingsBaseline(config: unknown): Record<string, SettingsF
 
 /** 判断某个字段是否有改动 */
 export function isFieldDirty(field: SettingsField, draft: Record<string, SettingsFormValue>, baseline: Record<string, SettingsFormValue>): boolean {
-    return JSON.stringify(draft[field.key]) !== JSON.stringify(baseline[field.key]);
+    const current = draft[field.key];
+    // 敏感项特例：基线是后端回显的掩码（********）时，
+    //   - 草稿还是掩码 → 没改（相等，下面照常判）
+    //   - 草稿被清空 → 视为「没改」，既不该把掩码写回后端，也不该把已配置的密钥清掉
+    //   （要改就直接输入新值，那时草稿是新值，必然 dirty）
+    if (field.sensitive && isSecretMask(baseline[field.key]) && (current === "" || current === undefined)) {
+        return false;
+    }
+    return JSON.stringify(current) !== JSON.stringify(baseline[field.key]);
 }
 
 /** 按官方口径构造保存载荷：布尔 → "true"/"false"；列表/令牌 → JSON 字符串；json 原样提交（本身就是 JSON 文本）；其余原样 */
