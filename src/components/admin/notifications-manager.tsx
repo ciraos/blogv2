@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
     getNotificationTypesApi,
@@ -107,6 +108,9 @@ export function NotificationsManager() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     /** 三个接口并行拉取；任一失败只影响自己那一块，不整页报错 */
     const load = useCallback(async () => {
         setLoading(true);
@@ -179,11 +183,12 @@ export function NotificationsManager() {
     const handleSaveSettings = async () => {
         if (!settings) return;
         const next = !settings.allowCommentReplyNotification;
-        const ok = window.confirm(
-            `确定${next ? "开启" : "关闭"}「评论回复通知」吗？\n\n` +
+        const ok = await confirm({
+            title: `确定${next ? "开启" : "关闭"}「评论回复通知」吗？`,
+            description:
                 `这会更新当前账号的通知配置（远端 PUT /user/notification-settings）。\n` +
-                `关闭后，别人回复你的评论将不再给你发送通知。`
-        );
+                `关闭后，别人回复你的评论将不再给你发送通知。`,
+        });
         if (!ok) return;
 
         setSaving(true);

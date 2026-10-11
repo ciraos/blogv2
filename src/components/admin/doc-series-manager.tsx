@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
 import { getAdminArticlesApi, getAdminDocSeriesApi } from "@/lib/api";
@@ -270,6 +271,9 @@ export function DocSeriesManager() {
     /** 「管理系列文章」弹窗目标系列 */
     const [articlesSeries, setArticlesSeries] = useState<DocSeries | null>(null);
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     // 拉取列表（浏览器自动携带登录 cookie）。延后到下一个 tick 再 setLoading，
     // 避免在 effect 内同步 setState 触发级联渲染（react-hooks/set-state-in-effect）。
     useEffect(() => {
@@ -352,13 +356,13 @@ export function DocSeriesManager() {
      * 先按 doc_count 拦一次 —— 远端对非空系列也是直接拒绝
      * （service.go:134-143），本地提示能省一次必然失败的往返。
      */
-    const handleDelete = (item: DocSeries) => {
+    const handleDelete = async (item: DocSeries) => {
         const docCount = item.doc_count ?? 0;
         if (docCount > 0) {
             toast.warning(`该系列下还有 ${docCount} 篇文档，请先在「管理系列文章」里移出后再删除`);
             return;
         }
-        if (!window.confirm(`确定删除系列「${item.name}」吗？此操作不可撤销。`)) return;
+        if (!(await confirm({ title: `确定删除系列「${item.name}」吗？`, description: "此操作不可撤销。", danger: true }))) return;
         setBusy(true);
         deleteAdminDocSeriesApi(item.id)
             .then(() => {
@@ -802,16 +806,19 @@ function DocSeriesArticlesDialog({ series, onClose }: { series: DocSeries; onClo
 
     const reload = () => setRefreshKey((k) => k + 1);
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     const articles = data?.articles ?? [];
     const inSeries = new Set(articles.map((a) => a.id));
 
     /** 加入系列：二次确认 → PUT /articles/{id} { is_doc: true, doc_series_id } */
-    const addArticle = (article: PostItem) => {
+    const addArticle = async (article: PostItem) => {
         if (
-            !window.confirm(
-                `确定把「${article.title || article.id}」加入系列「${series.name}」吗？\n` +
-                    "该文章会被标记为文档并归入本系列；草稿状态的文章不会出现在系列列表里。"
-            )
+            !(await confirm({
+                title: `确定把「${article.title || article.id}」加入系列「${series.name}」吗？`,
+                description: "该文章会被标记为文档并归入本系列；草稿状态的文章不会出现在系列列表里。",
+            }))
         ) {
             return;
         }
@@ -826,8 +833,8 @@ function DocSeriesArticlesDialog({ series, onClose }: { series: DocSeries; onClo
     };
 
     /** 移出系列：二次确认 → PUT /articles/{id} { doc_series_id: "" } */
-    const removeArticle = (articleId: string, title: string) => {
-        if (!window.confirm(`确定把「${title || articleId}」移出系列「${series.name}」吗？`)) return;
+    const removeArticle = async (articleId: string, title: string) => {
+        if (!(await confirm({ title: `确定把「${title || articleId}」移出系列「${series.name}」吗？` }))) return;
         setPendingId(articleId);
         removeArticleFromDocSeriesApi(articleId)
             .then(() => {

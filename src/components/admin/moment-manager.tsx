@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
@@ -118,6 +119,9 @@ export function MomentManager() {
     const [busy, setBusy] = useState<"" | "fetch" | "clear" | "batch" | "delete">("");
     const [editing, setEditing] = useState<AdminMomentItem | null>(null);
     const [viewing, setViewing] = useState<AdminMomentItem | null>(null);
+
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -239,7 +243,13 @@ export function MomentManager() {
     };
 
     const handleClearCache = async () => {
-        if (!window.confirm("清理朋友圈缓存？会清掉聚合结果的缓存（不影响已入库的数据）。")) return;
+        if (
+            !(await confirm({
+                title: "清理朋友圈缓存？",
+                description: "会清掉聚合结果的缓存（不影响已入库的数据）。",
+            }))
+        )
+            return;
         setBusy("clear");
         try {
             await clearAdminMomentsCacheApi();
@@ -253,7 +263,7 @@ export function MomentManager() {
     };
 
     const handleDelete = async (item: AdminMomentItem) => {
-        if (!window.confirm(`确定删除「${item.post_title || item.post_url}」这条朋友圈数据吗？`)) return;
+        if (!(await confirm({ title: `确定删除「${item.post_title || item.post_url}」这条朋友圈数据吗？`, danger: true }))) return;
         setBusy("delete");
         try {
             await deleteAdminMomentApi(item.id);
@@ -270,7 +280,7 @@ export function MomentManager() {
     const handleBatchDelete = async () => {
         const ids = [...selected];
         if (ids.length === 0) return;
-        if (!window.confirm(`确定删除选中的 ${ids.length} 条朋友圈数据吗？此操作不可撤销。`)) return;
+        if (!(await confirm({ title: `确定删除选中的 ${ids.length} 条朋友圈数据吗？`, description: "此操作不可撤销。", danger: true }))) return;
         setBusy("batch");
         try {
             await batchDeleteAdminMomentsApi(ids);

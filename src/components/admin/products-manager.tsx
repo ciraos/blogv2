@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -804,6 +805,9 @@ function VariantsDialog({
     const [deletingId, setDeletingId] = useState<string | number | null>(null);
     const [error, setError] = useState("");
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     const load = useCallback(async () => {
         setLoading(true);
         setLoadError(null);
@@ -878,9 +882,11 @@ function VariantsDialog({
             return;
         }
         if (
-            !window.confirm(
-                `确定删除规格「${variant.name || variant.id}」吗？\n该规格会从商品下移除，且不可恢复。`
-            )
+            !(await confirm({
+                title: `确定删除规格「${variant.name || variant.id}」吗？`,
+                description: "该规格会从商品下移除，且不可恢复。",
+                danger: true,
+            }))
         )
             return;
         setDeletingId(variant.id);
@@ -984,6 +990,9 @@ function StockDialog({ product, onClose }: { product: ProductListItem; onClose: 
     const [invalidatingId, setInvalidatingId] = useState<string | number | null>(null);
     const [reloadKey, setReloadKey] = useState(0);
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     const selected = variants.find((v) => String(v.id) === variantId) ?? null;
     const totalPages = Math.max(1, Math.ceil(total / STOCK_PAGE_SIZE));
 
@@ -1085,9 +1094,11 @@ function StockDialog({ product, onClose }: { product: ProductListItem; onClose: 
     /** 作废卡密（二次确认，只有「可用」的卡密才能作废） */
     const handleInvalidate = async (item: AdminStockItem) => {
         if (
-            !window.confirm(
-                `确定作废这条卡密吗？\n${item.content.slice(0, 60)}\n作废后不可恢复。`
-            )
+            !(await confirm({
+                title: "确定作废这条卡密吗？",
+                description: `${item.content.slice(0, 60)}\n作废后不可恢复。`,
+                danger: true,
+            }))
         )
             return;
         setInvalidatingId(item.id);
@@ -1324,6 +1335,9 @@ export function ProductsManager() {
     /** 请求序号：只让最后一次请求的结果落地（避免快速切页/筛选时旧响应覆盖新数据） */
     const reqIdRef = useRef(0);
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     const fetchProducts = useCallback(async () => {
         const reqId = ++reqIdRef.current;
         setLoading(true);
@@ -1426,9 +1440,11 @@ export function ProductsManager() {
     /** 删除商品（二次确认，不可恢复） */
     const handleDelete = async (item: ProductListItem) => {
         if (
-            !window.confirm(
-                `确定删除商品「${item.title || `#${item.id}`}」吗？\n商品及其规格会一并删除，且不可恢复。`
-            )
+            !(await confirm({
+                title: `确定删除商品「${item.title || `#${item.id}`}」吗？`,
+                description: "商品及其规格会一并删除，且不可恢复。",
+                danger: true,
+            }))
         )
             return;
         setActingId(item.id);

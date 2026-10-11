@@ -1131,7 +1131,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                 fields: [
                     { key: "comment.enable", label: "启用评论功能", type: "boolean" },
                     { key: "comment.login_required", label: "登录后才能评论", type: "boolean" },
-                    { key: "comment.allow_image_upload", label: "允许评论传图", type: "boolean" },
+                    { key: "comment.allow_image_upload", label: "允许评论传图", type: "boolean", hint: "关闭后评论框不显示传图按钮；图片存进名为 comment_image 的存储策略（默认落在 data/storage/comment_image，可在「存储策略」里改）" },
                     { key: "comment.barrage_enable", label: "弹幕模式", type: "boolean" },
                     { key: "comment.random_praise", label: "随机精选评论", type: "boolean", hint: "本站前台未读取该键" },
                 ],

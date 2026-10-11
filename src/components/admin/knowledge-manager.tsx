@@ -47,6 +47,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -350,6 +351,9 @@ export function KnowledgeManager() {
     const busy = busyAction !== null;
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     // ---- 拉取 ----
 
     const fetchDocuments = useCallback(async () => {
@@ -523,7 +527,7 @@ export function KnowledgeManager() {
         const targets = list.filter((f) => f.size <= MAX_UPLOAD_BYTES);
         if (targets.length === 0) return;
 
-        if (!window.confirm(`确定上传并索引 ${targets.length} 个文件吗？`)) return;
+        if (!(await confirm({ title: `确定上传并索引 ${targets.length} 个文件吗？` }))) return;
 
         setBusyAction("upload");
         let ok = 0;
@@ -568,7 +572,7 @@ export function KnowledgeManager() {
     };
 
     const handleDelete = async (doc: KnowledgeDocument) => {
-        if (!window.confirm(`确定删除文档「${doc.title}」吗？该操作会同时删除其分块，且不可撤销。`)) return;
+        if (!(await confirm({ title: `确定删除文档「${doc.title}」吗？`, description: "该操作会同时删除其分块，且不可撤销。", danger: true }))) return;
         setBusyAction(`delete-${doc.id}`);
         try {
             await deleteKnowledgeDocumentApi(doc.id);
@@ -584,7 +588,7 @@ export function KnowledgeManager() {
 
     const handleBatchDelete = async () => {
         if (selectedIds.length === 0) return;
-        if (!window.confirm(`确定删除选中的 ${selectedIds.length} 篇文档吗？其分块会一并删除，且不可撤销。`)) return;
+        if (!(await confirm({ title: `确定删除选中的 ${selectedIds.length} 篇文档吗？`, description: "其分块会一并删除，且不可撤销。", danger: true }))) return;
         setBusyAction("batch-delete");
         try {
             const result = await batchDeleteKnowledgeDocumentsApi(selectedIds);
@@ -605,7 +609,7 @@ export function KnowledgeManager() {
 
     const handleClearAll = async () => {
         // 清空是不可逆的重操作，二次确认里带上方言明的后果
-        if (!window.confirm("确定清空整个知识库吗？所有文档、分块与向量都会被删除，且不可撤销。")) return;
+        if (!(await confirm({ title: "确定清空整个知识库吗？", description: "所有文档、分块与向量都会被删除，且不可撤销。", danger: true }))) return;
         setBusyAction("clear");
         try {
             const result = await clearKnowledgeApi();
@@ -625,7 +629,7 @@ export function KnowledgeManager() {
         const tip = force
             ? "强制同步会重新嵌入所有文章（耗时较长），确定继续吗？"
             : "确定把站点文章同步进知识库吗？";
-        if (!window.confirm(tip)) return;
+        if (!(await confirm({ title: tip }))) return;
         setBusyAction(force ? "sync-force" : "sync");
         try {
             const result = await syncKnowledgeArticlesApi(force);

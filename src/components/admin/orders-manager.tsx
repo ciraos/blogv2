@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
 import {
@@ -251,6 +252,9 @@ export function OrdersManager() {
     /** 请求序号：只认最后一次请求的结果，避免快速切筛选/翻页时旧响应覆盖新数据 */
     const reqSeq = useRef(0);
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     useEffect(() => {
         const seq = ++reqSeq.current;
         // 延后到下一个 tick：effect 内同步 setState 会触发级联渲染（react-hooks/set-state-in-effect）
@@ -336,9 +340,11 @@ export function OrdersManager() {
     /** 软删除（二次确认）：远端 DELETE /pro/admin/orders/{id}，本轮未实测 */
     const removeOrder = async (id: number, label: string) => {
         if (
-            !window.confirm(
-                `确定删除订单「${label}」吗？\n这是软删除：后端仍保留该订单记录，但订单列表里不再显示。`
-            )
+            !(await confirm({
+                title: `确定删除订单「${label}」吗？`,
+                description: "这是软删除：后端仍保留该订单记录，但订单列表里不再显示。",
+                danger: true,
+            }))
         )
             return;
 

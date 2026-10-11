@@ -65,7 +65,7 @@ const data = {
         { title: "说说管理", url: "/admin/essays", pro: true },
         { title: "评论管理", url: "/admin/comments" },
         { title: "相册管理", url: "/admin/albums" },
-        { title: "社区问答", url: "/admin/qa", pro: true },
+        { title: "社区问答", url: "/admin/community-qa", pro: true },
       ],
     },
     {

@@ -29,6 +29,8 @@ const STATIC_ENTRIES: StaticEntry[] = [
     { path: "/equipment", changeFrequency: "monthly", priority: 0.4 },
     { path: "/travelling", changeFrequency: "monthly", priority: 0.4 },
     { path: "/air-conditioner", changeFrequency: "monthly", priority: 0.4 },
+    // 社区问答：官方 sitemap 里也有这一条；只有列表页进静态表，逐条问题页由后端的动态部分覆盖（若有）
+    { path: "/questions", changeFrequency: "weekly", priority: 0.5 },
     { path: "/privacy", changeFrequency: "yearly", priority: 0.2 },
     { path: "/copyright", changeFrequency: "yearly", priority: 0.2 },
     { path: "/cookies", changeFrequency: "yearly", priority: 0.2 },

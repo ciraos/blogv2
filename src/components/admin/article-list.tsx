@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
@@ -134,6 +135,9 @@ export function ArticleList() {
     const [importOpen, setImportOpen] = useState(false);
     const [taxonomyOpen, setTaxonomyOpen] = useState(false);
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     const visibleIds = list.map((a) => a.id);
     const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.includes(id));
     const someSelected = visibleIds.some((id) => selected.includes(id));
@@ -222,7 +226,7 @@ export function ArticleList() {
     /** 删除文章：确认 → 调接口 → 重拉列表。删掉当前页最后一条时回退一页，避免停在空页 */
     const handleDelete = async (article: PostItem) => {
         const title = article.title?.trim() || `#${article.id}`;
-        if (!window.confirm(`确定删除《${title}》吗？\n删除后不可恢复。`)) return;
+        if (!(await confirm({ title: `确定删除《${title}》吗？`, description: "删除后不可恢复。", danger: true }))) return;
         setDeletingId(article.id);
         try {
             await deleteAdminArticleApi(article.id);
@@ -255,7 +259,13 @@ export function ArticleList() {
         if (ids.length === 0) return;
         const first = list.find((a) => a.id === ids[0]);
         const preview = first?.title?.trim() ? `《${first.title.trim()}》${ids.length > 1 ? " 等" : ""}` : "";
-        if (!window.confirm(`确定删除选中的 ${ids.length} 篇文章吗？${preview ? `\n${preview}` : ""}\n删除后不可恢复。`)) {
+        if (
+            !(await confirm({
+                title: `确定删除选中的 ${ids.length} 篇文章吗？`,
+                description: `${preview ? `${preview}\n` : ""}删除后不可恢复。`,
+                danger: true,
+            }))
+        ) {
             return;
         }
 
@@ -690,10 +700,10 @@ type TaxonomyKind = "category" | "tag";
 
 /**
  * 文章分类 / 标签管理弹窗：
- *   分类 POST /api/admin/article-categories → 远端 /post-categories
- *        PUT|DELETE /api/admin/article-categories/item/{id} → 远端 /post-categories/{id}
- *   标签 POST /api/admin/article-tags → 远端 /post-tags
- *        PUT|DELETE /api/admin/article-tags/item/{id} → 远端 /post-tags/{id}
+ *   分类 POST   /api/admin/article-categories        → 远端 /post-categories
+ *        PUT|DELETE /api/admin/article-categories/{id} → 远端 /post-categories/{id}
+ *   标签 POST   /api/admin/article-tags              → 远端 /post-tags
+ *        PUT|DELETE /api/admin/article-tags/{id}     → 远端 /post-tags/{id}
  *
  * 只做「名称」的增改删（后端 Create 只有 name 必填；slug 留空由后端生成），
  * 分类的 is_series / sort_order、标签的 slug 不在这个弹窗里改。
@@ -719,6 +729,9 @@ function ArticleTaxonomyDialog({
     const [newTag, setNewTag] = useState("");
     /** 正在行内编辑的项（只改 name） */
     const [editing, setEditing] = useState<{ kind: TaxonomyKind; id: string; name: string } | null>(null);
+
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
 
     const load = useCallback(async () => {
         try {
@@ -804,9 +817,11 @@ function ArticleTaxonomyDialog({
 
     const handleDelete = async (kind: TaxonomyKind, id: string, name: string) => {
         if (
-            !window.confirm(
-                `确定删除${kind === "category" ? "分类" : "标签"}「${name}」吗？\n如果仍有文章在用它，删除可能会失败或影响这些文章的分类/标签。`
-            )
+            !(await confirm({
+                title: `确定删除${kind === "category" ? "分类" : "标签"}「${name}」吗？`,
+                description: "如果仍有文章在用它，删除可能会失败或影响这些文章的分类/标签。",
+                danger: true,
+            }))
         ) {
             return;
         }

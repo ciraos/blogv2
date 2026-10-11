@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
 import {
@@ -158,6 +159,9 @@ export function SupportsManager() {
     const [replying, setReplying] = useState(false);
     const [acting, setActing] = useState(false);
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     // 搜索防抖：每敲一个字就请求一次会把后端打爆（官方前端也是 useDebouncedValue 350ms）。
     // 页码由输入框自己重置（见下面 onChange），这里只负责把关键词延后生效，避免重复请求。
     useEffect(() => {
@@ -253,7 +257,13 @@ export function SupportsManager() {
             toast.warning("请输入回复内容");
             return;
         }
-        if (!window.confirm(`确定向工单「${detail.ticket_no}」发送这条回复吗？\n发送后用户可见，不可撤回。`)) return;
+        if (
+            !(await confirm({
+                title: `确定向工单「${detail.ticket_no}」发送这条回复吗？`,
+                description: "发送后用户可见，不可撤回。",
+            }))
+        )
+            return;
         setReplying(true);
         try {
             await replyAdminTicketApi(detail.id, content);
@@ -269,7 +279,13 @@ export function SupportsManager() {
     };
 
     const handleCloseTicket = async (item: TicketItem) => {
-        if (!window.confirm(`确定关闭工单「${item.ticket_no}」吗？\n关闭后用户无法继续在该工单里回复。`)) return;
+        if (
+            !(await confirm({
+                title: `确定关闭工单「${item.ticket_no}」吗？`,
+                description: "关闭后用户无法继续在该工单里回复。",
+            }))
+        )
+            return;
         setActing(true);
         try {
             await closeAdminTicketApi(item.id);
@@ -287,7 +303,7 @@ export function SupportsManager() {
         if (next === item.status) return;
         // 后端将来新增枚举值时兜底：不认识的状态不编标签，原样回显
         const label = STATUS_META[next]?.label ?? String(next);
-        if (!window.confirm(`确定把工单「${item.ticket_no}」的状态改成「${label}」吗？`)) return;
+        if (!(await confirm({ title: `确定把工单「${item.ticket_no}」的状态改成「${label}」吗？` }))) return;
         setActing(true);
         try {
             await updateAdminTicketStatusApi(item.id, next);
@@ -305,9 +321,11 @@ export function SupportsManager() {
 
     const handleDeleteTicket = async (item: TicketItem) => {
         if (
-            !window.confirm(
-                `确定删除工单「${item.ticket_no}」吗？\n工单与其全部会话记录都会被删除，且不可恢复。`
-            )
+            !(await confirm({
+                title: `确定删除工单「${item.ticket_no}」吗？`,
+                description: "工单与其全部会话记录都会被删除，且不可恢复。",
+                danger: true,
+            }))
         )
             return;
         setActing(true);

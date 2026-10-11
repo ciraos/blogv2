@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeScheduleSync } from "@/components/ui/theme-schedule-sync";
 import { TopProgress } from "@/components/ui/top-progress";
 import Header from "@/components/header";
+import { ConfirmProvider } from "@/components/confirm-provider";
 import { FloatingActions } from "@/components/(blog)/floating-actions";
 import { AiAssistantLauncher } from "@/components/(blog)/ai-assistant-launcher";
 import { AuthExpiredNotifier } from "@/components/(blog)/auth-expired-notifier";
@@ -136,8 +137,11 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
           {/* 后台改了站点配置 → 同一浏览器的前台标签页自动刷新；外加定时/唤醒兜底刷新内容（不占 DOM） */}
           <LiveRefresher />
 
-          {/* 侧边栏收缩状态：前台右侧边栏（CollapsibleAside）与右下角悬浮按钮共用同一份状态 */}
-          <SidebarCollapseProvider>
+          {/* 应用内确认弹窗：前台目前只有用户中心的「退出登录」用到（替代 window.confirm）。
+              只做 Provider 包裹，不动下面的布局逻辑。 */}
+          <ConfirmProvider>
+            {/* 侧边栏收缩状态：前台右侧边栏（CollapsibleAside）与右下角悬浮按钮共用同一份状态 */}
+            <SidebarCollapseProvider>
             {/* flex 列布局 + min-h-dvh：内容不足一屏时 footer 吸附在视口底部 */}
             <div id="CIRAOS" className="flex min-h-dvh flex-col">
               <Header {...header} />
@@ -232,6 +236,7 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
                 searchSuggestions={config?.ai_assistant?.search_suggestions}
             />
           </SidebarCollapseProvider>
+          </ConfirmProvider>
         </ThemeProvider>
       </body>
     </html>

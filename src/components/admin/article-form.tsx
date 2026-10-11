@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { MarkdownEditor } from "@/components/admin/markdown-editor";
 import { SeoScorePanel } from "@/components/admin/seo-score-panel";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Input } from "@/components/ui/input";
 import {
     createAdminArticleApi,
@@ -41,6 +42,12 @@ import {
     getAIWritingConfigApi,
     isAIWritingConfigured,
 } from "@/lib/api-ai";
+import {
+    ArticleRenderError,
+    isRenderedHtmlEmpty,
+    renderMarkdownToHtml,
+    resolveContentHtml,
+} from "@/lib/article-markdown";
 import type { PostCategory, PostTag } from "@/types/articles";
 
 /**
@@ -59,9 +66,10 @@ import type { PostCategory, PostTag } from "@/types/articles";
  *        关键词/永久链接、首页展示与排序、主色、原创与版权、IP 属地。
  * 未保存拦截：beforeunload（刷新/关闭）+ 返回列表前的确认。
  *
- * 关于 content_html：后端 model.CreateArticleRequest 同时接受 content_html 与 content_md，但 swagger 未写明
- * content_html 是否由后端生成。这里只提交 content_md，保存后检查返回的 content_html —— 为空就明确告警，
- * 避免出现「存进去了但前台空白」。
+ * 关于 content_html：后端 **不渲染 Markdown**（pkg/service/article/service.go:1143-1146 / 1505-1507 只对请求里
+ * 带来的 content_html 做 SanitizeHTML），官方后台编辑器（Tiptap）也是自己产出 HTML 再提交的。所以正文在
+ * **保存前**由 src/lib/article-markdown.ts 从 content_md 渲染成 HTML，与 content_md 一起提交；
+ * 渲染结果为空时直接拦住保存（不发出会把正文写成空的请求）。
  */
 type Mode = "create" | "edit";
 type Status = "DRAFT" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED";
@@ -115,7 +123,7 @@ function toSingleLine(text: string): string {
     return text.replace(/\s+/g, " ").trimStart();
 }
 
-/** 极简 Markdown → HTML（仅用于本地预览，最终以后端渲染为准） */
+/** 极简 Markdown → HTML（只在真实渲染器还没加载完 / 加载失败时给预览兜底，不参与提交） */
 function mdToHtml(md: string): string {
     const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const inline = (s: string) =>
@@ -438,12 +446,19 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
     // 新建成功后记住新 id，后续保存走 PUT；baseline 用于未保存判断
     const savedIdRef = useRef<string | undefined>(articleId);
     const baselineRef = useRef<string>("");
+    /** 编辑态详情接口回填的 content_html：content_md 为空时原样带回，绝不写成空 */
+    const loadedHtmlRef = useRef<string>("");
+    /** 上一次渲染用的 md 与结果：md 没变就不再渲染，也保证两次提交的 HTML 完全一致 */
+    const renderedRef = useRef<{ md: string; html: string } | null>(null);
     // 摘要生成：controller 用于「停止」，before 存生成前的原文用于失败回滚
     const summaryControllerRef = useRef<AbortController | null>(null);
     const summaryBeforeRef = useRef("");
     // 本地草稿（localStorage 自动保存，防误关/崩溃丢内容）；contentRef 供粘贴上传后回填光标位置
     const draftKey = `article-draft:${mode}:${articleId ?? "new"}`;
     const [draftAt, setDraftAt] = useState<number | null>(null);
+
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
 
     const buildPayload = useCallback(
         (next: Status): AdminArticlePayload => ({
@@ -555,7 +570,16 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                     setShowOnHome(a.show_on_home ?? true);
                     setPinSort(a.pin_sort ?? 0);
                     setHomeSort(a.home_sort ?? 0);
-                    setHtmlLen((a.content_html ?? "").length);
+                    // 详情接口（GET /api/admin/articles/{id} → 远端 /articles/{id}，serviceImpl.Get 里写死
+                    // includeHTML=true）会返回 content_html。它必须留着：
+                    //  - content_md 没变时直接沿用它（官方 Tiptap 写的旧文章 content_md 本来就是空的，
+                    //    它的 HTML 才是原文，绝不能因为回填缺失就写成空）；
+                    //  - 编辑页顶部那行「正文 HTML 已就绪」也读它。
+                    const loadedMd = a.content_md ?? "";
+                    const loadedHtml = a.content_html ?? "";
+                    loadedHtmlRef.current = loadedHtml;
+                    if (loadedMd && loadedHtml) renderedRef.current = { md: loadedMd, html: loadedHtml };
+                    setHtmlLen(loadedHtml.length);
                 } catch (e) {
                     toast.error(e instanceof Error ? e.message : "加载文章失败");
                 } finally {
@@ -685,7 +709,29 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
         return () => clearTimeout(timer);
     }, [dirty, loading, draftKey, buildPayload, status, currentSignature]);
 
-    const previewHtml = useMemo(() => mdToHtml(contentMd), [contentMd]);
+    /**
+     * 预览 HTML：优先用与提交**完全相同**的渲染器（src/lib/article-markdown.ts），
+     * 让「预览所见 = 保存所存」。渲染器要按需动态加载，所以渲染完成后才替换；
+     * md 与渲染结果对不上时先退回下面的极简渲染（不会出现「改了正文还显示上一份预览」）。
+     * 加载失败也只是退回极简渲染，不影响保存。
+     */
+    const [renderedPreview, setRenderedPreview] = useState<{ md: string; html: string } | null>(null);
+    useEffect(() => {
+        if (!showPreview) return;
+        let cancelled = false;
+        void renderMarkdownToHtml(contentMd)
+            .then((html) => {
+                if (!cancelled) setRenderedPreview({ md: contentMd, html });
+            })
+            .catch(() => {
+                // 渲染器加载失败：保持 null，渲染时用 mdToHtml 兜底
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [showPreview, contentMd]);
+    const previewHtml =
+        renderedPreview && renderedPreview.md === contentMd ? renderedPreview.html : mdToHtml(contentMd);
 
     /** 分类/标签共用：已选则移除、未选则追加（下拉添加与标签上的 × 都走它） */
     const toggle = (list: string[], id: string, set: (v: string[]) => void) =>
@@ -807,11 +853,32 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
         setSaving(next);
         const payload = buildPayload(next);
         try {
+            // ① 提交前把正文渲染成 HTML（创建与更新都带）：
+            //    - md 变了才重渲染，没变就沿用（含「详情接口回填、md 也没动」的情况）；
+            //    - md 为空时沿用服务端回填的 content_html，绝不写成空。
+            //    渲染器（react-dom/server + md-editor）要动态加载，失败时由下面的 catch 拦下，
+            //    全程不会发出请求 —— 否则就退化成「存进去但前台空白」。
+            const resolved = await resolveContentHtml({
+                contentMd,
+                loadedHtml: loadedHtmlRef.current,
+                cachedMd: renderedRef.current?.md ?? null,
+                cachedHtml: renderedRef.current?.html ?? "",
+            });
+            // ② md 有内容却渲染成空（例如正文只有会被过滤掉的原始 HTML）→ 拦在发请求之前。
+            if (contentMd.trim() && isRenderedHtmlEmpty(resolved.html)) {
+                toast.error("正文渲染结果为空，已取消保存（没有发出请求）", {
+                    description: "Markdown 里可能只有会被安全过滤掉的原始 HTML，请检查正文后重试",
+                });
+                return;
+            }
+            if (resolved.rendered) renderedRef.current = { md: contentMd, html: resolved.html };
+            // ③ baseline 仍按**不含** content_html 的口径存：currentSignature 用的是 buildPayload，
+            //    两边口径必须一致，否则保存完「未保存」标记会一直亮着。
+            const submitPayload = { ...payload, content_html: resolved.html };
             const saved = savedIdRef.current
-                ? await updateAdminArticleApi(savedIdRef.current, payload)
-                : await createAdminArticleApi(payload);
-            const len = (saved?.content_html ?? "").length;
-            setHtmlLen(len);
+                ? await updateAdminArticleApi(savedIdRef.current, submitPayload)
+                : await createAdminArticleApi(submitPayload);
+            setHtmlLen(resolved.html.length);
             setStatus(next);
             if (saved?.id !== undefined) {
                 savedIdRef.current = String(saved.id);
@@ -828,8 +895,13 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                 // 忽略
             }
             setDraftAt(null);
-            if (contentMd.trim() && len === 0) {
-                toast.warning("已保存，但后端没有返回渲染好的正文（content_html 为空），前台可能显示空白");
+            // 服务端回传的 content_html 只作安全网：字段明确存在却是空 → 可能没落库，如实提示一次
+            // （正常的创建/更新都会带回 content_html，见 service.go:1371 / 1738 的 includeHTML=true）。
+            const echoed = saved?.content_html;
+            if (contentMd.trim() && typeof echoed === "string" && isRenderedHtmlEmpty(echoed)) {
+                toast.warning("已保存，但服务端回传的正文 HTML 为空，前台可能仍显示空白", {
+                    description: "重新打开编辑页确认一下；若正文一直为空，请把这条提示反馈给后端",
+                });
             } else {
                 toast.success(
                     next === "PUBLISHED"
@@ -842,7 +914,12 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                 );
             }
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : "保存失败");
+            // 渲染失败（ArticleRenderError）与请求失败分开提示：前者根本没发出请求，别让人以为是网络问题
+            if (e instanceof ArticleRenderError) {
+                toast.error("正文渲染失败，已取消保存（没有发出请求）", { description: e.message });
+            } else {
+                toast.error(e instanceof Error ? e.message : "保存失败");
+            }
         } finally {
             setSaving(null);
         }
@@ -866,8 +943,8 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
         return () => window.removeEventListener("keydown", onKeyDown);
     });
 
-    const backToList = () => {
-        if (dirty && !window.confirm("有未保存的修改，确定离开吗？")) return;
+    const backToList = async () => {
+        if (dirty && !(await confirm({ title: "有未保存的修改，确定离开吗？" }))) return;
         router.push("/admin/post-management");
     };
 
@@ -886,7 +963,7 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
             {/* 顶栏：返回 + 标题 + 保存/发布 */}
             <div className="admin-page-head">
                 <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="icon" onClick={backToList} title="返回文章管理">
+                    <Button variant="ghost" size="icon" onClick={() => void backToList()} title="返回文章管理">
                         <ArrowLeft className="size-4" />
                     </Button>
                     <div>
@@ -899,7 +976,7 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                             )}
                         </h2>
                         <p className="mt-1 text-xs text-muted-foreground">
-                            {mode === "create" ? "正文用 Markdown 编写，保存后由后端渲染" : `文章 ID：${articleId}`}
+                            {mode === "create" ? "正文用 Markdown 编写，保存时渲染成 HTML 后提交" : `文章 ID：${articleId}`}
                             {draftAt !== null && (
                                 <>
                                     {" · "}
@@ -912,9 +989,9 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                                 <>
                                     {" · "}
                                     {htmlLen > 0 ? (
-                                        <span className="text-emerald-600 dark:text-emerald-400">后端已渲染 {htmlLen} 字正文</span>
+                                        <span className="text-emerald-600 dark:text-emerald-400">正文 HTML 已就绪（{htmlLen} 字）</span>
                                     ) : (
-                                        <span className="text-amber-600 dark:text-amber-400">后端未返回正文（前台可能空白）</span>
+                                        <span className="text-amber-600 dark:text-amber-400">暂无可用的正文 HTML（保存时会按 Markdown 生成）</span>
                                     )}
                                 </>
                             )}
@@ -1022,7 +1099,7 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                                             </div>
                                             <div
                                                 className="article-body mt-5"
-                                                // 仅本地预览；最终渲染以后端 content_html 为准
+                                                // 与提交走同一个渲染器（渲染器还没加载完时退回极简渲染）
                                                 dangerouslySetInnerHTML={{
                                                     __html: previewHtml || '<p class="text-sm text-muted-foreground">（正文为空）</p>',
                                                 }}

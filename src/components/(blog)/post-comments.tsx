@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 
-import { Globe, ImagePlus, MapPin, MessageCircle, Monitor, Send, Sparkles, ThumbsUp, X } from "lucide-react";
+import { Eye, EyeOff, Globe, ImagePlus, MapPin, MessageCircle, Monitor, Send, Sparkles, ThumbsUp, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { CommentContent } from "@/components/(blog)/comment-content";
+import { CommentMarkdownPreview, createAnzhiyuImageUrlResolver } from "@/components/(blog)/comment-preview";
 import { useGravatarConfig } from "@/components/(blog)/gravatar-provider";
 import type { RecentComment } from "@/lib/api";
 import { ApiError, submitCommentApi, uploadCommentImageApi } from "@/lib/api";
@@ -337,6 +338,39 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
     const [commentPlaceholder, setCommentPlaceholder] = useState("欢迎留下宝贵的建议啦～");
     /** 代码块配置（site-config post.code_block）：让评论里的代码框与文章正文一致 */
     const [codeBlock, setCodeBlock] = useState<CodeBlockConfig | undefined>(undefined);
+    /**
+     * 「Markdown 预览」开关（纯前端状态，不影响提交链路）。
+     * 打开时在输入框容器底部、工具栏下方渲染一块本地渲染的 Markdown 预览；
+     * 再次点击隐藏。
+     */
+    const [previewOpen, setPreviewOpen] = useState(false);
+    /**
+     * 刚上传成功的图片：`anzhiyu://file/{id}` → 本地 blob URL。
+     * 后端是在**返回评论列表时**才把内部协议换成一次性签名 URL 的
+     * （scripts/anheyu/anheyu-app-main/pkg/service/comment/service.go:1078-1135，有效期 1 小时），
+     * 前端拿不到也没法本地复现，所以照官方主题的做法（theme-anheyu-next-main
+     * src/components/post/Comment/CommentForm.tsx:380-383）自己留一份 blob URL 供预览显示真图。
+     *
+     * 为什么是 state 而不是 ref：这份映射是**渲染期要读的**（预览里要把 `anzhiyu://file/{id}`
+     * 换成真图地址），而 react-hooks/refs 不允许渲染期读 ref —— 之前那版「ref + 惰性 getter」
+     * 仍被判为「把 ref 传进函数，可能在渲染期读它」（post-comments.tsx 的调用点直接报错）。
+     * 换成 state 后，渲染期拿到的就是一个普通值，规则无从命中。
+     * 更新一律**不可变**（new Map + set + 换引用），满足 react-hooks/immutability。
+     *
+     * 另有一份 ref 镜像**只给卸载清理用**：revoke 必须在 effect/handler 里做，
+     * 不能读渲染期 state（否则 effect 依赖 map，每次上传都会 revoke 掉上一批仍在用的 URL）。
+     */
+    const [uploadedBlobUrls, setUploadedBlobUrls] = useState<Map<string, string>>(() => new Map());
+    const uploadedBlobUrlsRef = useRef(uploadedBlobUrls);
+
+    // 组件卸载：释放预览用的 blob URL（ref 的读取只发生在 effect 里，不在渲染期）
+    useEffect(() => {
+        const urls = uploadedBlobUrlsRef;
+        return () => {
+            urls.current.forEach((url) => URL.revokeObjectURL(url));
+            urls.current.clear();
+        };
+    }, []);
 
     // 挂载时拉一次评论配置：决定是否显示传图按钮、用后端占位文案
     useEffect(() => {
@@ -524,6 +558,14 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
         setUploading(true);
         try {
             const id = await uploadCommentImageApi(file);
+            // 本地预览用：把这次上传的文件建成 blob URL，预览里就能看到真图
+            // （提交后后端返回的评论列表用的是另一套一次性 URL，不影响这里）
+            const key = String(id);
+            const previous = uploadedBlobUrlsRef.current.get(key);
+            if (previous) URL.revokeObjectURL(previous);
+            const blobUrl = URL.createObjectURL(file);
+            uploadedBlobUrlsRef.current = new Map(uploadedBlobUrlsRef.current).set(key, blobUrl);
+            setUploadedBlobUrls(uploadedBlobUrlsRef.current);
             setContent((prev) => `${prev ? `${prev}\n` : ""}![](anzhiyu://file/${id})`);
             toast.success("图片已插入评论");
         } catch (err) {
@@ -544,6 +586,21 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
         : replyTarget
             ? "reply"
             : "textarea";
+
+    /**
+     * `anzhiyu://file/{id}` → 预览可用的图片地址。
+     * 有本地 blob（刚上传的图）就用它显示真图；没有就返回 undefined，
+     * 由预览组件显示「图片（提交后由后端解析）」占位文字，而不是一张破图。
+     *
+     * 这里闭包捕获的是**本次渲染的 state 值** `uploadedBlobUrls`（一个普通 Map，不是 ref），
+     * 所以既没有「渲染期读 ref」，也没有「把 ref 传给函数」这两种会被 react-hooks/refs 判错的形式；
+     * resolver 身份随 map 变化（上传成功一次、map 换一次引用），而它只是纯查询、不需要稳定身份。
+     * 解析结果与原来一致：刚上传的图能取到 blob（state 与 handler 里更新的 ref 镜像同引用，同一批条目），
+     * 取不到仍返回 undefined → 预览退化成占位文字。
+     */
+    const resolvePreviewImageUrl = createAnzhiyuImageUrlResolver({
+        get: (fileId) => uploadedBlobUrls.get(fileId),
+    });
 
     return (
         <section
@@ -681,11 +738,10 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                         }`}
                     />
                     {/* 工具栏：左侧传图按钮、右侧字数。
-                        右侧内边距 px-3 → pr-8：右下角挂了小鱼（下面那个绝对定位的挂件），
-                        鱼从容器右边往内占约 20px（24px 直径 − 4px 溢出），
-                        留 32px 就能让「0 / 500」完整落在鱼的左边、互不遮挡；
-                        这跟评论正文框用 pr-6 给挂件让出通道是同一套做法。 */}
-                    <div className="flex items-center justify-between border-t py-2 pl-3 pr-8">
+                        左右各留 padding：左侧传图按钮与右侧「0 / 500」各占一端，互不干扰。
+
+                        预览打开时工具栏不再是容器最后一块，底部圆角交给下面的预览面板。 */}
+                    <div className={`flex items-center justify-between border-t py-2 px-3 ${previewOpen ? "" : "rounded-b-lg"}`}>
                         <div className="flex items-center gap-1">
                             {/* 评论传图：后端策略允许时才显示（后端不开放 CORS，经 /api/public/comments/upload 代理） */}
                             {allowImageUpload !== false && (
@@ -708,36 +764,36 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                                     </button>
                                 </>
                             )}
+                            {/* 紧挨「插入图片」：Markdown 预览开关（纯前端状态，不提交任何东西） */}
+                            <button
+                                type="button"
+                                onClick={() => setPreviewOpen((open) => !open)}
+                                aria-pressed={previewOpen}
+                                className={`rounded-md p-1.5 transition-colors hover:bg-muted hover:text-foreground ${previewOpen
+                                    ? "bg-muted text-foreground"
+                                    : "text-muted-foreground"
+                                    }`}
+                                title={previewOpen ? "关闭 Markdown 预览" : "Markdown 预览"}
+                                aria-label={previewOpen ? "关闭 Markdown 预览" : "Markdown 预览"}
+                            >
+                                {previewOpen ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                            </button>
                         </div>
                         <span className="text-xs tabular-nums text-muted-foreground">
                             {content.length}
                             <span className="mx-0.5 text-muted-foreground/60">/</span>500
                         </span>
                     </div>
-                    {/* 输入框右下角的挂件（与评论正文框右下角同一套「大肥鱼」）。
-                        口径与 .comment-bubble 里那颗完全一致：绝对定位 + 圆形裁剪
-                        （rounded-[50%] + overflow-hidden，原图是不透明底的室内场景，
-                        方着贴会露出一个方块）、ring-1 ring-border 描边、
-                        pointer-events-none + aria-hidden + select-none 保证它只是贴纸。
-                        位置 -right-1 -bottom-1：贴着容器右下角、向内外各探出 3~4px，
-                        和参考图里那颗同样"骑"在输入框右下角上的观感一致。
-                        为什么不用 z-index：它是本容器最后一个子节点，绝对定位元素天然
-                        画在后面那个工具栏之上，不需要额外层叠声明。
-                        data-comment-input-mascot 只给自检脚本用（与正文框的
-                        data-comment-mascot 区分开，方便分别断言）。 */}
-                    <span
-                        aria-hidden="true"
-                        data-comment-input-mascot=""
-                        className="pointer-events-none absolute -right-1 -bottom-1 size-[22px] select-none overflow-hidden rounded-[50%] ring-1 ring-border shadow-sm sm:size-6"
-                    >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                            src={COMMENT_MASCOT_SRC}
-                            alt=""
-                            loading="lazy"
-                            className="size-full object-cover object-[50%_38%]"
+                    {/* Markdown 预览：输入框容器内部底部（工具栏之下）。
+                        为什么放容器里面而不是容器正下方：视觉上它就是这块「评论输入区」的一部分，
+                        与输入框共用一层描边，且能自然接管容器底部的圆角；放到容器外面会多出一条
+                        独立的边线，看起来像另一个区块。 */}
+                    {previewOpen && (
+                        <CommentMarkdownPreview
+                            markdown={content}
+                            resolveImageUrl={resolvePreviewImageUrl}
                         />
-                    </span>
+                    )}
                 </div>
 
                 {/* 表单信息行：未登录时显示昵称 / 邮箱 / 网址输入（登录态下这三项取自账号，无输入框、也不再显示提示文案）。

@@ -32,6 +32,7 @@ import {
     Search,
     Share2,
     Trash2,
+    Upload,
     X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -41,6 +42,7 @@ import { ContextMenu as ContextMenuPrimitive } from "radix-ui";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Input } from "@/components/ui/input";
 import {
     Sheet,
@@ -67,6 +69,11 @@ import {
     toAbsoluteApiUrl,
 } from "@/lib/api";
 import type { AdminFileItem, AdminFileListData, AdminFolderSize } from "@/lib/api";
+import {
+    uploadFilesToFileManager,
+    type FileUploadProgress,
+    type UploadFilesOutcome,
+} from "@/lib/api-file-upload";
 import { cn, resolveAssetUrl } from "@/lib/utils";
 
 type ViewMode = "grid" | "list";
@@ -545,8 +552,27 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
     const [busy, setBusy] = useState(false);
     const [dialog, setDialog] = useState<DialogState>(null);
 
+    /**
+     * 上传相关状态：
+     *  - uploadFile：当前正在传的文件（null = 空闲），用来在按钮上出 loading
+     *  - uploadProgress：当前文件的分片进度（已传 x / 共 y 片）
+     *  - dragActive：文件被拖到列表区上方时给高亮遮罩用
+     *  - abortRef：保存本次批量上传的 AbortController，供「取消」使用
+     */
+    const [uploadFile, setUploadFile] = useState<File | null>(null);
+    const [uploadProgress, setUploadProgress] = useState<FileUploadProgress | null>(null);
+    const [dragActive, setDragActive] = useState(false);
+    const abortRef = useRef<AbortController | null>(null);
+    /** 工具条的「上传」按钮只负责点开这个隐藏的 <input type="file" multiple> */
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    /** dragenter/dragleave 会在子元素之间反复触发，用计数器判断是否真的离开了列表区 */
+    const dragDepthRef = useRef(0);
+
     /** 最后一次单击的条目 id：Shift 范围选要用它当锚点 */
     const lastClickedRef = useRef<string | null>(null);
+
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
 
     /** 拉一页（next_token 为空时是首屏/刷新） */
     const load = useCallback(async (targetUri: string, nextToken?: string) => {
@@ -746,6 +772,70 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
             onSubmit: (v) => submitRename(item, v),
         });
 
+    /** 上传完成后的统一收尾：成功提示 / 失败逐个提示 / 刷新当前目录 */
+    const finishUpload = async (outcome: UploadFilesOutcome) => {
+        const { succeeded, failed, canceled } = outcome;
+        if (succeeded.length > 0) {
+            // 多个文件时把名字列出来，方便确认到底传上去了哪几个（改名的情况也能看到）
+            const names = succeeded.map((r) => r.name);
+            const description = succeeded.length <= 3 ? names.join("、") : `${names.slice(0, 3).join("、")} 等 ${succeeded.length} 个`;
+            toast.success(canceled ? `已取消，已上传 ${succeeded.length} 个文件` : `已上传 ${succeeded.length} 个文件`, {
+                description,
+            });
+        }
+        // 每个失败的文件单独一条提示，互不影响（不合并成一条，避免看漏）
+        for (const item of failed) {
+            toast.error(`${item.file.name} 上传失败`, { description: item.message });
+        }
+        if (failed.length === 0 && succeeded.length === 0 && !canceled) toast.info("没有可上传的文件");
+        // 有文件真的落盘了才刷新列表（纯失败/纯取消不打扰后端）
+        if (succeeded.length > 0) await load(uri);
+    };
+
+    /**
+     * 上传入口（工具条按钮与拖拽共用）。
+     * 进度/取消/重试/清理会话全部由 src/lib/api-file-upload.ts 负责，这里只管 UI 状态与提示。
+     */
+    const startUpload = async (picked: File[]) => {
+        if (picked.length === 0) return;
+        if (uploadFile) {
+            toast.info("已有文件正在上传，请等它结束或先取消");
+            return;
+        }
+        const controller = new AbortController();
+        abortRef.current = controller;
+        setUploadProgress(null);
+        let outcome: UploadFilesOutcome;
+        try {
+            // 先占位「正在上传」，这样按钮立刻进入 loading（第一个文件建会话前就有反馈）
+            setUploadFile(picked[0]);
+            outcome = await uploadFilesToFileManager({
+                uri,
+                files: picked,
+                signal: controller.signal,
+                onProgress: (file, progress) => {
+                    setUploadFile(file);
+                    setUploadProgress(progress);
+                },
+            });
+        } catch (e) {
+            // 建会话/取策略这类整体性失败（每个文件的失败已在 outcome 里逐个返回）
+            toast.error(e instanceof Error ? e.message : "上传失败");
+            outcome = { succeeded: [], failed: [], canceled: false };
+        } finally {
+            abortRef.current = null;
+            setUploadFile(null);
+            setUploadProgress(null);
+        }
+        await finishUpload(outcome);
+    };
+
+    /** 「取消」：中断在途分片并让编排层删掉后端上传会话 */
+    const cancelUpload = () => {
+        abortRef.current?.abort();
+        toast.info("正在取消上传…");
+    };
+
     /** 打开目录选择对话框（右键菜单与工具条共用同一套 FolderPickerDialog） */
     const openPickerDialog = (mode: "move" | "copy", item: AdminFileItem) =>
         setDialog({ kind: "picker", mode, ids: [item.id] });
@@ -753,9 +843,9 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
     /** 详细信息：打开屏幕右侧的详情抽屉（目录会再拉一次大小统计） */
     const openDetailPanel = (item: AdminFileItem) => setDetail(item);
 
-    /** 删除：保持项目现有的确认流程（window.confirm → DELETE /api/admin/file?ids=…） */
-    const confirmRemoveItem = (item: AdminFileItem) => {
-        if (!window.confirm(`确定删除「${item.name}」吗？`)) return;
+    /** 删除：确认走站内弹窗（原先的 window.confirm），确认后 DELETE /api/admin/file，JSON 体 { ids } */
+    const confirmRemoveItem = async (item: AdminFileItem) => {
+        if (!(await confirm({ title: `确定删除「${item.name}」吗？`, danger: true }))) return;
         void submitDelete([item.id]);
     };
 
@@ -802,7 +892,7 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
         share: () => shareItem(),
         directLink: () => void copyDirectLink(item),
         detail: () => openDetailPanel(item),
-        remove: () => confirmRemoveItem(item),
+        remove: () => void confirmRemoveItem(item),
     });
 
     /** 分两组渲染：文件夹用「原尺寸」卡，文件用「紧凑」卡（顺序仍是 visible 的顺序） */
@@ -934,6 +1024,18 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
                         >
                             <FilePlus2 className="size-4" />
                         </button>
+                        {/* 上传：点开隐藏的 <input type="file" multiple>，上传到**当前目录**。
+                            放在「新建空文件」右侧、与后面那组分隔线之前，和相邻按钮同为 size-9 / size-4 图标。 */}
+                        <button
+                            type="button"
+                            title="上传文件到当前目录"
+                            aria-label="上传文件"
+                            disabled={busy || !!uploadFile}
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex size-9 items-center justify-center text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-50"
+                        >
+                            {uploadFile ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                        </button>
                         <span className="h-5 w-px bg-border" />
                         <button
                             type="button"
@@ -986,8 +1088,10 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
                             disabled={busy || selected.length === 0}
                             onClick={() => {
                                 const ids = selected;
-                                if (!window.confirm(`确定删除选中的 ${ids.length} 项吗？`)) return;
-                                void submitDelete(ids);
+                                void (async () => {
+                                    if (!(await confirm({ title: `确定删除选中的 ${ids.length} 项吗？`, danger: true }))) return;
+                                    void submitDelete(ids);
+                                })();
                             }}
                             className="flex size-9 items-center justify-center text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-40"
                         >
@@ -1125,6 +1229,34 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
                             {sortAsc ? <ArrowDownAZ className="size-4" /> : <ArrowUpAZ className="size-4" />}
                         </button>
                     </div>
+
+                    {/* 上传进度条：只在传的时候出现，内联在操作条右侧（flex-wrap 下移动端会自动换行，不溢出）。
+                        文本用「已传 x / 共 y 片」，比百分比更贴近后端的分片语义；取消按钮直接 abort + 删会话。 */}
+                    {uploadFile && (
+                        <div
+                            className="flex min-w-0 items-center gap-2 rounded-xl border bg-card px-2.5 py-1.5 text-xs shadow-sm"
+                            aria-live="polite"
+                        >
+                            <Loader2 className="size-3.5 shrink-0 animate-spin text-primary" />
+                            <span className="hidden max-w-40 truncate font-medium sm:inline" title={uploadFile.name}>
+                                {uploadFile.name}
+                            </span>
+                            <span className="shrink-0 text-muted-foreground">
+                                {uploadProgress
+                                    ? `${uploadProgress.uploadedChunks}/${uploadProgress.totalChunks} 片 · ${formatSize(uploadProgress.loadedBytes)} / ${formatSize(uploadProgress.size)}`
+                                    : "正在创建上传会话…"}
+                            </span>
+                            <button
+                                type="button"
+                                aria-label="取消上传"
+                                title="取消上传"
+                                onClick={cancelUpload}
+                                className="shrink-0 rounded-md border px-1.5 py-0.5 transition-colors hover:border-destructive hover:text-destructive"
+                            >
+                                取消
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -1150,9 +1282,54 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
                 ))}
             </div>
 
+            {/* 隐藏的文件选择器：由工具条的「上传」按钮触发。
+                accept 不设限（文件管理要能传任意类型，后端另有 allowed_extensions 白名单校验：
+                pkg/service/file/upload.go:150-163）；multiple 允许一次选多个，逐个上传、互不影响。 */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                aria-label="选择要上传的文件"
+                className="hidden"
+                onChange={(e) => {
+                    const picked = Array.from(e.target.files ?? []);
+                    // 先清空 value：否则连续两次选同一个文件不会再触发 change
+                    e.target.value = "";
+                    void startUpload(picked);
+                }}
+            />
+
             {/* ===== 内容区（唯一的滚动区：网格视图 / 列表视图共用同一个 admin-scroll） ===== */}
             <div
-                className="admin-scroll"
+                // relative 是必需的：globals.css 的 .admin-scroll 只有 overflow:auto，
+                // 不加定位上下文的话下面的拖拽遮罩（absolute inset-0）会挂到视口上而不是列表区。
+                className="admin-scroll relative"
+                onDragEnter={(e) => {
+                    // 必须 preventDefault，否则浏览器会用默认行为（直接打开/下载被拖入的文件）
+                    if (!e.dataTransfer?.types.includes("Files")) return;
+                    e.preventDefault();
+                    dragDepthRef.current += 1;
+                    if (!uploadFile) setDragActive(true);
+                }}
+                onDragOver={(e) => {
+                    // dragover 每次移动都会触发，preventDefault 是「允许 drop」的必要条件
+                    if (!e.dataTransfer?.types.includes("Files")) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = uploadFile ? "none" : "copy";
+                }}
+                onDragLeave={() => {
+                    // 子元素间移动也会触发 dragleave，靠计数归零判断真的离开了列表区
+                    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+                    if (dragDepthRef.current === 0) setDragActive(false);
+                }}
+                onDrop={(e) => {
+                    if (!e.dataTransfer?.types.includes("Files")) return;
+                    e.preventDefault();
+                    dragDepthRef.current = 0;
+                    setDragActive(false);
+                    // 目录被拖入时 DataTransfer.files 里也会出现条目，后端按扩展名会拒绝，这里只负责提示
+                    void startUpload(Array.from(e.dataTransfer.files));
+                }}
                 onMouseDown={(e) => {
                     // 点空白处清除选中态；点条目 / 勾选框 / 任何按钮都不算空白
                     const el = e.target as HTMLElement;
@@ -1295,7 +1472,7 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
                                                     aria-label="删除"
                                                     title="删除"
                                                     className="text-destructive hover:text-destructive"
-                                                    onClick={() => confirmRemoveItem(item)}
+                                                    onClick={() => void confirmRemoveItem(item)}
                                                 >
                                                     <Trash2 className="size-3.5" />
                                                 </Button>
@@ -1314,6 +1491,26 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
                             {moreLoading ? <Loader2 className="size-3.5 animate-spin" /> : null}
                             加载更多
                         </Button>
+                    </div>
+                )}
+
+                {/*
+                  拖拽上传遮罩：盖在整个列表区上（absolute inset-0 跟着滚动内容，首屏一定可见）。
+                  pointer-events-none 很关键 —— 遮罩自己不能吃掉 dragover/drop，否则拖到遮罩上时
+                  事件落到遮罩而不是容器，计数与 drop 都会漏。
+                */}
+                {dragActive && (
+                    <div
+                        data-fm-dropzone="active"
+                        className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-primary/5 p-4"
+                    >
+                        <div className="flex flex-col items-center gap-1.5 rounded-xl border-2 border-dashed border-primary bg-card/95 px-6 py-5 text-center shadow-lg">
+                            <Upload className="size-6 text-primary" />
+                            <p className="text-sm font-medium text-foreground">松开即上传到当前目录</p>
+                            <p className="max-w-56 truncate text-xs text-muted-foreground" title={uri}>
+                                {uri}
+                            </p>
+                        </div>
                     </div>
                 )}
             </div>

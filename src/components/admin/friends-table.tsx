@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
 import {
@@ -139,6 +140,9 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
         skip_health_check: false,
     });
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     const STATUS_OPTIONS = [
         { value: "APPROVED", label: "已通过" },
         { value: "PENDING", label: "待审核" },
@@ -238,7 +242,14 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
      * 删除的是当前页最后一条且不在第一页时，往前翻一页，避免停在空页上。
      */
     const handleDelete = async (link: FriendLink) => {
-        if (!window.confirm(`确定删除友链「${link.name}」吗？\n${link.url}\n删除后不可恢复。`)) return;
+        if (
+            !(await confirm({
+                title: `确定删除友链「${link.name}」吗？`,
+                description: `${link.url}\n删除后不可恢复。`,
+                danger: true,
+            }))
+        )
+            return;
         setDeletingId(link.id);
         try {
             await deleteAdminLinkApi(link.id);
@@ -263,7 +274,7 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
             toast.error("一次最多删除 100 条友链");
             return;
         }
-        if (!window.confirm(`确定删除选中的 ${ids.length} 条友链吗？删除后不可恢复。`)) return;
+        if (!(await confirm({ title: `确定删除选中的 ${ids.length} 条友链吗？`, description: "删除后不可恢复。", danger: true }))) return;
         setBatchDeleting(true);
         try {
             const result = await batchDeleteAdminLinksApi(ids);

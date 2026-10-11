@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import "../globals.css";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ConfirmProvider } from "@/components/confirm-provider";
 import { SidebarTriggerFallback } from "@/components/sidebar-trigger-fallback";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ui/theme-provider";
@@ -108,6 +109,9 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
                     {/* 定时主题：auto 时按两个时段自动切换（不占 DOM） */}
                     <ThemeScheduleSync schedule={schedule} />
                     <TooltipProvider>
+                      {/* 应用内确认弹窗：后台所有「确定删除吗」都走这里（替代 window.confirm）。
+                          只做 Provider 包裹，不动下面的布局逻辑。 */}
+                      <ConfirmProvider>
                         {/* 整页锁 100dvh 且不滚动：滚动交给内容区（以及列表页内部的表格区域） */}
                         <SidebarProvider className="h-dvh overflow-hidden">
                             <AppSidebar user={navUser} />
@@ -128,6 +132,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
                                 </div>
                             </main>
                         </SidebarProvider>
+                      </ConfirmProvider>
                     </TooltipProvider>
                 </ThemeProvider>
             </body>

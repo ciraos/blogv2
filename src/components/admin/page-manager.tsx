@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
@@ -53,6 +54,9 @@ export function PageManager() {
     const [busy, setBusy] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     const load = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -88,7 +92,7 @@ export function PageManager() {
     };
 
     const handleDelete = async (item: AdminPage) => {
-        if (!window.confirm(`确定删除页面「${item.title}」（${item.path}）吗？`)) return;
+        if (!(await confirm({ title: `确定删除页面「${item.title}」（${item.path}）吗？`, danger: true }))) return;
         setBusy(true);
         try {
             await deleteAdminPageApi(item.id);
@@ -102,7 +106,13 @@ export function PageManager() {
     };
 
     const handleInitialize = async () => {
-        if (!window.confirm("初始化默认页面？会补齐 /privacy、/cookies、/copyright 等（已存在的不会被覆盖）。")) return;
+        if (
+            !(await confirm({
+                title: "初始化默认页面？",
+                description: "会补齐 /privacy、/cookies、/copyright 等（已存在的不会被覆盖）。",
+            }))
+        )
+            return;
         setBusy(true);
         try {
             await initializeAdminPagesApi();
@@ -347,6 +357,9 @@ function PageEditorDialog({
         sort: page?.sort ?? 0,
     });
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
         setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -359,11 +372,13 @@ function PageEditorDialog({
         // 「正文去掉标签后没几个字，但 Markdown 存档里有内容」基本就是粘错框了 —— 保存下去前台会是一片空白。
         const visibleText = form.content.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
         if (visibleText.length < 10 && form.markdown_content.trim().length >= 20) {
-            const go = window.confirm(
-                "提醒：前台显示的是「正文」框（HTML），「Markdown 原文」只作存档、前台不读。\n\n" +
+            const go = await confirm({
+                title: "正文看起来是空的，确定还是这样保存吗？",
+                description:
+                    "前台显示的是「正文」框（HTML），「Markdown 原文」只作存档、前台不读。\n\n" +
                     `当前正文去掉标签后只有 ${visibleText.length} 个可见字符，前台会显示成空白页。\n\n` +
-                    "确定还是按现在的正文保存吗？\n（取消 → 回去把内容填进「正文」框）"
-            );
+                    "（取消 → 回去把内容填进「正文」框）",
+            });
             if (!go) return;
         }
         const payload: AdminPagePayload = {

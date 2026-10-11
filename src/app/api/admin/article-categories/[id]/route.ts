@@ -4,13 +4,13 @@ import type { NextRequest } from "next/server";
 import { API_URL } from "@/lib/api";
 import { ACCESS_TOKEN_KEY } from "@/lib/auth";
 
-// 文章标签（单条）：PUT / DELETE /api/admin/article-tags/item/[id] → 远端 /post-tags/{id}。
+// 文章分类（单条）：PUT / DELETE /api/admin/article-categories/[id] → 远端 /post-categories/{id}。
 //
-// 远端契约（pkg/handler/post_tag/handler.go:118-165）：
-//   PUT    body = model.UpdatePostTagRequest（name? / slug?）→ data = PostTagResponse
+// 远端契约（router.go:319-320、pkg/handler/post_category/handler.go:85-132）：
+//   PUT    body = model.UpdatePostCategoryRequest（字段全是指针，可只传要改的：
+//          name / slug / description / is_series / sort_order）→ data = PostCategoryResponse
 //   DELETE 无 body → data = null
-// 路径放在静态段 item 下，避免与既有的 /api/admin/article-tags（GET 列表）冲突。
-const REMOTE = `${API_URL}/post-tags`;
+const REMOTE = `${API_URL}/post-categories`;
 
 interface RouteContext {
     params: Promise<{ id: string }>;
@@ -27,7 +27,7 @@ function safeId(id: string | undefined): string | null {
 async function forward(request: NextRequest, id: string | undefined, method: "PUT" | "DELETE") {
     const encoded = safeId(id);
     if (!encoded) {
-        return NextResponse.json({ code: 400, message: "标签 ID 无效", data: null }, { status: 400 });
+        return NextResponse.json({ code: 400, message: "分类 ID 无效", data: null }, { status: 400 });
     }
 
     let body: string | undefined;
@@ -41,10 +41,10 @@ async function forward(request: NextRequest, id: string | undefined, method: "PU
         if (typeof raw !== "object" || raw === null) {
             return NextResponse.json({ code: 400, message: "请求体必须是 JSON 对象", data: null }, { status: 400 });
         }
-        // name 传了就不能是空串（远端 name 是可空指针，空串会把标签名改成空白）
+        // name 传了就不能是空串（远端 name 是可空指针，空串会把分类名改成空白）
         const name = (raw as { name?: unknown }).name;
         if (name !== undefined && (typeof name !== "string" || name.trim() === "")) {
-            return NextResponse.json({ code: 400, message: "标签名称不能为空", data: null }, { status: 400 });
+            return NextResponse.json({ code: 400, message: "分类名称不能为空", data: null }, { status: 400 });
         }
         body = JSON.stringify(raw);
     }
@@ -76,7 +76,7 @@ async function forward(request: NextRequest, id: string | undefined, method: "PU
                 code: (json as { code?: number } | null)?.code ?? res.status,
                 message:
                     (json as { message?: string } | null)?.message ||
-                    `${method === "PUT" ? "更新" : "删除"}标签失败（HTTP ${res.status}）`,
+                    `${method === "PUT" ? "更新" : "删除"}分类失败（HTTP ${res.status}）`,
                 data: null,
             },
             { status: res.status }

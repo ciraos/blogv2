@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
@@ -203,6 +204,9 @@ export function EssaysManager() {
 
     const isEdit = Boolean(editing);
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     const openEdit = (essay: Essay) => {
         setEditing(essay);
         setCreateOpen(false);
@@ -337,7 +341,7 @@ export function EssaysManager() {
     };
 
     const handleDelete = async (essay: Essay) => {
-        if (!window.confirm(`确定删除这条说说吗？\n${essay.content?.slice(0, 40) || ""}`)) return;
+        if (!(await confirm({ title: "确定删除这条说说吗？", description: essay.content?.slice(0, 40) || "", danger: true }))) return;
         try {
             await deleteAdminEssayApi(essay.id);
             toast.success("删除成功");
@@ -372,7 +376,7 @@ export function EssaysManager() {
     const handleBatchDelete = async () => {
         const ids = [...selected];
         if (ids.length === 0) return;
-        if (!window.confirm(`确定删除选中的 ${ids.length} 条说说吗？\n删除后不可恢复。`)) return;
+        if (!(await confirm({ title: `确定删除选中的 ${ids.length} 条说说吗？`, description: "删除后不可恢复。", danger: true }))) return;
         setDeleting(true);
         try {
             await batchDeleteAdminEssaysApi(ids);
@@ -462,10 +466,12 @@ export function EssaysManager() {
     };
 
     /** 二次确认：导入会往说说表写数据，文案里写清后果 */
-    const confirmImport = () => {
+    const confirmImport = async () => {
         if (!importFile) return;
-        const ok = window.confirm(
-            `确定导入「${importFile.name}」吗？\n\n` +
+        const ok = await confirm({
+            title: "确定导入吗？",
+            description:
+                `文件：${importFile.name}\n\n` +
                 `这会向说说表写入数据（不可撤销）。\n` +
                 `已存在的说说：${importOptions.skipExisting ? "跳过（按内容 + 创建时间判重）" : "不判重，可能产生重复"}\n` +
                 `默认状态：${
@@ -474,8 +480,8 @@ export function EssaysManager() {
                         : importOptions.defaultStatus === 2
                           ? "草稿"
                           : "隐藏"
-                }`
-        );
+                }`,
+        });
         if (!ok) return;
         void handleImport();
     };

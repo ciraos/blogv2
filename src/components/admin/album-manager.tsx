@@ -20,6 +20,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -118,6 +119,9 @@ export function AlbumManager() {
     const [refreshKey, setRefreshKey] = useState(0);
     const [preview, setPreview] = useState<AdminAlbum | null>(null);
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     const loadCategories = useCallback(async () => {
         try {
             const list = await getAdminAlbumCategoriesApi();
@@ -184,14 +188,14 @@ export function AlbumManager() {
         }
     };
 
-    const removeAlbum = (album: AdminAlbum) => {
-        if (!window.confirm(`确定删除这张图片吗？\n${album.title || album.imageUrl}`)) return;
+    const removeAlbum = async (album: AdminAlbum) => {
+        if (!(await confirm({ title: "确定删除这张图片吗？", description: album.title || album.imageUrl, danger: true }))) return;
         void run(() => deleteAdminAlbumApi(album.id), "图片已删除");
     };
 
-    const removeSelected = () => {
+    const removeSelected = async () => {
         if (selected.length === 0) return;
-        if (!window.confirm(`确定删除选中的 ${selected.length} 张图片吗？`)) return;
+        if (!(await confirm({ title: `确定删除选中的 ${selected.length} 张图片吗？`, danger: true }))) return;
         void run(() => batchDeleteAdminAlbumsApi(selected), `已删除 ${selected.length} 张`);
     };
 
@@ -525,8 +529,17 @@ export function AlbumManager() {
                                             className={ACTION_TONE.delete}
                                             disabled={busy}
                                             onClick={() => {
-                                                if (!window.confirm(`确定删除分类「${c.name}」吗？该分类下的图片会变成未分类。`)) return;
-                                                void run(() => deleteAdminAlbumCategoryApi(c.id), "分类已删除");
+                                                void (async () => {
+                                                    if (
+                                                        !(await confirm({
+                                                            title: `确定删除分类「${c.name}」吗？`,
+                                                            description: "该分类下的图片会变成未分类。",
+                                                            danger: true,
+                                                        }))
+                                                    )
+                                                        return;
+                                                    void run(() => deleteAdminAlbumCategoryApi(c.id), "分类已删除");
+                                                })();
                                             }}
                                         >
                                             <Trash2 className="size-3.5" />
@@ -1052,6 +1065,9 @@ function AlbumFileImportDialog({
     /** 导入结果（非空时弹窗切成结果视图） */
     const [result, setResult] = useState<AdminAlbumFileImportResult | null>(null);
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     /** 选文件：只收 .json / .zip，与远端分支口径一致（handler.go:562-575） */
     const pickFile = (input: HTMLInputElement) => {
         const next = input.files?.[0] ?? null;
@@ -1085,11 +1101,12 @@ function AlbumFileImportDialog({
                 ? "不设置默认分类"
                 : categories.find((c) => String(c.id) === categoryId)?.name ?? `#${categoryId}`;
         if (
-            !window.confirm(
-                `确定导入文件「${file.name}」（${formatSize(file.size)}）吗？\n` +
+            !(await confirm({
+                title: `确定导入文件「${file.name}」（${formatSize(file.size)}）吗？`,
+                description:
                     `重复项：${skipExisting ? "跳过" : overwriteExisting ? "覆盖" : "照常新增"}；` +
-                    `默认分类：${categoryLabel}。\n导入会写入相册库，此操作不可撤销。`
-            )
+                    `默认分类：${categoryLabel}。\n导入会写入相册库，此操作不可撤销。`,
+            }))
         ) {
             return;
         }

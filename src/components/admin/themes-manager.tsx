@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
 import { ThemeConfigDialog } from "@/components/admin/theme-config-dialog";
@@ -332,6 +333,9 @@ export function ThemesManager() {
     /** 请求序号：晚到的响应不能覆盖新请求的结果 */
     const reqIdRef = useRef(0);
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     const loadTab = useCallback((key: TabKey, force = false) => {
         if (!force && loadedRef.current[key]) return;
         if (inflightRef.current[key]) return;
@@ -450,7 +454,13 @@ export function ThemesManager() {
             return;
         }
         if (theme.is_current) return;
-        if (!window.confirm(`确定应用主题「${name}」吗？\n会立刻改变全站外观（前台需要刷新页面才能看到）。`)) return;
+        if (
+            !(await confirm({
+                title: `确定应用主题「${name}」吗？`,
+                description: "会立刻改变全站外观（前台需要刷新页面才能看到）。",
+            }))
+        )
+            return;
 
         setPending({ name, action: "switch" });
         try {
@@ -475,7 +485,14 @@ export function ThemesManager() {
             toast.error("该主题缺少名称，无法卸载");
             return;
         }
-        if (!window.confirm(`确定卸载主题「${name}」吗？\n会删除主题文件与安装记录，不可恢复。`)) return;
+        if (
+            !(await confirm({
+                title: `确定卸载主题「${name}」吗？`,
+                description: "会删除主题文件与安装记录，不可恢复。",
+                danger: true,
+            }))
+        )
+            return;
 
         setPending({ name, action: "uninstall" });
         try {
@@ -502,7 +519,13 @@ export function ThemesManager() {
             toast.error("无法确定主题名称，安装已取消");
             return;
         }
-        if (!window.confirm(`确定安装主题「${theme.name || name}」吗？\n会从远端下载并解压主题包。`)) return;
+        if (
+            !(await confirm({
+                title: `确定安装主题「${theme.name || name}」吗？`,
+                description: "会从远端下载并解压主题包。",
+            }))
+        )
+            return;
 
         setPending({ name: theme.name ?? name, action: "install" });
         try {

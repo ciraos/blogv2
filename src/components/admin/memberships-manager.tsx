@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
 import {
@@ -209,6 +210,9 @@ export function MembershipsManager() {
     const [detail, setDetail] = useState<UserMembership | null>(null);
     const [form, setForm] = useState<PlanForm>({ ...EMPTY_PLAN_FORM });
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     // 拉取套餐列表（接口无分页，一次全量；排序仍按后端返回，官方前端也是本地按 sort_order 排）
     useEffect(() => {
         let cancelled = false;
@@ -340,7 +344,7 @@ export function MembershipsManager() {
     const handleTogglePlanStatus = async (plan: MembershipPlan) => {
         const nextStatus = plan.status === 1 ? 2 : 1;
         const action = nextStatus === 1 ? "启用" : "停用";
-        if (!window.confirm(`确定${action}套餐「${plan.name}」吗？`)) return;
+        if (!(await confirm({ title: `确定${action}套餐「${plan.name}」吗？` }))) return;
         setTogglingId(plan.id);
         try {
             await updateAdminMembershipPlanApi(plan.id, { status: nextStatus });
@@ -354,7 +358,7 @@ export function MembershipsManager() {
     };
 
     const handleDeletePlan = async (plan: MembershipPlan) => {
-        if (!window.confirm(`确定删除套餐「${plan.name}」吗？\n删除后不可恢复。`)) return;
+        if (!(await confirm({ title: `确定删除套餐「${plan.name}」吗？`, description: "删除后不可恢复。", danger: true }))) return;
         try {
             await deleteAdminMembershipPlanApi(plan.id);
             toast.success("套餐已删除");

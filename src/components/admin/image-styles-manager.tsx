@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -381,6 +382,9 @@ export function ImageStylesManager() {
     const [filePublicID, setFilePublicID] = useState("");
     const [directoryPublicID, setDirectoryPublicID] = useState("");
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     const busy = busyAction !== null;
     const selectedPolicy = useMemo(
         () => policies.find((p) => String(p.id) === policyId),
@@ -550,7 +554,12 @@ export function ImageStylesManager() {
             return;
         }
 
-        if (!window.confirm(`确定保存「${selectedPolicy.name ?? selectedPolicy.id}」的图片样式配置吗？该操作会整体替换原配置。`))
+        if (
+            !(await confirm({
+                title: `确定保存「${selectedPolicy.name ?? selectedPolicy.id}」的图片样式配置吗？`,
+                description: "该操作会整体替换原配置。",
+            }))
+        )
             return;
 
         setBusyAction("save");
@@ -581,7 +590,14 @@ export function ImageStylesManager() {
     };
 
     const handlePurgeCache = async () => {
-        if (!window.confirm("确定清理图片缓存吗？所有已生成的派生图都会被删除，下次访问会重新生成。")) return;
+        if (
+            !(await confirm({
+                title: "确定清理图片缓存吗？",
+                description: "所有已生成的派生图都会被删除，下次访问会重新生成。",
+                danger: true,
+            }))
+        )
+            return;
         setBusyAction("purge");
         try {
             await manageCacheApi("image");
@@ -600,7 +616,7 @@ export function ImageStylesManager() {
             toast.error("请填写文件公共ID");
             return;
         }
-        if (!window.confirm(`确定重新生成文件「${id}」的缩略图吗？`)) return;
+        if (!(await confirm({ title: `确定重新生成文件「${id}」的缩略图吗？` }))) return;
         setBusyAction("regenerate");
         try {
             await regenerateThumbnailApi(id);
@@ -620,7 +636,7 @@ export function ImageStylesManager() {
             toast.error("请填写目录公共ID");
             return;
         }
-        if (!window.confirm(`确定重新生成目录「${id}」下所有文件的缩略图吗？`)) return;
+        if (!(await confirm({ title: `确定重新生成目录「${id}」下所有文件的缩略图吗？` }))) return;
         setBusyAction("regenerate-directory");
         try {
             await regenerateDirectoryApi(id);

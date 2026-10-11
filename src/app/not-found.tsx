@@ -3,9 +3,7 @@ import Link from 'next/link';
 import "./globals.css";
 
 import { BackButton } from "@/components/back-button";
-import { getSiteConfigs } from "@/lib/site-config";
 import { SiteConfigResponse } from "@/types/site-config";
-import { resolveAssetUrl } from "@/lib/utils";
 
 const site_url = process.env.NEXT_PUBLIC_SITE_URL;
 const api_url = process.env.NEXT_PUBLIC_API_URL;
@@ -28,23 +26,14 @@ export async function generateMetadata(): Promise<Metadata> {
     }
 }
 
-export default async function NotFound() {
-    // 404 配图：site-config post.page404.default_image（线上为 /static/img/background-effect.gif）
-    // 取不到配置时不渲染该装饰层，页面保持原来的纯 CSS 效果
-    const config = await getSiteConfigs();
-    const image = resolveAssetUrl(config?.post?.page404?.default_image);
+export default function NotFound() {
+    // 404 不再渲染后端配图：用户明确说"不要骷髅"（原实现取 site-config post.page404.default_image，
+    // 线上是 /static/img/background-effect.gif 那张骷髅/心形图，铺底后会压住幽灵本体）。
+    // 配置键 post.page404.default_image 仍保留在后端与设置页里，但前台不再消费它。
+    // 同时这里刻意不取 site-config：让 404 页零接口依赖，后端挂了也能正常出页面。
 
     return (
         <div className="relative flex min-h-[calc(100dvh-10rem)] w-full flex-col items-center justify-center gap-7 overflow-hidden py-16 text-center">
-            {/* 404 配图：整块铺底、居中 contain，透明度压低保住文字可读性（深浅色都适用） */}
-            {image && (
-                <div
-                    className="pointer-events-none absolute inset-0 bg-center bg-no-repeat opacity-25 dark:opacity-20"
-                    style={{ backgroundImage: `url(${image})`, backgroundSize: "contain" }}
-                    aria-hidden="true"
-                />
-            )}
-
             {/* 背景装饰：漂浮圆点 + 模糊光斑 */}
             <div className="pointer-events-none absolute inset-0" aria-hidden="true">
                 <span className="nf-dot left-[10%] top-[18%] size-2.5 bg-primary/40" />
@@ -85,6 +74,14 @@ export default async function NotFound() {
                     className="inline-flex items-center rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
                 >
                     返回首页
+                </Link>
+                {/* 与「返回首页」同款主按钮，只是目标换到后台工作台（/admin 会再跳 /admin/dashboard）。
+                    未登录时后台 layout 的鉴权门会把他引到登录页，符合预期。 */}
+                <Link
+                    href="/admin/dashboard"
+                    className="inline-flex items-center rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
+                >
+                    返回仪表盘
                 </Link>
                 <Link
                     href="/archives"

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
@@ -336,6 +337,9 @@ export function CommentsManager() {
     });
     const importInputRef = useRef<HTMLInputElement | null>(null);
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     /** 当前页可见的评论 id（含已展开的子评论），用于全选 */
     const visibleIds = useMemo(() => {
         const ids: string[] = [];
@@ -439,7 +443,7 @@ export function CommentsManager() {
 
     const handleDelete = async (comment: AdminComment) => {
         const preview = oneLine(comment.content).slice(0, 40);
-        if (!window.confirm(`确定删除这条评论吗？\n${preview}`)) return;
+        if (!(await confirm({ title: "确定删除这条评论吗？", description: preview, danger: true }))) return;
         setBusyId(comment.id);
         try {
             await deleteAdminCommentsApi([comment.id]);
@@ -454,7 +458,7 @@ export function CommentsManager() {
 
     const handleBatchDelete = async () => {
         if (selected.length === 0) return;
-        if (!window.confirm(`确定删除选中的 ${selected.length} 条评论吗？`)) return;
+        if (!(await confirm({ title: `确定删除选中的 ${selected.length} 条评论吗？`, danger: true }))) return;
         try {
             await deleteAdminCommentsApi(selected);
             toast.success(`已删除 ${selected.length} 条评论`);
@@ -535,15 +539,17 @@ export function CommentsManager() {
     };
 
     /** 二次确认：导入会往评论表写数据，文案里写清后果 */
-    const confirmImport = () => {
+    const confirmImport = async () => {
         if (!importFile) return;
-        const ok = window.confirm(
-            `确定导入「${importFile.name}」吗？\n\n` +
+        const ok = await confirm({
+            title: "确定导入吗？",
+            description:
+                `文件：${importFile.name}\n\n` +
                 `这会向评论表写入数据（不可撤销）。\n` +
                 `已存在的评论：${importOptions.skipExisting ? "跳过（按 路径+邮箱+内容 判重）" : "不判重，可能产生重复"}\n` +
                 `创建时间：${importOptions.keepCreateTime ? "保留原时间" : "使用当前时间"}\n` +
-                `默认状态：${importOptions.defaultStatus === 1 ? "已发布" : "待审核"}`
-        );
+                `默认状态：${importOptions.defaultStatus === 1 ? "已发布" : "待审核"}`,
+        });
         if (!ok) return;
         void handleImport();
     };

@@ -56,6 +56,15 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
 
   experimental: {
+    // 启用 app/global-not-found.js 约定（本版仍是实验特性，默认 false，见
+    // 为什么必须开：本项目没有根 src/app/layout.tsx，而是 4 个路由组各自渲染 <html>/<body>
+    // （(blog) / (auth) / admin / music）。官方文档
+    // node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/not-found.md:53-58
+    // 写明：多个根布局时没有唯一 layout 可以组装全局 404，需要 global-not-found.js + 本开关。
+    // 不开时 /_not-found 会去套一个随机根布局（实测挑中 (blog)），于是未匹配 URL 会渲染成
+    // 「前台外壳 + 404 文案」。相关装配逻辑：
+    // node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js:243-253, 380-387
+
     // 插件安装包（后端允许 100MB）与配置导入都要经过 src/proxy.ts：Next 会为 proxy 克隆并缓冲请求体，
     // 默认只缓冲 10MB，且超限时**不报错**而是"只缓冲到上限"再记一条 warning —— 大文件会被静默截断成坏文件。
     // 所以按后端上限把缓冲提到 100MB。

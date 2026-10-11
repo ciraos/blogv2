@@ -6,6 +6,7 @@ import { Check, ChevronRight, Loader2, MessageSquare, ShieldAlert, X } from "luc
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { getAdminCommentsApi, updateAdminCommentStatusApi } from "@/lib/api";
 import type { AdminComment } from "@/types/comments";
 
@@ -226,6 +227,9 @@ export function CommentFeed() {
     const [loading, setLoading] = useState(true);
     const [busyId, setBusyId] = useState<string | null>(null);
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     const load = useCallback(async () => {
         setLoading(true);
         const [recentRes, pendingRes] = await Promise.allSettled([
@@ -264,9 +268,10 @@ export function CommentFeed() {
         const hint = isApprove
             ? "通过后这条评论会立即在前台评论区显示。"
             : "驳回后这条评论仍保持「待审核」，只有管理员能在后台看到。";
-        const ok = window.confirm(
-            `确定${isApprove ? "通过" : "驳回"}这条评论吗？\n\n` + `${comment.nickname || "匿名"}：${preview}\n\n` + hint
-        );
+        const ok = await confirm({
+            title: `确定${isApprove ? "通过" : "驳回"}这条评论吗？`,
+            description: `${comment.nickname || "匿名"}：${preview}\n\n${hint}`,
+        });
         if (!ok) return;
 
         setBusyId(comment.id);

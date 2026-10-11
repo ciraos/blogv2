@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Download, Gift, Pencil, Plus, RefreshCw, Trash2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-provider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
@@ -126,6 +127,9 @@ export function DonationsManager() {
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({ ...EMPTY_FORM });
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
+    const confirm = useConfirm();
+
     const closeDialog = () => {
         setEditing(null);
         setCreateOpen(false);
@@ -238,7 +242,7 @@ export function DonationsManager() {
     };
 
     const handleDelete = async (item: Donation) => {
-        if (!window.confirm(`确定删除「${item.name || "该"}」的打赏记录吗？\n删除后不可恢复。`)) return;
+        if (!(await confirm({ title: `确定删除「${item.name || "该"}」的打赏记录吗？`, description: "删除后不可恢复。", danger: true }))) return;
         try {
             await deleteAdminDonationApi(item.id);
             toast.success("打赏记录已删除");
@@ -259,7 +263,7 @@ export function DonationsManager() {
     const handleBatchDelete = async () => {
         const ids = [...selected];
         if (ids.length === 0) return;
-        if (!window.confirm(`确定删除选中的 ${ids.length} 条打赏记录吗？\n删除后不可恢复。`)) return;
+        if (!(await confirm({ title: `确定删除选中的 ${ids.length} 条打赏记录吗？`, description: "删除后不可恢复。", danger: true }))) return;
         setDeleting(true);
         let ok = 0;
         const failed: string[] = [];
@@ -352,10 +356,12 @@ export function DonationsManager() {
     };
 
     /** 二次确认：导入会往打赏表写数据，文案里写清后果 */
-    const confirmImport = () => {
+    const confirmImport = async () => {
         if (!importFile) return;
-        const ok = window.confirm(
-            `确定导入「${importFile.name}」吗？\n\n` +
+        const ok = await confirm({
+            title: "确定导入吗？",
+            description:
+                `文件：${importFile.name}\n\n` +
                 `这会向打赏记录表写入数据（不可撤销）。\n` +
                 `已存在的记录：${importOptions.skipExisting ? "跳过" : "不判重，可能产生重复"}\n` +
                 `默认状态：${
@@ -364,8 +370,8 @@ export function DonationsManager() {
                         : importOptions.defaultStatus === 1
                           ? "统一设为显示"
                           : "统一设为隐藏"
-                }`
-        );
+                }`,
+        });
         if (!ok) return;
         void handleImport();
     };

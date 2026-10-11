@@ -483,11 +483,19 @@ export async function getAdminArticleTagsApi(): Promise<PostTag[]> {
 /**
  * 文章新建/更新的请求体。
  * 字段名对齐后端 swagger 的 model.CreateArticleRequest / model.UpdateArticleRequest（31 项），
- * 这里只声明本次用到的部分；content_md 是 Markdown 原文，content_html 由后端渲染（见 article-form 的告警逻辑）。
+ * 这里只声明本次用到的部分。
+ * content_md 是 Markdown 原文；content_html 由**前端**渲染后一起提交
+ * （后端不渲染 Markdown，只对这里带来的 HTML 做 SanitizeHTML：pkg/service/article/service.go:1143-1146 / 1505-1507。
+ * 渲染逻辑见 src/lib/article-markdown.ts，调用点见 src/components/admin/article-form.tsx 的 save()）。
  */
 export interface AdminArticlePayload {
     title: string;
     content_md: string;
+    /**
+     * 正文 HTML（可选）：不传这个键时后端会保留库里已有的 content_html（service.go:1505 只在非 nil 时覆盖），
+     * 传空串才会清空。编辑旧文章且 content_md 为空时不要传空串。
+     */
+    content_html?: string;
     status?: "DRAFT" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED";
     /**
      * 定时发布时间（RFC3339 字符串，如 2026-01-01T10:00:00Z；不是 datetime-local 的裸值）。
@@ -516,7 +524,7 @@ export interface AdminArticlePayload {
     review_status?: string;
 }
 
-/** POST /api/admin/articles 新建文章（成功返回新文章详情，含后端渲染的 content_html） */
+/** POST /api/admin/articles 新建文章（成功返回新文章详情，含 content_html） */
 export async function createAdminArticleApi(payload: AdminArticlePayload): Promise<ArticleDetail> {
     return request<ArticleDetail>("/api/admin/articles", { method: "POST", body: JSON.stringify(payload) });
 }
@@ -1736,11 +1744,12 @@ export function getAdminFileInfoApi(id: string): Promise<{ file?: AdminFileItem 
     return request(`/api/admin/file/${encodeURIComponent(id)}`, { method: "GET" });
 }
 
-/** DELETE /api/admin/file?ids=… 删除一个或多个文件/目录（远端按 ids 批量删） */
+/** DELETE /api/admin/file（JSON 体 { ids }）删除一个或多个文件/目录（远端按 ids 批量删） */
 export function deleteAdminFilesApi(ids: string[]): Promise<unknown> {
-    const params = new URLSearchParams();
-    for (const id of ids) params.append("ids", id);
-    return request(`/api/admin/file?${params.toString()}`, { method: "DELETE" });
+    // 远端 handler 用 ShouldBindJSON 读 model.DeleteItemsRequest{ IDs []string `json:"ids"` }
+    // （pkg/handler/file/operation.go:180-185），要的是 JSON 体。router.go:563 注释里的 "?ids=..."
+    // 是过时且与 handler 契约矛盾的文档写法：按 query 发因为没有 body 会得到 400「请求参数无效: EOF」。
+    return request("/api/admin/file", { method: "DELETE", body: JSON.stringify({ ids }) });
 }
 
 /** POST /api/admin/file/create 新建空文件或目录（type: 1=文件 2=目录，uri 为含新名称的完整虚拟路径） */

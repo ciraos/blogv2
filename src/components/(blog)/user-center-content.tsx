@@ -11,6 +11,7 @@ import {
     NotificationSettingsDialog,
 } from "@/components/(blog)/user-center-dialogs";
 import { ApiError, uploadUserAvatarApi } from "@/lib/api";
+import { useConfirm } from "@/components/confirm-provider";
 import styles from "./user-center.module.css";
 
 /** 用户中心展示所需的用户信息（由服务端 /user/info 取好后传入） */
@@ -42,9 +43,13 @@ export function UserCenterContent({ user }: { user: UserCenterUser | null }) {
     const [showNotificationSettings, setShowNotificationSettings] = useState(false);
     const [avatarUploading, setAvatarUploading] = useState(false);
 
+    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx，
+    // Provider 挂在前台 (blog)/layout.tsx）
+    const confirm = useConfirm();
+
     /** 退出登录：清 cookie 后回首页（官方为确认后 logout + push("/")） */
     async function handleLogout() {
-        if (!window.confirm("确定要退出登录吗？")) return;
+        if (!(await confirm({ title: "确定要退出登录吗？" }))) return;
         try {
             await fetch("/api/auth/logout?redirect=0");
         } finally {
@@ -191,7 +196,7 @@ export function UserCenterContent({ user }: { user: UserCenterUser | null }) {
                     <div
                         className={`${styles.actionCard} ${styles.danger}`}
                         style={{ "--accent": "var(--destructive)" } as React.CSSProperties}
-                        onClick={handleLogout}
+                        onClick={() => void handleLogout()}
                     >
                         <div className={styles.actionIcon}><LogOut size={20} /></div>
                         <div className={styles.actionContent}>
