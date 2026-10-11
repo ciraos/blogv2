@@ -140,27 +140,84 @@ function CommentRow({
                         </button>
                     </span>
                 </div>
-                {/* 内容气泡：铺满评论列、无边框（层次由外层的评论卡片提供）；
-                    回复别人的评论（reverse，头像在右）正文靠右显示，代码框内部由 CSS 复位为左对齐；
-                    引用块（即刻页「评论这条说说」以 `> 引用` 提交）默认只显示 2 行、超出省略号。
+                {/* 内容气泡的正文排版约束：回复别人的评论（reverse，头像在右）正文靠右显示，
+                    代码框内部由 CSS 复位为左对齐；引用块（即刻页「评论这条说说」以 `> 引用` 提交）
+                    默认只显示 2 行、超出省略号。
                     line-clamp 必须落在「没有 padding 的内层 <p>」上，不能落在 blockquote 上：
                     带 padding 的元素被 line-clamp 时，Chromium 只把内容高度截到 2 行，而
                     overflow:hidden 的裁剪边界仍是 padding box —— 底部 7px 内边距会把第 3 行的
                     上半截字形露出来，引用看起来就是「被拦腰切断 / 内容没了一半」。 */}
+                {/* 评论正文本体（用户要求：这一段文字加左右两条蓝色边框，框右下角挂「大肥鱼」）。
+                    宽度 w-fit + max-w-full：框按内容收缩（不再撑满整列），长文本到 max-w-full
+                    仍然正常换行；子回复那一列是 flex-col items-end，收缩后自然贴右不会错位。
+                    边框：只留左右两条（border-x + border-y-0，用户要求"只显示左右俩边的边框"）。
+                    颜色 = 从 public/mascot-dsh.png 采样出的主体蓝（头发/耳朵区域出现最多的蓝色
+                    桶 #566cad / hsl(225,35%,51%)，见 scripts/png-blue-sample.mjs 的输出）；
+                    深色模式同色相提亮降低饱和 = #8599d6 —— 参考图没有深色版，暗底上直接用
+                    原样的 #566cad 会糊掉，所以按"同色相、提亮"的规则给一套对应值。
+                    边框色必须写字面量类名（Tailwind 静态扫描，模板变量拼出来的类名不会生成 CSS）。
+                    右侧 pr-6 是给挂件预留的通道，避免最后一行的文字被挂件压住。
+                    底部那行「位置 · 系统 · 浏览器」仍留在框外独立一行（照官方 .commentMeta
+                    的做法 —— CommentItem.module.css:218-226 就是正文之后的独立 meta 行）。 */}
                 <div
-                    className={`comment-bubble relative mt-1.5 w-full min-w-0 break-words py-2 px-3 rounded-md bg-card text-sm leading-relaxed [&_p]:my-1 [&_blockquote>p]:line-clamp-2 ${reverse ? "comment-bubble-reverse" : ""
+                    className={`comment-bubble relative mt-1.5 w-fit max-w-full min-w-0 break-words rounded-md border-x border-y-0 border-x-[#566cad] bg-card py-2 pl-3 pr-6 text-sm leading-relaxed dark:border-x-[#8599d6] [&_p]:my-1 [&_blockquote>p]:line-clamp-2 ${reverse ? "comment-bubble-reverse" : ""
                         }`}
                 >
-                    {/* 气泡尾巴：卡片色三角，指向头像一侧（去掉边框后不再需要外层描边三角） */}
+                    {/* 气泡尾巴：指向评论者头像的小三角（用户要求把那截"空白"做成尾巴）。
+                        为什么原来会看着"缺一截"：尾巴是一层卡片色（白）三角，而绝对定位的参照系是
+                        容器的 padding box（不含 1px 边框），所以 -left-[8px] 实际只贴到边框外沿，
+                        三角形又只画在边框外侧 -> 空白三角紧贴蓝线，读起来就是"边框断了一截"。
+                        现在两层三角叠出来：外层是边框蓝，内层是卡片色并主动压进边框 1px（把它"吃"掉），
+                        于是左/右边框在尾巴处自然开口、并沿三角形的两条斜边留出 1px 蓝描边，
+                        形成完整的气泡形态。几何：外层 top-9px/上下各 9px、内层 top-10px/上下各 8px，
+                    尾巴深 8px（探出边框外 8px）、高 18px、斜边留 1px 蓝描边。
+                    圆角微调：上一轮为了"别让两条竖线上下弯成括号"用了直角（rounded-none）。
+                        这一轮用户要求给小圆角，取 rounded-md —— 本项目 --radius=10px，
+                        所以 rounded-md 实际是 8px（globals.css:53 的 calc），是"能看出圆、
+                        又不至于像括号"的一档：框高 47px 时弧段只占 8px，
+                        左边框的直线段仍有 y=8~39px，尾巴开口落在 y=10~26px，
+                        整段开口都在直线段内，所以尾巴与边框的衔接不会断开（已截图实测）。
+                        右边框同理，右下角弧线正好被那颗挂件压住，弧的收尾也被盖掉了。 */}
+                    <span
+                        aria-hidden
+                        className={`absolute top-[9px] h-0 w-0 border-y-[9px] border-y-transparent ${reverse
+                                ? "-right-[9px] border-l-[9px] border-l-[#566cad] dark:border-l-[#8599d6]"
+                                : "-left-[9px] border-r-[9px] border-r-[#566cad] dark:border-r-[#8599d6]"
+                            }`}
+                    />
                     <span
                         aria-hidden
                         className={`absolute top-[10px] h-0 w-0 border-y-[8px] border-y-transparent ${reverse
-                                ? "-right-[8px] border-l-[8px] border-l-card"
-                                : "-left-[8px] border-r-[8px] border-r-card"
+                                ? "-right-[7px] border-l-[8px] border-l-card"
+                                : "-left-[7px] border-r-[8px] border-r-card"
                             }`}
                     />
                     {/* 评论正文：由 CommentContent 渲染，代码块增强成与文章一致的代码框 */}
                     <CommentContent html={comment.content_html || ""} codeBlock={codeBlock} />
+                    {/* 框右下角的小挂件（装饰）。
+                        为什么用绝对定位 + 负偏移：它要"挂"在框角上、略微探出描边，
+                        又必须完全不参与文本排版 —— 绝对定位把它从文档流里摘出去，
+                        不撑高边框、也不改变正文的换行（占位留给容器的 pr-6）。
+                        为什么必须 overflow-hidden + 圆形：原图是不透明底的室内场景，
+                        方形贴上去就是一个色块，裁成圆再配一圈主题描边才像有意的挂件
+                        （圆形 + 1px 主题描边的口径见官方 .commentAvatar，
+                         CommentItem.module.css:10-16）。
+                        pointer-events-none + aria-hidden + select-none：不可点击、
+                        读屏忽略、不可选中，确保它只是贴纸而不是内容。
+                        尺寸 22px（移动）/24px（≥sm）、负偏移 4px（略溢出边框）。 */}
+                    <span
+                        aria-hidden="true"
+                        data-comment-mascot=""
+                        className="pointer-events-none absolute -right-1 -bottom-1 size-[22px] select-none overflow-hidden rounded-[50%] ring-1 ring-border shadow-sm sm:size-6"
+                    >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                            src={COMMENT_MASCOT_SRC}
+                            alt=""
+                            loading="lazy"
+                            className="size-full object-cover object-[50%_38%]"
+                        />
+                    </span>
                 </div>
                 {/* 评论最下方：位置 / 系统 / 浏览器版本，均带图标；解析不出来也照样显示「未知」 */}
                 {(comment.ip_location || comment.user_agent) && (() => {
@@ -230,6 +287,14 @@ function saveStoredAuthor(nickname: string, email: string, website: string) {
         // 隐私模式 / 存储禁用时写入失败：忽略
     }
 }
+
+/**
+ * 评论正文框右下角的小挂件图。
+ * 来源：用户提供的「娘化形象：大肥鱼」原图，放在 public/ 下（160×153 PNG，**不透明底**，
+ * 画的是室内场景，所以渲染时必须圆形裁剪，否则会露出一个方块背景）。
+ * 纯装饰 —— 与评论者身份无关，不取任何用户信息，也不参与提交逻辑。
+ */
+const COMMENT_MASCOT_SRC = "/mascot-dsh.png";
 
 export function PostComments({ targetPath, comments = [], author = null }: PostCommentsProps) {
     // 已登录：昵称 / 邮箱 / 网址取自账号，三项输入框不显示，直接用它提交
@@ -526,8 +591,28 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                     </div>
                 </div>
 
-                {/* 输入框 + 字数 */}
-                <div className="mt-3 rounded-lg border bg-card">
+                {/* 输入框 + 字数。
+                    结构照官方快照 CommentForm.module.css:183-197 的 .textareaWrapper：
+                    1px 描边 + 卡片底、文字区四周留白 16px、聚焦时描边转主题色
+                    （:focus-within → primary，官方 :195-197）。
+
+                    细节微调（对齐用户给的参考图 scripts/ref-comment-box.png，278×51 的输入框截图）：
+                    1) 圆角 14px（rounded-xl）→ rounded-lg。本项目的 --radius=0.625rem(=10px)，
+                       所以 rounded-lg 实际是 10px、rounded-md 是 8px、rounded-sm 是 6px
+                       （globals.css:52-55 的 calc 派生，不是 Tailwind 默认的 12/8/6）。
+                       参考图的圆角约 7px / 框高 28px，按绝对像素取 8px 最接近，
+                       但 10px 才与站内「同为卡片」的其它元素严丝合缝 —— 下面三个
+                       昵称/邮箱/网址输入框、发送按钮、每条评论的分组卡片全是 rounded-lg(10px)。
+                       取 10px 让输入框与这些卡片同一半径族，取 8px 则会比同一行里的三个
+                       小输入框更方一点。两种观感都"小圆角"，选协调性更好的 10px。
+                    2) 描边颜色：参考图实测是纯黑 #000（抗锯齿 #333/#595959）1px；直接上纯黑太抢，
+                       改用半透明前景令牌 border-foreground/25 —— 浅色下叠在白卡上 ≈ #c8c8c8，
+                       深色下叠在 #333 卡上 ≈ #646464，两端都恰好是"细、看得见、但不抢"的一档，
+                       比默认 --border(#e5e5e5 / 深色 white10%) 清楚，比纯黑克制；
+                       且随主题自动换算，不引入新的写死颜色（比 border-[#c9ccd2] 更省心：
+                       后者在深色模式会变成一根亮白线）。
+                    3) relative 是给右下角的挂件做定位参照。 */}
+                <div className="relative mt-3 rounded-lg border border-foreground/25 bg-card transition-colors focus-within:border-primary">
                     {/* 引用预览：由外部（即刻页的说卡片等）通过 comment-form-set-quote 事件注入，
                         提交时会拼成 Markdown 引用 `> 引用` 放在正文最前面 */}
                     {quoteText && (
@@ -576,6 +661,13 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                             </button>
                         </div>
                     )}
+                    {/* 内边距口径照官方 .textareaInner（CommentForm.module.css:203-215）：
+                        文字区自身留白 + 最小高度 120px，16px 的容器内边距由外层给。
+                        placeholder 颜色：参考图里那排占位文字是蓝调（实测 #687fb4 / #8b9cc6），
+                        原来是纯灰 muted-foreground/60（白底上 ≈ #ababab）。改成挂件同源的
+                        蓝色 #566cad 打 50% 透明（白底 ≈ #abb6d6）：亮度与原灰几乎一致，
+                        只多一点冷色倾向，和评论区左右两条蓝边、右下角的小鱼同色系；
+                        深色底同理用提亮版 #8599d6，避免 #566cad 在暗底上糊掉。 */}
                     <textarea
                         ref={contentRef}
                         rows={5}
@@ -584,11 +676,16 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                         aria-label="评论内容"
                         value={content}
                         onChange={(event) => setContent(event.target.value)}
-                        className={`w-full resize-none bg-transparent p-3.5 text-sm outline-none placeholder:text-muted-foreground/60 ${
+                        className={`min-h-[120px] w-full resize-none bg-transparent px-4 pt-4 pb-3 text-sm leading-relaxed outline-none placeholder:text-[#566cad]/50 dark:placeholder:text-[#8599d6]/60 ${
                             topBlock === "textarea" ? "rounded-t-lg" : ""
                         }`}
                     />
-                    <div className="flex items-center justify-between border-t px-3 py-2">
+                    {/* 工具栏：左侧传图按钮、右侧字数。
+                        右侧内边距 px-3 → pr-8：右下角挂了小鱼（下面那个绝对定位的挂件），
+                        鱼从容器右边往内占约 20px（24px 直径 − 4px 溢出），
+                        留 32px 就能让「0 / 500」完整落在鱼的左边、互不遮挡；
+                        这跟评论正文框用 pr-6 给挂件让出通道是同一套做法。 */}
+                    <div className="flex items-center justify-between border-t py-2 pl-3 pr-8">
                         <div className="flex items-center gap-1">
                             {/* 评论传图：后端策略允许时才显示（后端不开放 CORS，经 /api/public/comments/upload 代理） */}
                             {allowImageUpload !== false && (
@@ -617,6 +714,30 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                             <span className="mx-0.5 text-muted-foreground/60">/</span>500
                         </span>
                     </div>
+                    {/* 输入框右下角的挂件（与评论正文框右下角同一套「大肥鱼」）。
+                        口径与 .comment-bubble 里那颗完全一致：绝对定位 + 圆形裁剪
+                        （rounded-[50%] + overflow-hidden，原图是不透明底的室内场景，
+                        方着贴会露出一个方块）、ring-1 ring-border 描边、
+                        pointer-events-none + aria-hidden + select-none 保证它只是贴纸。
+                        位置 -right-1 -bottom-1：贴着容器右下角、向内外各探出 3~4px，
+                        和参考图里那颗同样"骑"在输入框右下角上的观感一致。
+                        为什么不用 z-index：它是本容器最后一个子节点，绝对定位元素天然
+                        画在后面那个工具栏之上，不需要额外层叠声明。
+                        data-comment-input-mascot 只给自检脚本用（与正文框的
+                        data-comment-mascot 区分开，方便分别断言）。 */}
+                    <span
+                        aria-hidden="true"
+                        data-comment-input-mascot=""
+                        className="pointer-events-none absolute -right-1 -bottom-1 size-[22px] select-none overflow-hidden rounded-[50%] ring-1 ring-border shadow-sm sm:size-6"
+                    >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                            src={COMMENT_MASCOT_SRC}
+                            alt=""
+                            loading="lazy"
+                            className="size-full object-cover object-[50%_38%]"
+                        />
+                    </span>
                 </div>
 
                 {/* 表单信息行：未登录时显示昵称 / 邮箱 / 网址输入（登录态下这三项取自账号，无输入框、也不再显示提示文案）。
