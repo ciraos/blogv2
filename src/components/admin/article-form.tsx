@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { ArticleBody } from "@/components/(blog)/article-body";
 import { MarkdownEditor } from "@/components/admin/markdown-editor";
 import { SeoScorePanel } from "@/components/admin/seo-score-panel";
 import { Button } from "@/components/ui/button";
@@ -86,6 +87,12 @@ type ArticleExtraFields = {
     doc_series_id?: string;
 };
 
+/**
+ * 预览要传给 ArticleBody 的代码块配置（site-config `post.code_block` 的 camelCase 形态）。
+ * 只声明用到的两个字段：站点配置接口在配置缺失时可能没有 post 节点，这里按「可能缺」建模。
+ */
+type PreviewCodeBlock = { codeMaxLines?: number; macStyle?: boolean };
+
 /** 定时发布快捷时间（对齐官方 EditorSidebar.tsx:72-79 的 QUICK_TIMES） */
 const QUICK_SCHEDULE: { label: string; hours: number }[] = [
     { label: "1 小时后", hours: 1 },
@@ -123,17 +130,23 @@ function toSingleLine(text: string): string {
     return text.replace(/\s+/g, " ").trimStart();
 }
 
-/** 极简 Markdown → HTML（只在真实渲染器还没加载完 / 加载失败时给预览兜底，不参与提交） */
+/**
+ * 极简 Markdown → HTML（只在真实渲染器还没加载完 / 加载失败时给预览兜底，不参与提交）。
+ *
+ * 这里**不带任何表现类**（原来的 rounded-lg / my-3 / text-[0.9em] 等已去掉）：
+ * 预览的排版作用域是 .article-body（globals.css），兜底 HTML 只要结构正确就该由它来上样式 ——
+ * 否则渲染器加载的那几百毫秒里，预览会先闪出一套「自己拼的」样式（图片圆角、行内代码底色都与前台不同）。
+ */
 function mdToHtml(md: string): string {
     const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const inline = (s: string) =>
         esc(s)
             // 图片要在链接之前匹配，否则 [alt](url) 会被链接规则先吃掉
-            .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="my-3 max-w-full rounded-lg" />')
-            .replace(/`([^`]+)`/g, '<code class="rounded bg-muted px-1 py-0.5 text-[0.9em]">$1</code>')
+            .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />')
+            .replace(/`([^`]+)`/g, "<code>$1</code>")
             .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
             .replace(/\*([^*]+)\*/g, "<em>$1</em>")
-            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a class="text-primary underline" href="$2" target="_blank" rel="noopener">$1</a>');
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
     const out: string[] = [];
     let list: string[] = [];
     const flush = () => {
@@ -733,6 +746,35 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
     const previewHtml =
         renderedPreview && renderedPreview.md === contentMd ? renderedPreview.html : mdToHtml(contentMd);
 
+    /**
+     * 预览的代码块配置（site-config `post.code_block`）：必须和前台文章页拿的是同一份，
+     * 否则预览里的代码框会缺 mac 圆点 / 按默认 10 行折叠，而前台按站点配置渲染 —— 这正是「预览和前台不一样」。
+     * 来源对齐 posts/[id]/page.tsx:169-179（那边是服务端 getPublicSiteConfigApi，走远端直连）；
+     * 客户端组件不能直连远端（后端无 CORS），所以走同源代理 GET /api/public/site-config（同 post-comments.tsx:380 的做法）。
+     * 取不到时不传参，ArticleBody 用它与前台完全相同的缺省值（默认 10 行折叠 / 不显示圆点）。
+     */
+    const [previewCodeBlock, setPreviewCodeBlock] = useState<PreviewCodeBlock | undefined>();
+    // 只取一次：反复点「预览 / 继续编辑」不必重复请求（站点配置在一次编辑会话里基本不变）
+    const codeBlockRequestedRef = useRef(false);
+    useEffect(() => {
+        if (!showPreview || codeBlockRequestedRef.current) return;
+        codeBlockRequestedRef.current = true;
+        let cancelled = false;
+        void fetch("/api/public/site-config", { cache: "no-store" })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((json: { data?: { post?: { code_block?: { code_max_lines?: number; mac_style?: boolean } } } } | null) => {
+                if (cancelled) return;
+                const cb = json?.data?.post?.code_block;
+                if (cb) setPreviewCodeBlock({ codeMaxLines: cb.code_max_lines, macStyle: cb.mac_style });
+            })
+            .catch(() => {
+                // 配置取不到：留空 → ArticleBody 缺省值（与前台配置取不到时的行为一致，不阻塞预览）
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [showPreview]);
+
     /** 分类/标签共用：已选则移除、未选则追加（下拉添加与标签上的 × 都走它） */
     const toggle = (list: string[], id: string, set: (v: string[]) => void) =>
         set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
@@ -1072,14 +1114,18 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                                     </Button>
                                 </div>
                                 {showPreview ? (
-                                    // 前台样式预览：封面 + 标题 + 分类/标签 + 正文排版（.article-body 与前台同一套样式）
-                                    // 撑满剩余高度，正文超出时在这个容器里滚（不再把整页拉长）
-                                    <div className="min-h-[420px] flex-1 overflow-auto rounded-md border bg-card">
+                                    // 前台样式预览：**直接复用前台文章页的同一个 ArticleBody 组件**（自己不再拼一份"像前台"的 HTML）。
+                                    // 于是排版作用域（.article-body）、客户端增强（代码块高亮/复制/行号/收缩、mac 圆点、行数折叠、
+                                    // 标题锚点、katex、tabs 切换、admonition、图片、外链 target、linkcard、mermaid…）与前台逐项同源，
+                                    // 不再是「只有 .article-body 类名、没有增强」的静态预览。
+                                    // 外层容器对齐前台文章卡片（posts/[id]/page.tsx:262）：同样的 rounded-xl / border-border/60 / bg-card /
+                                    // shadow-sm + p-5 md:p-8 内边距；封面按现在的做法置顶满宽，正文超出时在这个容器里滚（不把整页拉长）。
+                                    <div className="min-h-[420px] flex-1 overflow-auto rounded-xl border border-border/60 bg-card shadow-sm">
                                         {coverUrl && (
                                             // eslint-disable-next-line @next/next/no-img-element
                                             <img src={coverUrl} alt="" className="h-40 w-full object-cover" />
                                         )}
-                                        <div className="px-4 py-4 sm:px-6">
+                                        <div className="p-5 md:p-8">
                                             <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{title || "（未填标题）"}</h1>
                                             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                                                 {categories
@@ -1097,12 +1143,12 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                                                         </span>
                                                     ))}
                                             </div>
-                                            <div
-                                                className="article-body mt-5"
-                                                // 与提交走同一个渲染器（渲染器还没加载完时退回极简渲染）
-                                                dangerouslySetInnerHTML={{
-                                                    __html: previewHtml || '<p class="text-sm text-muted-foreground">（正文为空）</p>',
-                                                }}
+                                            {/* 与提交走同一个渲染器（渲染器还没加载完时退回极简渲染）；codeBlock 与前台同源（见上面的 useEffect）。
+                                                不传 copyCopyright：那只影响剪贴板行为（复制拦截/追加版权），在编辑器里会让人无法复制自己的稿子，
+                                                且不影响任何可见样式，所以预览不接管复制。 */}
+                                            <ArticleBody
+                                                html={previewHtml || '<p class="text-sm text-muted-foreground">（正文为空）</p>'}
+                                                codeBlock={previewCodeBlock}
                                             />
                                         </div>
                                     </div>

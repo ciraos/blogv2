@@ -21,11 +21,13 @@ export async function PageWithSidebar({ children }: { children: React.ReactNode 
     }
 
     return (
-        <div className="flex flex-1 gap-6">
+        // 移动端纵向堆叠（正文在前、侧边栏在下方整块跟随文档流），lg 起才恢复「正文 + 右侧 300px 侧边栏」的横向布局。
+        // 不用 order-* 反转：DOM 顺序本来就是正文在前，纵向堆叠时自然落在下方。
+        <div className="flex flex-1 flex-col gap-6 lg:flex-row">
             {/* 主体内容区（container query 容器：收缩侧边栏时撑满，网格列数随宽度自适应） */}
             <div className="min-w-0 flex-1 @container/main">{children}</div>
 
-            {/* 右侧边栏（300px，桌面端显示；移动端隐藏） */}
+            {/* 侧边栏（移动端排在正文下方且全宽；lg 起恢复右侧 300px 固定栏，收起/展开等桌面语义见 CollapsibleAside） */}
             {config && <BlogSidebar config={config} />}
         </div>
     );

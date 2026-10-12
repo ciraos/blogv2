@@ -9,7 +9,6 @@ import {
     FileText,
     FolderTree,
     FolderOutputIcon,
-    History,
     Pencil,
     Plus,
     RotateCcw,
@@ -362,10 +361,13 @@ export function ArticleList() {
 
     // 移动端(<640px)：grid-cols-1 把每个单元格竖排成卡片；≥640px：恢复表格式列布局。
     // min-w 只写在 sm: 以上 —— 窄屏若也撑宽，卡片就会被拉出横向滚动。
-    // 操作列：预览/编辑/删除 带文字 + 历史版本用图标按钮，合计约 250px，列宽取 272px；
+    // 操作列：预览/编辑/删除 三个带文字的按钮（实测各 67.6px）+ 2 个 gap-1（4px）≈ 211px，列宽取 236px，
+    // 余量 ≈25px，与改前（272px 装 4 个按钮）一致：去掉历史版本图标按钮后内容少了 32px 按钮 + 4px 间隔 = 36px，
+    // 列宽同步收窄 36px，剩余三个按钮的宽度与间距完全不变。
     // 最前面 36px 是批量删除用的勾选列。
-    const rowGrid = "sm:grid-cols-[36px_minmax(0,1fr)_96px_80px_96px_272px]";
-    const rowMinW = "sm:min-w-[876px]";
+    const rowGrid = "sm:grid-cols-[36px_minmax(0,1fr)_96px_80px_96px_236px]";
+    // 876px → 840px：只跟着操作列收窄 36px，标题列（minmax(0,1fr)）的最小宽度保持不变
+    const rowMinW = "sm:min-w-[840px]";
 
     return (
         // admin-card：吃掉剩余高度，表格区域（admin-scroll）在卡片内部滚动，不再顶高整页
@@ -628,19 +630,6 @@ export function ArticleList() {
                                 >
                                     <Link href={`/admin/post-management/${article.id}/edit`}>
                                         <Pencil className="size-4" />编辑
-                                    </Link>
-                                </Button>
-                                {/* 历史版本 → /admin/post-management/[id]/history（图标按钮，省出操作列宽度） */}
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="size-8 shrink-0"
-                                    aria-label="历史版本"
-                                    title="历史版本 / 对比 / 回滚"
-                                    asChild
-                                >
-                                    <Link href={`/admin/post-management/${article.id}/history`}>
-                                        <History className="size-4" />
                                     </Link>
                                 </Button>
                                 <Button

@@ -4,10 +4,8 @@ import {
     ArrowRight,
     CalendarDays,
     Clock,
-    ExternalLink,
     FileText,
-    Link as LinkIcon,
-    Link2,
+    MegaphoneIcon,
     MessageSquare,
     Tag as TagIcon,
 } from "lucide-react";
@@ -109,53 +107,37 @@ function AuthorCard({ config }: { config: SiteConfig }) {
     );
 }
 
-/** 文档链接卡的图标：只认本项目 iconfont（anzhiyu-icon-*，见 ui/icon.tsx）。
- *  配置里存的是 iconify 名（ri:xxx / fa6-brands:xxx），本项目没有那套图标源，
- *  认不出来就退化为 lucide 通用图标（外链用 ExternalLink，其余用 Link），不引新依赖。 */
-function DocLinkIcon({ name, external }: { name?: string; external?: boolean }) {
-    if (name?.startsWith("anzhiyu-icon-")) {
-        return <Icon name={name} className="size-3.5 shrink-0 text-muted-foreground" />;
-    }
-    if (external) return <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />;
-    return <LinkIcon className="size-3.5 shrink-0 text-muted-foreground" />;
-}
-
-/** 文档链接卡（sidebar.doc.links）：external 为真时新窗口打开，否则走站内路由 */
-function DocLinksCard({ links }: { links?: DocLinkItem[] }) {
-    const items = (links ?? []).filter((link) => link?.link);
-    if (items.length === 0) return null;
+/** 公告卡：标题固定「公告」，正文「欢迎来到 站点名 的博客呀！」。
+ *  站点名取 site-config 的 APP_NAME（不写死；线上当前为「葱苓小筑」）；
+ *  APP_NAME 为空时兜底「本站」——否则会渲染成「欢迎来到的博客呀！」这种缺主语的残句。
+ *  图标沿用 (blog)/layout.tsx 公告条同款 MegaphoneIcon，样式与相邻卡头一致（size-4 + text-primary）。
+ *  min-w-0 + break-words：站点名很长或含无空格长串时在卡内换行，移动端不会横向撑破卡片。 */
+function AnnouncementCard({ appName }: { appName?: string }) {
+    const siteName = appName?.trim() || "本站";
 
     return (
         <div className="rounded-xl border bg-card p-5 shadow-sm">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
-                <Link2 className="size-4 text-primary" />
-                文档链接
+                <MegaphoneIcon className="size-4 text-primary" aria-hidden />
+                公告
             </h3>
-            <ul className="mt-3 space-y-0.5">
-                {items.map((link, index) => {
-                    const label = link.title || link.link;
-                    const className =
-                        "flex items-center gap-2 rounded-md px-1 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-primary";
-                    return (
-                        <li key={`${link.link}-${index}`}>
-                            {link.external ? (
-                                <a href={link.link} target="_blank" rel="noopener noreferrer nofollow" className={className}>
-                                    <DocLinkIcon name={link.icon} external />
-                                    <span className="truncate">{label}</span>
-                                </a>
-                            ) : (
-                                <Link href={link.link} className={className}>
-                                    <DocLinkIcon name={link.icon} />
-                                    <span className="truncate">{label}</span>
-                                </Link>
-                            )}
-                        </li>
-                    );
-                })}
-            </ul>
+            {/* 站点名用 JSX 插值拼接（不做字符串替换），文案改动只影响这一处。
+                前后留白用 mx-0.5（用户指定，0.125rem = 2px 左右外边距）而不是源码里敲空格：
+                JSX 会把标签与文本之间的换行+缩进折叠掉，写空格容易被吃掉；
+                外边距由 CSS 决定，视觉留白稳定且不受空白折叠影响。
+                配色只用主题令牌 text-primary（换肤自动跟随，不硬编码颜色）：与卡头图标同一令牌，
+                深浅色对比度已实测（浅色 4.70:1 / 深色 6.66:1，见截图与报告）。 */}
+            <p className="mt-3 min-w-0 break-words text-sm leading-relaxed text-foreground/90">
+                欢迎来到
+                <span className="mx-0.5 font-medium text-primary">{siteName}</span>
+                的博客呀！
+            </p>
         </div>
     );
 }
+
+/** 原「文档链接」卡（DocLinksCard / DocLinkIcon / DocLinkItem）已按用户要求换成上面的公告卡；
+ *  sidebar.doc.links 配置键仍然后端/设置页存在，但前台不再消费（需要时按 git 历史取回实现）。 */
 
 /** 微信卡片（sidebar.wechat）：底层模糊背景图 + 正面二维码；
  *  悬浮时 3D 翻转看背面（纯 CSS：group-hover + preserve-3d，不需要客户端组件）；
@@ -207,13 +189,6 @@ function WechatCard({
             {inner}
         </a>
     );
-}
-
-interface DocLinkItem {
-    title?: string;
-    link: string;
-    icon?: string;
-    external?: boolean;
 }
 
 interface CustomSidebarBlock {
@@ -526,7 +501,7 @@ function SiteInfoCard({
     );
 }
 
-/** (blog) 右侧边栏：作者卡 + 微信卡 + 自定义块 + 文档链接 + 目录 + 最近文章 + 标签云 + 归档 + 最近评论 + 站点信息
+/** (blog) 右侧边栏：作者卡 + 微信卡 + 自定义块 + 公告 + 目录 + 最近文章 + 标签云 + 归档 + 最近评论 + 站点信息
  *  （300px，桌面端显示；每张卡都由站点配置开关控制）。
  *  站点公告（SITE_ANNOUNCEMENT）不在侧边栏：后端定义为「展示在导航栏下方」的 HTML 片段，
  *  改由 (blog)/layout.tsx 的导航下方通栏公告条渲染。
@@ -538,8 +513,6 @@ export async function BlogSidebar({ config }: { config?: SiteConfig }) {
     // 侧边栏卡片开关（全部来自站点配置；为真才渲染 —— 关掉时连数据请求都不发）
     const recentPost = config?.sidebar?.recentPost;
     const tagsConfig = config?.sidebar?.tags;
-    // 文档链接：external 为真时新窗口打开
-    const docLinks = config?.sidebar?.doc?.links;
     // 微信卡片：enable 为真才渲染（线上当前是 false）
     const wechat = config?.sidebar?.wechat;
 
@@ -575,7 +548,15 @@ export async function BlogSidebar({ config }: { config?: SiteConfig }) {
         <CollapsibleAside>
             {/* self-stretch：aside 撑满正文高度 → sticky 的包含块足够长，长文章 TOC 全程固定；不限高：侧边栏内容完整展示，不内部滚动 */}
             <div className="top-20 space-y-4">
-                {author?.enable !== false && config && <AuthorCard config={config} />}
+                {/* 作者卡 = 侧边栏第一张卡（也是最高的一张）：小屏整块隐藏，把首屏让给正文/文章列表，
+                    其余卡片照常显示；lg 起（右侧固定栏）恢复显示。
+                    为什么包一层而不是给 AuthorCard 根节点加 hidden：这张卡是纯装饰性大卡，
+                    以后若别处复用，加了类就会被连带隐藏；包一层只影响侧边栏这里的这一处。 */}
+                {author?.enable !== false && config && (
+                    <div className="hidden lg:block">
+                        <AuthorCard config={config} />
+                    </div>
+                )}
                 {/* 微信卡片（sidebar.wechat） */}
                 {wechat?.enable && (
                     <WechatCard
@@ -587,8 +568,8 @@ export async function BlogSidebar({ config }: { config?: SiteConfig }) {
                 )}
                 {/* 自定义侧边栏（CUSTOM_SIDEBAR + sidebar.custom.showInPost） */}
                 <CustomSidebarCard blocks={visibleCustomBlocks} />
-                {/* 文档链接（sidebar.doc.links） */}
-                <DocLinksCard links={docLinks} />
+                {/* 公告卡：原「文档链接」卡按用户要求换成公告卡；sidebar.doc.links 配置键仍然后端/设置页存在，但前台不再消费 */}
+                <AnnouncementCard appName={config?.APP_NAME} />
                 {/* 文章目录（sidebar.toc.collapseMode 折叠；post.toc.hash_update_mode 控制是否写 URL hash） */}
                 <PostToc
                     collapseMode={config?.sidebar?.toc?.collapseMode === true}

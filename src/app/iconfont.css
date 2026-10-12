@@ -1,4 +1,12 @@
-﻿/* ===== AnZhiYu iconfont (anzhiyufont) ===== */
+﻿/* ===== AnZhiYu iconfont (anzhiyufont) =====
+ * 来源 / Source: iconfont.cn 项目 2508400（AnZhiYu 主题官方字库）公开静态资源
+ *   CSS : https://at.alicdn.com/t/c/font_2508400_w2qjlumtppr.css
+ *   字体: https://at.alicdn.com/t/c/font_2508400_w2qjlumtppr.woff2
+ *         （同目录另有 .eot / .woff / .ttf / .svg 同名文件）
+ * 字体文件已镜像到 public/iconfont/，随本文件一起与官方字库保持同步。
+ * 授权注意：字形版权归各图标原作者 / iconfont.cn 项目所有者（AnZhiYu 主题）所有，
+ *   此处仅作与官方主题一致的引用与镜像，请勿单独再分发。
+ */
 @font-face {
   font-family: "anzhiyufont"; /* Project id 2508400 */
   src: url("/iconfont/font_2508400_w2qjlumtppr.eot?t=1683532134415"); /* IE9 */
@@ -12,6 +20,25 @@
 .anzhiyufont {
   font-family: "anzhiyufont" !important;
   font-size: 16px;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== 关键补丁：让「只有 anzhiyu-icon-* 类名」的元素也走本字体 =====
+ * 背景：本文件（与官方 iconfont.cn 导出的 CSS 一致）原先只给 `.anzhiyufont` 设了
+ *   font-family，而 :before 的 content 码位是「继承宿主元素的字体」渲染的。
+ *   文章正文里由 Markdown/HTML 直接写出的 <i class="anzhiyu-icon-xxx"></i>
+ *   （例如 :::btns 区块）并不带 `anzhiyufont` 类，于是码位落到正文衬线字体
+ *   （Georgia / Times New Roman）里 → 找不到字形 → 渲染成豆腐块 □。
+ * 修复：按 iconfont.cn 标准输出补上通配选择器，令所有 anzhiyu-icon-* 宿主元素
+ *   传入本字体。此处刻意为「只加 font-family，不改 font-size」，
+ *   避免覆盖文章里按控件设定的字号。
+ * 注：没有 :before 规则的类名依旧不会产生 content，不会因此多出豆腐块。
+ */
+[class^="anzhiyu-icon-"],
+[class*=" anzhiyu-icon-"] {
+  font-family: "anzhiyufont" !important;
   font-style: normal;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -520,3 +547,27 @@
 .anzhiyu-icon-copyright-line:before {
   content: "\e60e";
 }
+
+/* ===== 无解类名清单（刻意不补字形，勿在此处臆造 content） =====
+ * 文章正文 /posts/hKw5（:::btns 示例区块）里还引用了下面 6 个名字，
+ * 它们【不存在】于 AnZhiYu 官方字库（iconfont.cn 项目 2508400，123 个字形）。
+ * 已核对来源：官方 CSS https://at.alicdn.com/t/c/font_2508400_w2qjlumtppr.css
+ *   以及线上站点 https://blog.anheyu.com 、https://blog.ciraos.top 的全部 CSS 分片
+ *   （两者均无任何 anzhiyu-icon 定义 / 无 @font-face 字库），确认线上亦无这些字形。
+ * 因此这里【不写】:before，避免把错误的图标伪装成正确图标。
+ * 实测这些 <i> 的盒子宽度为 0（无 content）——是「不显示」，不是豆腐块。
+ *
+ *   anzhiyu-icon-github-fill    ← 实为 Remix Icon（Iconify）名字 ri:github-fill
+ *   anzhiyu-icon-twitter-fill   ← ri:twitter-fill
+ *   anzhiyu-icon-bilibili-fill  ← ri:bilibili-fill
+ *   anzhiyu-icon-qq-fill        ← ri:qq-fill
+ *   anzhiyu-icon-wechat-fill    ← ri:wechat-fill
+ *   anzhiyu-icon-file-text      ← ri: 里应为 ri:file-text-fill / ri:file-text-line
+ * 即正文把「Iconify 写法」误加了 anzhiyu-icon- 前缀（该文自己的文档亦写明
+ * Iconify 图标应写作 `ri:github-fill`）。正确修法是改正文内容，例如：
+ *   icon=anzhiyu-icon-github-fill  →  icon=ri:github-fill
+ * 或改用字库里真实存在的同类名字：anzhiyu-icon-github / -bilibili / -qq。
+ * 同页正文里另有纯文本提及的 anzhiyu-icon-company-1..6 、-database 、-server 、
+ * -mobile 、-code 、-external-link 、-user- 、-user-3-fill 等（仅出现在代码块/说明
+ * 文字中，不产生 <i> 元素），同样不在字库内，属正文文档示例文字，无需补字形。
+ */

@@ -2353,33 +2353,95 @@ body {
 }
 
 /* ---------- 按钮 btn ---------- */
-/* 单个按钮由 .btn-container 包裹（后端结构） */
+/* 结构来自官方 anheyu：每个按钮被 <div class="btn-container"> 包住，块级对齐靠容器
+   （官方 PostContent.module.css:1492-1503 / editor-styles/_buttons.scss:678-690），
+   所以容器必须是撑满正文宽度的 flex 行：左对齐=flex-start（默认档），
+   居中=btn-container-center，右对齐=btn-container-right。
+   旧实现是 inline-block，容器只有按钮那么宽，"左/中/右"根本无从体现。 */
 .article-body .btn-container {
-  display: inline-block;
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  margin: 8px 0;
 }
 
+.article-body .btn-container.btn-container-center {
+  justify-content: center;
+}
+
+.article-body .btn-container.btn-container-right {
+  justify-content: flex-end;
+}
+
+/* 尺寸与"颜色兜底"规则（官方 PostContent.module.css:1412-1428）：
+   颜色走 --btn-color 变量：作者指定了颜色档（btn-blue…）时由颜色档写入 --btn-color，
+   没指定时 var(--btn-color) 取不到值 → 回落到 var(--primary) 主题色。
+   这就是"没给颜色的按钮一律用主题色"的兜底实现，且天然可被颜色档覆盖（自定义属性按选择器优先级层叠）。
+   文字色用 --primary-foreground（而不是官方写死的 #fff）：换肤后 --primary 可能是浅色
+   （实测线上深色模式 --primary=#34d399，白字对比度只有 1.92:1 根本看不清），
+   --primary-foreground 是主题里唯一保证"与 --primary 搭配可读"的令牌，深色下实测 7.66:1。 */
 .article-body .btn-container .btn-anzhiyu,
 .article-body .btn-anzhiyu:not(:where(.btn-item, .anzhiyu-tag-link)) {
-  display: inline-block;
-  padding: 6px 14px;
-  margin: 4px;
-  font-size: 0.875rem;
-  color: #fff !important;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 16px;
+  margin: 4px 8px 4px 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--primary-foreground, #fff) !important;
   text-decoration: none !important;
-  background: var(--primary);
-  border-radius: 0.5rem;
+  cursor: pointer;
+  background: var(--btn-color, var(--primary));
+  /* 实心按钮也用同色 2px 边框：官方实心按钮是 border 2px 与底色同色，
+     这样实心/空心两档的盒模型尺寸一致（空心只把底色换成透明） */
+  border: 2px solid var(--btn-color, var(--primary));
+  border-radius: 8px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+  transition: all 0.3s ease;
 }
 
-/* 深色模式：--primary 是浅色，白字会看不见 → 默认按钮改用固定蓝底 */
-.dark .article-body .btn-container .btn-anzhiyu,
-.dark .article-body .btn-anzhiyu:not(:where(.btn-item, .anzhiyu-tag-link)) {
-  background: #409eff;
+/* 作者显式指定了颜色档（btn-blue 等）时，底色是饱和色 → 沿用官方口径的白字。
+   这里按"颜色档"逐个列举，而不是 [class*="btn-"] 通配：
+   通配会把基础类 btn-anzhiyu 自己也算进去，一旦以后有人把 btn-outline 和颜色档拆到不同选择器就会误伤。 */
+.article-body .btn-container .btn-anzhiyu.color-blue:not(.btn-item),
+.article-body .btn-container .btn-anzhiyu.color-pink:not(.btn-item),
+.article-body .btn-container .btn-anzhiyu.color-red:not(.btn-item),
+.article-body .btn-container .btn-anzhiyu.color-purple:not(.btn-item),
+.article-body .btn-container .btn-anzhiyu.color-orange:not(.btn-item),
+.article-body .btn-container .btn-anzhiyu.color-green:not(.btn-item),
+.article-body .btn-container .btn-anzhiyu.btn-blue:not(.btn-item),
+.article-body .btn-container .btn-anzhiyu.btn-pink:not(.btn-item),
+.article-body .btn-container .btn-anzhiyu.btn-red:not(.btn-item),
+.article-body .btn-container .btn-anzhiyu.btn-purple:not(.btn-item),
+.article-body .btn-container .btn-anzhiyu.btn-orange:not(.btn-item),
+.article-body .btn-container .btn-anzhiyu.btn-green:not(.btn-item),
+.article-body .btn-anzhiyu.color-blue:not(:where(.btn-item, .anzhiyu-tag-link)),
+.article-body .btn-anzhiyu.color-pink:not(:where(.btn-item, .anzhiyu-tag-link)),
+.article-body .btn-anzhiyu.color-red:not(:where(.btn-item, .anzhiyu-tag-link)),
+.article-body .btn-anzhiyu.color-purple:not(:where(.btn-item, .anzhiyu-tag-link)),
+.article-body .btn-anzhiyu.color-orange:not(:where(.btn-item, .anzhiyu-tag-link)),
+.article-body .btn-anzhiyu.color-green:not(:where(.btn-item, .anzhiyu-tag-link)),
+.article-body .btn-anzhiyu.btn-blue:not(:where(.btn-item, .anzhiyu-tag-link)),
+.article-body .btn-anzhiyu.btn-pink:not(:where(.btn-item, .anzhiyu-tag-link)),
+.article-body .btn-anzhiyu.btn-red:not(:where(.btn-item, .anzhiyu-tag-link)),
+.article-body .btn-anzhiyu.btn-purple:not(:where(.btn-item, .anzhiyu-tag-link)),
+.article-body .btn-anzhiyu.btn-orange:not(:where(.btn-item, .anzhiyu-tag-link)),
+.article-body .btn-anzhiyu.btn-green:not(:where(.btn-item, .anzhiyu-tag-link)) {
+  color: #fff !important;
 }
+
+/* 深色模式：历史写法是把默认按钮改成固定蓝底 #409eff，那是硬编码颜色、换肤不跟随；
+   现在文字色用 --primary-foreground 已经解决"深色下白字看不见"，无需再改底色，故删除该覆盖。 */
 
 .article-body .btn-container .btn-anzhiyu:hover,
 .article-body .btn-anzhiyu:not(.btn-item):not(.anzhiyu-tag-link):hover {
-  opacity: 0.85;
+  /* 悬停仍要跟随该按钮的配色（--btn-hover 由颜色档给出，作者没给颜色就用主题色） */
+  background: var(--btn-hover, var(--btn-color, var(--primary)));
+  border-color: var(--btn-hover, var(--btn-color, var(--primary)));
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+  opacity: 0.9;
 }
 
 .article-body .btn-container .btn-anzhiyu i {
@@ -2387,103 +2449,101 @@ body {
   margin-right: 4px;
 }
 
+/* 大号按钮（官方 PostContent.module.css:1487-1490：padding 12px 24px / font-size 1.1rem）
+   用 !important 的理由与官方一致：基础规则里的 padding/font-size 优先级更高，不覆盖尺寸档就不生效 */
+.article-body .btn-anzhiyu.size-larger,
+.article-body .btn-anzhiyu.btn-larger {
+  padding: 12px 24px !important;
+  font-size: 1.1rem;
+}
+
 /* 按钮颜色主题（anheyu 格式 color-* 与 ciraos 格式 btn-* 并存）
-   注意：基础规则 .btn-anzhiyu:not(.btn-item):not(.anzhiyu-tag-link) 优先级更高，颜色必须 !important */
+   只声明 --btn-color/--btn-hover 两个变量，不再直接写死 background：
+   - 实心按钮由基础规则的 background: var(--btn-color) 生效；
+   - 空心按钮的边框/文字色取同一个 --btn-color → 边框色必然等于该按钮的配色（用户要求）；
+   - 作者指定颜色时，这一层（0,4,0）比基础规则高，变量覆盖不会反被基础规则盖掉。 */
 .article-body .btn-anzhiyu.color-blue,
 .article-body .btn-anzhiyu.btn-blue {
-  background: #2196f3 !important;
+  --btn-color: #409eff;
+  --btn-hover: #66b1ff;
 }
 
 .article-body .btn-anzhiyu.color-pink,
 .article-body .btn-anzhiyu.btn-pink {
-  background: #ec407a !important;
+  --btn-color: #ff69b4;
+  --btn-hover: #ff85c0;
 }
 
 .article-body .btn-anzhiyu.color-red,
 .article-body .btn-anzhiyu.btn-red {
-  background: #e53935 !important;
+  --btn-color: #f56c6c;
+  --btn-hover: #f78989;
 }
 
 .article-body .btn-anzhiyu.color-purple,
 .article-body .btn-anzhiyu.btn-purple {
-  background: #7e57c2 !important;
+  --btn-color: #9d5cff;
+  --btn-hover: #b07dff;
 }
 
 .article-body .btn-anzhiyu.color-orange,
 .article-body .btn-anzhiyu.btn-orange {
-  background: #ff9800 !important;
+  --btn-color: #ff9800;
+  --btn-hover: #ffad33;
 }
 
 .article-body .btn-anzhiyu.color-green,
 .article-body .btn-anzhiyu.btn-green {
-  background: #4caf50 !important;
+  --btn-color: #67c23a;
+  --btn-hover: #85ce61;
 }
 
-/* 空心按钮 */
-.article-body .btn-anzhiyu.style-outline,
-.article-body .btn-anzhiyu.btn-outline {
-  color: var(--primary) !important;
-  background: transparent !important;
-  border: 1px solid var(--primary);
+/* 空心按钮（官方 PostContent.module.css:1477-1485）
+   空心 = 背景透明 + 2px 实线边框；没给颜色时边框/文字都取 --btn-color → 主题色 var(--primary)。
+   选择器刻意写成 (0,5,0)：上面"颜色档 → 白字 !important"是 !important 声明，
+   既要盖过它，就不能只靠基础规则里的普通 color 声明，所以这里也带 !important 并用更高的特异性。
+   color 必须 !important：基础规则把颜色写成了 !important，否则空心按钮文字会被实心前景色盖掉。 */
+.article-body .btn-container .btn-anzhiyu.style-outline:not(.btn-item),
+.article-body .btn-container .btn-anzhiyu.btn-outline:not(.btn-item),
+.article-body .btn-container .btn-anzhiyu.style-outline,
+.article-body .btn-container .btn-anzhiyu.btn-outline,
+.article-body .btn-anzhiyu.style-outline:not(:where(.btn-item, .anzhiyu-tag-link)),
+.article-body .btn-anzhiyu.btn-outline:not(:where(.btn-item, .anzhiyu-tag-link)) {
+  color: var(--btn-color, var(--primary)) !important;
+  background: transparent;
+  border-width: 2px;
+  border-style: solid;
+  border-color: var(--btn-color, var(--primary));
 }
 
-.article-body .btn-anzhiyu.style-outline.color-blue,
-.article-body .btn-anzhiyu.btn-outline.btn-blue {
-  color: #2196f3 !important;
-  border-color: #2196f3;
+.article-body .btn-container .btn-anzhiyu.style-outline:hover,
+.article-body .btn-container .btn-anzhiyu.btn-outline:hover,
+.article-body .btn-anzhiyu.style-outline:hover:not(.btn-item),
+.article-body .btn-anzhiyu.btn-outline:hover:not(.btn-item),
+.article-body .btn-anzhiyu.style-outline:not(:where(.btn-item, .anzhiyu-tag-link)):hover,
+.article-body .btn-anzhiyu.btn-outline:not(:where(.btn-item, .anzhiyu-tag-link)):hover {
+  /* 官方悬停：文字变白 + 填充该按钮配色（实心化）。
+     这里不能再叠加 opacity（基础 hover 规则里的 opacity:0.9），否则填充色会透出底色发灰 */
+  color: #fff !important;
+  background: var(--btn-color, var(--primary));
+  border-color: var(--btn-color, var(--primary));
+  opacity: 1;
 }
 
-.article-body .btn-anzhiyu.style-outline.color-pink,
-.article-body .btn-anzhiyu.btn-outline.btn-pink {
-  color: #ec407a !important;
-  border-color: #ec407a;
-}
-
-.article-body .btn-anzhiyu.style-outline.color-red,
-.article-body .btn-anzhiyu.btn-outline.btn-red {
-  color: #e53935 !important;
-  border-color: #e53935;
-}
-
-.article-body .btn-anzhiyu.style-outline.color-purple,
-.article-body .btn-anzhiyu.btn-outline.btn-purple {
-  color: #7e57c2 !important;
-  border-color: #7e57c2;
-}
-
-.article-body .btn-anzhiyu.style-outline.color-orange,
-.article-body .btn-anzhiyu.btn-outline.btn-orange {
-  color: #ff9800 !important;
-  border-color: #ff9800;
-}
-
-.article-body .btn-anzhiyu.style-outline.color-green,
-.article-body .btn-anzhiyu.btn-outline.btn-green {
-  color: #4caf50 !important;
-  border-color: #4caf50;
-}
-
-/* 块级布局 */
+/* 块级布局：官方是用外层容器对齐（见上），这里兼容"类名直接加在按钮上"的写法 */
 .article-body .btn-anzhiyu.layout-block {
-  display: block;
-  text-align: center;
+  display: flex;
+  width: 100%;
+  justify-content: flex-start;
+  margin: 8px 0;
 }
 
 .article-body .btn-anzhiyu.layout-block.position-center {
-  width: fit-content;
-  margin: 8px auto;
+  justify-content: center;
 }
 
 .article-body .btn-anzhiyu.layout-block.position-right {
-  width: fit-content;
-  margin-left: auto;
-}
-
-/* 大号按钮 */
-.article-body .btn-anzhiyu.size-larger,
-.article-body .btn-anzhiyu.btn-larger {
-  padding: 10px 22px;
-  font-size: 1em;
+  justify-content: flex-end;
 }
 
 /* 按钮组 btns */
