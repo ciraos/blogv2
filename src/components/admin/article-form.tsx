@@ -49,6 +49,7 @@ import {
     renderMarkdownToHtml,
     resolveContentHtml,
 } from "@/lib/article-markdown";
+import { patchArticleContent } from "@/lib/article-shortcodes";
 import type { PostCategory, PostTag } from "@/types/articles";
 
 /**
@@ -727,6 +728,14 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
      * 让「预览所见 = 保存所存」。渲染器要按需动态加载，所以渲染完成后才替换；
      * md 与渲染结果对不上时先退回下面的极简渲染（不会出现「改了正文还显示上一份预览」）。
      * 加载失败也只是退回极简渲染，不影响保存。
+     *
+     * 渲染结果再过一遍前台文章页用的同一套补丁（patchArticleContent）：后端会忽略短代码的一部分参数
+     * （`{btn ...}` 的 layout/position、`{tip ...}` 的 theme/position/delay），前台因此在渲染前补
+     * 类名/块级容器/data-*（见 src/lib/article-shortcodes.ts），预览走同一条变换才能「预览=前台」，
+     * 而不是「预览里按钮居中、前台却靠左」「预览里提示是黑的、前台却是绿的」。
+     * 注意：预览用的客户端渲染器不认短代码（不会产出 `<a class="btn-anzhiyu">` /
+     * `.anzhiyu-tip-wrapper`），此时两边数量对不上 → 补丁整体放弃并 console.warn，
+     * 预览按渲染器原样显示（不静默改内容）。
      */
     const [renderedPreview, setRenderedPreview] = useState<{ md: string; html: string } | null>(null);
     useEffect(() => {
@@ -743,8 +752,10 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
             cancelled = true;
         };
     }, [showPreview, contentMd]);
-    const previewHtml =
-        renderedPreview && renderedPreview.md === contentMd ? renderedPreview.html : mdToHtml(contentMd);
+    const previewHtml = useMemo(() => {
+        const raw = renderedPreview && renderedPreview.md === contentMd ? renderedPreview.html : mdToHtml(contentMd);
+        return patchArticleContent(contentMd, raw);
+    }, [renderedPreview, contentMd]);
 
     /**
      * 预览的代码块配置（site-config `post.code_block`）：必须和前台文章页拿的是同一份，

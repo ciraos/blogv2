@@ -10,6 +10,7 @@ import { PostWaves } from "@/components/(blog)/post-waves";
 import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
 import { ApiError, getCommentsWithChildrenApi, getPublicArticleApi, getPublicSiteConfigApi } from "@/lib/api";
+import { patchArticleContent } from "@/lib/article-shortcodes";
 import { getCommentAuthor } from "@/lib/comment-author";
 import { renderCopyrightHtml, type ArticleCopyCopyrightConfig } from "@/lib/post-copyright";
 import { splitKeywords } from "@/lib/seo";
@@ -192,6 +193,19 @@ export default async function Post({ params }: PostPageProps) {
     const targetPath = `/posts/${article.id}`;
     const comments = await getCommentsWithChildrenApi(targetPath);
 
+    /**
+     * 正文 HTML 补丁（src/lib/article-shortcodes.ts）：后端**收下但忽略**短代码的一部分参数，
+     * 这里按 content_md 把它们补回 HTML。该页同时拿得到 content_md 与 content_html，所以补丁放在服务端；
+     * 两处数量对不上时函数内部会整体放弃并 console.warn（宁可保持后端原样，也不部分乱改）。
+     *   - `{btn ...}`：layout/position（实测 hKw5：26 条可渲染短代码对应 26 个 `<a class="btn-anzhiyu">`，
+     *     但 `btn-container` 0 个，块级按钮全被包在普通 `<p>` 里）→ 补类名与块级容器；
+     *   - `{tip ...}`：theme/position/delay（实测同样 14 条短代码对应 14 个 `.anzhiyu-tip-wrapper`，
+     *     后端只透传了 `theme=light` / `position=bottom` / `trigger=click`，成功/信息/警告/错误四档、
+     *     左/右两个方向、`delay=0/500` 全丢）→ 补 `tip-{theme}` / `tip-{position}` 类名与 wrapper 上的
+     *     `data-trigger` / `data-delay`。tip 的显示/隐藏/延迟机制仍在 globals.css + article-body.tsx:enhanceTips。
+     */
+    const contentHtml = patchArticleContent(article.content_md, article.content_html || "");
+
     return (
         <PageWithSidebar>
             {/* 单栏文章正文；右侧目录（TOC）由全局侧边栏顶部的「文章目录」卡片接管 */}
@@ -260,7 +274,7 @@ export default async function Post({ params }: PostPageProps) {
 
                 {/* 后端渲染好的正文 HTML，客户端组件负责代码块高亮 + 复制按钮；正文白底卡片，深浅色随主题切换 */}
                 <div className="mt-6 rounded-xl border border-border/60 bg-card p-5 shadow-sm md:p-8">
-                    <ArticleBody html={article.content_html || ""} codeBlock={codeBlock} copyCopyright={copyCopyright} />
+                    <ArticleBody html={contentHtml} codeBlock={codeBlock} copyCopyright={copyCopyright} />
                 </div>
 
                 {/* AI 播客入口（ai_podcast.enable）：按官方口径渲染按钮，未开启时组件自己返回 null */}

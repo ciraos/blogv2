@@ -289,66 +289,99 @@ function enhanceTabs(root: HTMLElement) {
     });
 }
 
-/** Tip 提示（hover / click） */
+/**
+ * Tip 提示（hover / click）。
+ *
+ * 分工（**两档必须彻底分层**，用户实测反馈过「click 档悬停也会弹出来」）：
+ * - **hover 档（默认）**：显示完全交给 CSS，选择器把 click 档排除在外
+ *   （globals.css：`.anzhiyu-tip-wrapper:not([data-trigger="click"]):hover .anzhiyu-tip`）——
+ *   没有 JS（禁用脚本、组件尚未 hydrate）也能看到提示；显示延迟用 CSS `transition-delay`
+ *   （`--anzhiyu-tip-delay`，这里按 `data-delay` 写到 wrapper 上），不需要计时器。
+ * - **click 档**：由这里实现（官方 PostContent/index.tsx:162-189 的做法：点文字切换、点外部关闭；
+ *   我们额外做了 Esc 关闭与 aria 状态）。这一档在 CSS 层就不命中任何 `:hover` 规则，
+ *   只有 `data-visible="true"` 能显示它——所以「点开后再悬停/移开鼠标」都不会改变状态。
+ *
+ * 属性读法：「wrapper 优先、内容 span 兜底」——官方把 data-trigger 写在 wrapper 上
+ * （callout-block.tsx:277）却从内容 span 上读（PostContent/index.tsx:142-144），后端也只写 wrapper，
+ * 两边都认才不会出现「写了、JS 读不到」。补丁（src/lib/article-shortcodes.ts:patchArticleTips）
+ * 只往 **wrapper** 上写 data-trigger / data-delay：CSS 的 hover 排除规则只认 wrapper 上的属性。
+ * 注意 delay 的两档语义：**写了**（0 也算写）= 用作者给的延迟，**没写** = 用 CSS 的 300ms 默认档。
+ *
+ * 注意：这里只用 class / data-* 控制显示（不写 inline style）——inline style 会盖掉 CSS 的
+ * hover 规则与 `transition-delay`，是「hover 与 click 两套机制打架」的根源。
+ */
 function enhanceTips(root: HTMLElement, cleanupFns: (() => void)[]) {
     root.querySelectorAll<HTMLElement>(".anzhiyu-tip-wrapper").forEach((wrapper) => {
-        const tipText = wrapper.querySelector<HTMLElement>(".anzhiyu-tip-text");
         const tip = wrapper.querySelector<HTMLElement>(".anzhiyu-tip");
-        if (!tipText || !tip) return;
+        if (!tip) return;
 
-        const trigger = tip.getAttribute("data-trigger") || "hover";
-        const delay = parseInt(tip.getAttribute("data-delay") || "0", 10);
+        // data-* 优先取 wrapper（官方/后端的写法），取不到再退回内容 span（官方前台的读法）
+        const attr = (name: string) => wrapper.getAttribute(name) ?? tip.getAttribute(name);
+        const trigger = attr("data-trigger") === "click" ? "click" : "hover";
 
-        const showTip = () => {
-            tip.style.visibility = "visible";
-            tip.style.opacity = "1";
-            tip.classList.add("show");
-            tip.setAttribute("data-visible", "true");
-        };
-        const hideTip = () => {
-            tip.style.visibility = "hidden";
-            tip.style.opacity = "0";
-            tip.classList.remove("show");
-            tip.setAttribute("data-visible", "false");
-        };
-
-        if (trigger === "click") {
-            const handleClick = (e: Event) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const isVisible = tip.getAttribute("data-visible") === "true";
-                if (isVisible) hideTip();
-                else showTip();
-            };
-            const handleDocumentClick = (e: Event) => {
-                if (!wrapper.contains(e.target as Node)) hideTip();
-            };
-            tipText.addEventListener("click", handleClick);
-            document.addEventListener("click", handleDocumentClick);
-            cleanupFns.push(() => {
-                tipText.removeEventListener("click", handleClick);
-                document.removeEventListener("click", handleDocumentClick);
-            });
-        } else {
-            let showTimer: ReturnType<typeof setTimeout> | null = null;
-            let hideTimer: ReturnType<typeof setTimeout> | null = null;
-            const handleMouseEnter = () => {
-                if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-                showTimer = setTimeout(showTip, delay);
-            };
-            const handleMouseLeave = () => {
-                if (showTimer) { clearTimeout(showTimer); showTimer = null; }
-                hideTimer = setTimeout(hideTip, 100);
-            };
-            tipText.addEventListener("mouseenter", handleMouseEnter);
-            tipText.addEventListener("mouseleave", handleMouseLeave);
-            cleanupFns.push(() => {
-                tipText.removeEventListener("mouseenter", handleMouseEnter);
-                tipText.removeEventListener("mouseleave", handleMouseLeave);
-                if (showTimer) clearTimeout(showTimer);
-                if (hideTimer) clearTimeout(hideTimer);
-            });
+        // delay 的语义必须区分「写了」与「没写」，两者不是一回事：
+        //   写了（含 `data-delay="0"`）= 作者明确要求这个延迟，0 就是「立即显示」；
+        //   没写 = 交给 CSS 里的 300ms 默认档。
+        // 所以只在**属性存在**时写自定义属性。早先的 `parsedDelay > 0` 把 0 和「没写」一起当成默认档，
+        // 于是补丁在 wrapper 上写的 `data-delay="0"`（{tip delay=0}）被这里静默丢掉、退回 300ms
+        // ——同一份参数「写的这端写了、读的这端不认」，是补丁与消费方不一致的典型。
+        const rawDelay = attr("data-delay");
+        if (rawDelay !== null) {
+            const parsedDelay = Number.parseInt(rawDelay, 10);
+            // 只接受 0..60000 的整数：后端/正文里写出 NaN 会让 setTimeout(NaN) 立即触发（静默改行为）
+            if (Number.isFinite(parsedDelay) && parsedDelay >= 0 && parsedDelay <= 60000) {
+                wrapper.style.setProperty("--anzhiyu-tip-delay", `${parsedDelay}ms`);
+            }
         }
+
+        /** 切换展开态：只写 class / data-* / aria，不写 inline style（理由见函数头注释） */
+        const setVisible = (visible: boolean) => {
+            tip.classList.toggle("show", visible);
+            tip.setAttribute("data-visible", visible ? "true" : "false");
+            wrapper.setAttribute("aria-expanded", visible ? "true" : "false");
+        };
+
+        // 可访问性：wrapper 是可切换的控件（后端只输出 span，这里补上 role / tabindex / 状态）。
+        // role 放 wrapper 而不是 text span：点击监听就在 wrapper 上，焦点与控件必须是同一个元素。
+        wrapper.setAttribute("role", "button");
+        wrapper.setAttribute("tabindex", "0");
+        setVisible(false);
+
+        // hover 档到此为止：显示/隐藏/延迟全部由 CSS 负责，这里不挂任何事件
+        if (trigger !== "click") return;
+
+        const handleToggle = (e: Event) => {
+            // 不 preventDefault：wrapper 里是可复制的提示文字，拦掉默认行为会连选中都做不了
+            // 阻止冒泡，避免这次点击立刻被下面的「点外部关闭」判成外部点击而马上关掉
+            e.stopPropagation();
+            setVisible(tip.getAttribute("data-visible") !== "true");
+        };
+
+        const handleDocumentClick = (e: Event) => {
+            const target = e.target;
+            if (target instanceof Node && !wrapper.contains(target)) setVisible(false);
+        };
+
+        const handleKeydown = (e: KeyboardEvent) => {
+            if (e.key === "Enter" || e.key === " ") {
+                // 空格键在页面上会滚动，键盘切换必须拦掉默认行为
+                e.preventDefault();
+                setVisible(tip.getAttribute("data-visible") !== "true");
+            } else if (e.key === "Escape") {
+                setVisible(false);
+            }
+        };
+
+        // 官方把点击挂在 tip-text 上，这里挂在 wrapper 上：内容 span 显示时也在 wrapper 内，
+        // 点提示框本身不再需要额外处理（官方还多点一下 toggle，等于关掉刚打开的提示）
+        wrapper.addEventListener("click", handleToggle);
+        wrapper.addEventListener("keydown", handleKeydown);
+        document.addEventListener("click", handleDocumentClick);
+        cleanupFns.push(() => {
+            wrapper.removeEventListener("click", handleToggle);
+            wrapper.removeEventListener("keydown", handleKeydown);
+            document.removeEventListener("click", handleDocumentClick);
+        });
     });
 }
 

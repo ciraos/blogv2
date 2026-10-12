@@ -1800,6 +1800,66 @@ body {
   transition: opacity 0.15s ease;
 }
 
+/* ---------- Tip 触发与延迟（对齐官方 PostContent/index.tsx:142-221 的行为） ----------
+   **两档触发必须彻底分层**（用户实测反馈：click 档以前悬停也会弹出来，就是因为这里只有一条通用
+   `:hover` 规则、click 档也被它命中）：
+   ① hover 档（默认，wrapper 上没有 data-trigger="click"）= 纯 CSS。选择器
+      `.anzhiyu-tip-wrapper:not([data-trigger="click"]):hover .anzhiyu-tip`（外加 `:focus-within`，
+      让键盘 Tab 到文字上也能看到提示）用 `:not(...)` 把 click 档排除在外——这样 click 档无论怎么悬停
+      都不会显示（CSS 层就不命中，不依赖 JS 是否已挂载）。
+      用 wrapper 的 :hover 而不是 `.anzhiyu-tip-text:hover + .anzhiyu-tip`：鼠标移到提示框上时
+      仍留在 wrapper 的 hover 里，否则「提示框盖住光标 → 立刻消失」。
+   ② click 档 = 只认显式展开态：`.anzhiyu-tip-wrapper[data-trigger="click"] .anzhiyu-tip[data-visible="true"]`
+      （JS 在 article-body.tsx:enhanceTips 里切 data-visible / aria-expanded）。这里不用 inline style
+      控制显示——inline style 会盖掉 hover 规则与 transition-delay，是之前 hover / click 打架的根源。
+   `--anzhiyu-tip-delay` 由 enhanceTips 按 `data-delay` 写到 wrapper 上：
+   延迟写在「未悬停」的基础态（悬停态强制 0s）→ 只有「显示出延迟、收起不延迟」，
+   与官方 setTimeout(showTip, delay) + 100ms 后隐藏的语义一致（否则 500ms 的 tip 收起时也会拖 500ms）。 */
+.article-body .anzhiyu-tip-wrapper:not([data-trigger="click"]):hover .anzhiyu-tip,
+.article-body .anzhiyu-tip-wrapper:not([data-trigger="click"]):focus-within .anzhiyu-tip {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+/* hover 档没有 data-delay 时的默认显示延迟（官方把 300ms 作为「不写 delay」的默认手感；
+   `{tip}` 的 delay 参数在官方实现里只作用于 hover 档，click 档的展开态上面强制 0s） */
+.article-body .anzhiyu-tip-wrapper {
+  --anzhiyu-tip-delay: 300ms;
+}
+
+.article-body .anzhiyu-tip-wrapper .anzhiyu-tip {
+  transition-delay: var(--anzhiyu-tip-delay);
+}
+
+/* click 档不需要延迟（官方 PostContent/index.tsx:162-189 的 click 分支根本不读 data-delay）：
+   它一旦展开就立刻给反馈，避免「点了没反应」的错觉 */
+.article-body .anzhiyu-tip-wrapper[data-trigger="click"] .anzhiyu-tip {
+  transition-delay: 0s;
+}
+
+/* click 档的展开态：只有它能让提示显示（悬停不算）。`.show` 是官方前台用的类名，
+   `[data-visible="true"]` 是我们 JS 写的属性，两个都认（幂等、互不冲突） */
+.article-body .anzhiyu-tip-wrapper[data-trigger="click"] .anzhiyu-tip.show,
+.article-body .anzhiyu-tip-wrapper[data-trigger="click"] .anzhiyu-tip[data-visible="true"] {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+/* 点击触发的提示文字是可点区域：给出手型光标，键盘也能聚焦（JS 补 role/tabindex/aria-expanded） */
+.article-body .anzhiyu-tip-wrapper[data-trigger="click"] > .anzhiyu-tip-text {
+  cursor: pointer;
+}
+
+.article-body .anzhiyu-tip-wrapper[data-trigger="click"]:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .article-body .anzhiyu-tip .tip-content {
   padding: 8px 12px;
   background: rgb(0 0 0 / 0.85);
@@ -1822,35 +1882,45 @@ body {
 }
 
 .article-body .anzhiyu-tip.tip-light:not(:has(.tip-content)) {
-  background: rgb(255 255 255 / 0.95);
-  color: #333;
+  background: var(--card);
+  color: var(--foreground);
   border: 1px solid var(--border);
 }
 
-/* 5 种主题色（success/info/warning/error/light）：后端输出对应 class 后生效 */
+/* 主题配色（dark/light/success/info/warning/error 六档）：以官方为准 ——
+   scripts/theme/.../PostContent/PostContent.module.css:817-834 与 editor-styles/_callout.scss:179-196：
+   info #3b82f6 / warning #f59e0b / error #ef4444 / success #10b981 / light 用卡片色 + 前景色 + 边框；
+   dark 是「不写 theme」的默认档（黑底白字，同 .anzhiyu-tip / :not(:has(.tip-content)) 的底色）。
+   深色模式不需要单独一套：dark 本来就是黑底白字，light 走 var(--foreground)/var(--card)/var(--border)，随主题切换。 */
+.article-body .anzhiyu-tip.tip-dark .tip-content,
+.article-body .anzhiyu-tip.tip-dark:not(:has(.tip-content)) {
+  background: rgb(0 0 0 / 0.85);
+  color: #fff;
+}
+
 .article-body .anzhiyu-tip.tip-success .tip-content,
 .article-body .anzhiyu-tip.tip-success:not(:has(.tip-content)) {
-  background: #16a34a;
+  background: #10b981;
 }
 
 .article-body .anzhiyu-tip.tip-info .tip-content,
 .article-body .anzhiyu-tip.tip-info:not(:has(.tip-content)) {
-  background: #2563eb;
+  background: #3b82f6;
 }
 
 .article-body .anzhiyu-tip.tip-warning .tip-content,
 .article-body .anzhiyu-tip.tip-warning:not(:has(.tip-content)) {
-  background: #d97706;
+  background: #f59e0b;
 }
 
 .article-body .anzhiyu-tip.tip-error .tip-content,
 .article-body .anzhiyu-tip.tip-error:not(:has(.tip-content)) {
-  background: #dc2626;
+  background: #ef4444;
 }
 
 .article-body .anzhiyu-tip.tip-light .tip-content {
-  background: rgb(255 255 255 / 0.95);
-  color: #333;
+  background: var(--card);
+  color: var(--foreground);
   border: 1px solid var(--border);
 }
 
