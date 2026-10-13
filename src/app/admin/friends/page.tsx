@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { generateBlogMetadata } from "@/lib/seo";
 
-import { CategorySortDialog } from "@/components/admin/category-sort-dialog";
 import { FriendsManager } from "@/components/admin/friends-manager";
 import { LinkCreateButton } from "@/components/admin/link-create-button";
 import { LinkExportButton } from "@/components/admin/link-export-button";
@@ -25,8 +24,6 @@ export default function Friends() {
                     <LinkCreateButton />
                     {/* 分类 / 标签的新增、改名、删除（后端 /links/categories、/links/tags 的写接口） */}
                     <LinkTaxonomyDialog />
-                    {/* 分类展示顺序：后端暂无分类排序字段，本弹窗只按 id 展示（创建顺序） */}
-                    <CategorySortDialog />
                     {/* 导入 / 导出：远端 /links/import、/links/export，两者格式同构，导出文件可直接回灌 */}
                     <LinkImportDialog />
                     <LinkExportButton />

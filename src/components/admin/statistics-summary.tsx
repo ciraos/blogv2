@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { DateRangeStats, StatisticsSummary, URLStatistics, VisitorAnalytics } from "@/types/statistics";
+import { CHART_OTHER_COLOR, sliceColor } from "@/lib/chart-colors";
 
 interface RankItem {
     name: string;
@@ -99,9 +100,6 @@ function RankList({ title, items, bare = false }: { title?: string; items: RankI
     );
 }
 
-/** 饼图/图例共用的主色深浅梯度（纯主题色，避免引入图表库与额外配色） */
-const PIE_OPACITY = [1, 0.72, 0.52, 0.34, 0.2, 0.12];
-
 /** 终端三组各自的图标（拆成独立卡片后，每组一张卡） */
 const SECTION_ICON: Record<string, React.ReactNode> = {
     浏览器: <Compass className="size-3.5" />,
@@ -109,11 +107,15 @@ const SECTION_ICON: Record<string, React.ReactNode> = {
     操作系统: <Cpu className="size-3.5" />,
 };
 
-/** 来源占比饼图（纯 SVG 环图，无图表库）：前 5 名 + 其他 */
+/** 来源占比饼图（纯 SVG 环图，无图表库）：前 5 名 + 其他。
+ *  颜色按序号取 globals.css 的图表令牌（var(--chart-N)），「其他」固定中性灰 ——
+ *  不再用「同一主题色的透明度深浅」，否则五段颜色互相之间几乎分不出来。 */
 function RefererPie({ items }: { items: RankItem[] }) {
     const top = items.slice(0, 5);
     const rest = items.slice(5).reduce((sum, i) => sum + i.count, 0);
     const segs = rest > 0 ? [...top, { name: "其他", count: rest }] : top;
+    // 「其他」在 segs 里的下标（没有「其他」段时给 -1，谁都不会命中）
+    const otherIndex = rest > 0 ? top.length : -1;
     const total = segs.reduce((sum, i) => sum + i.count, 0) || 1;
     const R = 40;
     const C = 2 * Math.PI * R;
@@ -138,9 +140,8 @@ function RefererPie({ items }: { items: RankItem[] }) {
                             cy="50"
                             r={R}
                             fill="none"
-                            stroke="var(--primary)"
+                            stroke={i === otherIndex ? CHART_OTHER_COLOR : sliceColor(i)}
                             strokeWidth="14"
-                            strokeOpacity={PIE_OPACITY[i] ?? 0.12}
                             strokeDasharray={`${dash} ${C - dash}`}
                             strokeDashoffset={-s.offset}
                         />
@@ -295,7 +296,7 @@ function Skeleton() {
 
 
 /** 杂项：统计概览（基础统计 + 访客分析排行 + 热门页面 + 趋势）。
- *  访问日志卡不在这里 —— 它是仪表盘最后一块**整宽卡片**，由 dashboard 页面单独渲染。 */
+ *  访问日志卡不在这里 —— 它是仪表盘最后一块卡片（宽度贴合内容，见 visitor-logs-card.tsx），由 dashboard 页面单独渲染。 */
 export function StatisticsSummary() {
     const [data, setData] = useState<StatisticsSummary | null>(null);
     // 三张趋势图单独拉取（summary 只返回 daily，weekly/monthly 需 GET /statistics/trend）
@@ -463,9 +464,10 @@ export function StatisticsSummary() {
                                                 // 域名独占一行（窄列里也能读全），次数放到进度条右侧
                                                 <li key={i}>
                                                     <div className="flex items-center gap-2">
+                                                        {/* 色点与饼图第 i 段同色（同一个图表令牌），否则对不上号 */}
                                                         <span
-                                                            className="size-2.5 shrink-0 rounded-full bg-primary"
-                                                            style={{ opacity: PIE_OPACITY[i] ?? 0.12 }}
+                                                            className="size-2.5 shrink-0 rounded-full"
+                                                            style={{ backgroundColor: sliceColor(i) }}
                                                         />
                                                         <span className="min-w-0 flex-1 truncate text-sm" title={item.name}>
                                                             {item.name}

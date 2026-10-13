@@ -29,6 +29,10 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  /* 追加：第 6 槽位与「其他」中性色也进主题，这样 bg-chart-6 / bg-chart-other 这类类名也能用
+     （现有 5 个映射保持不变；组件目前用的是内联 var(--chart-N)，不依赖这些类名） */
+  --color-chart-6: var(--chart-6);
+  --color-chart-other: var(--chart-other);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -94,11 +98,25 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* 图表/Pie 配色令牌（浅色一套）。为什么用令牌而不是在各组件里硬编码色值：
+     ① 深浅色各需要一套明度（同一组色在深色底上发闷、在浅色底上发飘），
+        而换肤（appearance.ts 会把令牌内联到 :root）也必须能一并覆盖 → 令牌是唯一能同时满足这两件事的位置；
+     ② 组件只写 var(--chart-N)，改配色只改这里一处。
+     色相刻意拉开（青 195 / 蓝 255 / 紫 295 / 琥珀 70 / 玫红 5 / 石灰 145），
+     不靠同一色相的明度差区分；明度/彩度是算出来的（CSS Color 4 的 oklab↔sRGB 矩阵）：
+     保证①在 sRGB 色域内不裁切、②白卡片（--card）上对比度 3.3~3.9:1、③任意两色 RGB 距离 ≥103。
+     注意：--chart-1…--chart-5 原本是 shadcn 的灰度默认值（oklch(x 0 0)）且全项目零引用，
+     这里直接改成彩色 —— 同一令牌保留唯一一处定义，避免「后定义覆盖前定义」的双份声明。 */
+  --chart-1: oklch(0.62 0.105 195); /* 青 #06999a */
+  --chart-2: oklch(0.625 0.205 255); /* 蓝 #0285ff */
+  --chart-3: oklch(0.625 0.22 295); /* 紫 #9560fb */
+  --chart-4: oklch(0.65 0.14 70); /* 琥珀 #c47d04 */
+  --chart-5: oklch(0.63 0.22 5); /* 玫红 #ec3577 */
+  /* 第 6 槽位：预留给「第 6 个具体数据项」（当前饼图第 6 段固定是「其他」中性灰，所以今天只用到 1~5） */
+  --chart-6: oklch(0.62 0.195 145); /* 石灰 #00a22b */
+  /* 「其他」段/色点固定中性灰：它不是一个具体数据项，不该占用彩色槽位
+     （占用了就会把相邻两项挤成相近色）。取 muted-foreground，随主题/换肤一起走。 */
+  --chart-other: var(--muted-foreground);
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -144,11 +162,16 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* 图表/Pie 配色令牌（深色一套）：与浅色同一批色相，按深色卡片（--card = oklch(0.205 0 0)）
+     重新取值 —— 深色下要求对比度 4.8~7.3:1（低于 3:1 就是「几乎看不见」），
+     同样保证在 sRGB 色域内且任意两色 RGB 距离 ≥91。 */
+  --chart-1: oklch(0.675 0.115 195); /* 青 #01acad */
+  --chart-2: oklch(0.625 0.205 255); /* 蓝 #0285ff */
+  --chart-3: oklch(0.635 0.22 295); /* 紫 #9864ff */
+  --chart-4: oklch(0.695 0.15 70); /* 琥珀 #d78903 */
+  --chart-5: oklch(0.68 0.22 5); /* 玫红 #fe4986 */
+  --chart-6: oklch(0.7 0.22 145); /* 石灰 #01bf35 */
+  --chart-other: var(--muted-foreground);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
@@ -930,7 +953,10 @@ body {
 }
 
 /* ============ 首字下沉 ============ */
-.article-body>p:first-child::first-letter {
+/* 只对**文章正文**生效：`:not(.page-body)` 把自定义页面排除在外。
+   自定义页面（(blog)/[...slug]）复用 `.article-body` 拿排版，但它开头常是
+   「本政策的最近更新日期为…」这类句子，首字被放大成 3.3em 会很怪（用户实测反馈）。 */
+.article-body:not(.page-body)>p:first-child::first-letter {
   float: left;
   margin-top: 0.06em;
   padding: 0.04em 0.14em 0 0;

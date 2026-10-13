@@ -40,7 +40,7 @@ export interface ConfirmDialogProps {
  * 在暗色主题下是一块突兀的系统白框（用户反馈「好难看」）。
  *
  * 复用 radix-ui 的 Dialog（与 ui/sheet.tsx 同一个包，不新增依赖），
- * 样式对齐站内其它模态框（article-import-dialog / link-sort-dialog 同一套 class）。
+ * 样式对齐站内其它模态框（article-import-dialog / link-import-dialog 同一套 class）。
  *
  * 交互约定：
  * - Esc / 点遮罩 / 点「取消」= 取消（不做右上角的 X，两态确认弹窗没必要）；

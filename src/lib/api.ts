@@ -1312,6 +1312,15 @@ export async function getAdminPagesApi(
     return request<AdminPageListData>(`/api/admin/pages?${qs.toString()}`, { method: "GET" });
 }
 
+/**
+ * GET /api/admin/pages/[id] 单个页面详情（同源代理 → 远端 GET /pages/:id，需管理员）。
+ * 编辑页要回填 content（HTML，前台渲染的就是它）与 markdown_content；
+ * 它必须走详情接口而不是从列表里拿 —— 列表页只带标题/路径等摘要字段，正文不在里面。
+ */
+export function getAdminPageApi(id: number | string): Promise<AdminPage> {
+    return request<AdminPage>(`/api/admin/pages/${encodeURIComponent(String(id))}`, { method: "GET" });
+}
+
 /** POST /api/admin/pages 新建页面（远端 create 要求 title / path / content 必填） */
 export function createAdminPageApi(body: AdminPagePayload): Promise<AdminPage> {
     return request<AdminPage>("/api/admin/pages", { method: "POST", body: JSON.stringify(body) });

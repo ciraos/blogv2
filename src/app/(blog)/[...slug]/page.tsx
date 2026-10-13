@@ -78,8 +78,12 @@ export default async function CustomPage({ params }: CustomPageProps) {
                 )}
             </header>
 
-            {/* 后端渲染好的页面内容 HTML */}
-            <div className="article-body mt-6" dangerouslySetInnerHTML={{ __html: page.content || "" }} />
+            {/* 后端渲染好的页面内容 HTML。
+                `page-body` 标记：让「文章首字下沉」（globals.css 的
+                `.article-body:not(.page-body)>p:first-child::first-letter`）这类**文章专属**排版
+                不套到自定义页面上 —— 否则 Cookie 政策那句「本政策的最近更新日期为…」的首字「本」
+                会被放大成 3.3em（实测反馈）。 */}
+            <div className="article-body page-body mt-6" dangerouslySetInnerHTML={{ __html: page.content || "" }} />
 
             {page.show_comment && (
                 <PostComments

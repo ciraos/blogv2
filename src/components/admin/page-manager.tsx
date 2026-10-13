@@ -1,24 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ExternalLink, FileText, Loader2, Pencil, Plus, RefreshCw, Search, Sparkles, Trash2, X } from "lucide-react";
+import { useRouter } from "nextjs-toploader/app";
+import { ExternalLink, FileText, Loader2, Pencil, Plus, RefreshCw, Search, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/confirm-provider";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-    createAdminPageApi,
-    deleteAdminPageApi,
-    getAdminPagesApi,
-    initializeAdminPagesApi,
-    updateAdminPageApi,
-} from "@/lib/api";
-import type { AdminPage, AdminPagePayload } from "@/lib/api";
+import { deleteAdminPageApi, getAdminPagesApi, initializeAdminPagesApi } from "@/lib/api";
+import type { AdminPage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ACTION_TONE } from "@/lib/action-tones";
 
@@ -39,9 +33,13 @@ function formatTime(iso?: string): string {
  * 页面管理（对齐官方后台）：留言板 / cookies / 隐私协议 / 版权协议这类自定义页面。
  * 列表来自远端 GET /pages（经同源代理 /api/admin/pages，需管理员），支持搜索、发布状态筛选、分页；
  * 可新建 / 编辑 / 删除页面，也可一键初始化默认页面。
- * 说明：前台渲染的是 `content`（HTML），所以内容以 HTML 为准，Markdown 原文作为可选字段保留。
+ *
+ * 新建 / 编辑**不在这里弹窗**：改跳整页表单 /admin/page-management/new 与 /admin/page-management/[id]/edit
+ * （版式与文章编辑器同构，见 src/components/admin/page-form.tsx）。原来 max-w-3xl 的居中弹窗
+ * 只能塞一个 rows=8 的小框，写长内容很难受 —— 所以这一页只负责列表。
  */
 export function PageManager() {
+    const router = useRouter();
     const [pages, setPages] = useState<AdminPage[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -50,7 +48,6 @@ export function PageManager() {
     const [searchInput, setSearchInput] = useState("");
     const [search, setSearch] = useState("");
     const [publishFilter, setPublishFilter] = useState<PublishFilter>("all");
-    const [editing, setEditing] = useState<AdminPage | "new" | null>(null);
     const [busy, setBusy] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
 
@@ -186,7 +183,12 @@ export function PageManager() {
                         <Sparkles className="size-3.5" />
                         初始化默认页面
                     </Button>
-                    <Button size="sm" className="h-9 rounded-xl text-xs" disabled={busy} onClick={() => setEditing("new")}>
+                    <Button
+                        size="sm"
+                        className="h-9 rounded-xl text-xs"
+                        disabled={busy}
+                        onClick={() => router.push("/admin/page-management/new")}
+                    >
                         <Plus className="size-3.5" />
                         新建页面
                     </Button>
@@ -277,7 +279,7 @@ export function PageManager() {
                                         aria-label="编辑"
                                         title="编辑"
                                         className={ACTION_TONE.edit}
-                                        onClick={() => setEditing(item)}
+                                        onClick={() => router.push(`/admin/page-management/${item.id}/edit`)}
                                     >
                                         <Pencil className="size-3.5" />
                                     </Button>
@@ -310,230 +312,6 @@ export function PageManager() {
                     disabled={loading}
                     onPageChange={setPage}
                 />
-            </div>
-
-            {/* ===== 新建 / 编辑 ===== */}
-            {editing && (
-                <PageEditorDialog
-                    page={editing === "new" ? null : editing}
-                    busy={busy}
-                    setBusy={setBusy}
-                    onClose={() => setEditing(null)}
-                    onSaved={() => {
-                        setEditing(null);
-                        reload();
-                    }}
-                />
-            )}
-        </div>
-    );
-}
-
-/** 新建 / 编辑页面弹窗 */
-function PageEditorDialog({
-    page,
-    busy,
-    setBusy,
-    onClose,
-    onSaved,
-}: {
-    page: AdminPage | null;
-    busy: boolean;
-    setBusy: (v: boolean) => void;
-    onClose: () => void;
-    onSaved: () => void;
-}) {
-    const isNew = !page;
-    const [form, setForm] = useState({
-        title: page?.title ?? "",
-        path: page?.path ?? "",
-        description: page?.description ?? "",
-        content: page?.content ?? "",
-        markdown_content: page?.markdown_content ?? "",
-        custom_css: page?.custom_css ?? "",
-        custom_js: page?.custom_js ?? "",
-        is_published: page?.is_published ?? true,
-        show_comment: page?.show_comment ?? false,
-        sort: page?.sort ?? 0,
-    });
-
-    // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx）
-    const confirm = useConfirm();
-
-    const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
-        setForm((prev) => ({ ...prev, [key]: value }));
-
-    const save = async () => {
-        if (!form.title.trim() || !form.path.trim() || !form.content.trim()) {
-            toast.error("标题、路径、内容（HTML）都是必填");
-            return;
-        }
-        // 防呆：前台渲染的是 content（HTML），markdown_content 只是存档（前台不读）。
-        // 「正文去掉标签后没几个字，但 Markdown 存档里有内容」基本就是粘错框了 —— 保存下去前台会是一片空白。
-        const visibleText = form.content.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
-        if (visibleText.length < 10 && form.markdown_content.trim().length >= 20) {
-            const go = await confirm({
-                title: "正文看起来是空的，确定还是这样保存吗？",
-                description:
-                    "前台显示的是「正文」框（HTML），「Markdown 原文」只作存档、前台不读。\n\n" +
-                    `当前正文去掉标签后只有 ${visibleText.length} 个可见字符，前台会显示成空白页。\n\n` +
-                    "（取消 → 回去把内容填进「正文」框）",
-            });
-            if (!go) return;
-        }
-        const payload: AdminPagePayload = {
-            title: form.title.trim(),
-            path: form.path.trim().startsWith("/") ? form.path.trim() : `/${form.path.trim()}`,
-            description: form.description.trim(),
-            content: form.content,
-            markdown_content: form.markdown_content,
-            custom_css: form.custom_css,
-            custom_js: form.custom_js,
-            is_published: form.is_published,
-            show_comment: form.show_comment,
-            sort: Number(form.sort) || 0,
-        };
-        setBusy(true);
-        try {
-            if (isNew) {
-                await createAdminPageApi(payload);
-                toast.success("页面已创建");
-            } else {
-                await updateAdminPageApi(page.id, payload);
-                toast.success("页面已保存");
-            }
-            onSaved();
-        } catch (e) {
-            toast.error(e instanceof Error ? e.message : "保存失败");
-        } finally {
-            setBusy(false);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
-            <div
-                className="flex max-h-[88vh] w-full max-w-3xl flex-col rounded-xl border bg-card p-5 shadow-xl"
-                onMouseDown={(e) => e.stopPropagation()}
-            >
-                <div className="mb-4 flex items-center justify-between gap-2">
-                    <h3 className="text-base font-semibold">{isNew ? "新建页面" : `编辑页面 #${page.id}`}</h3>
-                    <button
-                        type="button"
-                        aria-label="关闭"
-                        onClick={onClose}
-                        className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    >
-                        <X className="size-4" />
-                    </button>
-                </div>
-
-                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <label className="block">
-                            <span className="mb-1 block text-xs font-medium text-muted-foreground">标题（必填）</span>
-                            <Input value={form.title} onChange={(e) => set("title", e.target.value)} maxLength={100} />
-                        </label>
-                        <label className="block">
-                            <span className="mb-1 block text-xs font-medium text-muted-foreground">
-                                路径（必填，如 /message）
-                            </span>
-                            <Input
-                                value={form.path}
-                                onChange={(e) => set("path", e.target.value)}
-                                placeholder="/message"
-                                className="font-mono text-xs"
-                            />
-                        </label>
-                    </div>
-
-                    <label className="block">
-                        <span className="mb-1 block text-xs font-medium text-muted-foreground">描述（选填）</span>
-                        <Input value={form.description} onChange={(e) => set("description", e.target.value)} />
-                    </label>
-
-                    <label className="block">
-                        <span className="mb-1 block text-xs font-medium text-muted-foreground">
-                            内容 HTML（必填 · 前台渲染的就是这段）
-                        </span>
-                        <textarea
-                            value={form.content}
-                            onChange={(e) => set("content", e.target.value)}
-                            rows={8}
-                            className="w-full rounded-lg border border-input bg-transparent px-3 py-2 font-mono text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                        />
-                    </label>
-
-                    <label className="block">
-                        <span className="mb-1 block text-xs font-medium text-muted-foreground">
-                            Markdown 原文（选填 · 仅存档，不参与前台渲染）
-                        </span>
-                        <textarea
-                            value={form.markdown_content}
-                            onChange={(e) => set("markdown_content", e.target.value)}
-                            rows={5}
-                            className="w-full rounded-lg border border-input bg-transparent px-3 py-2 font-mono text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                        />
-                    </label>
-
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <label className="block">
-                            <span className="mb-1 block text-xs font-medium text-muted-foreground">自定义 CSS（选填）</span>
-                            <textarea
-                                value={form.custom_css}
-                                onChange={(e) => set("custom_css", e.target.value)}
-                                rows={3}
-                                className="w-full rounded-lg border border-input bg-transparent px-3 py-2 font-mono text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                            />
-                        </label>
-                        <label className="block">
-                            <span className="mb-1 block text-xs font-medium text-muted-foreground">自定义 JS（选填）</span>
-                            <textarea
-                                value={form.custom_js}
-                                onChange={(e) => set("custom_js", e.target.value)}
-                                rows={3}
-                                className="w-full rounded-lg border border-input bg-transparent px-3 py-2 font-mono text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                            />
-                        </label>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-5 rounded-lg border px-3 py-2.5 text-sm">
-                        <label className="flex items-center gap-2">
-                            <Checkbox
-                                checked={form.is_published}
-                                onCheckedChange={(v) => set("is_published", v === true)}
-                                aria-label="是否发布"
-                            />
-                            发布（前台可访问）
-                        </label>
-                        <label className="flex items-center gap-2">
-                            <Checkbox
-                                checked={form.show_comment}
-                                onCheckedChange={(v) => set("show_comment", v === true)}
-                                aria-label="是否显示评论"
-                            />
-                            显示评论
-                        </label>
-                        <label className="ml-auto flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">排序</span>
-                            <Input
-                                type="number"
-                                value={String(form.sort)}
-                                onChange={(e) => set("sort", Number(e.target.value) || 0)}
-                                className="h-8 w-20 text-xs"
-                            />
-                        </label>
-                    </div>
-                </div>
-
-                <div className="mt-4 flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={onClose}>
-                        取消
-                    </Button>
-                    <Button size="sm" disabled={busy} onClick={() => void save()}>
-                        {busy ? "保存中…" : isNew ? "创建" : "保存"}
-                    </Button>
-                </div>
             </div>
         </div>
     );
