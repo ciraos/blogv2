@@ -124,9 +124,10 @@ export function UserMenu({ isLoggedIn, scrolled = false, userpanel, userName, is
                         {(userName || "用").charAt(0)}
                     </button>
                 ) : (
-                    /* 未登录：默认用户图标（44px 与搜索/汉堡按钮对齐） */
+                    /* 未登录：默认用户图标（44px 与搜索/汉堡按钮对齐；圆角与左侧搜索按钮一致 —— 用户反馈
+                       原先的 rounded-lg 是"圆角方框"，和圆的搜索按钮不是一套形状） */
                     <button
-                        className="inline-flex size-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        className="inline-flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                         aria-label="用户菜单"
                     >
                         <User className="size-6" />
