@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { PostComments } from "@/components/(blog)/post-comments";
+import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 import { getCommentsWithChildrenApi, getPublicPageApi } from "@/lib/api";
 import { getCommentAuthor } from "@/lib/comment-author";
 import { generateBlogMetadata } from "@/lib/seo";
@@ -69,14 +70,18 @@ export default async function CustomPage({ params }: CustomPageProps) {
         }
     }
 
+    // 挂侧边栏：此前自定义页面是全宽（照官方 AnHeYu「自定义页面不配侧栏」的做法），
+    // 用户反馈「后台新增的页面都没有侧边栏」→ 改为与首页/文章页一致，用 PageWithSidebar 包起来
+    // （侧栏内容由站点配置决定：作者卡/公告/最近文章/标签/归档等，与其它页面同源）。
     return (
-        <div className="w-full">
-            <header className="border-b pb-6">
-                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{page.title}</h1>
-                {page.description && (
-                    <p className="mt-2 text-sm text-muted-foreground">{page.description}</p>
-                )}
-            </header>
+        <PageWithSidebar>
+            <div className="w-full">
+                <header className="border-b pb-6">
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{page.title}</h1>
+                    {page.description && (
+                        <p className="mt-2 text-sm text-muted-foreground">{page.description}</p>
+                    )}
+                </header>
 
             {/* 后端渲染好的页面内容 HTML。
                 `page-body` 标记：让「文章首字下沉」（globals.css 的
@@ -92,6 +97,7 @@ export default async function CustomPage({ params }: CustomPageProps) {
                     author={await getCommentAuthor()}
                 />
             )}
-        </div>
+            </div>
+        </PageWithSidebar>
     );
 }

@@ -50,14 +50,15 @@ export default async function Dashboard() {
                 </p>
             </div>
 
-            {/* 主区块：**普通文档流顺序**纵向堆叠（评论动态 → 快速操作 → 统计）。
+            {/* 主区块：**普通文档流顺序**纵向堆叠（动态 → 快速操作 → 统计）。
                 这里刻意不用 CSS 多列（columns-*）承载主区块：多列是「列优先」填充，
-                会把排在前面的「评论动态」甩到左下方，阅读顺序错乱。
+                会把排在前面的「最新评论」甩到左下方，阅读顺序错乱。
                 各区块**内部**的独立小卡才用 Grid 错落铺开（见 CommentFeed / StatisticsSummary） */}
             <div className="flex flex-col gap-3">
-                {/* 评论动态（最新评论 + 待审评论，一键通过 / 驳回）：放在「快速操作」上方 */}
+                {/* 动态（最新评论 + 待审友链）：放在「快速操作」上方。
+                    右侧原来是「待审评论」卡，按需求换成「待审友链」卡（列出全部申请中的友链）。 */}
                 <section>
-                    <SectionTitle>评论动态</SectionTitle>
+                    <SectionTitle>动态</SectionTitle>
                     <CommentFeed />
                 </section>
 

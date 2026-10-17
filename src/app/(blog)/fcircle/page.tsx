@@ -97,12 +97,16 @@ export default async function Fcircle({ searchParams }: { searchParams: Promise<
                                 ? `${stats.active_links} 个活跃友链 · ${stats.total_moments} 篇动态`
                                 : `共 ${data.total} 篇动态`}
                         </p>
+                        {/* 排序切换：**柔和实底 chip**（圆角、浅灰底、无描边、字色用前景色保证可见）。
+                            前两版都不行：描边胶囊"太 shadcn"，纯文字又"太不明显、很难看到"（用户反馈）——
+                            所以取中间：有底色所以看得见，但不带边框/不用 shadcn 那套按钮形状。 */}
                         <Link
                             href={sortType === "published_at" ? "/fcircle?sort_type=created_at" : "/fcircle?sort_type=published_at"}
-                            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
+                            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground/85 transition-colors hover:bg-primary/12 hover:text-primary"
+                            title={sortType === "published_at" ? "当前按发布时间排序，点击改为按抓取时间" : "当前按抓取时间排序，点击改为按发布时间"}
                         >
                             <ArrowUpDown className="size-3.5" />
-                            {sortType === "published_at" ? "按发布时间" : "按抓取时间"}
+                            <span>{sortType === "published_at" ? "按发布时间" : "按抓取时间"}</span>
                         </Link>
                     </div>
                 </header>
