@@ -4,7 +4,8 @@ import Link from "next/link";
 import { PagedArticleList } from "@/components/(blog)/paged-article-list";
 import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
-import { getAllPublicArticlesApi, getPublicArticlesApi } from "@/lib/api";
+import { getPublicArticlesApi } from "@/lib/api";
+import { getAllPublicArticlesCached } from "@/lib/public-content-cache";
 import { collectTags } from "@/lib/articles";
 import { generateBlogMetadata } from "@/lib/seo";
 import { getSiteConfigs } from "@/lib/site-config";
@@ -54,7 +55,7 @@ export default async function Tags({ searchParams }: { searchParams: Promise<Tag
     }
 
     // ===== 全部标签（含文章数） =====
-    const articles = await getAllPublicArticlesApi();
+    const articles = await getAllPublicArticlesCached();
     const tags = collectTags(articles);
 
     return (

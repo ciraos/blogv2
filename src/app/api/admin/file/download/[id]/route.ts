@@ -2,12 +2,13 @@ import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 
 import { API_URL } from "@/lib/api";
+import { ACCESS_TOKEN_KEY } from "@/lib/auth";
 
 // 文件管理 · 下载：GET /api/admin/file/download/[id] → 远端 GET /file/download/:id
 // 与其它代理不同：这里要**透传二进制流**（不是 JSON），所以不走 authedProxyFetch。
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
-    const token = (await cookies()).get("token")?.value;
+    const token = (await cookies()).get(ACCESS_TOKEN_KEY)?.value;
     if (!token) {
         return Response.json({ code: 401, message: "未登录", data: null }, { status: 401 });
     }

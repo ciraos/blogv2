@@ -38,6 +38,46 @@ function collectStaticRouteSegments(appDir: string): string[] {
 const staticRouteSegments = collectStaticRouteSegments(path.join(process.cwd(), "src", "app"));
 
 /**
+ * 扫描 src/app/admin，生成「后台已存在的路由」的正则表达式源码列表，构建时注入给 src/proxy.ts。
+ *
+ * 用途：中间件要判断某个 `/admin/...` 路径是不是一个真实存在的后台页面。
+ * 不是的话 → rewrite 到 `/admin/not-found-view` 并**带上 404 状态码**
+ * （纯靠 app/admin/[...rest]/page.tsx 兜底时，页面渲染得对但状态码永远是 200）。
+ *
+ * 规则：
+ *   - 路由组 (x) 不占 URL 段；动态段 [id] → `[^/]+`；catch-all [...rest] **跳过**
+ *     （它就是用来兜底的，把它算进来等于所有路径都「存在」）；
+ *   - 只收「目录里有 page.tsx」的路径（有 route.ts 的 API 目录不算后台页面）。
+ */
+function collectAdminRouteRegexps(appDir: string): string[] {
+  const sources: string[] = [];
+  const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  const walk = (dir: string, segments: string[]) => {
+    if (fs.existsSync(path.join(dir, "page.tsx"))) {
+      const src = segments.map((seg) => (seg.startsWith("[") ? "[^/]+" : escape(seg))).join("/");
+      sources.push(src);
+    }
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const name = entry.name;
+      if (/^\(.+\)$/.test(name)) {
+        walk(path.join(dir, name), segments);
+        continue;
+      }
+      if (name.startsWith("[...")) continue; // 兜底路由不参与「是否存在」判定
+      walk(path.join(dir, name), [...segments, name]);
+    }
+  };
+
+  walk(path.join(appDir, "admin"), ["admin"]);
+  return sources.sort();
+}
+
+const adminRouteRegexps = collectAdminRouteRegexps(path.join(process.cwd(), "src", "app"));
+
+
+/**
  * 前端自己的版本号：以 package.json 的 version 为唯一来源，构建时注入给前后端代码。
  * 与后端程序版本（/api/version）和站点配置里的 APP_VERSION 无关，互不影响。
  * 浏览器端也会内联，所以在客户端组件里读 process.env.APP_VERSION 同样有效。
@@ -74,6 +114,12 @@ const nextConfig: NextConfig = {
   // 供 src/proxy.ts 使用的「本站静态路由第一段」名单（构建时扫描 src/app 生成）
   env: {
     APP_STATIC_ROUTE_SEGMENTS: staticRouteSegments.join(","),
+    // 后台已存在的路由正则（JSON 数组的「源码」，proxy 里再编译成 RegExp）：
+    // 用来把 /admin/<乱写> 变成真 404，而不是让 [...rest] 兜底页以 200 渲染
+    //
+    // ⚠️ 改了这里的值，`pnpm dev` 必须**整进程重启**：Next 自带的「config 变更自动重启」
+    //    不会重新注入 env（实测：自动重启后 proxy 里读到的是 undefined，全站差点被 404）。
+    APP_ADMIN_ROUTE_REGEXPS: JSON.stringify(adminRouteRegexps),
     APP_VERSION: appVersion,
   },
 

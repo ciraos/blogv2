@@ -9,10 +9,8 @@ import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 import { ApiError, getCommentsWithChildrenApi, getPublicEssaysApi } from "@/lib/api";
 import { getCommentAuthor } from "@/lib/comment-author";
 import { generateBlogMetadata } from "@/lib/seo";
-import { SiteConfigResponse } from "@/types/site-config";
+import { getSiteConfigs } from "@/lib/site-config";
 
-// const site_url = process.env.NEXT_PUBLIC_SITE_URL;
-const api_url = process.env.NEXT_PUBLIC_API_URL;
 const PAGE_SIZE = 10;
 
 interface EssaySearchParams {
@@ -21,19 +19,6 @@ interface EssaySearchParams {
 
 export async function generateMetadata(): Promise<Metadata> {
     return generateBlogMetadata("即刻");
-}
-
-export async function getSiteConfigs() {
-    try {
-        const i = await fetch(`${api_url}/public/site-config`);
-        if (!i.ok) throw new Error("获取配置失败！");
-        const data = (await i.json()) as SiteConfigResponse;
-        // console.log(data);
-        return data.data;
-    } catch (error) {
-        // return { APP_NAME: "博客", ICON_URL: "/favicon.ico", error };
-        console.error(error);
-    }
 }
 
 export default async function Essay({ searchParams }: { searchParams: Promise<EssaySearchParams> }) {

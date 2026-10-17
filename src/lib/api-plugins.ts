@@ -1,7 +1,7 @@
 // 后台「插件管理」接口客户端。
 //
-// 为什么不复用 @/lib/api.ts 里的 request：那个函数没有导出（模块私有），
-// 而文件所有权规定不能改它，所以这里按同样的约定写一份小 fetch 助手。
+// 请求助手统一用 @/lib/api.ts 导出的 request（不再自带副本），
+// 失败时抛的就是 api.ts 的 ApiError（字段同为 message / status / code）。
 //
 // 所有路径都是**本站同源**代理（/api/admin/plugins/**），由 route handler 读 httpOnly
 // cookie 里的 token 带上 Bearer 转发到远端 —— 后端不开放 CORS，浏览器不能直连。
@@ -11,6 +11,8 @@
 //   pkg/handler/plugin_admin/handler.go:189-196 → 7 条路由
 //   pkg/plugin/registry.go:45-63     → 列表返回的 PluginInfo 结构
 //   pkg/plugin/manifest.go:27-36     → config_schema 字段（ConfigField）
+
+import { request } from "@/lib/api";
 
 /** 插件运行状态（pkg/plugin/registry.go:31-36 的四个常量；留 string 兜底防后端新增状态） */
 export type PluginStatus = "running" | "stopped" | "error" | "disabled" | (string & {});
@@ -70,67 +72,6 @@ export interface AdminPlugin {
     error?: string;
     /** ISO 时间字符串（Go time.Time） */
     loaded_at?: string;
-}
-
-/** 统一响应信封（pkg/response/response.go:17-21，成功时 HTTP 200 且 code=200） */
-interface ApiEnvelope<T> {
-    code: number;
-    message: string;
-    data: T;
-}
-
-/** 与 @/lib/api.ts 的 ApiError 同形状（不 import 是为了避免耦合到未导出的内部类型） */
-export class PluginApiError extends Error {
-    status: number;
-    code: number;
-
-    constructor(message: string, status: number, code: number) {
-        super(message);
-        this.name = "PluginApiError";
-        this.status = status;
-        this.code = code;
-    }
-}
-
-/**
- * 请求本站同源代理并拆信封。
- * FormData 不能手动设 Content-Type（要让 fetch 自己带 multipart boundary），
- * 所以只对「非 FormData / 非 Blob」的 body 补 JSON 头。
- */
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const headers = new Headers(options.headers);
-    if (
-        options.body &&
-        !(options.body instanceof FormData) &&
-        !(options.body instanceof Blob) &&
-        !headers.has("Content-Type")
-    ) {
-        headers.set("Content-Type", "application/json");
-    }
-    if (!headers.has("Accept")) headers.set("Accept", "application/json");
-
-    let res: Response;
-    try {
-        res = await fetch(path, { ...options, headers, cache: "no-store" });
-    } catch {
-        throw new PluginApiError("网络请求失败，请检查网络连接", 0, 0);
-    }
-
-    let json: ApiEnvelope<T> | null = null;
-    try {
-        json = (await res.json()) as ApiEnvelope<T>;
-    } catch {
-        // 非 JSON 响应（例如代理层直接返回 502 文本），下面按状态码兜底报错
-    }
-
-    if (res.ok && json && (json.code === 200 || json.code === 0)) {
-        return json.data;
-    }
-    throw new PluginApiError(
-        json?.message || `请求失败（HTTP ${res.status}）`,
-        res.status,
-        json?.code ?? res.status
-    );
 }
 
 /** 后端把列表包在一层 { list, total } 里时的形状（handler 目前直接返回数组，这里做兼容） */

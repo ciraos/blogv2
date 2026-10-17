@@ -1,9 +1,8 @@
 // 通知管理 / 用户通知配置 / 访问日志（客户端调用同源代理路由，不直连远端）。
 //
-// 为什么不复用 @/lib/api 里的 request：它是模块私有函数（未导出），而本文件按任务约定
-// 只能新增、不能改动 src/lib/api.ts，所以这里自带一个同口径的小 fetch 助手
-// （同源路径 → 解析 { code, message, data } 信封 → 失败抛 ApiError）。
-// 错误类型直接复用 @/lib/api 导出的 ApiError 类，调用方 catch 到的形状与其它接口一致。
+// 本文件保留一个极小的同源 GET 助手（getEnvelope：同源路径 → 解析 { code, message, data } 信封
+// → 失败抛 ApiError）；错误类型与信封类型都直接复用 @/lib/api 导出的 ApiError / ApiEnvelope，
+// 调用方 catch 到的形状与其它接口一致。
 //
 // 远端接口与形状（源码证据，非猜测）：
 //  - GET  /notification/types            （internal/infra/router/router.go:870，JWTAuth + AdminAuth）
@@ -28,13 +27,7 @@
 //        （user_agent / city 后端可能为空串；created_at 是 RFC3339 字符串）
 
 import { ApiError } from "@/lib/api";
-
-/** 后端统一响应信封 { code, message, data }（pkg/response/response.go:24） */
-interface ApiEnvelope<T> {
-    code: number;
-    message: string;
-    data: T;
-}
+import type { ApiEnvelope } from "@/lib/api";
 
 // ===================== 通知类型 =====================
 

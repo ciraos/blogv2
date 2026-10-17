@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_INFO_KEY } from "@/lib/auth";
 
-const AUTH_COOKIES = ["token", "refresh_token", "user_info"]
+const AUTH_COOKIES = [ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_INFO_KEY]
 
 // 清除认证 cookie（手动写 Set-Cookie，属性与 login 写入时一致）
 function clearAuthCookies(response: Response) {

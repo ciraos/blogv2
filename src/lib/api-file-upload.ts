@@ -26,13 +26,7 @@
 // 这里故意不走 uploadAdminFileChunkApi()，因为它不接受 AbortSignal，无法实现「取消上传」；
 // 于是用同样的 URL/头/body 直接 fetch，并按 api.ts 的 { code, message, data } 信封解包。
 import { getAdminFilesApi } from "@/lib/api";
-
-/** 后端响应信封（与 src/lib/api.ts 的 ApiResponse 同构） */
-interface ApiEnvelope<T> {
-    code?: number;
-    message?: string;
-    data?: T;
-}
+import type { ApiEnvelope } from "@/lib/api";
 
 /** 一次上传的进度快照 */
 export interface FileUploadProgress {

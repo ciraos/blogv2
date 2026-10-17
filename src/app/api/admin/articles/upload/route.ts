@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server"
 import { cookies } from "next/headers"
 
 import { API_URL } from "@/lib/api"
+import { ACCESS_TOKEN_KEY } from "@/lib/auth";
 
 // 后台图片上传：本应用同源路由，服务端转发 multipart 到远端 POST /articles/upload（需登录 + 管理员）。
 // 后端返回 { code, message, data: { url, file_id } }，url 是本站托管的图片地址
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ code: 400, message: "缺少 file 字段", data: null }, { status: 400 })
     }
 
-    const token = (await cookies()).get("token")?.value
+    const token = (await cookies()).get(ACCESS_TOKEN_KEY)?.value
     if (!token) {
         return NextResponse.json({ code: 401, message: "未登录", data: null }, { status: 401 })
     }

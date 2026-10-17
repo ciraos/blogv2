@@ -37,8 +37,15 @@
 //      （page=abc → 400，说明 page 是整数）
 //
 // 浏览器不直连后端（后端不开放 CORS），统一请求本站同源代理 /api/public/community-qa/*。
+// 请求与列表摊平统一复用 src/lib/api.ts 导出的 request / unwrapList（不再各写一份副本）。
 
-/** 与 api.ts / api-community-qa.ts 同形的错误类型（自带后端原话，供 toast 直接展示） */
+import { request, unwrapList as flattenList } from "@/lib/api";
+
+/**
+ * 本模块自己的错误类型：只在「响应结构对不上」这类本模块特有的判断里抛出
+ * （请求层失败抛的是 api.ts 的 ApiError，字段同为 message / status / code）；
+ * 页面用它做 `instanceof` 判断并把 message 直接展示给用户。
+ */
 export class CommunityQaPublicError extends Error {
     status: number;
     code: number;
@@ -177,42 +184,6 @@ export const COMMUNITY_QA_TAG_SEPARATOR = /[,，]/;
 /** 标签个数上限（页面文案「最多5个标签」） */
 export const COMMUNITY_QA_MAX_TAGS = 5;
 
-/**
- * 发一个请求到本站同源代理，并解包 { code, message, data } 信封。
- * 判定与 api.ts 一致：HTTP 2xx 且业务 code 为 200 / 0 才算成功；
- * 失败时**抛后端原话**（网络层异常才用我们自己的文案）。
- */
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const headers = new Headers(options.headers);
-    if (options.body && !headers.has("Content-Type")) {
-        headers.set("Content-Type", "application/json");
-    }
-
-    let res: Response;
-    try {
-        res = await fetch(path, { ...options, headers, cache: "no-store" });
-    } catch {
-        throw new CommunityQaPublicError("网络请求失败，请检查网络连接", 0, 0);
-    }
-
-    let json: { code?: number; message?: string; data?: T } | null = null;
-    try {
-        json = (await res.json()) as { code?: number; message?: string; data?: T };
-    } catch {
-        // 非 JSON 响应（例如网关返回 HTML）
-    }
-
-    if (res.ok && json && (json.code === 200 || json.code === 0)) {
-        return json.data as T;
-    }
-
-    throw new CommunityQaPublicError(
-        json?.message || `请求失败（HTTP ${res.status}）`,
-        res.status,
-        json?.code ?? res.status
-    );
-}
-
 /** 分页 + 筛选 → 查询串（undefined / 空串一律不拼，与官方 apiClient 的行为一致） */
 function buildQuery(params: Record<string, string | number | boolean | undefined>): string {
     const qs = new URLSearchParams();
@@ -224,26 +195,22 @@ function buildQuery(params: Record<string, string | number | boolean | undefined
     return query ? `?${query}` : "";
 }
 
-/** 把「可能被包了一层」的列表结果摊平成 { list, page, page_size, total } */
+/**
+ * 把「可能被包了一层」的列表结果摊平成 CommunityQaListData。
+ * 「摊平」这一步统一走 api.ts 的 unwrapList，这里只补本模块关心的 page / page_size
+ * （后端给了有效正数才透传，读不到就分别落到 1 / undefined）。
+ */
 function unwrapList<T>(raw: unknown): CommunityQaListData<T> {
-    if (Array.isArray(raw)) {
-        return { list: raw as T[], page: 1, total: raw.length };
-    }
+    const { list, total } = flattenList<T>(raw);
 
-    const box = (raw ?? {}) as Record<string, unknown>;
+    const box = (Array.isArray(raw) ? {} : (raw ?? {})) as Record<string, unknown>;
     const inner = (box.data ?? box) as Record<string, unknown>;
-    if (Array.isArray(inner)) {
-        return { list: inner as T[], page: 1, total: inner.length };
-    }
-
-    const list = Array.isArray(inner.list) ? (inner.list as T[]) : [];
-    const total = Number(inner.total);
     const pageSize = Number(inner.page_size);
     const page = Number(inner.page);
     return {
         list,
         page: Number.isFinite(page) && page > 0 ? page : 1,
-        total: Number.isFinite(total) ? total : list.length,
+        total,
         page_size: Number.isFinite(pageSize) && pageSize > 0 ? pageSize : undefined,
     };
 }

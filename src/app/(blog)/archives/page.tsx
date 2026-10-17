@@ -4,7 +4,8 @@ import Link from "next/link";
 import { PagedArticleList } from "@/components/(blog)/paged-article-list";
 import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
-import { getPublicArchivesApi, getPublicArticlesApi } from "@/lib/api";
+import { getPublicArticlesApi } from "@/lib/api";
+import { getPublicArchivesCached } from "@/lib/public-content-cache";
 import { generateBlogMetadata } from "@/lib/seo";
 import { getSiteConfigs } from "@/lib/site-config";
 import type { PostItem } from "@/types/articles";
@@ -36,7 +37,7 @@ export default async function Archives({ searchParams }: { searchParams: Promise
 
     // ===== 归档索引：竖向时间轴（年份/月份节点 + 文章，上下排序） =====
     if (Number.isNaN(year)) {
-        const { list } = await getPublicArchivesApi();
+        const { list } = await getPublicArchivesCached();
         const sorted = [...list].sort((a, b) => b.year - a.year || b.month - a.month);
 
         // 每个月份拉取该月文章

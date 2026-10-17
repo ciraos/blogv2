@@ -10,7 +10,7 @@ import type {
     AdminUpdateCommentRequest,
     CommentStatus,
 } from "@/types/comments";
-import type { LoginData, LoginUserInfo } from "@/types/auth";
+import type { LoginUserInfo } from "@/types/auth";
 import type { AdminCreateLinkRequest, AdminUpdateLinkRequest, ExportLinksResponse, FriendLink, ImportLinksRequest, ImportLinksResponse, LinkCategory, LinkCategoryGroup, LinkCategoryPayload, LinkListData, LinkListParams, LinkTag, LinkTagPayload } from "@/types/links";
 import type { AdminCreateEssayRequest, AdminEssayListParams, AdminUpdateEssayRequest, Essay, EssayListData } from "@/types/essays";
 import type {
@@ -55,14 +55,26 @@ export class ApiError extends Error {
     }
 }
 
-interface ApiResponse<T> {
+/** 后端统一响应信封（pkg/response/response.go） */
+export interface ApiResponse<T> {
     code: number;
     message: string;
     data: T;
 }
 
-async function request<T>(path: string, options: RequestInit = {}, token?: string | null): Promise<T> {
+/**
+ * 与 ApiResponse 完全同形的别名，供各 `api-*.ts` 模块统一引用。
+ * 这些模块原先各自声明了一份同形接口（ApiEnvelope / Envelope / ProxyEnvelope），现在只保留这个名字。
+ */
+export type ApiEnvelope<T> = ApiResponse<T>;
+
+export async function request<T>(path: string, options: RequestInit = {}, token?: string | null): Promise<T> {
     const headers = new Headers(options.headers);
+    // 统一声明要 JSON：原先 api-plugins.ts 的本地 request 会带这个头，其余副本不带，
+    // 合并到公共实现后统一带上（远端是 gin，不校验 Accept，但带上语义更准确）。
+    if (!headers.has("Accept")) {
+        headers.set("Accept", "application/json");
+    }
     // FormData / Blob 不能手动设 Content-Type：前者要让 fetch 自己带 multipart boundary，
     // 后者是原始二进制（如上传分片，由调用方显式指定 application/octet-stream）。
     if (
@@ -105,6 +117,28 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
 }
 
 /**
+ * 把「可能被包了一层」的列表结果摊平成 { list, total }。
+ *
+ * 为什么需要它：后端不同接口的外壳不一致——request() 已经把 { code, message, data } 剥掉了，
+ * 但 data 本身可能是 `{ list, total }`、`{ data: { list, total } }`、`{ data: [...] }` 或直接一个数组。
+ * 这里按同一判定顺序兼容全部四种形状，total 取不到时回落到数组长度（不编造分页信息）。
+ */
+export function unwrapList<T>(raw: unknown): { list: T[]; total: number } {
+    // 形状 ①：本身就是数组（无分页信息）
+    if (Array.isArray(raw)) return { list: raw as T[], total: raw.length };
+
+    const box = (raw ?? {}) as Record<string, unknown>;
+    // 形状 ②：又套了一层 data（data 直接是数组或对象）
+    const inner = (box.data ?? box) as Record<string, unknown>;
+    if (Array.isArray(inner)) return { list: inner as T[], total: inner.length };
+
+    // 形状 ③：{ list, total }（可能还套了一层 data，上面已处理）
+    const list = Array.isArray(inner.list) ? (inner.list as T[]) : [];
+    const total = Number(inner.total);
+    return { list, total: Number.isFinite(total) ? total : list.length };
+}
+
+/**
  * POST /api/auth/login（本应用同源路由，服务端转发到远端 /auth/login）
  * 登录成功后由路由设置 httpOnly cookie，客户端无需保存 token。
  */
@@ -134,13 +168,63 @@ export async function activateApi(publicUserId: string, sign: string): Promise<v
     });
 }
 
-/** POST /auth/refresh 刷新访问令牌（仅限服务端调用） */
-export function refreshTokenApi(refreshToken: string): Promise<LoginData> {
-    return request<LoginData>("/auth/refresh", {
+// ===================== 找回密码（公开，无需登录） =====================
+//
+// 远端路径 /auth/check-email、/auth/forgot-password、/auth/reset-password
+// （scripts/swagger.yaml「用户认证」），同源代理见 src/app/api/auth/**。
+// 这三个接口匿名可调，所以走 /api/auth/* 而不是需要 cookie 的管理端代理。
+
+/** GET /api/auth/check-email 检查邮箱是否已注册（邮箱不存在时 exists=false） */
+export async function checkEmailApi(email: string): Promise<boolean> {
+    const data = await request<{ exists?: boolean } | null>(
+        `/api/auth/check-email?email=${encodeURIComponent(email)}`,
+        { method: "GET" }
+    );
+    return Boolean(data?.exists);
+}
+
+/**
+ * POST /api/auth/forgot-password 请求发送重置邮件。
+ * 远端防枚举：邮箱不存在也返回成功，所以调用方不要据此判断邮箱是否存在。
+ */
+export async function forgotPasswordApi(email: string): Promise<void> {
+    await request<unknown>("/api/auth/forgot-password", {
         method: "POST",
-        body: JSON.stringify({ refreshToken }),
+        body: JSON.stringify({ email }),
     });
 }
+
+/** POST /api/auth/reset-password 用重置邮件里的 publicUserId + sign 设置新密码 */
+export async function resetPasswordApi(payload: {
+    publicUserId: string;
+    sign: string;
+    password: string;
+    repeatPassword: string;
+}): Promise<void> {
+    await request<unknown>("/api/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+}
+
+/**
+ * 令牌静默续期：**没有实现**，这里明确留个说明，避免再被当成「已支持」。
+ *
+ * 现状：登录时 `POST /api/auth/login` 会写下 `refresh_token`（30 天，见 lib/auth.ts），
+ * 但全站**没有任何地方读它**，也没有 `/api/auth/refresh` 这个同源路由；
+ * access token（`token`，7 天）一过期就由 (blog) layout 标记 authExpired、
+ * 客户端调 `/api/auth/logout` 静默登出（components/(blog)/auth-expired-notifier.tsx）。
+ *
+ * 曾经这里有个 `refreshTokenApi(refreshToken)`（直连远端 `/auth/refresh`），
+ * 但**从未被调用过**，留着只会让人误判「续期已接」——已删除。
+ *
+ * 要真做，需要三件事（缺一不可）：
+ *   1. 新增 `src/app/api/auth/refresh/route.ts`：读 cookie 里的 refresh_token → 转发远端
+ *      `POST /auth/refresh` → 把新的 accessToken/refreshToken 重新写回 httpOnly cookie；
+ *   2. `src/lib/admin-api.ts` 的代理在遇到远端 401 时先试一次续期再决定是否回 401；
+ *   3. 客户端 `/api/auth/refresh` 的失败语义要明确（决定「静默登出」还是「重试一次」）。
+ * 难点：这条链路**只有拿到有效账号才能验证**，没有账号时改它就是盲改，所以先不动。
+ */
 
 /** GET /user/info 获取当前用户信息（需鉴权，服务端调用） */
 export function getUserInfoApi(token: string): Promise<LoginUserInfo> {
@@ -634,6 +718,23 @@ export async function updateAdminLinkApi(id: number | string, payload: AdminUpda
 }
 
 /**
+ * PUT /api/admin/links/{id}/review 审核友链申请（通过 / 拒绝）。
+ *
+ * 远端 `model.ReviewLinkRequest`：status 必填（APPROVED / REJECTED），reject_reason 可选。
+ * 与 updateAdminLinkApi 的区别：这条只改状态、能带拒绝原因，不会连带要求整条友链字段。
+ */
+export function reviewAdminLinkApi(
+    id: number | string,
+    status: "APPROVED" | "REJECTED",
+    rejectReason?: string
+): Promise<unknown> {
+    return request<unknown>(`/api/admin/links/${encodeURIComponent(String(id))}/review`, {
+        method: "PUT",
+        body: JSON.stringify({ status, reject_reason: rejectReason ?? "" }),
+    });
+}
+
+/**
  * DELETE /api/admin/links/{id} 管理员删除单条友链（同源代理 → 远端 DELETE /links/:id，需登录）。
  * 远端成功返回 { code: 200, message: "删除成功", data: null }。
  */
@@ -1047,8 +1148,24 @@ export async function uploadCommentImageApi(file: File): Promise<string> {
     throw new ApiError(json?.message || `图片上传失败（HTTP ${res.status}）`, res.status, json?.code ?? res.status);
 }
 
-/** 带子评论的评论（父评论 + 博主回复等） */
-export interface CommentWithChildren extends RecentComment {
+/**
+ * POST /api/public/comments/{id}/like 点赞一条评论，返回**最新点赞数**。
+ *
+ * 后端只是计数器 +1（见 scripts/swagger.yaml 的 /public/comments/{id}/like），
+ * 不校验是否已经点过、也不记是谁点的 —— 「同一浏览器只点一次」由调用方自己记（localStorage）。
+ */
+export async function likeCommentApi(id: string): Promise<number> {
+    const n = await request<number>(`/api/public/comments/${encodeURIComponent(id)}/like`, { method: "POST" });
+    return typeof n === "number" ? n : 0;
+}
+
+/** POST /api/public/comments/{id}/unlike 取消点赞，返回最新点赞数（同样不按人去重） */
+export async function unlikeCommentApi(id: string): Promise<number> {
+    const n = await request<number>(`/api/public/comments/${encodeURIComponent(id)}/unlike`, { method: "POST" });
+    return typeof n === "number" ? n : 0;
+}
+
+/** 带子评论的评论（父评论 + 博主回复等） */export interface CommentWithChildren extends RecentComment {
     children: RecentComment[];
 }
 
@@ -1635,6 +1752,19 @@ export function updateAdminSettingsApi(payload: Record<string, string>): Promise
     return request<unknown>("/api/admin/settings/update", {
         method: "POST",
         body: JSON.stringify(payload),
+    });
+}
+
+/**
+ * POST /api/admin/settings/test-email 按当前 SMTP 配置向指定地址发一封测试邮件。
+ *
+ * 远端契约：body { to_email }（dto.TestEmailRequest），500 表示发信失败（通常是 SMTP 配置错）。
+ * ⚠️ 会真的发信，只允许由管理员点击触发。
+ */
+export function sendTestEmailApi(toEmail: string): Promise<unknown> {
+    return request<unknown>("/api/admin/settings/test-email", {
+        method: "POST",
+        body: JSON.stringify({ to_email: toEmail }),
     });
 }
 

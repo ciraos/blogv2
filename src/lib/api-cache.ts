@@ -1,14 +1,15 @@
 // 后台「缓存管理」页的数据层。
 //
-// 为什么不复用 src/lib/api.ts 的 request 助手：那个函数没有导出（模块私有），
-// 而本页只需要打本站同源代理 /api/admin/cache 下的三个路由（由代理路由读 httpOnly cookie 带 Bearer 转发），
-// 所以这里自己写一个极小的同源 fetch 助手，避免为了一个页面去改动 api.ts（也不该改）。
+// 请求助手统一用 src/lib/api.ts 导出的 request / ApiError（不再自带副本）：
+// 本页只需要打本站同源代理 /api/admin/cache 下的三个路由（由代理路由读 httpOnly cookie 带 Bearer 转发）。
 //
 // 远端真实路由（源码证据：scripts/anheyu/anheyu-app-main/cmd/server/cache_management.go:23-28）：
 //   GET  /api/admin/cache/status
 //   POST /api/admin/cache/revalidate   body: { type: "all" | "article" | "config" | "categories" | "tags" | "links", slug? }
 //   POST /api/admin/cache/manage       body: { type: "page" | "image" | "index" }
 // 对应本仓库代理：src/app/api/admin/cache/{status,revalidate,manage}/route.ts
+
+import { request } from "@/lib/api";
 
 /** 单块缓存的可用性 / 统计（page、index、ssr 都是这个形状，字段可选以兼容后端演进） */
 export interface CacheStatusDetail {
@@ -70,59 +71,13 @@ export type RevalidateType = "all" | "article" | "config" | "categories" | "tags
 /** 可清理的缓存类型（与远端 Configure 注册的 actions 键完全一致） */
 export type CachePurgeType = "page" | "image" | "index";
 
-/** 同源代理出错时抛出的错误（与 api.ts 的 ApiError 同名同形，便于调用方沿用同一套处理） */
-export class ApiError extends Error {
-    status: number;
-    code: number;
-
-    constructor(message: string, status: number, code: number) {
-        super(message);
-        this.name = "ApiError";
-        this.status = status;
-        this.code = code;
-    }
-}
-
-/** 远端统一响应信封（pkg/response/response.go） */
-interface ProxyEnvelope<T> {
-    code: number;
-    message: string;
-    data: T;
-}
-
-/**
- * 打本站同源代理（路径以 /api/ 开头，浏览器会自动带上登录 cookie），
- * 按 api.ts 的同一套约定解包：HTTP 2xx 且业务 code 为 200/0 才算成功。
- */
-async function fetchCacheApi<T>(path: string, init?: RequestInit): Promise<T> {
-    const headers = new Headers(init?.headers);
-    if (init?.body && !headers.has("Content-Type")) {
-        headers.set("Content-Type", "application/json");
-    }
-
-    let res: Response;
-    try {
-        res = await fetch(path, { ...init, headers, cache: "no-store" });
-    } catch {
-        throw new ApiError("网络请求失败，请检查网络连接", 0, 0);
-    }
-
-    let json: ProxyEnvelope<T> | null = null;
-    try {
-        json = (await res.json()) as ProxyEnvelope<T>;
-    } catch {
-        // 非 JSON 响应（例如代理整体 500 返回 HTML）→ 下面统一按 HTTP 状态报错
-    }
-
-    if (res.ok && json && (json.code === 200 || json.code === 0)) {
-        return json.data;
-    }
-    throw new ApiError(json?.message || `请求失败（HTTP ${res.status}）`, res.status, json?.code ?? res.status);
-}
+// 兼容导出：本文件原先自带一个同形的 ApiError 类，现在统一指向 api.ts 的那一个。
+// 调用方从 @/lib/api-cache 里 import ApiError 依然可用，且 instanceof 不再跨模块失效。
+export { ApiError } from "@/lib/api";
 
 /** GET /api/admin/cache/status —— 各块缓存的可用性与统计 */
 export function getCacheStatusApi(): Promise<CacheStatus> {
-    return fetchCacheApi<CacheStatus>("/api/admin/cache/status", { method: "GET" });
+    return request<CacheStatus>("/api/admin/cache/status", { method: "GET" });
 }
 
 /**
@@ -130,7 +85,7 @@ export function getCacheStatusApi(): Promise<CacheStatus> {
  * type=article 时远端要求 slug 非空（handler.go:102-105），调用方需自己保证。
  */
 export async function revalidateCacheApi(payload: { type: RevalidateType; slug?: string }): Promise<void> {
-    await fetchCacheApi<unknown>("/api/admin/cache/revalidate", {
+    await request<unknown>("/api/admin/cache/revalidate", {
         method: "POST",
         body: JSON.stringify(payload),
     });
@@ -138,7 +93,7 @@ export async function revalidateCacheApi(payload: { type: RevalidateType; slug?:
 
 /** POST /api/admin/cache/manage —— 按 type 清理某一块后端缓存 */
 export async function manageCacheApi(type: CachePurgeType): Promise<void> {
-    await fetchCacheApi<unknown>("/api/admin/cache/manage", {
+    await request<unknown>("/api/admin/cache/manage", {
         method: "POST",
         body: JSON.stringify({ type }),
     });

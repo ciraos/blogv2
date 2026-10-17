@@ -16,6 +16,7 @@ import type { NextRequest } from "next/server";
 
 import { API_URL } from "@/lib/api";
 import { clientForwardHeaders } from "@/lib/proxy-headers";
+import { ACCESS_TOKEN_KEY } from "@/lib/auth";
 
 /** 本站代理统一的错误信封（形状与后端 { code, message, data } 一致，客户端只需认一种） */
 export function fail(status: number, message: string): NextResponse {
@@ -41,7 +42,7 @@ export async function qaProxy(
     init: { method: "GET" | "POST" | "PUT"; body?: string },
     options: { requireLogin?: boolean } = {}
 ): Promise<NextResponse> {
-    const token = (await cookies()).get("token")?.value;
+    const token = (await cookies()).get(ACCESS_TOKEN_KEY)?.value;
 
     if (options.requireLogin && !token) {
         return fail(401, "请先登录后再操作");

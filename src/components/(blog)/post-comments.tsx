@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
 import Link from "next/link";
 
 import { Eye, EyeOff, Globe, ImagePlus, MapPin, MessageCircle, Monitor, Send, Sparkles, ThumbsUp, X } from "lucide-react";
@@ -8,12 +8,19 @@ import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { CommentContent } from "@/components/(blog)/comment-content";
+import { CommentAvatar } from "@/components/(blog)/comment-avatar";
 import { CommentMarkdownPreview, createAnzhiyuImageUrlResolver } from "@/components/(blog)/comment-preview";
 import { useGravatarConfig } from "@/components/(blog)/gravatar-provider";
 import type { RecentComment } from "@/lib/api";
-import { ApiError, submitCommentApi, uploadCommentImageApi } from "@/lib/api";
+import { ApiError, likeCommentApi, submitCommentApi, unlikeCommentApi, uploadCommentImageApi } from "@/lib/api";
 import { resolveCommentAvatar } from "@/lib/avatar";
 import type { CommentAuthor } from "@/lib/comment-author";
+import {
+    getCommentLikeServerSnapshot,
+    isCommentLiked,
+    setCommentLiked,
+    subscribeCommentLikes,
+} from "@/lib/comment-likes";
 
 interface CommentWithChildren extends RecentComment {
     children?: RecentComment[];
@@ -92,13 +99,44 @@ function CommentRow({
     const gravatar = useGravatarConfig();
     const avatarUrl = resolveCommentAvatar(comment, gravatar);
 
+    /* ---------- 点赞 ----------
+     * 后端 `/public/comments/{id}/like` 只是计数器 +1，不记是谁点的（见 lib/api.ts 注释），
+     * 所以「本浏览器点过没有」由 localStorage 记账，用 useSyncExternalStore 读，
+     * 避免在 effect 里 setState（会触发 react-compiler 的 set-state-in-effect 规则）。
+     */
+    const liked = useSyncExternalStore(
+        subscribeCommentLikes,
+        () => isCommentLiked(comment.id),
+        getCommentLikeServerSnapshot
+    );
+    // 点赞数：先用服务端下发的 like_count，点过之后按接口返回值更新
+    const [likeCount, setLikeCount] = useState(comment.like_count ?? 0);
+    const [likeBusy, setLikeBusy] = useState(false);
+
+    async function toggleLike() {
+        if (likeBusy) return;
+        setLikeBusy(true);
+        // 乐观更新：先动 UI，失败再回滚（下面的 catch 里回滚）
+        const nextLiked = !liked;
+        const optimistic = Math.max(0, likeCount + (nextLiked ? 1 : -1));
+        setLikeCount(optimistic);
+        try {
+            const latest = nextLiked ? await likeCommentApi(comment.id) : await unlikeCommentApi(comment.id);
+            setCommentLiked(comment.id, nextLiked);
+            setLikeCount(typeof latest === "number" && latest >= 0 ? latest : optimistic);
+        } catch (err) {
+            setLikeCount(likeCount); // 回滚
+            toast.error(err instanceof ApiError ? err.message : "操作失败，请稍后重试");
+        } finally {
+            setLikeBusy(false);
+        }
+    }
+
     return (
         <div className={`flex gap-3 ${reverse ? "flex-row-reverse" : ""}`}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <CommentAvatar
                 src={avatarUrl}
-                alt={comment.nickname}
-                loading="lazy"
+                name={comment.nickname}
                 className="size-9 shrink-0 rounded-full object-cover"
             />
             <div className={`min-w-0 flex-1 ${reverse ? "flex flex-col items-end" : ""}`}>
@@ -119,16 +157,21 @@ function CommentRow({
                     {comment.ip_location && comment.ip_location !== "未知" && (
                         <span>· {comment.ip_location}</span>
                     )}
-                    {/* 昵称最右侧：点赞（接口待接入，暂为占位提示）/ 回复评论 */}
+                    {/* 昵称最右侧：点赞 / 回复评论 */}
                     <span className="ml-auto flex items-center gap-0.5">
                         <button
                             type="button"
-                            onClick={() => toast.info("点赞功能待接入")}
-                            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
-                            title="点赞"
-                            aria-label="点赞"
+                            onClick={toggleLike}
+                            disabled={likeBusy}
+                            aria-pressed={liked}
+                            className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 transition-colors hover:bg-muted hover:text-primary disabled:opacity-60 ${
+                                liked ? "text-primary" : "text-muted-foreground"
+                            }`}
+                            title={liked ? "取消点赞" : "点赞"}
+                            aria-label={liked ? "取消点赞" : "点赞"}
                         >
-                            <ThumbsUp className="size-3.5" />
+                            <ThumbsUp className={`size-3.5 ${liked ? "fill-current" : ""}`} />
+                            {likeCount > 0 && <span className="tabular-nums">{likeCount}</span>}
                         </button>
                         <button
                             type="button"

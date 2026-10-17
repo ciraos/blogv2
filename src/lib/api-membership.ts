@@ -1,9 +1,9 @@
 // 后台 PRO 模块的浏览器端 API 客户端：**会员管理** 与 **售后工单** 两个页面共用。
 //
 // 为什么另开文件而不是塞进 src/lib/api.ts：
-//   · api.ts 里的 `request()` 没有导出（本轮不允许改 api.ts），而这两个模块全部走
-//     「PRO 闭源接口 + 同源代理」的路径，与 api.ts 里已有的写法完全一致；
-//   · 这里自带一份等价的 request 助手，失败时抛下面的 AdminModuleApiError（字段与 api.ts 的 ApiError 对齐）。
+//   · 这两个模块全部走「PRO 闭源接口 + 同源代理」的路径，接口形状与通用接口差异较大；
+//   · 请求助手统一用 src/lib/api.ts 导出的 request（不再自带副本），失败时抛的就是
+//     api.ts 的 ApiError，调用方可以用同一套 instanceof 判断。
 //
 // 浏览器端不直连后端（后端不开放 CORS 且需鉴权），统一请求本站同源代理
 // /api/admin/membership/* 与 /api/admin/support/*，由代理读取 httpOnly cookie 里的
@@ -13,77 +13,7 @@
 //   · src/lib/api/membership.ts L19-56  → plans 增删改查 + members 列表
 //   · src/lib/api/support.ts    L20-64  → tickets 列表/详情/回复/关闭/改状态/删除/统计
 
-/** 与 api.ts 同名的错误类型（api.ts 已导出，这里只做等价实现，避免跨文件耦合实现细节） */
-export class AdminModuleApiError extends Error {
-    status: number;
-    code: number;
-
-    constructor(message: string, status: number, code: number) {
-        super(message);
-        this.name = "AdminModuleApiError";
-        this.status = status;
-        this.code = code;
-    }
-}
-
-/**
- * 发一个请求到本站同源代理，并解包 { code, message, data } 信封。
- * 判定规则与 api.ts 的 request() 一致：HTTP 2xx 且业务 code 为 200 / 0 才算成功。
- */
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const headers = new Headers(options.headers);
-    if (options.body && !headers.has("Content-Type")) {
-        headers.set("Content-Type", "application/json");
-    }
-
-    let res: Response;
-    try {
-        res = await fetch(path, { ...options, headers, cache: "no-store" });
-    } catch {
-        throw new AdminModuleApiError("网络请求失败，请检查网络连接", 0, 0);
-    }
-
-    let json: { code?: number; message?: string; data?: T } | null = null;
-    try {
-        json = (await res.json()) as { code?: number; message?: string; data?: T };
-    } catch {
-        // 非 JSON 响应（例如网关返回 HTML）
-    }
-
-    if (res.ok && json && (json.code === 200 || json.code === 0)) {
-        return json.data as T;
-    }
-
-    // 代理层自己的错误信封（如未登录 401 / 无法连接后端 502）也走这里
-    throw new AdminModuleApiError(
-        json?.message || `请求失败（HTTP ${res.status}）`,
-        res.status,
-        json?.code ?? res.status
-    );
-}
-
-/**
- * 把「可能被包了一层」的列表结果摊平成 { list, total }。
- *
- * 为什么需要它：本轮**不允许实测写操作**，也不允许对线上接口做超出只读探测的验证
- * （只读探测回来的一律是 401，拿不到真实响应体），所以后端到底返回
- * `{ list, total }`、`{ data: { list, total } }` 还是 `{ data: [...] }` 都没有实据。
- * 这里把三种常见形状都兼容掉，字段名对齐官方前端类型（list / total）。
- */
-function unwrapList<T>(raw: unknown): { list: T[]; total: number } {
-    // 形状 ①：data 直接就是数组（无分页信息）
-    if (Array.isArray(raw)) return { list: raw as T[], total: raw.length };
-
-    const box = (raw ?? {}) as Record<string, unknown>;
-    // 形状 ②：data.list / data.total
-    const inner = (box.data ?? box) as Record<string, unknown>;
-    if (Array.isArray(inner)) return { list: inner as T[], total: inner.length };
-
-    // 形状 ③：{ list, total }（可能还套了一层 data，上面已处理）
-    const list = Array.isArray(inner.list) ? (inner.list as T[]) : [];
-    const total = Number(inner.total);
-    return { list, total: Number.isFinite(total) ? total : list.length };
-}
+import { request, unwrapList } from "@/lib/api";
 
 /** 分页 + 可选筛选 → 查询串（undefined / null / 空串一律不拼，避免后端把空值当筛选条件） */
 function buildQuery(params: Record<string, string | number | undefined>): string {

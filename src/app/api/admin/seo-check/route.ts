@@ -12,6 +12,7 @@ import type {
     SeoCheck,
     SeoCheckResult,
 } from "@/app/admin/seo-push/types";
+import { ACCESS_TOKEN_KEY } from "@/lib/auth";
 
 /* =============================================================================
  * SEO 本地检查 · 同源代理（只读）
@@ -374,7 +375,7 @@ function isNoindex(value: string): boolean {
 
 export async function GET(request: NextRequest) {
     // 与其它同源管理路由一致：先确认已登录（真正的权限边界始终在后端）
-    if (!request.cookies.get("token")?.value) {
+    if (!request.cookies.get(ACCESS_TOKEN_KEY)?.value) {
         return NextResponse.json({ code: 401, message: "未登录", data: null }, { status: 401 });
     }
 

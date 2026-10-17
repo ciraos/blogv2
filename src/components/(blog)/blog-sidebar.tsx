@@ -10,11 +10,13 @@ import {
     Tag as TagIcon,
 } from "lucide-react";
 import { CollapsibleAside } from "@/components/(blog)/collapsible-aside";
+import { CommentAvatar } from "@/components/(blog)/comment-avatar";
 import { PostToc } from "@/components/(blog)/post-toc";
 import { AuthorGreeting } from "@/components/(blog)/author-greeting";
 import { Icon } from "@/components/ui/icon";
 import { collectTags } from "@/lib/articles";
-import { getAllPublicArticlesApi, getLatestCommentsApi, getPublicArchivesApi, getPublicArticlesApi, type RecentComment } from "@/lib/api";
+import { getLatestCommentsApi, getPublicArticlesApi, type RecentComment } from "@/lib/api";
+import { getAllPublicArticlesCached, getPublicArchivesCached } from "@/lib/public-content-cache";
 import { resolveCommentAvatar, type GravatarConfig } from "@/lib/avatar";
 import { resolveAssetUrl } from "@/lib/utils";
 import type { SiteConfig } from "@/types/site-config";
@@ -250,7 +252,7 @@ function CustomSidebarCard({ blocks }: { blocks: CustomSidebarBlock[] }) {
 async function TagsCard({ highlight }: { highlight?: string[] }) {
     let tags: ReturnType<typeof collectTags> = [];
     try {
-        const articles = await getAllPublicArticlesApi();
+        const articles = await getAllPublicArticlesCached();
         tags = collectTags(articles).slice(0, 20);
     } catch {
         // 忽略，标签获取失败时隐藏卡片
@@ -335,7 +337,7 @@ async function RecentPostsCard({ count }: { count?: number }) {
 async function ArchivesCard({ displayMonths = 6 }: { displayMonths?: number }) {
     let items: { year: number; month: number; count: number }[] = [];
     try {
-        const data = await getPublicArchivesApi();
+        const data = await getPublicArchivesCached();
         items = data.list ?? [];
     } catch {
         // 忽略
@@ -418,12 +420,10 @@ async function RecentCommentsCard({ limit = 5, gravatar }: { limit?: number; gra
                                 href={href ?? "#"}
                                 className="group flex items-start gap-2.5"
                             >
-                                {/* 左侧头像：地址永远有值（无邮箱时由 d= 生成兜底头像） */}
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
+                                {/* 左侧头像：地址永远有值（无邮箱时由 d= 生成兜底头像）；加载失败退化首字头像 */}
+                                <CommentAvatar
                                     src={avatar}
-                                    alt={comment.nickname}
-                                    loading="lazy"
+                                    name={comment.nickname}
                                     className="size-8 shrink-0 rounded-full border object-cover"
                                 />
 
@@ -534,7 +534,7 @@ export async function BlogSidebar({ config }: { config?: SiteConfig }) {
     // 建站起点：归档最早的月份（近似）
     let earliestCreated: string | undefined;
     try {
-        const archive = await getPublicArchivesApi();
+        const archive = await getPublicArchivesCached();
         const list = archive.list ?? [];
         if (list.length > 0) {
             const first = list[list.length - 1]; // 接口按时间倒序，最后一条最早

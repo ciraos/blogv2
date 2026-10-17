@@ -21,26 +21,10 @@ import {
   Grid2x2Plus,
   Settings
 } from "lucide-react"
-import { SiteConfigResponse } from "@/types/site-config";
+import { SiteConfig } from "@/types/site-config";
 import { APP_VERSION_LABEL } from "@/lib/version";
 import { resolveAssetUrl } from "@/lib/utils";
 
-const api_url = process.env.NEXT_PUBLIC_API_URL;
-
-export async function getSiteConfigs() {
-  try {
-    const i = await fetch(`${api_url}/public/site-config`);
-    if (!i.ok) throw new Error("获取配置失败！");
-    const data = (await i.json()) as SiteConfigResponse;
-    // console.log(data);
-    return data.data;
-  } catch (error) {
-    // return { APP_NAME: "博客", ICON_URL: "/favicon.ico", error };
-    console.error(error);
-  }
-}
-
-const config = await getSiteConfigs();
 const data = {
   navMain: [
     {
@@ -123,10 +107,13 @@ const data = {
 
 export function AppSidebar({
   user,
+  config,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
   /** 当前登录用户（由 admin layout 从 /user/info 获取） */
   user: { name: string; email: string; avatar: string }
+  /** 站点配置（由 admin layout 传入，避免这里再发一次 /public/site-config） */
+  config?: SiteConfig
 }) {
   return (
     <Sidebar collapsible="icon" variant="floating" className="dsh-sidebar-flat" {...props}>
@@ -163,8 +150,12 @@ export function AppSidebar({
       <SidebarContent>
         <NavMain items={data.navMain} />
         {/* <NavDocuments items={data.documents} /> */}
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
+
+      {/* 「设置 / 访问前台」原本贴在 SidebarContent 底部（mt-auto），菜单一长就跟着一起滚走。
+          现在搬到滚动区外面：常驻在导航卡片下方、用户卡片上方，只有上面的菜单自己滚
+          （sidebar-content 自带 overflow-auto，是唯一的滚动容器）。 */}
+      <NavSecondary items={data.navSecondary} className="pb-1" />
 
       <SidebarFooter>
         {/* 版本号已移到顶栏（收缩按钮 / 站名之后），这里只留用户卡片 */}

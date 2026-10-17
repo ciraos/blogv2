@@ -1,7 +1,7 @@
 // ===================== 存储策略「写」接口客户端 =====================
-// 为什么单独开一份自带 fetch 助手的模块（而不是塞进 src/lib/api.ts）：
-//   api.ts 里的 request<T>() 是内部函数且未导出，本轮约定不动 api.ts，
-//   所以这里复制一份等价的同源 fetch 助手（同为 /api/ 开头的同源路由，自动带 cookie）。
+// 为什么单独成文件（而不是塞进 src/lib/api.ts）：
+//   这一组「存储策略写操作 + 代理层参数校验」只服务后台存储设置页；
+//   请求助手统一用 src/lib/api.ts 导出的 request（路径同为 /api/ 开头的同源路由，自动带 cookie）。
 //
 // 远端契约来源（社区版后端 = 本项目线上实际跑的那份，路径与 PRO 版前缀不同）：
 //   - scripts/anheyu/anheyu-app-main/internal/infra/router/router.go:526-540
@@ -30,22 +30,7 @@
 //      preserveMaskedStoragePolicySecrets（service:594-604）把空值或掩码还原成原值，
 //      所以「用户没改密钥」时提交空串是安全的、也是唯一正确的选择。
 
-/**
- * 本模块自己的错误类型：字段与 src/lib/api.ts 的 ApiError 保持一致
- * （message / status / code），但**不 import api.ts** ——
- * 一是本轮约定不动 api.ts，二是让本模块（及其纯函数）可以被单独加载 / 单测。
- */
-export class StoragePolicyApiError extends Error {
-    readonly status: number;
-    readonly code: number;
-
-    constructor(message: string, status: number, code: number) {
-        super(message);
-        this.name = "StoragePolicyApiError";
-        this.status = status;
-        this.code = code;
-    }
-}
+import { request } from "@/lib/api";
 
 /** 存储类型（与后端 constant.StoragePolicyType 一致；官方前端未含 upyun，本项目类型里列了但表单不渲染） */
 export const STORAGE_POLICY_TYPES = [
@@ -140,52 +125,6 @@ export interface OneDriveAuthUrlData {
 export interface OneDriveAuthorizePayload {
     code: string;
     state: string;
-}
-
-// ===================================
-//          同源请求助手
-// ===================================
-
-interface ApiEnvelope<T> {
-    code: number;
-    message: string;
-    data: T;
-}
-
-/**
- * 请求本站同源代理路由（/api/admin/storage-policies/**）。
- * 与 src/lib/api.ts 的 request<T>() 同语义：HTTP 2xx 且业务 code 为 200/0 才算成功，
- * 失败抛 ApiError（携带 HTTP 状态与业务 code，调用方可直接取 message 展示）。
- */
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const headers = new Headers(options.headers);
-    if (options.body && !headers.has("Content-Type")) {
-        headers.set("Content-Type", "application/json");
-    }
-
-    let res: Response;
-    try {
-        res = await fetch(path, { ...options, headers, cache: "no-store" });
-    } catch {
-        throw new StoragePolicyApiError("网络请求失败，请检查网络连接", 0, 0);
-    }
-
-    let json: ApiEnvelope<T> | null = null;
-    try {
-        json = (await res.json()) as ApiEnvelope<T>;
-    } catch {
-        // 非 JSON 响应（例如网关直接返回 HTML）
-    }
-
-    if (res.ok && json && (json.code === 200 || json.code === 0)) {
-        return json.data;
-    }
-
-    throw new StoragePolicyApiError(
-        json?.message || `请求失败（HTTP ${res.status}）`,
-        res.status,
-        json?.code ?? res.status
-    );
 }
 
 // ===================================

@@ -1,0 +1,63 @@
+# 博客前端 compose（配合同目录 Dockerfile）
+#
+# 用法：
+#   cp .env.example .env   # 填好下面这几个变量
+#   docker compose up -d --build
+#
+# 三个必须知道的点：
+#   1. compose 会自动读取同目录的 .env 做 ${VAR} 插值（.env 本身不进镜像）；
+#      `env_file` 也指向它，**文件不存在时 compose 直接报错**。
+#   2. NEXT_PUBLIC_* 是**构建期内联**的变量，改完必须 `--build` 重建，光 restart 不生效。
+#   3. 后端地址必须是「容器内可达」的地址：写 localhost / 127.0.0.1 指的是**这个容器自己**。
+#      后端跑在宿主机 → 用 http://host.docker.internal:3126（下面的 extra_hosts 已加好）；
+#      后端是另一个 compose 服务 → 用服务名（如 http://anheyu:3126），并让两个容器加入同一个网络。
+services:
+  blog-app:
+    build:
+      context: .
+      args:
+        # 站点对外 origin（不带路径）；SEO / sitemap / 动态图标都用它
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+        # 远端 API 基址（带 /api 后缀），浏览器端与服务端都用它
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        # 头像服务地址（可选，默认 cravatar）
+        NEXT_PUBLIC_GRAVATAR_URL: ${NEXT_PUBLIC_GRAVATAR_URL:-}
+        # rewrites() 的后端基址（不带 /api）。与站点同源时可留空，会自动回退到 NEXT_PUBLIC_SITE_URL
+        BACKEND_URL: ${BACKEND_URL:-}
+        API_URL: ${API_URL:-}
+    image: blog-app:latest
+    container_name: blog-app
+    restart: unless-stopped
+    ports:
+      - "3126:3126"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: "3126"
+      # 站点前置反向代理时，proxy.ts 的登录跳转优先用 X-Forwarded-Host/Proto 还原公共域名；
+      # 请让反代设置：
+      #   proxy_set_header Host              $host;
+      #   proxy_set_header X-Forwarded-Host  $host;
+      #   proxy_set_header X-Forwarded-Proto $scheme;
+      #   proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+      # 否则跳转会落到容器内网地址（https://<容器ID>:3126）上。
+    # 后端在宿主机时，让容器能通过 host.docker.internal 访问它（Linux 上需要这条，Docker Desktop 自带）
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    # 后端是另一个 compose 服务时，取消下面注释并把它换成实际的网络名：
+    # networks:
+    #   - anheyu_default
+    #
+    # 健康检查（可选）：命中一个轻量路由，别用 `/`（每个周期都会完整 SSR 一遍，会反复打后端）
+    # healthcheck:
+    #   test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3126/manifest.webmanifest"]
+    #   interval: 30s
+    #   timeout: 5s
+    #   retries: 3
+    #   start_period: 20s
+
+# networks:
+#   anheyu_default:
+#     external: true

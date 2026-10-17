@@ -17,45 +17,12 @@ import { resolveAssetUrl } from "@/lib/utils";
 import { resolveAppearance } from "@/lib/appearance";
 import { resolveThemeSchedule } from "@/lib/scheduled-theme";
 import { isAdminUser } from "@/lib/auth";
-import { SiteConfigResponse } from "@/types/site-config";
-
-const site_url = process.env.NEXT_PUBLIC_SITE_URL;
-const api_url = process.env.NEXT_PUBLIC_API_URL;
+import { getSiteConfigs, resolveSiteIcons } from "@/lib/site-config";
 
 export async function generateMetadata(): Promise<Metadata> {
-    // 站点配置接口抖一下不该把整个后台打成 500：失败就退回本地默认图标
-    const fallbackIcon = "/favicon.ico";
-    try {
-        const res = await fetch(`${api_url}/public/site-config`);
-        if (!res.ok) throw new Error(`获取配置失败：HTTP ${res.status}`);
-        const data = (await res.json()) as SiteConfigResponse;
-        const icon = data?.data?.ICON_URL;
-        // apple-touch-icon：动态引用后端 logo（PNG 优先），无可用值时退回默认图标
-        const appleIcon = data?.data?.LOGO_URL_192x192 || data?.data?.LOGO_URL || icon;
-        return {
-            icons: {
-                icon: icon ? site_url + icon : fallbackIcon,
-                apple: appleIcon ? site_url + appleIcon : fallbackIcon,
-            },
-        };
-    } catch (error) {
-        console.error("[admin] 生成 metadata 时读取站点配置失败，已退回默认图标：", error);
-        return { icons: { icon: fallbackIcon, apple: fallbackIcon } };
-    }
-}
-
-export async function getSiteConfigs() {
-    try {
-        const i = await fetch(`${api_url}/public/site-config`);
-        if (!i.ok) throw new Error("获取配置失败！");
-        const data = (await i.json()) as SiteConfigResponse;
-        // console.log(data);
-        return data.data;
-    } catch (error) {
-        console.error(error);
-        // 兜底：至少让侧边栏有站点名与图标，避免整块空白（调用方全部用了可选链，兜底对象是安全子集）
-        return { APP_NAME: "博客", ICON_URL: "/favicon.ico" } as SiteConfigResponse["data"];
-    }
+    // 站点配置接口抖一下不该把整个后台打成 500：取不到就用本地默认图标
+    const config = await getSiteConfigs();
+    return { icons: resolveSiteIcons(config) };
 }
 
 export default async function AdminLayout({ children }: Readonly<{ children: React.ReactNode; }>) {
@@ -114,7 +81,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
                       <ConfirmProvider>
                         {/* 整页锁 100dvh 且不滚动：滚动交给内容区（以及列表页内部的表格区域） */}
                         <SidebarProvider className="h-dvh overflow-hidden">
-                            <AppSidebar user={navUser} />
+                            <AppSidebar user={navUser} config={config} />
                             <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-2 overflow-y-auto px-5 py-1.5">
                                 <SidebarTriggerFallback />
                                 {/* 内容区是 flex 列。注意这里**不能**给所有页面根节点加 min-h-0/flex-auto：

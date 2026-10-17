@@ -35,13 +35,18 @@
 //   说明线上 /questions 来自比公开快照更新的版本。
 //
 // ==== 为什么另开文件而不动 src/lib/api.ts ====
-// 与 src/lib/api-membership.ts 同样的理由：api.ts 里的 request() 没有导出，且本模块全部走
-// 「PRO 闭源接口 + 同源代理」；这里自带一份等价 request（错误类型字段与 api.ts 的 ApiError 对齐）。
+// 与 src/lib/api-membership.ts 同样的理由：本模块全部走「PRO 闭源接口 + 同源代理」，
+// 接口形状与通用接口差异较大；请求与列表摊平统一复用 api.ts 导出的 request / unwrapList。
 //
 // 浏览器端不直连后端（后端不开放 CORS 且需鉴权），统一请求本站同源代理 /api/admin/community-qa/*，
 // 由代理读 httpOnly cookie 里的 token 转发到远端（见 src/app/api/admin/community-qa/）。
 
-/** 与 api.ts / api-membership.ts 同名的错误类型（等价实现，避免跨文件耦合实现细节） */
+import { request, unwrapList as flattenList } from "@/lib/api";
+
+/**
+ * 本模块自己的错误类型：只在「响应结构对不上」这类本模块特有的判断里抛出
+ * （请求层失败抛的是 api.ts 的 ApiError，字段同为 message / status / code）。
+ */
 export class CommunityQaApiError extends Error {
     status: number;
     code: number;
@@ -112,42 +117,6 @@ export interface CommunityQaConfig {
     enabled: boolean;
 }
 
-/**
- * 发一个请求到本站同源代理，并解包 { code, message, data } 信封。
- * 判定规则与 api.ts / api-membership.ts 一致：HTTP 2xx 且业务 code 为 200 / 0 才算成功。
- */
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const headers = new Headers(options.headers);
-    if (options.body && !headers.has("Content-Type")) {
-        headers.set("Content-Type", "application/json");
-    }
-
-    let res: Response;
-    try {
-        res = await fetch(path, { ...options, headers, cache: "no-store" });
-    } catch {
-        throw new CommunityQaApiError("网络请求失败，请检查网络连接", 0, 0);
-    }
-
-    let json: { code?: number; message?: string; data?: T } | null = null;
-    try {
-        json = (await res.json()) as { code?: number; message?: string; data?: T };
-    } catch {
-        // 非 JSON 响应（例如网关返回 HTML）
-    }
-
-    if (res.ok && json && (json.code === 200 || json.code === 0)) {
-        return json.data as T;
-    }
-
-    // 代理层自己的错误信封（未登录 401 / 参数校验 400 / 无法连接后端 502）也走这里
-    throw new CommunityQaApiError(
-        json?.message || `请求失败（HTTP ${res.status}）`,
-        res.status,
-        json?.code ?? res.status
-    );
-}
-
 /** 分页 + 可选筛选 → 查询串（undefined / null / 空串一律不拼） */
 function buildQuery(params: Record<string, string | number | undefined>): string {
     const qs = new URLSearchParams();
@@ -160,23 +129,20 @@ function buildQuery(params: Record<string, string | number | undefined>): string
 }
 
 /**
- * 把「可能被包了一层」的列表结果摊平成 { list, total, page_size }。
- * 公开接口实测的形状是 `{ list, page, page_size, total }`（request() 已剥掉 data 外层），
- * 这里额外兼容「data 直接是数组」等在写操作响应上的常见变体。
+ * 把「可能被包了一层」的列表结果摊平成 CommunityQaListData。
+ * 公开接口实测的形状是 `{ list, page, page_size, total }`（request() 已剥掉 data 外层）；
+ * 「摊平」这一步统一走 api.ts 的 unwrapList，这里只补本模块关心的 page_size
+ * （后端给了有效正数才透传，读不到就不填、由页面兜底）。
  */
 function unwrapList<T>(raw: unknown): CommunityQaListData<T> {
-    if (Array.isArray(raw)) return { list: raw as T[], total: raw.length };
+    const { list, total } = flattenList<T>(raw);
 
-    const box = (raw ?? {}) as Record<string, unknown>;
+    const box = (Array.isArray(raw) ? {} : (raw ?? {})) as Record<string, unknown>;
     const inner = (box.data ?? box) as Record<string, unknown>;
-    if (Array.isArray(inner)) return { list: inner as T[], total: inner.length };
-
-    const list = Array.isArray(inner.list) ? (inner.list as T[]) : [];
-    const total = Number(inner.total);
     const pageSize = Number(inner.page_size);
     return {
         list,
-        total: Number.isFinite(total) ? total : list.length,
+        total,
         page_size: Number.isFinite(pageSize) && pageSize > 0 ? pageSize : undefined,
     };
 }

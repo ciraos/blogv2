@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { API_URL } from "./api";
+import { ACCESS_TOKEN_KEY } from "@/lib/auth";
 
 /**
  * 转发一个需要登录的请求到远端（自动带上 token）。
@@ -14,7 +15,7 @@ import { API_URL } from "./api";
  */
 export async function authedProxyFetch(path: string, init?: RequestInit): Promise<NextResponse> {
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = cookieStore.get(ACCESS_TOKEN_KEY)?.value;
     if (!token) {
         return NextResponse.json({ code: 401, message: "未登录", data: null }, { status: 401 });
     }
@@ -51,7 +52,7 @@ export const adminProxyFetch = authedProxyFetch;
 /** 取 cookie 里的登录 token；没有则返回 null（未登录） */
 export async function adminToken(): Promise<string | null> {
     const cookieStore = await cookies();
-    return cookieStore.get("token")?.value ?? null;
+    return cookieStore.get(ACCESS_TOKEN_KEY)?.value ?? null;
 }
 
 /**

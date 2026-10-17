@@ -28,36 +28,18 @@ import { getPublicLinksRandomApi } from "@/lib/api";
 import { resolveAppearance } from "@/lib/appearance";
 import { resolveThemeSchedule } from "@/lib/scheduled-theme";
 import { getHeaderData } from "@/lib/header-data";
-import { SiteConfigResponse } from "@/types/site-config";
-
-const site_url = process.env.NEXT_PUBLIC_SITE_URL;
-const api_url = process.env.NEXT_PUBLIC_API_URL;
+import { getSiteConfigs, resolveSiteIcons } from "@/lib/site-config";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const a = await fetch(`${api_url}/public/site-config`);
-  const data: SiteConfigResponse = await a.json();
-  // console.log(site_url + data.data.ICON_URL);
-  // apple-touch-icon：动态引用后端 logo（PNG 优先），无本地静态文件
-  const appleIcon = site_url + (data.data.LOGO_URL_192x192 || data.data.LOGO_URL || data.data.ICON_URL);
+  // 与整页共用同一份站点配置（lib/site-config.ts 用 React cache 做了同请求去重），不再单独 fetch
+  const config = await getSiteConfigs();
+  const icons = resolveSiteIcons(config);
   return {
     icons: {
-      icon: site_url + data.data.ICON_URL,
-      apple: appleIcon,
+      icon: icons.icon,
+      apple: icons.apple,
     },
   };
-}
-
-export async function getSiteConfigs() {
-  try {
-    const i = await fetch(`${api_url}/public/site-config`);
-    if (!i.ok) throw new Error("获取配置失败！");
-    const data = (await i.json()) as SiteConfigResponse;
-    // console.log(data);
-    return data.data;
-  } catch (error) {
-    // return { APP_NAME: "博客", ICON_URL: "/favicon.ico", error };
-    console.error(error);
-  }
 }
 
 /** 站点公告条（SITE_ANNOUNCEMENT）：后端定义（internal/configdef/definition.go 第 54 行）为

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 
 import { adminProxyFetch } from "@/lib/admin-api";
 import { API_URL } from "@/lib/api";
+import { ACCESS_TOKEN_KEY } from "@/lib/auth";
 
 // 插件安装：POST /api/admin/plugins/install → 远端 POST /admin/plugins/install。
 //
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 走到这里说明没登录（否则中间件已跳转）：直接沿用统一代理，返回 401 信封
-    const token = (await cookies()).get("token")?.value;
+    const token = (await cookies()).get(ACCESS_TOKEN_KEY)?.value;
     if (!token) {
         return adminProxyFetch("/admin/plugins/install", { method: "POST" });
     }

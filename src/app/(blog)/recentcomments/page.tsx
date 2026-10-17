@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { CommentAvatar } from "@/components/(blog)/comment-avatar";
 import { NumberedPagination } from "@/components/(blog)/numbered-pagination";
 
 import { ApiError, getLatestCommentsApi, type RecentComment } from "@/lib/api";
@@ -45,12 +46,10 @@ function CommentRow({ comment, gravatar }: { comment: RecentComment; gravatar?: 
         <div className="rounded-lg border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
             {/* 头部：头像 + 昵称 + 时间 */}
             <div className="flex items-center gap-2.5">
-                {/* 地址永远有值（无邮箱时由 d= 生成兜底头像） */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                {/* 地址永远有值（无邮箱时由 d= 生成兜底头像）；加载失败退化首字头像 */}
+                <CommentAvatar
                     src={avatar}
-                    alt={comment.nickname}
-                    loading="lazy"
+                    name={comment.nickname}
                     className="size-8 shrink-0 rounded-full border object-cover"
                 />
                 <span className="min-w-0 truncate text-sm font-medium">

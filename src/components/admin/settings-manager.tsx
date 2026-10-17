@@ -15,6 +15,7 @@ import {
     Search,
     Trash2,
     Upload,
+    TriangleAlertIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,6 +29,8 @@ import {
     AI_SETTINGS_KEYS,
     ALL_SETTINGS_FIELDS,
     APPEARANCE_SKIN_KEY,
+    REMOTE_ONLY_SETTINGS_FIELDS,
+    REMOTE_ONLY_SETTINGS_KEYS,
     SETTINGS_GROUP_ORDER,
     SETTINGS_SECTIONS,
     SKIN_OPTIONS,
@@ -45,6 +48,8 @@ import {
     type SettingsSection,
 } from "@/lib/admin-settings";
 import { AiSettingsPanel } from "@/components/admin/ai-settings-panel";
+import { PaymentSettingsPanel } from "@/components/admin/payment-settings-panel";
+import { TestEmailButton } from "@/components/admin/test-email-button";
 import { TokenColorEditor } from "@/components/admin/token-color-editor";
 import { updateAdminSettingsApi, uploadAdminImageApi } from "@/lib/api";
 import { broadcastSiteConfigUpdate } from "@/lib/site-config-broadcast";
@@ -55,16 +60,20 @@ import { cn, resolveAssetUrl, toSameOriginMediaUrl } from "@/lib/utils";
 type Draft = Record<string, SettingsFormValue>;
 
 /**
- * 把「鉴权后才读得到的 AI 后台专有键」（ai_summary_*、ai_writing_*、embedding_*、播客音频参数、
- * 三个 Prompt 等）合并进草稿/基线。
+ * 「只在后台设置里存在、公开 site-config 不下发」的字段与键：AI 面板 + 邮件服务（SMTP / 模板）。
  *
  * 为什么需要这一步：设置页首屏值来自公开的 /public/site-config，而线上实测它只下发
  * ai_assistant 的 5 个键与 ai_podcast 的 3 个键（那些后台专有键根本不在公开响应里），
- * 不补读的话面板会把「已配置的模型/密钥」显示成空态。
- *
+ * SMTP_* 更是一个都不下发。不补读的话面板会把「已配置的模型/密钥/邮箱」显示成空态。
+ */
+const REMOTE_SETTINGS_FIELDS: SettingsField[] = [...AI_SETTINGS_FIELDS, ...REMOTE_ONLY_SETTINGS_FIELDS];
+const REMOTE_SETTINGS_KEYS: string[] = Array.from(new Set([...AI_SETTINGS_KEYS, ...REMOTE_ONLY_SETTINGS_KEYS]));
+
+/**
+ * 把补读到的后台专有键合并进草稿/基线。
  * 只补**当前为空**的键：绝不覆盖公开配置已有的值，也绝不覆盖用户正在输入的草稿。
  */
-function mergeAiRemoteValues(base: Draft, remote: Draft | null): Draft {
+function mergeRemoteValues(base: Draft, remote: Draft | null): Draft {
     if (!remote) return base;
     const isEmptyValue = (value: SettingsFormValue | undefined): boolean => {
         if (typeof value === "boolean") return false; // 布尔未配置时后端也不回值，false 不作「空」处理
@@ -72,10 +81,16 @@ function mergeAiRemoteValues(base: Draft, remote: Draft | null): Draft {
         return String(value ?? "").trim() === "";
     };
     const next = { ...base };
-    for (const field of AI_SETTINGS_FIELDS) {
-        if (!isEmptyValue(next[field.key])) continue;
+    for (const field of REMOTE_SETTINGS_FIELDS) {
         const fetched = remote[field.key];
-        if (fetched === undefined || isEmptyValue(fetched)) continue;
+        if (fetched === undefined) continue;
+        if (typeof fetched === "boolean") {
+            // 布尔键只补 true：false 是默认态，补它反而会盖掉用户刚切换的草稿
+            if (fetched) next[field.key] = true;
+            continue;
+        }
+        if (!isEmptyValue(next[field.key])) continue;
+        if (isEmptyValue(fetched)) continue;
         next[field.key] = fetched;
     }
     return next;
@@ -113,17 +128,17 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
     const [search, setSearch] = useState("");
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const contentRef = useRef<HTMLDivElement>(null);
-    // AI 后台专有键的真实值（读一次，之后补进基线/草稿；读不到就保持 null → 面板显示空态）
-    const [aiRemote, setAiRemote] = useState<Draft | null>(null);
+    // 后台专有键的真实值（AI + 邮件服务；读一次，之后补进基线/草稿；读不到就保持 null → 面板显示空态）
+    const [remoteValues, setRemoteValues] = useState<Draft | null>(null);
 
     // 服务端配置变化（router.refresh 之后）→ 渲染期对齐基线，避免在 effect 里同步 setState
     if (syncKey !== initialKey) {
         setSyncKey(initialKey);
-        setBaseline(mergeAiRemoteValues(initial, aiRemote));
-        setDraft(mergeAiRemoteValues(initial, aiRemote));
+        setBaseline(mergeRemoteValues(initial, remoteValues));
+        setDraft(mergeRemoteValues(initial, remoteValues));
     }
 
-    // 挂载时按 AI 面板的键去读一次（走既有同源代理 → 远端 /settings/update 同族的 get-by-keys）。
+    // 挂载时按「后台专有键」的集合去读一次（走既有同源代理 → 远端 /settings/get-by-keys）。
     // 这是只读 POST（远端要求 POST + 登录），不写任何配置。
     useEffect(() => {
         let cancelled = false;
@@ -132,19 +147,19 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
                 const res = await fetch("/api/admin/settings/get-by-keys", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ keys: AI_SETTINGS_KEYS }),
+                    body: JSON.stringify({ keys: REMOTE_SETTINGS_KEYS }),
                     cache: "no-store",
                 });
                 if (!res.ok) return;
                 const json = (await res.json()) as { data?: unknown };
                 if (cancelled) return;
                 const values: Draft = {};
-                for (const field of AI_SETTINGS_FIELDS) {
+                for (const field of REMOTE_SETTINGS_FIELDS) {
                     const raw = readConfigPath(json.data, field.key);
                     if (raw === undefined || raw === null) continue;
                     values[field.key] = toFormValue(field, raw);
                 }
-                setAiRemote(values);
+                setRemoteValues(values);
             } catch {
                 // 读失败就算了：面板按空态显示，不编造「已配置」
             }
@@ -154,16 +169,16 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
         };
     }, []);
 
-    // 读回来后补进基线/草稿（只补空键，见 mergeAiRemoteValues）
+    // 读回来后补进基线/草稿（只补空键，见 mergeRemoteValues）
     useEffect(() => {
-        if (!aiRemote) return;
+        if (!remoteValues) return;
         // 延后到下一个 tick：effect 内同步 setState 会触发级联渲染（react-hooks/set-state-in-effect）
         const timer = setTimeout(() => {
-            setBaseline((prev) => mergeAiRemoteValues(prev, aiRemote));
-            setDraft((prev) => mergeAiRemoteValues(prev, aiRemote));
+            setBaseline((prev) => mergeRemoteValues(prev, remoteValues));
+            setDraft((prev) => mergeRemoteValues(prev, remoteValues));
         }, 0);
         return () => clearTimeout(timer);
-    }, [aiRemote]);
+    }, [remoteValues]);
 
     const dirtyFields = useMemo(
         () => ALL_SETTINGS_FIELDS.filter((field) => isFieldDirty(field, draft, baseline)),
@@ -430,6 +445,12 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
                                 {activeSection.desc && (
                                     <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{activeSection.desc}</p>
                                 )}
+                                {activeSection.warning && (
+                                    <p className="mt-2 flex items-start gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-xs leading-relaxed text-amber-700 dark:text-amber-300">
+                                        <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" />
+                                        <span>{activeSection.warning}</span>
+                                    </p>
+                                )}
                             </div>
                             <Button
                                 variant="secondary"
@@ -560,7 +581,10 @@ function SettingsGroupCard({
             {open && (
                 // AI 区整块交给 AiSettingsPanel（官方那套「模块标题 + PRO 标 + 开关行 + 提示条 +
                 // Prompt 建议卡」的跨字段结构，逐字段渲染表达不了）；草稿/保存仍走同一套机制。
-                group.fields.some((field) => field.aiModule) ? (
+                // 支付配置同理交给 PaymentSettingsPanel，但那边是独立接口，草稿与保存都在面板内部。
+                group.fields.some((field) => field.type === "payment") ? (
+                    <PaymentSettingsPanel />
+                ) : group.fields.some((field) => field.aiModule) ? (
                     <AiSettingsPanel fields={group.fields} draft={draft} baseline={baseline} onChange={onChange} />
                 ) : (
                     <div className="grid grid-cols-1 gap-x-5 gap-y-5 md:grid-cols-2">
@@ -586,6 +610,17 @@ function SettingsGroupCard({
                                 />
                             </div>
                         ))}
+                        {/* 邮件服务 → SMTP 配置：字段网格下方补「发送测试邮件」（会真的发信，
+                            所以是显式按钮，不随渲染自动触发）。收件人默认取发件人邮箱 / SMTP 用户名。 */}
+                        {group.id === "mail-smtp" && (
+                            <div className="lg:col-span-2">
+                                <TestEmailButton
+                                    defaultRecipient={String(
+                                        draft.SMTP_SENDER_EMAIL || draft.SMTP_USERNAME || ""
+                                    )}
+                                />
+                            </div>
+                        )}
                     </div>
                 )
             )}
@@ -768,15 +803,37 @@ function FieldControl({
     }
 
     if (field.type === "textarea") {
+        const rows = field.rows ?? 3;
         return (
             <label className="block">
                 {label}
                 <textarea
                     value={String(value ?? "")}
                     onChange={(e) => onChange(e.target.value)}
-                    rows={3}
+                    rows={rows}
                     placeholder={field.placeholder}
-                    className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                    spellCheck={false}
+                    className={cn(
+                        "w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+                        // 长文本（邮件 HTML 模板之类）用等宽字体，便于对齐标签
+                        rows > 6 && "font-mono text-xs leading-relaxed"
+                    )}
+                />
+            </label>
+        );
+    }
+
+    if (field.type === "password") {
+        return (
+            <label className="block">
+                {label}
+                <Input
+                    type="password"
+                    autoComplete="new-password"
+                    value={String(value ?? "")}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder={field.placeholder}
+                    className="h-9 text-sm"
                 />
             </label>
         );

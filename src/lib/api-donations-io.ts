@@ -2,7 +2,7 @@
 //
 // 为什么另起一个文件而不是写进 src/lib/api.ts：
 //   lib/api.ts 是全局公共模块（前台 / 首页 / 用户中心都在用），本文件只服务后台「打赏管理」，
-//   单独放可以避免为了这两个接口去动公共文件（该文件本次任务禁止改动）。
+//   单独放可以避免为了这两个接口去动公共文件；信封类型统一用 @/lib/api 的 ApiEnvelope。
 //
 // 后端不开放 CORS，浏览器必须走同源 /api/admin/donations/* 代理；代理再带上 httpOnly cookie
 // 里的 token 转发到远端（见 src/app/api/admin/donations/{export,import}/route.ts）。
@@ -26,15 +26,10 @@
 //
 // ⚠️ 导入是写库操作，本模块只负责调用，二次确认由调用方（donations-manager.tsx）负责。
 
+import type { ApiEnvelope } from "@/lib/api";
+
 /** 同源代理路由前缀 */
 const BASE = "/api/admin/donations";
-
-/** 远端统一响应信封 { code, message, data } */
-interface ApiEnvelope<T> {
-    code: number;
-    message: string;
-    data: T;
-}
 
 /** 代理层与浏览器端共用的导入文件体积上限（本地保护；后端上限未知，宁可本地先拦） */
 export const MAX_DONATION_IMPORT_SIZE = 10 * 1024 * 1024;

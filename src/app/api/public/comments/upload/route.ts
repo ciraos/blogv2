@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server"
 import { cookies } from "next/headers"
 
 import { API_URL } from "@/lib/api"
+import { ACCESS_TOKEN_KEY } from "@/lib/auth";
 
 // 上传评论图片：本应用同源路由，服务端转发 multipart 到远端 /public/comments/upload。
 // 后端为 JWTAuthOptional（可选登录）：登录时把 token 带上作为 viewer_id，访客可不带（是否放行由后端策略决定）。
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cookieStore = await cookies()
-    const token = cookieStore.get("token")?.value
+    const token = cookieStore.get(ACCESS_TOKEN_KEY)?.value
     const headers = new Headers()
     if (token) {
         headers.set("Authorization", `Bearer ${token}`)

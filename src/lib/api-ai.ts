@@ -17,7 +17,9 @@
 //
 // 本文件只打本站同源代理 /api/admin/ai/*（代理读 httpOnly cookie 带 Bearer 转发，
 // 见 src/app/api/admin/ai/**/route.ts），与 src/lib/api-knowledge.ts 同一套写法，
-// 不改动 src/lib/api.ts（那个文件同时被前台和几十个页面依赖）。
+// 留在独立文件里（api.ts 同时被前台和几十个页面依赖，不适合放 PRO 专属能力）。
+
+import type { ApiEnvelope as Envelope } from "@/lib/api";
 
 /** 写作风格（官方 AIWritingRequest.style） */
 export type AIWritingStyle = "professional" | "casual" | "academic" | "creative";
@@ -88,13 +90,6 @@ export class AIWritingApiError extends Error {
         this.status = status;
         this.code = code;
     }
-}
-
-/** 远端统一响应信封（pkg/response/response.go） */
-interface Envelope<T> {
-    code: number;
-    message: string;
-    data: T;
 }
 
 /** GET /api/admin/ai/writing/config —— 读写作配置（用于判断「未配置」状态） */

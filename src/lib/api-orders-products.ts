@@ -1,9 +1,9 @@
 // 后台 PRO 模块**浏览器端 API 客户端**：订单管理 与 商品管理 两个页面共用。
 //
 // 为什么另开文件而不是塞进 src/lib/api.ts：
-//   · api.ts 里的 request() 没有导出（本轮不允许改 api.ts），而这两个模块全部走
-//     「PRO 闭源接口 + 同源代理」的路径，与 api.ts 里已有的写法完全一致；
-//   · 这里自带一份等价的 request 助手，失败时抛下面的 AdminCatalogApiError（字段与 api.ts 的 ApiError 对齐）。
+//   · 这两个模块全部走「PRO 闭源接口 + 同源代理」的路径，接口形状与通用接口差异较大；
+//   · 请求助手统一用 src/lib/api.ts 导出的 request（不再自带副本），失败时抛的就是
+//     api.ts 的 ApiError，调用方可以用同一套 instanceof 判断。
 //
 // 浏览器端不直连后端（后端不开放 CORS 且需鉴权），统一请求本站同源代理 /api/admin/*，
 // 由代理读取 httpOnly cookie 里的 token 转发到远端 /pro/admin/*（见 src/app/api/admin/{orders,products,variants,stock}/）。
@@ -29,56 +29,8 @@
 // ⚠️ 所有写操作（POST / PUT / DELETE）本轮**只实现、不实测**：线上只做过只读 GET 探测（401），
 //    真实请求体字段名以官方前端源码为准，未能用真实响应反证。
 
+import { ApiError, request } from "@/lib/api";
 import type { AdminOrder, AdminOrderListParams } from "@/types/orders";
-
-/** 与 api.ts 同名的错误类型（api.ts 未导出，这里做等价实现，避免跨文件耦合实现细节） */
-export class AdminCatalogApiError extends Error {
-    status: number;
-    code: number;
-
-    constructor(message: string, status: number, code: number) {
-        super(message);
-        this.name = "AdminCatalogApiError";
-        this.status = status;
-        this.code = code;
-    }
-}
-
-/**
- * 发一个请求到本站同源代理，并解包 { code, message, data } 信封。
- * 判定规则与 api.ts 的 request() 一致：HTTP 2xx 且业务 code 为 200 / 0 才算成功。
- */
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const headers = new Headers(options.headers);
-    if (options.body && !headers.has("Content-Type")) {
-        headers.set("Content-Type", "application/json");
-    }
-
-    let res: Response;
-    try {
-        res = await fetch(path, { ...options, headers, cache: "no-store" });
-    } catch {
-        throw new AdminCatalogApiError("网络请求失败，请检查网络连接", 0, 0);
-    }
-
-    let json: { code?: number; message?: string; data?: T } | null = null;
-    try {
-        json = (await res.json()) as { code?: number; message?: string; data?: T };
-    } catch {
-        // 非 JSON 响应（例如网关返回 HTML）
-    }
-
-    if (res.ok && json && (json.code === 200 || json.code === 0)) {
-        return json.data as T;
-    }
-
-    // 代理层自己的错误信封（未登录 401 / 参数校验 400 / 无法连接后端 502）也走这里
-    throw new AdminCatalogApiError(
-        json?.message || `请求失败（HTTP ${res.status}）`,
-        res.status,
-        json?.code ?? res.status
-    );
-}
 
 // ============================================================
 // 一、通用小工具（纯函数；下面的「请求体校验」也依赖它们）
@@ -437,7 +389,7 @@ export function stockStatusLabel(status: number): string {
 export async function getAdminProductApi(id: string | number): Promise<AdminProduct> {
     const raw = await request<unknown>(`/api/admin/products/${encodeURIComponent(String(id))}`, { method: "GET" });
     const product = normalizeProduct(raw);
-    if (!product) throw new AdminCatalogApiError("商品详情响应格式异常", 200, 200);
+    if (!product) throw new ApiError("商品详情响应格式异常", 200, 200);
     return product;
 }
 

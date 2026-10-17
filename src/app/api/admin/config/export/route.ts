@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { API_URL } from "@/lib/api";
+import { ACCESS_TOKEN_KEY } from "@/lib/auth";
 
 // 导出配置数据：GET 转发到远端 /config/export（router.go:899，需管理员登录）。
 //
@@ -13,7 +14,7 @@ import { API_URL } from "@/lib/api";
 // 失败时（未登录 / 远端 5xx）远端返回 JSON 信封，这里转成同形状的 JSON 交给前端提示。
 export async function GET() {
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = cookieStore.get(ACCESS_TOKEN_KEY)?.value;
     if (!token) {
         return NextResponse.json({ code: 401, message: "未登录", data: null }, { status: 401 });
     }

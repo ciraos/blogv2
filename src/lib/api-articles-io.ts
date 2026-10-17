@@ -14,12 +14,7 @@
 //   DELETE /articles/batch   JSON { ids: string[] }（1..100） —— handler.go:794-850、service.go:39-43
 //   POST|PUT|DELETE /post-categories[/{id}]、/post-tags[/{id}] —— router.go:301-321
 
-/** 远端统一响应信封 { code, message, data } */
-interface ApiEnvelope<T> {
-    code: number;
-    message: string;
-    data: T;
-}
+import type { ApiEnvelope } from "@/lib/api";
 
 /** 调用后台接口失败时抛出的错误（message 直接可展示给用户） */
 export class ArticleApiError extends Error {

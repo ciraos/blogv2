@@ -2,9 +2,10 @@ import type { ComponentProps } from "react";
 import { cookies } from "next/headers";
 
 import type Header from "@/components/header";
-import { getAllPublicArticlesApi, getPublicArchivesApi, getUserInfoApi } from "@/lib/api";
+import { getUserInfoApi } from "@/lib/api";
+import { getAllPublicArticlesCached, getPublicArchivesCached } from "@/lib/public-content-cache";
 import { collectTags } from "@/lib/articles";
-import { isAdminUser } from "@/lib/auth";
+import { ACCESS_TOKEN_KEY, isAdminUser } from "@/lib/auth";
 import type { SiteConfig } from "@/types/site-config";
 
 type HeaderProps = ComponentProps<typeof Header>;
@@ -23,7 +24,7 @@ export async function getHeaderData(
 ): Promise<{ header: HeaderProps; authExpired: boolean }> {
     // httpOnly token 只能服务端读取，用来判断登录态
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = cookieStore.get(ACCESS_TOKEN_KEY)?.value;
     const isLoggedIn = !!token;
 
     // 已登录时取用户信息（头像/昵称/是否管理员）；token 过期（401）标记 authExpired
@@ -52,7 +53,7 @@ export async function getHeaderData(
     // 移动端汉堡菜单：标签云（取全部文章聚合，前 12 个）
     let mobileTags: HeaderProps["mobileTags"] = [];
     try {
-        const articles = await getAllPublicArticlesApi();
+        const articles = await getAllPublicArticlesCached();
         mobileTags = collectTags(articles).slice(0, 12);
     } catch (error) {
         console.error("获取标签失败", error);
@@ -61,7 +62,7 @@ export async function getHeaderData(
     // 移动端汉堡菜单：网站信息（与侧边栏一致：文章数 / 字数 / 建站天数）
     let siteCreatedAt: string | undefined;
     try {
-        const archive = await getPublicArchivesApi();
+        const archive = await getPublicArchivesCached();
         const list = archive.list ?? [];
         if (list.length > 0) {
             const first = list[list.length - 1]; // 接口按时间倒序，最后一条最早

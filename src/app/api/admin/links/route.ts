@@ -1,73 +1,20 @@
-import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-import { API_URL } from "@/lib/api"
-import { ACCESS_TOKEN_KEY } from "@/lib/auth"
+import { authedProxyFetch } from "@/lib/admin-api"
 
-// 管理员友链列表：GET 转发到远端 /links（需登录）。
-// 后端不开放 CORS 且需鉴权，浏览器端不能直连，由本路由读取 httpOnly cookie 中的
-// accessToken 转发；查询参数（page/pageSize/keyword/status/category_id/tag_id 等）原样透传。
-const REMOTE = `${API_URL}/links`
-
+// 管理员友链列表：GET 转发到远端 /links（需登录），查询参数（page/pageSize/name/status/category_id/tag_id）原样透传。
+// 纯 JSON 透传，统一走 authedProxyFetch（读 cookie → Bearer → 统一 {code,message,data} 信封）。
 export async function GET(request: NextRequest) {
-    const token = request.cookies.get(ACCESS_TOKEN_KEY)?.value
-    if (!token) {
-        return NextResponse.json({ code: 401, message: "未登录", data: null }, { status: 401 })
-    }
-
     const qs = request.nextUrl.searchParams.toString()
-
-    let res: Response
-    try {
-        res = await fetch(`${REMOTE}${qs ? `?${qs}` : ""}`, {
-            headers: { Authorization: `Bearer ${token}` },
-            cache: "no-store",
-        })
-    } catch {
-        return NextResponse.json({ code: 502, message: "无法连接后端服务", data: null }, { status: 502 })
-    }
-
-    const json = await res.json().catch(() => null)
-    if (!res.ok) {
-        return NextResponse.json(
-            { code: json?.code ?? res.status, message: json?.message || `请求失败（HTTP ${res.status}）`, data: null },
-            { status: res.status }
-        )
-    }
-    return NextResponse.json({ code: 200, message: json?.message || "ok", data: json?.data ?? null })
+    return authedProxyFetch(`/links${qs ? `?${qs}` : ""}`, { method: "GET" })
 }
 
+// 新建友链：POST 转发到远端 /links（body 由远端校验，这里不解析）。
 export async function POST(request: NextRequest) {
-    const token = request.cookies.get(ACCESS_TOKEN_KEY)?.value
-    if (!token) {
-        return NextResponse.json({ code: 401, message: "未登录", data: null }, { status: 401 })
-    }
-
-    let body: unknown
-    try {
-        body = await request.json()
-    } catch {
-        return NextResponse.json({ code: 400, message: "请求体格式错误", data: null }, { status: 400 })
-    }
-
-    let res: Response
-    try {
-        res = await fetch(REMOTE, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-            cache: "no-store",
-        })
-    } catch {
-        return NextResponse.json({ code: 502, message: "无法连接后端服务", data: null }, { status: 502 })
-    }
-
-    const json = await res.json().catch(() => null)
-    if (!res.ok) {
-        return NextResponse.json(
-            { code: json?.code ?? res.status, message: json?.message || `请求失败（HTTP ${res.status}）`, data: null },
-            { status: res.status }
-        )
-    }
-    return NextResponse.json({ code: 200, message: json?.message || "ok", data: json?.data ?? null })
+    const body = await request.text()
+    return authedProxyFetch("/links", {
+        method: "POST",
+        body,
+        headers: { "Content-Type": "application/json" },
+    })
 }

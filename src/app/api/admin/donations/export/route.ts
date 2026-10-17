@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { API_URL } from "@/lib/api";
+import { ACCESS_TOKEN_KEY } from "@/lib/auth";
 
 // 导出打赏记录：GET /api/admin/donations/export → 远端 GET /pro/admin/donations/export
 // （PRO 模块，需管理员登录；线上只读探活：未带 token 返回 401）。
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
     }
 
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = cookieStore.get(ACCESS_TOKEN_KEY)?.value;
     if (!token) {
         return NextResponse.json({ code: 401, message: "未登录", data: null }, { status: 401 });
     }

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { ACCESS_TOKEN_KEY } from "@/lib/auth";
 
 // 登录后写入的 accessToken cookie 名（见 src/lib/auth.ts）
-const TOKEN_COOKIE = "token"
+const TOKEN_COOKIE = ACCESS_TOKEN_KEY
 
 // 远端后端地址（NEXT_PUBLIC_API_URL 已含 /api 前缀）
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ""
@@ -12,9 +13,28 @@ const STATIC_SEGMENTS = new Set(
     (process.env.APP_STATIC_ROUTE_SEGMENTS ?? "").split(",").map((s) => s.trim()).filter(Boolean)
 )
 
-/** 后端自定义页面存在性探测结果的短缓存（同一实例内避免重复打接口） */
+// 后端自定义页面存在性探测结果的短缓存（同一实例内避免重复打接口）
 const PROBE_TTL_MS = 30_000
 const probeCache = new Map<string, { exists: boolean; at: number }>()
+
+/**
+ * 后台「真实存在」的路由正则（构建时扫描 src/app/admin 生成，见 next.config.ts 的
+ * env.APP_ADMIN_ROUTE_REGEXPS）。动态段已编译成 `[^/]+`，catch-all 不在其中。
+ */
+const ADMIN_ROUTES: RegExp[] = (() => {
+  try {
+    const raw = JSON.parse(process.env.APP_ADMIN_ROUTE_REGEXPS ?? "[]") as string[]
+    return raw.map((src) => new RegExp(`^/${src}/?$`))
+  } catch {
+    return []
+  }
+})()
+
+/** 该 /admin 路径是不是一个真实存在的后台页面（列表为空时一律按「存在」处理，避免误杀） */
+function isKnownAdminRoute(pathname: string): boolean {
+  if (ADMIN_ROUTES.length === 0) return true
+  return ADMIN_ROUTES.some((re) => re.test(pathname))
+}
 
 /**
  * 构造跳转：优先用反向代理透传的 X-Forwarded-Host/Proto（公共域名），
@@ -92,7 +112,26 @@ export async function proxy(request: NextRequest) {
         return redirectTo(request, "/login")
     }
 
-    // 3. 自定义页面不存在 → 这里直接返回真 404
+    // 3. 后台不存在的路径 → rewrite 到后台内的 404 页，并带上**真 404 状态码**
+    //
+    // 为什么要放在这里：app/admin/[...rest]/page.tsx 能保证「404 界面套后台外壳」，
+    // 但页面组件无法设置 HTTP 状态码（只能在中间件里定），于是 /admin/<乱写> 一直是 200 ——
+    // 对爬虫、监控、前端 fetch 的错误分支都是错的语义。
+    // 现在：路径不在「后台已存在的路由表」里 → 直接 404（状态码正确，外壳仍是后台的）。
+    //
+    // ⚠️ 必须先用 startsWith("/admin") 把范围锁死在后台：漏了这一步会把**全站**每个路径
+    //    都当成「不存在的后台页」重写到 /admin/not-found-view，进而被后台 layout 的登录守卫
+    //    统一踢到 /login（实测表现：/ 、/login 全 307 到 /login）。
+    // 只处理 GET/HEAD：POST 等写请求被 rewrite 到页面没有意义。
+    if (
+        (request.method === "GET" || request.method === "HEAD") &&
+        (pathname === "/admin" || pathname.startsWith("/admin/")) &&
+        !isKnownAdminRoute(pathname)
+    ) {
+        return NextResponse.rewrite(new URL("/admin/not-found-view", request.url), { status: 404 })
+    }
+
+    // 4. 自定义页面不存在 → 这里直接返回真 404
     //
     // 为什么要放在中间件：自定义页面由 (blog)/[...slug] 兜底渲染，页面内调用 notFound() 时
     // 响应早已开始流式输出（根 loading.tsx 是 Suspense 边界），状态码改不了，只能返回 200
@@ -106,7 +145,7 @@ export async function proxy(request: NextRequest) {
         }
     }
 
-    // 4. 注入当前路径，供服务端 layout 判断（如文章详情页跳过全局侧边栏）
+    // 5. 注入当前路径，供服务端 layout 判断（如文章详情页跳过全局侧边栏）
     const response = NextResponse.next()
     response.headers.set("x-pathname", pathname)
     return response

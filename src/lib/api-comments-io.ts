@@ -1,8 +1,8 @@
 // 评论导入 / 导出 API（客户端调用同源代理路由 /api/admin/comments/*，不直连远端）。
 //
-// 为什么不复用 @/lib/api 里的 request：它是模块私有函数（未导出），而本文件按任务约定
-// 只能新增、不能改动 src/lib/api.ts，所以这里自带一个同样口径的小 fetch 助手
-// （同源路径 → 解析 { code, message, data } 信封 → 失败抛 ApiError 风格错误）。
+// 为什么不直接用 @/lib/api 里的 request：本模块的导出接口返回的是**文件流**（application/zip），
+// 需要拿到原始 Response 去读 blob / Content-Disposition，而 request 只解 { code, message, data } 信封；
+// 所以这里保留直接 fetch 的写法，信封类型统一用 @/lib/api 的 ApiEnvelope。
 //
 // 远端接口与形状（源码证据，非猜测）：
 //  - internal/infra/router/router.go:279-289 管理员评论组（JWTAuth + AdminAuth）：
@@ -23,15 +23,10 @@
 //      文件是 io.ReadAll 全量读进内存），所以浏览器端与代理层的上限属于**本地保护**，
 //      后端真会接受的更大文件我们主动不放行，避免一次打满内存。
 
+import type { ApiEnvelope } from "@/lib/api";
+
 /** 同源代理路由的统一前缀 */
 const BASE = "/api/admin/comments";
-
-/** 后端统一响应信封 { code, message, data }（与 pkg/response/response.go:24 的 Success 一致） */
-interface ApiEnvelope<T> {
-    code: number;
-    message: string;
-    data: T;
-}
 
 /** 代理层与浏览器端共用的导入文件体积上限（后端无限制，见文件头注释） */
 export const MAX_COMMENT_IMPORT_SIZE = 32 * 1024 * 1024;

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ChevronRight } from "lucide-react"
 import {
@@ -63,15 +64,42 @@ const SUB_ACTIVE_CLS = "bg-primary/10 text-primary font-medium"
 /* 所在分组（子项命中当前页）的主菜单：浅灰 + 加粗 */
 const PARENT_ACTIVE_CLS = "bg-sidebar-accent font-medium"
 
+/**
+ * 找出当前 pathname 对应的导航项 url。
+ *
+ * 只做 `url === pathname` 精确比较是不够的：进入 /admin/post-management/new、
+ * /admin/storage/<id>、/admin/image-styles/cache 这类子页时，父项不会高亮、
+ * 分组也不会自动展开（用户看到的症状是「我明明在后台，侧边栏却没选中任何一项」）。
+ *
+ * 所以按「精确命中 → 最长前缀」取一个：最长前缀能同时处理
+ * /admin/image-styles 与 /admin/image-styles/cache 这种互为前缀的兄弟项，
+ * 不会让两个都亮。
+ */
+function matchActiveUrl(items: NavMainItem[], pathname: string): string | null {
+  const urls = items
+    .flatMap((item) => [item.url, ...(item.items?.map((sub) => sub.url) ?? [])])
+    .filter((url): url is string => Boolean(url))
+
+  let best: string | null = null
+  for (const url of urls) {
+    const hit = pathname === url || pathname.startsWith(url.endsWith("/") ? url : `${url}/`)
+    if (hit && (!best || url.length > best.length)) best = url
+  }
+  return best
+}
+
 export function NavMain({ items }: { items: NavMainItem[] }) {
   const pathname = usePathname()
   const { state, isMobile } = useSidebar()
   // 桌面端把侧边栏收成「图标栏」时：目录项点击在右侧弹出子菜单
   const iconMode = state === "collapsed" && !isMobile
 
+  // 当前高亮的导航项（精确命中优先，其次最长前缀 —— 处理子页与互为前缀的兄弟项）
+  const activeUrl = matchActiveUrl(items, pathname)
+
   // 初始展开包含当前页面的分组
   const [openKey, setOpenKey] = useState<string | null>(
-    () => items.find((item) => item.items?.some((sub) => sub.url === pathname))?.title ?? null
+    () => items.find((item) => item.items?.some((sub) => sub.url === matchActiveUrl(items, pathname)))?.title ?? null
   )
 
   // 客户端软导航（next/link）时 pathname 变化但组件不会重挂载，导致分组不跟随展开。
@@ -80,16 +108,17 @@ export function NavMain({ items }: { items: NavMainItem[] }) {
   const [prevPathname, setPrevPathname] = useState(pathname)
   if (prevPathname !== pathname) {
     setPrevPathname(pathname)
+    const nextActive = matchActiveUrl(items, pathname)
     const activeTitle =
-      items.find((item) => item.items?.some((sub) => sub.url === pathname))?.title ?? null
+      items.find((item) => item.items?.some((sub) => sub.url === nextActive))?.title ?? null
     if (activeTitle) {
       setOpenKey((prev) => (prev === activeTitle ? prev : activeTitle))
     }
   }
 
   const groupActive = (item: NavMainItem) =>
-    item.items?.some((sub) => sub.url === pathname) ?? false
-  const itemActive = (item: NavMainItem) => item.url === pathname || groupActive(item)
+    item.items?.some((sub) => sub.url === activeUrl) ?? false
+  const itemActive = (item: NavMainItem) => item.url === activeUrl || groupActive(item)
 
   return (
     <SidebarGroup>
@@ -120,16 +149,16 @@ export function NavMain({ items }: { items: NavMainItem[] }) {
                     <DropdownMenuContent side="right" align="start" sideOffset={8} className="w-48">
                       {item.items!.map((sub) => (
                         <DropdownMenuItem key={sub.url} asChild>
-                          <a
+                          <Link
                             href={sub.url}
                             className={cn(
                               "flex w-full cursor-pointer items-center gap-2",
-                              sub.url === pathname && SUB_ACTIVE_CLS
+                              sub.url === activeUrl && SUB_ACTIVE_CLS
                             )}
                           >
                             <span className="truncate">{sub.title}</span>
                             {sub.pro && <ProBadge />}
-                          </a>
+                          </Link>
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
@@ -163,7 +192,7 @@ export function NavMain({ items }: { items: NavMainItem[] }) {
                 {openKey === item.title && (
                   <SidebarMenuSub className="gap-1 pt-1">
                     {item.items!.map((sub) => {
-                      const active = sub.url === pathname
+                      const active = sub.url === activeUrl
                       return (
                         <SidebarMenuSubItem key={sub.title}>
                           <SidebarMenuSubButton
@@ -173,10 +202,10 @@ export function NavMain({ items }: { items: NavMainItem[] }) {
                               active ? SUB_ACTIVE_CLS : HOVER_CLS
                             )}
                           >
-                            <a href={sub.url}>
+                            <Link href={sub.url}>
                               <span>{sub.title}</span>
                               {sub.pro && <ProBadge />}
-                            </a>
+                            </Link>
                           </SidebarMenuSubButton>
                         </SidebarMenuSubItem>
                       )
@@ -195,10 +224,12 @@ export function NavMain({ items }: { items: NavMainItem[] }) {
                     itemActive(item) ? ACTIVE_CLS : HOVER_CLS
                   )}
                 >
-                  <a href={item.url}>
+                  {/* 软导航必须用 next/link：原来这里是 <a href>，每次点侧边栏都整页刷新，
+                      TopProgress 与侧边栏折叠状态都会白做一遍 */}
+                  <Link href={item.url ?? "#"}>
                     {item.icon}
                     <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )

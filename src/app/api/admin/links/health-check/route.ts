@@ -1,36 +1,7 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
+import { authedProxyFetch } from "@/lib/admin-api"
 
-import { API_URL } from "@/lib/api"
-import { ACCESS_TOKEN_KEY } from "@/lib/auth"
-
-// 管理员友链健康检查：POST 转发到远端 /links/health-check（触发后台执行友链健康检查，需登录）。
-// 后端不开放 CORS 且需鉴权，浏览器端不能直连，由本路由读取 httpOnly cookie 中的 token 转发。
-const REMOTE = `${API_URL}/links/health-check`
-
-export async function POST(request: NextRequest) {
-    const token = request.cookies.get(ACCESS_TOKEN_KEY)?.value
-    if (!token) {
-        return NextResponse.json({ code: 401, message: "未登录", data: null }, { status: 401 })
-    }
-
-    let res: Response
-    try {
-        res = await fetch(REMOTE, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-            cache: "no-store",
-        })
-    } catch {
-        return NextResponse.json({ code: 502, message: "无法连接后端服务", data: null }, { status: 502 })
-    }
-
-    const json = await res.json().catch(() => null)
-    if (!res.ok) {
-        return NextResponse.json(
-            { code: json?.code ?? res.status, message: json?.message || `请求失败（HTTP ${res.status}）`, data: null },
-            { status: res.status }
-        )
-    }
-    return NextResponse.json({ code: 200, message: json?.message || "ok", data: json?.data ?? null })
+// 管理员友链健康检查：POST 转发到远端 /links/health-check（触发后台执行，需登录）。
+// 纯 JSON 透传，统一走 authedProxyFetch（读 cookie → Bearer → 统一 {code,message,data} 信封）。
+export async function POST() {
+    return authedProxyFetch("/links/health-check", { method: "POST" })
 }

@@ -26,10 +26,24 @@ const AVATAR_SIZE = 140;
  *
  * 优先级：调用方传入的站点配置 GRAVATAR_URL > 构建期环境变量 NEXT_PUBLIC_GRAVATAR_URL > 内置默认。
  * 保留环境变量这一层是为了兼容老配置（自建镜像），但运行时以站点配置为准。
+ *
+ * ⚠️ 域名纠正（2026-10 实测，别删）：
+ *   后台把 GRAVATAR_URL 填成了 `https://cravatar.cn/`，而 `cravatar.cn` 现在只发 **301**，
+ *   跳转到 `https://cn.cravatar.com/avatar/...`；实测 `cn.cravatar.com` **连不上**
+ *   （25s 超时，exit 28），于是**评论头像全部空白**——不是 404、不是错图，是干脆加载不出来。
+ *   对照实测：`cravatar.com`（不带 .cn）→ `200 image/webp 4.5KB`，`secure.gravatar.com` 也超时。
+ *   所以这里把已知「会 301 到不可达域名」的 cravatar.cn 直接改写成 cravatar.com；
+ *   同时建议后台把 GRAVATAR_URL 改成 `https://cravatar.com/`（改配置是根治，这里是兜底）。
  */
 export function normalizeGravatarBase(url?: string | null): string {
-    const base = (url || "").trim().replace(/\/+$/, "").replace(/\/avatar$/i, "");
-    return base || DEFAULT_GRAVATAR_BASE.replace(/\/+$/, "").replace(/\/avatar$/i, "") || "https://cravatar.cn";
+    const cleaned = (url || "")
+        .trim()
+        .replace(/\/+$/, "")
+        .replace(/\/avatar$/i, "");
+    const base =
+        cleaned || DEFAULT_GRAVATAR_BASE.replace(/\/+$/, "").replace(/\/avatar$/i, "") || "https://cravatar.cn";
+    // cravatar.cn → cravatar.com（前者 301 到一个连不上的镜像，见上面的实测记录）
+    return base.replace(/^(https?:\/\/)(?:www\.)?cravatar\.cn(?=\/|$)/i, "$1cravatar.com");
 }
 
 /** 从 Gravatar 风格 URL 里取出邮箱哈希（只认 /avatar/<32 位 hex>；取不到 = 不是 Gravatar 链接） */

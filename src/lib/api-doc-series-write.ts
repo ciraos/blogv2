@@ -1,4 +1,4 @@
-// 文档系列 · 写操作 + 系列文章（自带 fetch 助手，不动 src/lib/api.ts）
+// 文档系列 · 写操作 + 系列文章（同源代理请求；信封类型统一用 @/lib/api 的 ApiEnvelope）
 //
 // 远端契约（scripts/anheyu/anheyu-app-main）：
 //  - POST   /doc-series              { name, description, cover_url, sort }（router.go:338；
@@ -19,6 +19,7 @@
 //
 // 浏览器端一律走同源代理（/api/admin/doc-series/**、/api/admin/articles/{id}）。
 import { ApiError } from "@/lib/api";
+import type { ApiEnvelope as Envelope } from "@/lib/api";
 import type { DocSeries } from "@/types/doc-series";
 
 /** 系列文章列表项（远端 model.DocArticleItem，docseries.go:70-77） */
@@ -46,15 +47,9 @@ export interface DocSeriesFormPayload {
 /** 更新时允许只传改动项 */
 export type DocSeriesUpdatePayload = Partial<DocSeriesFormPayload>;
 
-interface Envelope<T> {
-    code: number;
-    message: string;
-    data: T;
-}
-
 /**
- * 同源代理请求助手（与 src/lib/api.ts 的 request 同口径：HTTP 2xx 且业务 code 为 200/0 才算成功）。
- * 这里自带一份是为了不动 api.ts —— 本文件的路径全部是本站 /api/ 开头的相对地址。
+ * 同源代理请求助手（口径与 src/lib/api.ts 的 request 完全一致：HTTP 2xx 且业务 code 为 200/0
+ * 才算成功，失败抛 api.ts 的 ApiError）。本文件的路径全部是本站 /api/ 开头的相对地址。
  */
 async function proxyRequest<T>(path: string, options: RequestInit): Promise<T> {
     const headers = new Headers(options.headers);

@@ -1,5 +1,5 @@
 // 订阅源（RSS 2.0 / Atom）共享逻辑：站点信息 + 文章数据 + XML 工具函数
-import { getAllPublicArticlesApi } from "@/lib/api";
+import { getAllPublicArticlesCached } from "@/lib/public-content-cache";
 import { SiteConfigResponse } from "@/types/site-config";
 
 const api_url = process.env.NEXT_PUBLIC_API_URL;
@@ -60,7 +60,7 @@ export async function getFeedData(): Promise<FeedData> {
 
     let articles: FeedArticle[] = [];
     try {
-        const list = await getAllPublicArticlesApi();
+        const list = await getAllPublicArticlesCached();
         articles = list
             .map((a) => ({
                 id: a.id,

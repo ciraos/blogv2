@@ -19,6 +19,7 @@ tsconfig.tsbuildinfo
 scripts
 
 # 文档与编辑器
+docs
 README.md
 .vscode
 

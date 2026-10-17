@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-import { getAllPublicArticlesApi } from "@/lib/api";
+import { getAllPublicArticlesCached } from "@/lib/public-content-cache";
 import { SiteConfigResponse } from "@/types/site-config";
 
 const api_url = process.env.NEXT_PUBLIC_API_URL;
@@ -64,7 +64,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // 文章页 /posts/{id}（URL 段与前台列表一致，用文章公共 id）
     try {
-        const articles = await getAllPublicArticlesApi();
+        const articles = await getAllPublicArticlesCached();
         for (const article of articles) {
             entries.push({
                 url: `${siteUrl}/posts/${article.id}`,

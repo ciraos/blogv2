@@ -1,8 +1,9 @@
 // 配置备份与迁移 API（客户端调用同源代理路由 /api/admin/config/*，不直连远端）。
 //
-// 为什么不复用 @/lib/api 里的 request：它是模块私有函数（未导出），而本文件按任务约定
-// 只能新增、不能改动 src/lib/api.ts，所以这里自带一个同样口径的小 fetch 助手
-// （同源路径 → 解析 { code, message, data } 信封 → 失败抛 ApiError 风格错误）。
+// 为什么不直接用 @/lib/api 里的 request：本模块的导出接口返回的是**文件流**（raw JSON），
+// 需要拿到原始 Response 去读 blob / Content-Disposition / X-Exported-Keys-Count，
+// 而 request 只解 { code, message, data } 信封；所以这里保留直接 fetch 的写法，
+// 信封类型统一用 @/lib/api 的 ApiEnvelope。
 //
 // 远端接口与形状（源码证据，非猜测）：
 //  - internal/infra/router/router.go:877-903 注册了 7 条路由（全部需 JWTAuth + AdminAuth）：
@@ -21,6 +22,8 @@
 //      X-Exported-Keys-Count: 导出条目数；正文是配置 JSON（MarshalIndent）。
 //  - import_export_handler.go:79-94 导入是 multipart/form-data，字段名 file，
 //      文件名必须以 .json 结尾，且 ≤10MB。
+
+import type { ApiEnvelope } from "@/lib/api";
 
 /** 备份元数据（字段名与后端 BackupInfo 完全一致） */
 export interface ConfigBackupInfo {
@@ -47,12 +50,6 @@ export interface ConfigExportResult {
 
 /** 同源代理路由的统一前缀 */
 const BASE = "/api/admin/config";
-
-interface ApiEnvelope<T> {
-    code: number;
-    message: string;
-    data: T;
-}
 
 /** 带 HTTP 状态与业务 code 的错误（与 @/lib/api 的 ApiError 同形状，便于统一处理） */
 export class ConfigBackupApiError extends Error {

@@ -5,6 +5,7 @@ import { cookies } from "next/headers"
 
 import { API_URL, getCommentsWithChildrenApi } from "@/lib/api"
 import { clientForwardHeaders } from "@/lib/proxy-headers"
+import { ACCESS_TOKEN_KEY } from "@/lib/auth";
 
 interface CommentCreateResponse {
     code: number
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cookieStore = await cookies()
-    const token = cookieStore.get("token")?.value
+    const token = cookieStore.get(ACCESS_TOKEN_KEY)?.value
 
     const headers = clientForwardHeaders(request)
     headers.set("Content-Type", "application/json")

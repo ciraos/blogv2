@@ -1,9 +1,8 @@
 // 主题商城「写操作 + 主题配置」API（客户端调用同源代理路由 /api/admin/themes/*，不直连远端）。
 //
-// 为什么不复用 @/lib/api 里的 request：它是模块私有函数（未导出），而本任务约定
-// 只能新增文件、不能改动 src/lib/api.ts，所以这里自带一个同口径的小 fetch 助手
-// （同源路径 → 解析 { code, message, data } 信封 → 失败抛带 status/code 的错误），
-// 与 src/lib/api-config-backup.ts 的做法一致。
+// 本文件保留一个极小的同源 fetch 助手（fetchEnvelope：同源路径 → 解析 { code, message, data }
+// 信封 → 失败抛带 status/code 的错误），与 src/lib/api-config-backup.ts 的做法一致；
+// 信封类型统一用 @/lib/api 的 ApiEnvelope。
 //
 // 远端契约（源码证据，逐条对应 src/app/api/admin/themes/*/route.ts 的注释）：
 //  - POST /theme/switch         body { theme_name }                      handler.go:250-285 / :433-435
@@ -27,15 +26,10 @@ import type {
     ThemeUploadResponse,
     ThemeValidationResult,
 } from "@/types/themes";
+import type { ApiEnvelope } from "@/lib/api";
 
 /** 同源代理路由的统一前缀 */
 const BASE = "/api/admin/themes";
-
-interface ApiEnvelope<T> {
-    code: number;
-    message: string;
-    data: T;
-}
 
 /** 带 HTTP 状态与业务 code 的错误（与 @/lib/api 的 ApiError 同形状，便于统一处理） */
 export class ThemeApiError extends Error {

@@ -1,8 +1,8 @@
 // 说说（即刻）管理「批量删除 / 导出 / 导入」专用的同源 fetch 助手。
 //
 // 为什么另起一个文件而不是写进 src/lib/api.ts：
-//   lib/api.ts 是全局公共模块（前台 / 首页 / 用户中心都在用），本次任务不允许改动它；
-//   本文件只服务后台「说说管理」，按同样口径自带一个小的 fetch 助手。
+//   lib/api.ts 是全局公共模块（前台 / 首页 / 用户中心都在用），本文件只服务后台「说说管理」，
+//   单独放可以避免为了这几个接口去动公共文件；信封类型统一用 @/lib/api 的 ApiEnvelope。
 //
 // 后端不开放 CORS，浏览器必须走同源 /api/admin/essays/* 代理；代理再带上 httpOnly cookie
 // 里的 token 转发到远端（见 src/app/api/admin/essays/{batch,export,import}/route.ts）。
@@ -29,15 +29,10 @@
 //
 // ⚠️ 批量删除与导入都是**写操作**，本模块只负责调用，二次确认由调用方（essays-manager.tsx）负责。
 
+import type { ApiEnvelope } from "@/lib/api";
+
 /** 同源代理路由前缀 */
 const BASE = "/api/admin/essays";
-
-/** 远端统一响应信封 { code, message, data } */
-interface ApiEnvelope<T> {
-    code: number;
-    message: string;
-    data: T;
-}
 
 /** 代理层与浏览器端共用的导入文件体积上限（本地保护；后端上限未知，宁可本地先拦） */
 export const MAX_ESSAY_IMPORT_SIZE = 32 * 1024 * 1024;

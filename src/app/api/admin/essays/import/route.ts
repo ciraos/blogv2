@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { API_URL } from "@/lib/api";
+import { ACCESS_TOKEN_KEY } from "@/lib/auth";
 
 // 导入说说：POST /api/admin/essays/import → 远端 POST /pro/admin/essays/import
 // （PRO 模块，需管理员登录；⚠️ 会写说说表，按要求**不在线上实测**）。
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = cookieStore.get(ACCESS_TOKEN_KEY)?.value;
     if (!token) {
         return NextResponse.json({ code: 401, message: "未登录", data: null }, { status: 401 });
     }

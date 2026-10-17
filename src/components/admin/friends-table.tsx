@@ -7,6 +7,7 @@ import {
     ArrowUpDown,
     BadgeCheck,
     Camera,
+    Check,
     FolderOpen,
     Globe,
     Image as ImageIcon,
@@ -17,6 +18,7 @@ import {
     Tag,
     Trash2,
     Type,
+    X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,7 @@ import {
     getAdminLinkCategoriesApi,
     getAdminLinkTagsApi,
     getAdminLinksApi,
+    reviewAdminLinkApi,
     updateAdminLinkApi,
 } from "@/lib/api";
 import { cn, resolveAssetUrl } from "@/lib/utils";
@@ -120,6 +123,8 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
     const [saving, setSaving] = useState(false);
     /** 正在删除的友链 id（单条删除时禁用该行按钮，避免重复提交） */
     const [deletingId, setDeletingId] = useState<number | null>(null);
+    /** 正在审核中的友链 id（禁用行内按钮，避免连点） */
+    const [reviewingId, setReviewingId] = useState<number | null>(null);
     /** 批量删除进行中 */
     const [batchDeleting, setBatchDeleting] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
@@ -260,6 +265,37 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
             toast.error(e instanceof Error ? e.message : "删除失败");
         } finally {
             setDeletingId(null);
+        }
+    };
+
+    /**
+     * 审核友链：PUT /api/admin/links/{id}/review（远端 /links/:id/review）。
+     *
+     * 只有 PENDING 的行显示这两个按钮。拒绝时不弹输入框，直接不带原因提交
+     * （远端 reject_reason 可选；将来要收集原因，在这里加一层 ConfirmProvider 的输入即可）。
+     */
+    const handleReview = async (link: FriendLink, status: "APPROVED" | "REJECTED") => {
+        if (
+            !(await confirm({
+                title: status === "APPROVED" ? `通过友链「${link.name}」？` : `拒绝友链「${link.name}」？`,
+                description:
+                    status === "APPROVED"
+                        ? `${link.url}\n通过后会出现在前台友链页。`
+                        : `${link.url}\n拒绝后不再展示，申请记录保留。`,
+                danger: status === "REJECTED",
+            }))
+        )
+            return;
+
+        setReviewingId(link.id);
+        try {
+            await reviewAdminLinkApi(link.id, status);
+            toast.success(status === "APPROVED" ? "已通过" : "已拒绝");
+            setRefreshKey((k) => k + 1);
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "审核失败");
+        } finally {
+            setReviewingId(null);
         }
     };
 
@@ -488,6 +524,37 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                                     </div>
                                     {/* 操作 */}
                                     <div className="flex items-center justify-end gap-1">
+                                        {/* 待审的友链才有通过 / 拒绝（走 /links/{id}/review，留审核痕迹） */}
+                                        {link.status === "PENDING" && (
+                                            <>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon-sm"
+                                                    aria-label={`通过 ${link.name}`}
+                                                    title="通过"
+                                                    className="text-green-600 hover:bg-green-500/10 hover:text-green-700 dark:text-green-400"
+                                                    disabled={reviewingId === link.id}
+                                                    onClick={() => void handleReview(link, "APPROVED")}
+                                                >
+                                                    {reviewingId === link.id ? (
+                                                        <Loader2 className="size-4 animate-spin" />
+                                                    ) : (
+                                                        <Check className="size-4" />
+                                                    )}
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon-sm"
+                                                    aria-label={`拒绝 ${link.name}`}
+                                                    title="拒绝"
+                                                    className="text-destructive hover:bg-destructive/10"
+                                                    disabled={reviewingId === link.id}
+                                                    onClick={() => void handleReview(link, "REJECTED")}
+                                                >
+                                                    <X className="size-4" />
+                                                </Button>
+                                            </>
+                                        )}
                                         <Button
                                             variant="ghost"
                                             size="icon-sm"

@@ -1,25 +1,12 @@
-import type { Metadata } from "next";
-import { generateBlogMetadata } from "@/lib/seo";
-import { ImageStylesManager } from "@/components/admin/image-styles-manager";
+import { redirect } from "next/navigation";
 
-export async function generateMetadata(): Promise<Metadata> {
-    return generateBlogMetadata("图片样式缓存");
-}
-
-// /admin/image-styles：与 /admin/image-styles/cache 同一份实现（侧边栏当前指向 cache 那条）。
-// 两条路由都留着，是为了让任务指定的路径与既有导航都能直达，避免动 app-sidebar.tsx。
-export default function ImageStyles() {
-    return (
-        <div className="admin-page">
-            <div className="admin-page-head">
-                <div>
-                    <h2 className="text-xl font-semibold tracking-tight">图片样式缓存</h2>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                        按存储策略查看/编辑命名样式与自动压缩，查看派生缓存统计，并可重新生成缩略图、按目录批量重新生成、清理图片缓存
-                    </p>
-                </div>
-            </div>
-            <ImageStylesManager />
-        </div>
-    )
+/**
+ * /admin/image-styles → /admin/image-styles/cache
+ *
+ * 这两条路由原本各有一份**内容完全相同**的页面（同一张「图片样式缓存」页挂两个 URL）。
+ * 侧边栏指向的是 `/admin/image-styles/cache`，`/admin/image-styles` 只是历史入口/任务里提到过的路径。
+ * 现在改成重定向：实现只保留一份（`cache/page.tsx`），老链接仍然可达。
+ */
+export default function ImageStylesRedirect() {
+    redirect("/admin/image-styles/cache");
 }

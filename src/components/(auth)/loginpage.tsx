@@ -77,7 +77,16 @@ export function LoginPage({ registered = false }: { registered?: boolean }) {
                         />
                     </Field>
                     <Field>
-                        <FieldLabel htmlFor="password">密码</FieldLabel>
+                        <div className="flex items-center justify-between gap-2">
+                            <FieldLabel htmlFor="password">密码</FieldLabel>
+                            {/* 找回密码：邮箱收重置信 → /reset-password?publicUserId=&sign= */}
+                            <Link
+                                href="/forgot-password"
+                                className="text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline"
+                            >
+                                忘记密码？
+                            </Link>
+                        </div>
                         <div className="relative">
                             <Input
                                 id="password"

@@ -9,12 +9,13 @@
 // 分区（左侧导航按 SETTINGS_GROUP_ORDER 的分组聚拢）：
 //   站点信息：基本信息、Logo 与图标；
 //   外观配置：换肤与配色、首页设置、导航与页头、顶栏用户面板、侧边栏、页面大图、页脚；
-//   内容管理：文章配置、文件处理；用户通知：评论系统；三方服务：第三方登录；
+//   内容管理：文章配置、文件处理；用户通知：评论系统、邮件服务；三方服务：第三方登录；
 //   页面显示：关于页面、各页面横幅与前台站长信息；高级功能：注册与外链、AI 功能、人机验证、微信分享、其它开关。
 
 import type { LucideIcon } from "lucide-react";
 import {
     Backpack,
+    CreditCard,
     FileImage,
     FileText,
     GalleryHorizontalEnd,
@@ -26,6 +27,7 @@ import {
     KeyRound,
     LayoutDashboard,
     Link2,
+    Mail,
     Menu,
     MessageCircle,
     MessageSquare,
@@ -48,6 +50,8 @@ import { BUILT_IN_SKINS, DEFAULT_SKIN_ID, type AppearanceModeTokens } from "@/li
 export type SettingsFieldType =
     | "text"
     | "textarea"
+    /** 密码类（SMTP_PASSWORD 等）：密文输入框；配合 sensitive 做掩码回显 */
+    | "password"
     | "number"
     | "boolean"
     | "select"
@@ -63,7 +67,13 @@ export type SettingsFieldType =
      * 分模块布局：AI 摘要 / AI 写作 / AI 播客 / AI 助手），草稿与保存仍走本文件的
      * buildSettingsBaseline / isFieldDirty / buildSettingsPayload，不另造一套提交逻辑。
      */
-    | "ai";
+    | "ai"
+    /**
+     * 支付配置区专用：整块交给 src/components/admin/payment-settings-panel.tsx 渲染。
+     * 这些配置**不在设置表里**（PRO 侧走 /pro/payment/config/* 独立接口），所以这个字段只是
+     * 占位标记（key 用 payment.__panel），不参与草稿与保存。
+     */
+    | "payment";
 
 /** type="ai" 时的控件细类（面板按它决定渲染成什么输入框；model = 可选可输入的下拉+自由文本） */
 export type SettingsAiControl = "text" | "password" | "number" | "textarea" | "select" | "model";
@@ -91,6 +101,14 @@ export interface SettingsField {
     itemFields?: SettingsListField[];
     /** 独占整行 */
     wide?: boolean;
+    /** type=textarea 的行数（默认 3；邮件模板这类长文本用 10+） */
+    rows?: number;
+    /**
+     * 该键**不随公开的 /public/site-config 下发**（如 SMTP_*、DEFAULT_*_TEMPLATE）：
+     * settings-manager 挂载时会额外走 POST /settings/get-by-keys 补读真实值，
+     * 否则面板只会显示空态、把「已配置」误判成「没配」。
+     */
+    remoteOnly?: boolean;
     /** type="ai"：该字段归属的模块（面板按模块分块渲染） */
     aiModule?: "summary" | "writing" | "podcast" | "assistant";
     /** type="ai"：控件细类 */
@@ -118,6 +136,12 @@ export interface SettingsSection {
     /** 搜索用关键词（分区级；分组/字段名也会参与匹配） */
     keywords?: string[];
     desc?: string;
+    /**
+     * 分区级「危险/未接通」提示（黄色告警条，渲染在标题下方）。
+     * 用于「后端支持、但前台还没接」的开关：让管理员在拨开关之前就看到后果，
+     * 而不是拨完发现前台静默失效。目前只有「人机验证」用。
+     */
+    warning?: string;
     groups: SettingsGroup[];
 }
 
@@ -1168,6 +1192,141 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
         ],
     },
     {
+        id: "features-email",
+        label: "邮件服务",
+        group: "用户通知",
+        icon: Mail,
+        keywords: ["邮件", "email", "mail", "smtp", "发信", "授权码", "激活", "密码重置", "通知"],
+        desc: "SMTP 发信配置与系统邮件模板（密码重置、账号激活）。这批键只存在后台设置里，不随公开站点配置下发。",
+        groups: [
+            {
+                // 键名与后端 constant.SettingKey 一一对应（pkg/constant/setting.go 的 KeySmtp*），
+                // 标签/取值建议照官方 EmailSettingsForm.tsx 抄，避免与官方后台对不上。
+                id: "mail-smtp",
+                label: "SMTP 配置",
+                fields: [
+                    {
+                        key: "SMTP_HOST",
+                        label: "SMTP 主机",
+                        type: "text",
+                        remoteOnly: true,
+                        placeholder: "smtp.qq.com",
+                        hint: "QQ / 163 需先在邮箱设置里开启 SMTP 服务",
+                    },
+                    {
+                        key: "SMTP_PORT",
+                        label: "SMTP 端口",
+                        type: "text",
+                        remoteOnly: true,
+                        placeholder: "465",
+                        hint: "SSL 常用 465，STARTTLS 常用 587",
+                    },
+                    {
+                        key: "SMTP_USERNAME",
+                        label: "用户名",
+                        type: "text",
+                        remoteOnly: true,
+                        placeholder: "user@example.com",
+                        hint: "一般就是完整邮箱地址",
+                    },
+                    {
+                        key: "SMTP_PASSWORD",
+                        label: "密码 / 授权码",
+                        type: "password",
+                        remoteOnly: true,
+                        // sensitive：回显是掩码、没改动就不提交，避免把 ******** 写回后端
+                        sensitive: true,
+                        placeholder: "SMTP 授权码（不是邮箱登录密码）",
+                        hint: "已配置时显示为掩码；只填新值即覆盖",
+                    },
+                    {
+                        key: "SMTP_SENDER_NAME",
+                        label: "发件人名称",
+                        type: "text",
+                        remoteOnly: true,
+                        placeholder: "安和鱼",
+                    },
+                    {
+                        key: "SMTP_SENDER_EMAIL",
+                        label: "发件人邮箱",
+                        type: "text",
+                        remoteOnly: true,
+                        placeholder: "user@example.com",
+                        hint: "建议与 SMTP 用户名一致，否则易被判为垃圾邮件",
+                    },
+                    {
+                        key: "SMTP_REPLY_TO_EMAIL",
+                        label: "回复邮箱",
+                        type: "text",
+                        remoteOnly: true,
+                        placeholder: "reply@example.com",
+                        hint: "收件人点「回复」时的收件地址；留空用发件人邮箱",
+                    },
+                    {
+                        key: "SMTP_FORCE_SSL",
+                        label: "强制 SSL",
+                        type: "boolean",
+                        remoteOnly: true,
+                        hint: "465 端口一般要开；587（STARTTLS）一般不开",
+                    },
+                ],
+            },
+            {
+                id: "mail-reset-password",
+                label: "密码重置邮件",
+                fields: [
+                    {
+                        key: "DEFAULT_RESET_PASSWORD_SUBJECT",
+                        label: "邮件主题",
+                        type: "text",
+                        remoteOnly: true,
+                        placeholder: "【{{.AppName}}】重置您的账户密码",
+                        hint: "可用变量 {{.AppName}}",
+                    },
+                    {
+                        key: "DEFAULT_RESET_PASSWORD_TEMPLATE",
+                        label: "邮件模板（HTML）",
+                        type: "textarea",
+                        remoteOnly: true,
+                        wide: true,
+                        rows: 10,
+                        hint: "变量：{{.Nickname}} {{.AppName}} {{.ResetLink}} {{.ExpireMinutes}}",
+                    },
+                ],
+            },
+            {
+                id: "mail-activate",
+                label: "账号激活邮件",
+                fields: [
+                    {
+                        key: "ENABLE_USER_ACTIVATION",
+                        label: "启用账号激活",
+                        type: "boolean",
+                        remoteOnly: true,
+                        hint: "开启后注册的新账号需点邮件链接激活才能登录",
+                    },
+                    {
+                        key: "DEFAULT_ACTIVATE_ACCOUNT_SUBJECT",
+                        label: "邮件主题",
+                        type: "text",
+                        remoteOnly: true,
+                        placeholder: "【{{.AppName}}】激活您的账户",
+                        hint: "可用变量 {{.AppName}}",
+                    },
+                    {
+                        key: "DEFAULT_ACTIVATE_ACCOUNT_TEMPLATE",
+                        label: "邮件模板（HTML）",
+                        type: "textarea",
+                        remoteOnly: true,
+                        wide: true,
+                        rows: 10,
+                        hint: "变量：{{.Nickname}} {{.AppName}} {{.ActivateLink}} {{.ExpireMinutes}}",
+                    },
+                ],
+            },
+        ],
+    },
+    {
         id: "features-media",
         label: "文件处理",
         group: "内容管理",
@@ -1555,6 +1714,8 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
         icon: ShieldCheck,
         keywords: ["人机验证", "验证", "turnstile", "cloudflare", "captcha"],
         desc: "验证服务选择与图片验证码参数；Turnstile 的 site key 属敏感项，不在此维护。",
+        warning:
+            "⚠️ 前台评论表单尚未接入任何验证码（既没有 /public/captcha/image 控件，提交也不带 captcha_id）。线上当前 captcha.provider = none；一旦改成 geetest / turnstile，评论提交会被后端拒绝，且前台没有任何提示。要开请先让前端接上验证码组件（见 docs/api-known-issues.md）。",
         groups: [
             {
                 id: "captcha-provider",
@@ -1629,6 +1790,31 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                 fields: [
                     { key: "fireworks.button_text", label: "按钮文案", type: "text", placeholder: "节日快乐" },
                     { key: "fireworks.message", label: "祝福文案", type: "textarea", wide: true },
+                ],
+            },
+        ],
+    },
+    {
+        id: "features-payment",
+        label: "支付配置",
+        group: "高级功能",
+        icon: CreditCard,
+        keywords: ["支付", "payment", "支付宝", "alipay", "微信支付", "wechat", "易支付", "epay", "虎皮椒", "hupijiao", "回调"],
+        desc: "PRO 支付通道：支付宝 / 微信支付 / 易支付 / 虎皮椒的密钥、回调地址、启停与连接测试。",
+        groups: [
+            {
+                // 整块交给 PaymentSettingsPanel 渲染（每种支付方式有自己的字段集合、
+                // 保存接口、启停与测试动作，逐字段塞进通用表单表达不了）。
+                // 这里登记一个占位字段，只为了让它能进搜索索引、「本组 N 项」有东西可数；
+                // 该键不会进草稿，也不会被保存。
+                id: "payment-panel",
+                label: "支付通道",
+                fields: [
+                    {
+                        key: "payment.__panel",
+                        label: "支付通道（支付宝 / 微信支付 / 易支付 / 虎皮椒）",
+                        type: "payment",
+                    },
                 ],
             },
         ],
@@ -2173,6 +2359,17 @@ export const ALL_SETTINGS_FIELDS: SettingsField[] = SETTINGS_SECTIONS.flatMap((s
 export const AI_SETTINGS_FIELDS: SettingsField[] = ALL_SETTINGS_FIELDS.filter((field) => Boolean(field.aiModule));
 /** 上述字段的后端键（去重） */
 export const AI_SETTINGS_KEYS: string[] = Array.from(new Set(AI_SETTINGS_FIELDS.map((field) => field.key)));
+
+/**
+ * 标了 remoteOnly 的字段（SMTP_*、DEFAULT_*_TEMPLATE、ENABLE_USER_ACTIVATION 等）：
+ * 公开的 /public/site-config 里没有这些键，必须另走 POST /settings/get-by-keys 补读，
+ * 否则面板会把「后端已配置」显示成空态。
+ */
+export const REMOTE_ONLY_SETTINGS_FIELDS: SettingsField[] = ALL_SETTINGS_FIELDS.filter((field) => Boolean(field.remoteOnly));
+/** 上述字段的后端键（去重） */
+export const REMOTE_ONLY_SETTINGS_KEYS: string[] = Array.from(
+    new Set(REMOTE_ONLY_SETTINGS_FIELDS.map((field) => field.key))
+);
 
 /** 后端对敏感项的回显占位（只写不回显）；空串 = 未配置 */
 export function isSecretMask(value: unknown): boolean {
