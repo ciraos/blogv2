@@ -6,24 +6,13 @@ import { ThemeScheduleSync } from "@/components/ui/theme-schedule-sync";
 import { TopProgress } from "@/components/ui/top-progress";
 import { resolveAppearance } from "@/lib/appearance";
 import { resolveThemeSchedule } from "@/lib/scheduled-theme";
-import { getSiteConfigs } from "@/lib/site-config";
-import { SiteConfigResponse } from "@/types/site-config";
-
-const site_url = process.env.NEXT_PUBLIC_SITE_URL;
-const api_url = process.env.NEXT_PUBLIC_API_URL;
+import { getSiteConfigs, resolveSiteIcons } from "@/lib/site-config";
 
 export async function generateMetadata(): Promise<Metadata> {
-    const a = await fetch(`${api_url}/public/site-config`);
-    const data: SiteConfigResponse = await a.json();
-    // console.log(site_url + data.data.ICON_URL);
-    // apple-touch-icon：动态引用后端 logo（PNG 优先），无本地静态文件
-    const appleIcon = site_url + (data.data.LOGO_URL_192x192 || data.data.LOGO_URL || data.data.ICON_URL);
-    return {
-        icons: {
-            icon: site_url + data.data.ICON_URL,
-            apple: appleIcon,
-        },
-    };
+    // 与整页共用同一份配置（lib/site-config.ts 用 React cache 同请求去重），不再单独 fetch；
+    // 取不到时 resolveSiteIcons 会退回本地 favicon.ico，不会把登录页打成 500
+    const config = await getSiteConfigs();
+    return { icons: resolveSiteIcons(config) };
 }
 
 export default async function AuthLayout({ children }: Readonly<{ children: React.ReactNode; }>) {
