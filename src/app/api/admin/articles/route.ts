@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { revalidateTag } from "next/cache"
 
 import { adminProxyFetch } from "@/lib/admin-api"
-import { API_URL } from "@/lib/api"
+import { API_URL, ARTICLES_TAG } from "@/lib/api"
 import { ACCESS_TOKEN_KEY } from "@/lib/auth"
 
 // 管理员获取文章列表：GET 转发到远端 /articles（分页，可用 page/pageSize 查询参数）。
@@ -40,5 +41,9 @@ export async function GET(request: NextRequest) {    const token = request.cooki
 // 复用 authedProxyFetch：它负责读 httpOnly token cookie、补 Content-Type 与 401/502 处理。
 export async function POST(request: NextRequest) {
     const body = await request.text()
-    return adminProxyFetch("/articles", { method: "POST", body })
+    const res = await adminProxyFetch("/articles", { method: "POST", body })
+    // 新建成功 → 立刻让「文章」相关缓存（列表/详情/归档/sitemap）失效。
+    // 读接口的 revalidate(60s) 只是兜底上限；不清的话前台最多要等一分钟才看到新文章。
+    if (res.ok) revalidateTag(ARTICLES_TAG, { expire: 0 })
+    return res
 }

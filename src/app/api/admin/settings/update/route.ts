@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
+import { revalidateTag } from "next/cache";
 
 import { authedProxyFetch } from "@/lib/admin-api";
+import { SITE_CONFIG_TAG } from "@/lib/api";
 
 // 系统设置 · 保存（远端 POST /settings/update，需登录 + 管理员）
 // 请求体是「后端键 → 值」的扁平 map（后端键是点号路径，如 footer.socialBar.left）。
@@ -27,5 +29,8 @@ export async function POST(request: NextRequest) {
         return Response.json({ code: 400, message: "没有需要保存的更改", data: null }, { status: 400 });
     }
 
-    return authedProxyFetch("/settings/update", { method: "POST", body: JSON.stringify(payload) });
+    const res = await authedProxyFetch("/settings/update", { method: "POST", body: JSON.stringify(payload) });
+    // 设置保存成功 → 站点配置缓存立刻失效（否则前台最多要等 60 秒才用上新配置）
+    if (res.ok) revalidateTag(SITE_CONFIG_TAG, { expire: 0 });
+    return res;
 }

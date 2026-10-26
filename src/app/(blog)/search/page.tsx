@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 
 import { NumberedPagination } from "@/components/(blog)/numbered-pagination";
 import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
+import { highlightText } from "@/components/(blog)/search-highlight";
 
 import { ApiError, searchArticlesApi, type SearchHit } from "@/lib/api";
 import { generateBlogMetadata } from "@/lib/seo";
@@ -25,8 +27,8 @@ function formatDate(iso: string): string {
     return d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
-/** 单个搜索结果项（文章/文档/相册等） */
-function SearchResultItem({ hit }: { hit: SearchHit }) {
+/** 单个搜索结果项（文章/文档/相册等）；标题与摘要里的关键词做高亮 */
+function SearchResultItem({ hit, query }: { hit: SearchHit; query: string }) {
     const isPost = hit.type === "post" || (!hit.type && !hit.is_doc);
     const href = isPost ? `/posts/${hit.id}` : hit.url || `/posts/${hit.id}`;
     const cover = resolveAssetUrl(hit.cover_url);
@@ -37,22 +39,25 @@ function SearchResultItem({ hit }: { hit: SearchHit }) {
             className="group flex flex-col gap-2 rounded-lg border bg-card p-4 shadow-sm transition-shadow hover:shadow-md sm:flex-row sm:items-start"
         >
             {cover && (
-                <div className="h-24 w-full shrink-0 overflow-hidden rounded-md bg-muted sm:w-36">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                <div className="relative h-24 w-full shrink-0 overflow-hidden rounded-md bg-muted sm:w-36">
+                    {/* 缩略图走 next/image（封面来自本站后端，是已知图源） */}
+                    <Image
                         src={cover}
                         alt={hit.title}
-                        loading="lazy"
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        fill
+                        sizes="(max-width: 640px) 100vw, 144px"
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                 </div>
             )}
             <div className="min-w-0 flex-1">
                 <h2 className="line-clamp-2 text-base font-semibold leading-snug group-hover:text-primary">
-                    {hit.title}
+                    {highlightText(hit.title, query)}
                 </h2>
                 {hit.snippet && (
-                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{hit.snippet}</p>
+                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                        {highlightText(hit.snippet, query)}
+                    </p>
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
                     {hit.author && <span>{hit.author}</span>}
@@ -130,7 +135,7 @@ export default async function Search({ searchParams }: { searchParams: Promise<S
                     <>
                         <div className="space-y-3">
                             {hits.map((hit) => (
-                                <SearchResultItem key={hit.id} hit={hit} />
+                                <SearchResultItem key={hit.id} hit={hit} query={q} />
                             ))}
                         </div>
                         <NumberedPagination

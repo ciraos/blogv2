@@ -840,11 +840,13 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                 </div>
 
                 {/* 表单信息行：未登录时显示昵称 / 邮箱 / 网址输入（登录态下这三项取自账号，无输入框、也不再显示提示文案）。
-                    移动端：三框在左上下排列，发送按钮独占右列并把高度撑满这三行（items-stretch，
-                    按钮自身不设固定高，min-h-9 只保底）；≥sm：三框一行，按钮回到右侧底部对齐 */}
-                <div className={`mt-3 flex gap-3 ${loggedIn ? "flex-wrap items-end justify-end" : "items-stretch sm:items-end"}`}>
+                    排版口径：
+                      · 移动端 —— 三个输入各自一行（左标签 + 右输入），发送按钮**单独一行、撑满整宽**；
+                        旧版是把按钮塞在右侧并把高度撑满三行，手机上会变成一根竖长条 + 右侧大片空白。
+                      · ≥sm —— 三个输入一行，按钮靠右、与输入框同高。 */}
+                <div className="mt-3 space-y-3">
                     {loggedIn ? null : (
-                        <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                             <label className="flex items-center gap-2 sm:block">
                                 <span className="block shrink-0 text-xs text-muted-foreground sm:mb-1">昵称</span>
                                 <input
@@ -882,16 +884,18 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                             </label>
                         </div>
                     )}
-                    {/* 移动端：发送按钮独占右列、高度撑满左侧三行；≥sm 回到右侧底部（原样） */}
-                    <button
-                        type="button"
-                        disabled={submitting}
-                        onClick={handleSubmit}
-                        className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                        <Send className="size-3.5" />
-                        {submitting ? "发送中…" : "发送"}
-                    </button>
+                    {/* 发送按钮：移动端整宽独占一行，≥sm 靠右与输入框同高 */}
+                    <div className="flex justify-end">
+                        <button
+                            type="button"
+                            disabled={submitting}
+                            onClick={handleSubmit}
+                            className="inline-flex h-9 w-full shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                        >
+                            <Send className="size-3.5" />
+                            {submitting ? "发送中…" : "发送"}
+                        </button>
+                    </div>
                 </div>
             </div>
 

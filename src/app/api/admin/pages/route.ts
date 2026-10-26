@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
+import { revalidateTag } from "next/cache";
 
 import { authedProxyFetch } from "@/lib/admin-api";
+import { PAGES_TAG } from "@/lib/api";
 
 // 页面管理 · 列表 / 新建（远端 /pages，需登录 + 管理员）
 //   GET  /api/admin/pages?page=1&page_size=10&search=xx&is_published=true → 远端 GET /pages
@@ -26,5 +28,8 @@ export async function POST(request: NextRequest) {
     } catch {
         return Response.json({ code: 400, message: "请求体格式错误", data: null }, { status: 400 });
     }
-    return authedProxyFetch("/pages", { method: "POST", body: JSON.stringify(body) });
+    const res = await authedProxyFetch("/pages", { method: "POST", body: JSON.stringify(body) });
+    // 新建页面 → 自定义页缓存立刻失效（前台 /message 这类页面马上能访问）
+    if (res.ok) revalidateTag(PAGES_TAG, { expire: 0 });
+    return res;
 }

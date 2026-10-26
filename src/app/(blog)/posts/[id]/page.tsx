@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { ArticleBody } from "@/components/(blog)/article-body";
 import { AiPodcastButton } from "@/components/(blog)/ai-podcast-button";
+import { JsonLd } from "@/components/(blog)/json-ld";
 import { PostActions } from "@/components/(blog)/post-actions";
 import { PostComments } from "@/components/(blog)/post-comments";
 import { PostWaves } from "@/components/(blog)/post-waves";
@@ -14,6 +16,7 @@ import { patchArticleContent } from "@/lib/article-shortcodes";
 import { getCommentAuthor } from "@/lib/comment-author";
 import { renderCopyrightHtml, type ArticleCopyCopyrightConfig } from "@/lib/post-copyright";
 import { splitKeywords } from "@/lib/seo";
+import { articleSchema, breadcrumbSchema } from "@/lib/structured-data";
 import { resolveAssetUrl } from "@/lib/utils";
 
 interface PostPageProps {
@@ -206,15 +209,57 @@ export default async function Post({ params }: PostPageProps) {
      */
     const contentHtml = patchArticleContent(article.content_md, article.content_html || "");
 
+    /* ---------- 结构化数据（JSON-LD）----------
+     * BlogPosting + BreadcrumbList：让搜索结果能出「标题/时间/作者/缩略图」的富摘要。
+     * URL 必须是绝对地址，优先用站点配置的 SITE_URL，取不到退回构建期 env。
+     */
+    const siteBase = (actionsConfig?.siteUrl || process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/+$/, "");
+    const toAbsolute = (value?: string | null): string | undefined => {
+        if (!value) return undefined;
+        if (/^https?:\/\//i.test(value)) return value;
+        return `${siteBase}${value.startsWith("/") ? "" : "/"}${value}`;
+    };
+    const postUrl = `${siteBase}/posts/${article.id}`;
+    const postDescription = article.summaries?.[0] || article.keywords || undefined;
+    const structuredData = [
+        articleSchema({
+            title: article.title,
+            description: postDescription,
+            url: postUrl,
+            image: toAbsolute(cover),
+            datePublished: article.created_at,
+            dateModified: article.updated_at || article.created_at,
+            authorName: actionsConfig?.author || article.owner_nickname || "博主",
+            publisherName: actionsConfig?.siteName || "博客",
+            publisherLogo: toAbsolute(actionsConfig?.userAvatar),
+            keywords: splitKeywords(article.keywords),
+            section: article.post_categories?.[0]?.name,
+            wordCount: article.word_count,
+        }),
+        breadcrumbSchema([
+            { name: "首页", url: `${siteBase}/` },
+            { name: "文章", url: `${siteBase}/posts` },
+            { name: article.title, url: postUrl },
+        ]),
+    ];
+
     return (
         <PageWithSidebar>
             {/* 单栏文章正文；右侧目录（TOC）由全局侧边栏顶部的「文章目录」卡片接管 */}
             <article className="min-w-0">
+                <JsonLd data={structuredData} />
                 {cover ? (
                     /* 封面大图：文章信息叠加在图上，底部渐变遮罩保证文字清晰 */
                     <header className="relative overflow-hidden rounded-xl border">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={cover} alt={article.title} className="absolute inset-0 h-full w-full object-cover" />
+                        {/* 封面大图：整块 header 是定位容器，图用 fill 铺满；priority 因为它是首屏最大的图 */}
+                        <Image
+                            src={cover}
+                            alt={article.title}
+                            fill
+                            priority
+                            sizes="(max-width: 1024px) 100vw, 60vw"
+                            className="object-cover"
+                        />
                         {/* 渐变遮罩：底部最暗 → 顶部渐明，确保标题/元信息在浅色图上也可读 */}
                         <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-black/20" />
                         <div className="relative flex min-h-60 flex-col justify-end p-5 md:min-h-76 md:p-8">

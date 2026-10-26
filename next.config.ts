@@ -76,6 +76,27 @@ function collectAdminRouteRegexps(appDir: string): string[] {
 
 const adminRouteRegexps = collectAdminRouteRegexps(path.join(process.cwd(), "src", "app"));
 
+/**
+ * next/image 允许优化的远程图源。
+ *
+ * 本站的图片全部存在后端（站点配置里存的是 `/api/f/…`、`/static/…` 这类站内路径，
+ * 实际渲染时会被 resolveAssetUrl 补成 `https://<站点域名>/api/f/…`），头像走 cravatar。
+ * 只放行这几类**已知**源；友链 logo、评论正文图片这类任意外链继续用 <img>，
+ * 避免把 Next 的图片优化器变成开放代理（会被刷带宽，也有 SSRF 面）。
+ */
+function imageRemotePatterns() {
+  const hosts = new Set<string>(["cravatar.com", "cravatar.cn", "secure.gravatar.com"]);
+  for (const raw of [process.env.NEXT_PUBLIC_SITE_URL, process.env.NEXT_PUBLIC_API_URL]) {
+    if (!raw) continue;
+    try {
+      hosts.add(new URL(raw).hostname);
+    } catch {
+      // 配置不是合法 URL（比如本地相对地址）就跳过
+    }
+  }
+  return [...hosts].map((hostname) => ({ protocol: "https" as const, hostname }));
+}
+
 
 /**
  * 前端自己的版本号：以 package.json 的 version 为唯一来源，构建时注入给前后端代码。
@@ -90,10 +111,33 @@ const nextConfig: NextConfig = {
 
   /* config options here */
   distDir: ".next",
-  output: "standalone",
+  // standalone：部署产物（Dockerfile / `pnpm start` 用的就是它）。
+  // 但 Next 组装 `.next/standalone` 时会在 node_modules 里大量建**符号链接**，
+  // 而 Windows 默认不允许普通用户建符号链接 —— 报
+  //   EPERM: operation not permitted, symlink '..\..\..\@swc+helpers@…'
+  // 编译与静态生成都成功了、只在最后这一步失败。
+  // 所以给一个本地开关：Windows 想完整跑一次 `pnpm build` 时用
+  //   $env:NEXT_SKIP_STANDALONE=1 ; pnpm build
+  // 跳过 standalone 打包（Linux / 容器 / CI **不要**设这个变量，否则镜像里没有 server.js）。
+  output: process.env.NEXT_SKIP_STANDALONE ? undefined : "standalone",
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
   reactCompiler: true,
   reactStrictMode: false,
+
+  // dev 下把每次 fetch 的缓存命中情况打到终端（仅开发环境生效，生产构建不输出）：
+  // 用来确认「数据缓存到底有没有生效」—— 例：
+  //   GET https://blog.ciraos.top/api/public/articles 200 in 380ms (cache skip)
+  //   GET https://blog.ciraos.top/api/public/site-config 200 in 12ms (cache hit)
+  logging: {
+    fetches: {
+      fullUrl: true,
+    },
+  },
+
+  // 图片优化：只放行已知图源（见 imageRemotePatterns 的说明）
+  images: {
+    remotePatterns: imageRemotePatterns(),
+  },
 
   experimental: {
     // 启用 app/global-not-found.js 约定（本版仍是实验特性，默认 false，见

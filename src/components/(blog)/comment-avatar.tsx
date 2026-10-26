@@ -51,6 +51,10 @@ export function CommentAvatar({
     }
 
     return (
+        // 头像**故意不用 next/image**：图源是第三方（cravatar），
+        // 走 next/image 就变成「**服务器**去抓 cravatar」再转一手 —— 实测本机服务器抓 cravatar
+        // 超过 Next 优化器的上游超时，返回 504（浏览器直连反而可能已经在缓存里了）。
+        // 第三方头像交给浏览器直连更稳，失败时用上面的首字兜底。
         // eslint-disable-next-line @next/next/no-img-element
         <img
             src={src}

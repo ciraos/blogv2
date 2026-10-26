@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "nextjs-toploader/app";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { ArrowRight, Loader2, Search, SearchX } from "lucide-react";
 
 import { searchArticlesClientApi, type SearchHit } from "@/lib/api";
 import { resolveAssetUrl } from "@/lib/utils";
+import { highlightText } from "@/components/(blog)/search-highlight";
 
 /** 防抖延迟（毫秒）：输入停止后多久发起搜索 */
 const DEBOUNCE_MS = 300;
@@ -18,7 +20,7 @@ function formatDate(iso: string): string {
     return d.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
 }
 
-function HitItem({ hit, onSelect }: { hit: SearchHit; onSelect: () => void }) {
+function HitItem({ hit, query, onSelect }: { hit: SearchHit; query: string; onSelect: () => void }) {
     const isPost = hit.type === "post" || (!hit.type && !hit.is_doc);
     const href = isPost ? `/posts/${hit.id}` : hit.url || `/posts/${hit.id}`;
     const cover = resolveAssetUrl(hit.cover_url);
@@ -30,13 +32,14 @@ function HitItem({ hit, onSelect }: { hit: SearchHit; onSelect: () => void }) {
             className="group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-muted"
         >
             {cover ? (
-                <div className="h-11 w-16 shrink-0 overflow-hidden rounded-md bg-muted">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                <div className="relative h-11 w-16 shrink-0 overflow-hidden rounded-md bg-muted">
+                    {/* 缩略图走 next/image：列表里一屏十几张，优化器能压到合适的尺寸 */}
+                    <Image
                         src={cover}
                         alt={hit.title}
-                        loading="lazy"
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        fill
+                        sizes="64px"
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                 </div>
             ) : (
@@ -45,9 +48,13 @@ function HitItem({ hit, onSelect }: { hit: SearchHit; onSelect: () => void }) {
                 </div>
             )}
             <div className="min-w-0 flex-1">
-                <div className="line-clamp-1 text-sm font-medium group-hover:text-primary">{hit.title}</div>
+                <div className="line-clamp-1 text-sm font-medium group-hover:text-primary">
+                    {highlightText(hit.title, query)}
+                </div>
                 {hit.snippet && (
-                    <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{hit.snippet}</div>
+                    <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                        {highlightText(hit.snippet, query)}
+                    </div>
                 )}
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
                     {hit.category && <span>{hit.category}</span>}
@@ -202,6 +209,7 @@ export function SearchDialog() {
                                         <HitItem
                                             key={hit.id}
                                             hit={hit}
+                                            query={q.trim()}
                                             onSelect={() => setOpen(false)}
                                         />
                                     ))}

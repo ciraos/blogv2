@@ -28,6 +28,9 @@ import { getPublicLinksRandomApi } from "@/lib/api";
 import { resolveAppearance } from "@/lib/appearance";
 import { resolveThemeSchedule } from "@/lib/scheduled-theme";
 import { getHeaderData } from "@/lib/header-data";
+import { JsonLd } from "@/components/(blog)/json-ld";
+import { websiteSchema } from "@/lib/structured-data";
+import { resolveAssetUrl } from "@/lib/utils";
 import { getSiteConfigs, resolveSiteIcons } from "@/lib/site-config";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -103,6 +106,16 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
           enableColorScheme
         >
           <Toaster position="top-right" richColors closeButton />
+
+          {/* 站点级结构化数据：WebSite + 站内搜索动作（全站一次即可，搜索引擎据此生成搜索框） */}
+          <JsonLd
+            data={websiteSchema({
+              name: config?.APP_NAME ?? "博客",
+              url: config?.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || "",
+              description: config?.SUB_TITLE || config?.SITE_DESCRIPTION || undefined,
+              logo: resolveAssetUrl(config?.LOGO_URL || config?.ICON_URL) ?? undefined,
+            })}
+          />
 
           {/* 顶部进度条：软导航（点链接 → RSC 回来之前）的反馈 */}
           <TopProgress />

@@ -578,7 +578,19 @@ export function CommentsManager() {
                 email: form.email.trim() || undefined,
                 website: form.website.trim(),
             });
-            toast.success("保存成功");
+            // 改过的评论一律回到「待审核」：管理员改内容 = 内容已不再是最初通过审核的那份，
+            // 直接置回 2（待审核）让它在列表里带黄色徽章、前台暂不展示，确认无误再手动点「通过审核」。
+            // 这是**前端能独立做到**的部分（两个接口都已有代理，用的是当前登录管理员自己的凭证）；
+            // 「提交时就自动转待审」需要后端在 create 时决定 status，前端做不到（create 请求体没有 status 字段）。
+            let reviewNote = "";
+            try {
+                await updateAdminCommentStatusApi(editing.id, 2);
+                reviewNote = "，并已转为待审核";
+            } catch {
+                // 状态没改成功不算保存失败：内容已经写进去了，提示一下让管理员手动点「转为待审核」
+                reviewNote = "（内容已保存，但自动转待审核失败，请手动点「转为待审核」）";
+            }
+            toast.success(`保存成功${reviewNote}`);
             setEditing(null);
             reload();
         } catch (e) {

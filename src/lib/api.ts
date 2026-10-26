@@ -43,6 +43,19 @@ import type { ThemeListData } from "@/types/themes";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
+/**
+ * 缓存标签（配合 `request()` 的第 4 个参数与写操作后的 revalidateTag 使用）。
+ * 命名统一用「资源名」，需要更细的粒度时再加 `资源:标识` 形式的二级标签。
+ */
+export const ARTICLES_TAG = "articles";
+export const COMMENTS_TAG = "comments";
+export const SITE_CONFIG_TAG = "site-config";
+export const ESSAYS_TAG = "essays";
+export const MOMENTS_TAG = "moments";
+export const LINKS_TAG = "links";
+export const PAGES_TAG = "pages";
+export const STATS_TAG = "stats";
+
 export class ApiError extends Error {
     status: number;
     code: number;
@@ -68,7 +81,32 @@ export interface ApiResponse<T> {
  */
 export type ApiEnvelope<T> = ApiResponse<T>;
 
-export async function request<T>(path: string, options: RequestInit = {}, token?: string | null): Promise<T> {
+/**
+ * 「可以缓存」的请求参数（交给 Next 的数据缓存）。
+ *
+ * 为什么需要：`request()` 默认带 `cache: "no-store"`，等于**每次渲染都打一次后端**——
+ * 文章列表页一次要打好几个接口，其中还有「最多 20 页 × 50 条」的全站文章聚合。
+ * 公开只读接口（文章/评论/站点配置…）完全可以缓存几十秒，由写操作主动失效。
+ *
+ * 口径：
+ *   - 只有**公开只读**接口传这个参数；带 token 的、随机的（随机友链/随机文章）、
+ *     用户私有的一律不传，走原来的 no-store；
+ *   - `tags` 用于写操作后 `revalidateTag(tag, { expire: 0 })` 精确失效；
+ *   - 没有 `tags` 时只按 `revalidate` 自然过期。
+ */
+export interface RequestCacheOptions {
+    /** 秒。到点后下一个请求触发后台刷新（stale-while-revalidate） */
+    revalidate?: number;
+    /** 缓存标签，供写操作精确失效 */
+    tags?: string[];
+}
+
+export async function request<T>(
+    path: string,
+    options: RequestInit = {},
+    token?: string | null,
+    cacheOptions?: RequestCacheOptions
+): Promise<T> {
     const headers = new Headers(options.headers);
     // 统一声明要 JSON：原先 api-plugins.ts 的本地 request 会带这个头，其余副本不带，
     // 合并到公共实现后统一带上（远端是 gin，不校验 Accept，但带上语义更准确）。
@@ -94,9 +132,21 @@ export async function request<T>(path: string, options: RequestInit = {}, token?
     const isLocalRoute = path.startsWith("/api/");
     const url = isLocalRoute ? path : `${API_URL}${path}`;
 
+    // 缓存策略：传了 cacheOptions 就交给 Next 数据缓存（public 只读接口），否则维持 no-store。
+    // 注意不能同时给 `cache` 和 `next`，所以两条分支互斥。
+    const init: RequestInit = { ...options, headers };
+    if (cacheOptions) {
+        (init as RequestInit & { next?: { revalidate?: number; tags?: string[] } }).next = {
+            ...(cacheOptions.revalidate !== undefined ? { revalidate: cacheOptions.revalidate } : {}),
+            ...(cacheOptions.tags ? { tags: cacheOptions.tags } : {}),
+        };
+    } else {
+        init.cache = "no-store";
+    }
+
     let res: Response;
     try {
-        res = await fetch(url, { ...options, headers, cache: "no-store" });
+        res = await fetch(url, init);
     } catch {
         throw new ApiError("网络请求失败，请检查网络连接", 0, 0);
     }
@@ -267,12 +317,18 @@ export async function getPublicArticlesApi(params: PublicArticlesParams = {}): P
         }
     }
     const query = qs.toString();
-    return request<PostListData>(`/public/articles${query ? `?${query}` : ""}`, { method: "GET" });
+    return request<PostListData>(`/public/articles${query ? `?${query}` : ""}`, { method: "GET" }, undefined, {
+        revalidate: 60,
+        tags: [ARTICLES_TAG],
+    });
 }
 
 /** GET /public/articles/{id} 前台文章详情（公共ID 或 Abbrlink） */
 export function getPublicArticleApi(id: string): Promise<ArticleDetail> {
-    return request<ArticleDetail>(`/public/articles/${encodeURIComponent(id)}`, { method: "GET" });
+    return request<ArticleDetail>(`/public/articles/${encodeURIComponent(id)}`, { method: "GET" }, undefined, {
+        revalidate: 60,
+        tags: [ARTICLES_TAG, `${ARTICLES_TAG}:${id}`],
+    });
 }
 
 /** GET /public/articles/random 随机获取一篇文章（无已发布文章时 404） */
@@ -282,7 +338,10 @@ export function getRandomArticleApi(): Promise<ArticleDetail> {
 
 /** GET /public/articles/archives 归档摘要（按年月分组统计） */
 export function getPublicArchivesApi(): Promise<ArchiveSummary> {
-    return request<ArchiveSummary>("/public/articles/archives", { method: "GET" });
+    return request<ArchiveSummary>("/public/articles/archives", { method: "GET" }, undefined, {
+        revalidate: 60,
+        tags: [ARTICLES_TAG],
+    });
 }
 
 /**
@@ -379,7 +438,10 @@ export async function searchArticlesClientApi(params: {
 
 /** GET /public/link-categories 公开友链分类列表（包含已批准友链的分类） */
 export function getPublicLinkCategoriesApi(): Promise<LinkCategory[]> {
-    return request<LinkCategory[]>("/public/link-categories", { method: "GET" });
+    return request<LinkCategory[]>("/public/link-categories", { method: "GET" }, undefined, {
+        revalidate: 60,
+        tags: [LINKS_TAG],
+    });
 }
 
 /** GET /public/links 公开友链列表（分页，支持按分类/标签筛选） */
@@ -391,7 +453,10 @@ export async function getPublicLinksApi(params: LinkListParams = {}): Promise<Li
         }
     }
     const query = qs.toString();
-    return request<LinkListData>(`/public/links${query ? `?${query}` : ""}`, { method: "GET" });
+    return request<LinkListData>(`/public/links${query ? `?${query}` : ""}`, { method: "GET" }, undefined, {
+        revalidate: 60,
+        tags: [LINKS_TAG],
+    });
 }
 
 /** 拉取某分类下的全部友链（分页遍历，按 total 停止） */
@@ -445,7 +510,10 @@ export function getPublicLinkApplicationsApi(params: PublicLinkApplicationsParam
         }
     }
     const query = qs.toString();
-    return request<LinkListData>(`/public/links/applications${query ? `?${query}` : ""}`, { method: "GET" });
+    return request<LinkListData>(`/public/links/applications${query ? `?${query}` : ""}`, { method: "GET" }, undefined, {
+        revalidate: 60,
+        tags: [LINKS_TAG],
+    });
 }
 
 /** 友链页对外展示的状态：已通过 + 已失联（健康检查自动标记）。
@@ -963,7 +1031,10 @@ export async function getPublicEssaysApi(params: { page?: number; page_size?: nu
         }
     }
     const query = qs.toString();
-    return request<EssayListData>(`/pro/essays${query ? `?${query}` : ""}`, { method: "GET" });
+    return request<EssayListData>(`/pro/essays${query ? `?${query}` : ""}`, { method: "GET" }, undefined, {
+        revalidate: 60,
+        tags: [ESSAYS_TAG],
+    });
 }
 
 /** GET /pro/moments 朋友圈/RSS 聚合文章列表（公开；实测路径，文档中的 /pro/public/moments 在本部署为 404） */
@@ -975,7 +1046,10 @@ export async function getPublicMomentsApi(params: MomentsListParams = {}): Promi
         }
     }
     const query = qs.toString();
-    return request<MomentsListData>(`/pro/moments${query ? `?${query}` : ""}`, { method: "GET" });
+    return request<MomentsListData>(`/pro/moments${query ? `?${query}` : ""}`, { method: "GET" }, undefined, {
+        revalidate: 60,
+        tags: [MOMENTS_TAG],
+    });
 }
 
 /** GET /pro/moments/randompost 随机获取一篇朋友圈/友链聚合文章（公开；友链鱼塘用） */
@@ -994,7 +1068,10 @@ export async function getRandomMomentPostClientApi(): Promise<RandomMomentPost |
 
 /** GET /public/site-config 站点公开配置（服务端调用） */
 export function getPublicSiteConfigApi(): Promise<SiteConfig> {
-    return request<SiteConfig>("/public/site-config", { method: "GET" });
+    return request<SiteConfig>("/public/site-config", { method: "GET" }, undefined, {
+        revalidate: 60,
+        tags: [SITE_CONFIG_TAG],
+    });
 }
 
 // ===================== 站点统计 =====================
@@ -1010,7 +1087,10 @@ export interface BasicStats {
 
 /** GET /public/statistics/basic 站点访问统计（今日/昨日/本月/年度） */
 export function getPublicBasicStatsApi(): Promise<BasicStats> {
-    return request<BasicStats>("/public/statistics/basic", { method: "GET" });
+    return request<BasicStats>("/public/statistics/basic", { method: "GET" }, undefined, {
+        revalidate: 60,
+        tags: [STATS_TAG],
+    });
 }
 
 // ===================== 评论 =====================
@@ -1061,7 +1141,10 @@ export async function getLatestCommentsApi(params: { page?: number; pageSize?: n
         }
     }
     const query = qs.toString();
-    return request<CommentListData>(`/public/comments/latest${query ? `?${query}` : ""}`, { method: "GET" });
+    return request<CommentListData>(`/public/comments/latest${query ? `?${query}` : ""}`, { method: "GET" }, undefined, {
+        revalidate: 30,
+        tags: [COMMENTS_TAG],
+    });
 }
 
 /**
@@ -1080,7 +1163,10 @@ export async function getCommentsByPathApi(params: {
         }
     }
     const query = qs.toString();
-    return request<CommentListData>(`/public/comments${query ? `?${query}` : ""}`, { method: "GET" });
+    return request<CommentListData>(`/public/comments${query ? `?${query}` : ""}`, { method: "GET" }, undefined, {
+        revalidate: 30,
+        tags: [COMMENTS_TAG],
+    });
 }
 
 /** GET /public/comments/{id}/children 获取某条评论的子评论（博主回复等，公开） */
@@ -1097,6 +1183,9 @@ export async function getCommentChildrenApi(
     const query = qs.toString();
     return request<CommentListData>(`/public/comments/${encodeURIComponent(id)}/children${query ? `?${query}` : ""}`, {
         method: "GET",
+    }, undefined, {
+        revalidate: 30,
+        tags: [COMMENTS_TAG],
     });
 }
 
@@ -1370,7 +1459,10 @@ export interface PublicPage {
 /** GET /public/pages/{path} 根据路径获取已发布的页面详情（公开）。path 如 /privacy，自动去前导斜杠 */
 export async function getPublicPageApi(path: string): Promise<PublicPage> {
     const clean = path.replace(/^\/+/, "");
-    return request<PublicPage>(`/public/pages/${encodeURIComponent(clean)}`, { method: "GET" });
+    return request<PublicPage>(`/public/pages/${encodeURIComponent(clean)}`, { method: "GET" }, undefined, {
+        revalidate: 60,
+        tags: [PAGES_TAG],
+    });
 }
 
 // ===================== 页面管理（后台）PAGES =====================

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { revalidateTag } from "next/cache"
 
 import { cookies } from "next/headers"
 
-import { API_URL, getCommentsWithChildrenApi } from "@/lib/api"
+import { API_URL, COMMENTS_TAG, getCommentsWithChildrenApi } from "@/lib/api"
 import { clientForwardHeaders } from "@/lib/proxy-headers"
 import { ACCESS_TOKEN_KEY } from "@/lib/auth";
 
@@ -64,6 +65,10 @@ export async function POST(request: NextRequest) {
             { status: res.status }
         )
     }
+
+    // 评论提交成功 → 让评论相关缓存（文章页评论列表、最近评论、侧栏）立刻失效，
+    // 否则评论者自己要等最多 30 秒才能看到自己刚发的评论（revalidate 只是兜底上限）
+    revalidateTag(COMMENTS_TAG, { expire: 0 })
 
     return NextResponse.json(json)
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 import type { PostItem } from "@/types/articles";
 import { cn, resolveAssetUrl } from "@/lib/utils";
@@ -54,12 +55,14 @@ export function ArticleCard({ article, defaultCover, enablePrimaryColorTag = fal
         >
             {cover && (
                 <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    {/* 封面走 next/image：列表页一屏好几张图，优化器能按视口给 webp + 合适尺寸。
+                        fill + sizes 让它在 1 列/2 列/3 列布局下都取到接近真实的宽度。 */}
+                    <Image
                         src={cover}
                         alt={article.title}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        loading="lazy"
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                 </div>
             )}
