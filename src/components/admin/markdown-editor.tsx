@@ -32,6 +32,9 @@ export function MarkdownEditor({
     const wrapRef = useRef<HTMLDivElement>(null);
     const fileRef = useRef<HTMLInputElement>(null);
     const [uploading, setUploading] = useState(false);
+    // 实时预览开关：默认关闭 —— 长文（20KB+，含 KaTeX/表格/图片）开着会让页面多渲染一份完整
+    // 正文，滚动与输入都明显掉帧（用户 2026-10 反馈"编辑页上下滚动很卡"）。
+    const [livePreview, setLivePreview] = useState(false);
     // AI 写作弹窗开关（生成结果同样追加到正文末尾，和图片插入一个策略：
     // 编辑器内部的 textarea 光标位置拿不到，插到中间反而更不可预期）
     const [aiOpen, setAiOpen] = useState(false);
@@ -126,7 +129,18 @@ export function MarkdownEditor({
                     value={value}
                     onChange={(v) => onChange(v ?? "")}
                     height={height}
-                    preview="live"
+                    /**
+                     * 默认 `edit`，**不要** `live`。
+                     *
+                     * 原因（2026-10 反馈"编辑页上下滚动很卡"）：`preview="live"` 会在编辑器旁常驻
+                     * 一份完整渲染结果 —— 我们这种 20KB+ 的正文（KaTeX / 表格 / 几十张图）等于页面里
+                     * 有两份文档，滚动时每一帧都要为这份巨大 DOM 做布局与重绘，非常卡；它还会每敲一个字
+                     * 重渲染一次，长文输入也跟着掉帧。
+                     *
+                     * 而且后台本来就有独立预览（article-form 的「预览」按钮 → 与前台同源的 ArticleBody），
+                     * 这里的实时预览是重复的。真要实时看，可用下方「实时预览」按钮临时打开。
+                     */
+                    preview={livePreview ? "live" : "edit"}
                     visibleDragbar={false}
                     textareaProps={{ placeholder }}
                 />
@@ -143,6 +157,19 @@ export function MarkdownEditor({
                         {uploading ? "上传中…" : "插入图片"}
                     </button>
                     <span className="text-[11px] text-muted-foreground">也可以直接 Ctrl+V 粘贴截图，会自动上传</span>
+                    {/* 实时预览开关：默认关（长文滚动/输入会卡），需要时临时开 */}
+                    <button
+                        type="button"
+                        onClick={() => setLivePreview((v) => !v)}
+                        className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors ${
+                            livePreview
+                                ? "border-primary/40 bg-primary/10 text-primary"
+                                : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        title="长文开启后会明显变卡（页面里会多渲染一份完整正文）"
+                    >
+                        {livePreview ? "关闭实时预览" : "实时预览"}
+                    </button>
                     {/* AI 写作（PRO 接口 POST /api/pro/admin/ai/writing，同源代理透传 SSE）：
                         生成结果追加到正文末尾，插入逻辑与上面的图片插入一致 */}
                     <button

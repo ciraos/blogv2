@@ -1792,6 +1792,17 @@ body {
   content-visibility: visible !important;
 }
 
+/* ---------- 长正文滚动优化：屏幕外的图片不参与渲染 ----------
+ * 场景：文章正文 / 编辑器预览里有几十张图时，滚动每一帧都要为全部图片做布局与绘制。
+ * content-visibility: auto 让浏览器跳过**不在视口内**的图片，滚到跟前才渲染。
+ * contain-intrinsic-size 给一个占位尺寸，避免跳过渲染时高度塌成 0 导致滚动条乱跳
+ *（图片有真实固有尺寸后浏览器会用实测值替换这个估算值）。 */
+.article-body img,
+.md-editor-preview img {
+  content-visibility: auto;
+  contain-intrinsic-size: 640px 360px;
+}
+
 .article-body .anzhiyu-tip-text {
   position: relative;
   display: inline-block;

@@ -23,6 +23,9 @@ export function resolveAssetUrl(url?: string | null): string | null {
  * 转成 `/api/f/...` 后由当前域名 + next.config 的 rewrites 代理到当前环境后端，
  * 也便于直接存进站点配置（与既有配置里的相对路径口径一致）。
  * Gravatar、第三方 OSS 等非本站路径保持原样。
+ *
+ * 名单必须与 next.config.ts 的 rewrites 保持一致，否则会出现「转成了相对路径、但没有代理」
+ * 的 404。`/api/pro/f/` 是 PRO 版直链前缀（实测 302 到 /api/f/，同一个文件）。
  */
 export function toSameOriginMediaUrl(url?: string | null): string {
   if (!url) return ""
@@ -33,6 +36,7 @@ export function toSameOriginMediaUrl(url?: string | null): string {
     const path = parsed.pathname + parsed.search
     if (
       path.startsWith("/api/f/") ||
+      path.startsWith("/api/pro/f/") ||
       path.startsWith("/api/pro/images/") ||
       path.startsWith("/static/") ||
       path.startsWith("/needcache/")

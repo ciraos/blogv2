@@ -366,11 +366,13 @@ function ImageField({
                         <>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={value} alt={label} className="size-full object-cover" />
+                            {/* 角标不再用 backdrop-blur：它在滚动容器里，模糊会让每次滚动重绘都多一道
+                                合成开销；bg-background/95 已足够遮住底下的封面图 */}
                             <button
                                 type="button"
                                 onClick={() => onChange("")}
                                 aria-label={`移除${label}`}
-                                className="absolute right-0.5 top-0.5 rounded-full bg-background/85 p-0.5 text-muted-foreground backdrop-blur transition-colors hover:text-destructive"
+                                className="absolute right-0.5 top-0.5 rounded-full bg-background/95 p-0.5 text-muted-foreground transition-colors hover:text-destructive"
                             >
                                 <X className="size-3" />
                             </button>

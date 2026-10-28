@@ -185,10 +185,19 @@ const nextConfig: NextConfig = {
         // 但后端「文件直链」是例外：站点配置里存的就是站内相对路径
         // （USER_AVATAR / footer.socialBar.centerImg = /api/f/…，PRO 图片 = /api/pro/images/…），
         // 本应用没有 /api/f、/api/pro 路由，不代理的话会被 (blog)/[...slug] 兜底页接走，
-        // 返回 HTML 导致图片挂掉，所以这两组必须代理。
+        // 返回 HTML 导致图片挂掉，所以这几组必须代理。
+        //
+        // /api/pro/f/ 是 PRO 版的直链前缀：实测它 **302 到 /api/f/**（同一个文件，PRO 层只做一跳），
+        // 所以社区版和 PRO 返回的最终文件一致。但 PRO 版组装出来的链接可能以「站内相对路径」形式
+        // 存在配置里（和 /api/f/ 一样），而本应用没有对应路由 —— 不代理就会被 [...slug] 接走变 404，
+        // 因此和 /api/f/ 一样必须代理（302 也会原样透给浏览器）。
         {
           source: "/api/f/:path*",
           destination: `${backendUrl}/api/f/:path*`,
+        },
+        {
+          source: "/api/pro/f/:path*",
+          destination: `${backendUrl}/api/pro/f/:path*`,
         },
         {
           source: "/api/pro/images/:path*",
