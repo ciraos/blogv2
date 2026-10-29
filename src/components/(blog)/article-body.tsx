@@ -70,8 +70,16 @@ function enhanceKatex(root: HTMLElement) {
 
 // ===================== 插件增强（移植自 anheyu-app-frontend） =====================
 
-/** 行内文本插件解析：后端未转换的 {u}{/u} {emp}{/emp} {wavy}{/wavy} {del}{/del} {kbd}{/kbd} {psw}{/psw} 转成 HTML 元素 */
+/**
+ * 行内文本插件解析（后端未转换的短代码 → HTML 元素）：
+ *   {u}{/u} {emp}{/emp} {wavy}{/wavy} {del}{/del} {kbd}{/kbd} {psw}{/psw} → 带类的 <span>
+ *   {sup}{/sup} {sub}{/sub} → 真正的 <sup> / <sub>（语义标签，复制到别处也保留上下标）
+ *
+ * 同时支持带 `color=` 参数的写法（`{u color=#FF0000}文字{/u}`）：
+ * 只认无参写法时，带颜色参数的那一句会整句原样显示（实测踩到）。
+ */
 function enhanceInlineText(root: HTMLElement) {
+    /** 映射成 <span class="…"> 的行内样式（视觉类见 globals.css 的 .inline-*） */
     const tagMap: Record<string, string> = {
         u: "inline-underline",
         emp: "inline-emphasis-mark",
@@ -80,25 +88,93 @@ function enhanceInlineText(root: HTMLElement) {
         kbd: "inline-kbd",
         psw: "inline-password",
     };
+    /** 映射成原生语义标签的（上下标有自己的元素，不用 span 冒充） */
+    const elementMap: Record<string, string> = {
+        sup: "sup",
+        sub: "sub",
+    };
+
+    /** 从开标签的参数串里读 color（其余参数忽略） */
+    const readColor = (head: string): string => {
+        const m = /color\s*=\s*"?([#\w(),.%\s-]+?)"?\s*(?:[A-Za-z-]+\s*=|$)/i.exec(head ?? "");
+        return m ? m[1].trim() : "";
+    };
+    const styleAttr = (head: string): string => {
+        const color = readColor(head);
+        return color ? ` style="color:${color}"` : "";
+    };
 
     root.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, blockquote, td, th, figcaption, span").forEach((el) => {
-        // 跳过代码块和已有插件容器
-        if (el.closest("pre") || el.closest(".md-editor-code") || el.closest(".anzhiyu-tip") || el.closest(".tabs")) return;
+        /**
+         * 跳过代码块与提示泡；**不要**跳过 `.tabs`。
+         *
+         * 之前这里还挡了 `.tabs`，结果是「标签页里的 {u}/{emp}/{wavy}/{del} 全都不生效」——
+         * 而标签页里的示例源码本来就在 `<pre><code>` 里，`pre` 这一条已经挡住了，
+         * 所以 `.tabs` 这个条件纯属误伤（实测：tabs 内四种行内样式全部原样显示）。
+         */
+        if (el.closest("pre") || el.closest(".md-editor-code") || el.closest(".anzhiyu-tip")) return;
         if (!el.textContent?.includes("{")) return;
 
         for (const [tag, cls] of Object.entries(tagMap)) {
-            const re = new RegExp(`\\{${tag}\\}([\\s\\S]*?)\\{/${tag}\\}`, "g");
+            const re = new RegExp(`\\{${tag}\\b([^}]*)\\}([\\s\\S]*?)\\{/${tag}\\}`, "g");
             if (!re.test(el.innerHTML)) continue;
             el.innerHTML = el.innerHTML.replace(
                 re,
-                (_m, inner: string) => {
-                    if (tag === "psw") {
-                        return `<span class="${cls}">${inner}</span>`;
-                    }
-                    return `<span class="${cls}">${inner}</span>`;
-                }
+                (_m, head: string, inner: string) =>
+                    /**
+                     * `{psw}` **不接 color**：它的"隐身"就是靠 `color: transparent`，
+                     * 一旦把 color 写成内联样式就会胜出，密码直接明文显示（实测踩到）。
+                     * 展开态的颜色由 CSS 的 .revealed 决定。
+                     */
+                    tag === "psw"
+                        ? `<span class="${cls}">${inner}</span>`
+                        : `<span class="${cls}"${styleAttr(head)}>${inner}</span>`
             );
         }
+
+        for (const [tag, element] of Object.entries(elementMap)) {
+            const re = new RegExp(`\\{${tag}\\b([^}]*)\\}([\\s\\S]*?)\\{/${tag}\\}`, "g");
+            if (!re.test(el.innerHTML)) continue;
+            el.innerHTML = el.innerHTML.replace(
+                re,
+                (_m, head: string, inner: string) => `<${element}${styleAttr(head)}>${inner}</${element}>`
+            );
+        }
+    });
+}
+
+/**
+ * 图片说明文字：把图片的 `alt`（没有则用 `title`）渲染成图片下方的小字。
+ *
+ * 用途：Markdown 里写 `![架构图](xxx.png)` 时，靠 alt 当图注 —— 浏览器本身只把它当替换文字，
+ * 图片正常加载时完全看不到。这里用一层 `span.image-figure` 包起来，再补 `span.image-caption`。
+ *
+ * 为什么用 span 而不是 figure/figcaption：图片常常被 Markdown 包在 `<p>` 里，
+ * `<p>` 中放 `<figure>` 是非法嵌套（浏览器会强制闭合 `<p>`，把段落结构搞乱）；
+ * span 设成 `display:block` 视觉上与 figure 一样，但不会破坏结构。
+ */
+function enhanceImageCaptions(root: HTMLElement) {
+    root.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
+        if (img.closest(".image-figure")) return;
+        /**
+         * 跳过「自己管理布局」的容器：图片组/视频组/链接卡/播放器里的 <img> 依赖
+         * 父级的 aspect-ratio + width/height:100% 定位，多包一层 span 会让它们互相重叠
+         *（实测：加了图注后图片组里多张图叠在一起）。这些容器本来也有自己的说明文字。
+         */
+        if (img.closest(".gallery-container, .video-gallery-container, .anzhiyu-tag-link, .markdown-music-player")) return;
+        // 装饰性图片（alt=""）不加图注
+        const caption = (img.getAttribute("alt") || "").trim() || (img.getAttribute("title") || "").trim();
+        if (!caption) return;
+
+        const wrap = document.createElement("span");
+        wrap.className = "image-figure";
+        img.replaceWith(wrap);
+        wrap.appendChild(img);
+
+        const cap = document.createElement("span");
+        cap.className = "image-caption";
+        cap.textContent = caption;
+        wrap.appendChild(cap);
     });
 }
 
@@ -729,6 +805,143 @@ async function renderMermaid(root: HTMLElement) {
     }
 }
 
+/**
+ * 音乐播放器：把正文里的 `{music id=…}{/music}` 裸文本补成播放器卡片。
+ *
+ * 为什么需要：后端不渲染 Markdown，播放器 DOM 原本由官方 Tiptap 编辑器在保存时生成；
+ * 我们的后台只有 Markdown 编辑器，所以短代码会以纯文本存进库。这里在运行时把它补出来：
+ *   1. 从 `/api/public/music/playlist` 取歌名 / 歌手 / 封面（一次请求，模块级缓存）
+ *   2. 按 globals.css 里 `.markdown-music-player` 那套类名拼出结构
+ *   3. 生成后由 enhanceMusic() 绑定播放/暂停/进度（它按类名找元素，与官方结构一致）
+ */
+let playlistPromise: Promise<Map<string, { name: string; artist: string; pic: string }>> | null = null;
+
+function loadPlaylist() {
+    if (!playlistPromise) {
+        playlistPromise = (async () => {
+            const map = new Map<string, { name: string; artist: string; pic: string }>();
+            try {
+                const res = await fetch("/api/public/music/playlist", { cache: "no-store" });
+                const json = (await res.json()) as {
+                    data?: { songs?: Array<{ neteaseId?: string; name?: string; artist?: string; pic?: string }> };
+                };
+                for (const s of json?.data?.songs ?? []) {
+                    if (s.neteaseId) {
+                        map.set(String(s.neteaseId), {
+                            name: s.name ?? "",
+                            artist: s.artist ?? "",
+                            pic: s.pic ?? "",
+                        });
+                    }
+                }
+            } catch {
+                // 拿不到列表就用占位信息，音频仍可通过 song-resources 加载
+            }
+            return map;
+        })();
+    }
+    return playlistPromise;
+}
+
+const MUSIC_SHORTCODE_RE = /\{music\s+id=(\d+)\s*\}\s*\{\/music\}/g;
+
+function buildMusicPlayer(
+    neteaseId: string,
+    meta: { name: string; artist: string; pic: string } | undefined
+): HTMLElement {
+    const name = meta?.name || "网易云音乐";
+    const artist = meta?.artist || `歌曲 ${neteaseId}`;
+    const pic = meta?.pic || "";
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "markdown-music-player";
+    wrapper.setAttribute("data-music-id", neteaseId);
+    wrapper.setAttribute("data-music-data", JSON.stringify({ neteaseId }));
+
+    wrapper.innerHTML =
+        `<div class="music-player-container">` +
+        `<audio class="music-audio-element" preload="metadata"></audio>` +
+        // 圆形封面 + 封面上的播放浮层（与 globals.css 里原有的播放器样式配套）
+        `<div class="music-artwork-container">` +
+        `<div class="music-artwork-wrapper">` +
+        `<div class="artwork-transition-wrapper">` +
+        (pic ? `<img class="artwork-image" src="${pic}" alt="" loading="lazy">` : "") +
+        `</div></div>` +
+        `<div class="music-play-overlay"><div class="music-play-button-overlay">` +
+        `<svg class="music-play-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>` +
+        `<svg class="music-pause-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="display:none"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>` +
+        `</div></div></div>` +
+        `<div class="music-info-container">` +
+        `<div class="music-text-info">` +
+        `<span class="music-name">${name}</span>` +
+        `<span class="nmsingle-playtime"><span class="current-time">00:00</span> / <span class="duration">--:--</span></span>` +
+        `</div>` +
+        `<div class="music-artist">${artist}</div>` +
+        `<div class="music-progress-bar"><div class="music-progress-track"><div class="music-progress-fill" style="width:0%"></div></div></div>` +
+        `</div>` +
+        `<div class="music-error" style="display:none">音乐加载失败</div>` +
+        `</div>`;
+
+    return wrapper;
+}
+
+/** 把裸 `{music id=…}{/music}` 文本替换成播放器卡片（需在 enhanceMusic 之前调用） */
+function enhanceMusicCards(root: HTMLElement) {
+    const hosts: HTMLElement[] = [];
+    root.querySelectorAll<HTMLElement>("p, li, div").forEach((el) => {
+        if (el.closest("pre") || el.closest(".md-editor-code")) return;
+        if (!el.textContent?.includes("{music")) return;
+        // 只处理「整段只有一个音乐短代码」的段落，避免误伤正文里顺带提到的说明文字
+        if (!/^\s*(\{music\s+id=\d+\s*\}\s*\{\/music\}\s*)+$/.test(el.textContent ?? "")) return;
+        hosts.push(el);
+    });
+    if (hosts.length === 0) return;
+
+    /**
+     * **同步**先把卡片造出来，元数据随后再补。
+     *
+     * 为什么不能等 playlist 回来再插：`enhanceMusic()` 是同步紧随其后执行的，
+     * 异步插入的卡片它扫不到 → 播放/暂停/进度全都不绑定（实测 dataset.musicEnhanced 一直是 no）。
+     */
+    const created: Array<{ el: HTMLElement; id: string }> = [];
+    for (const el of hosts) {
+        const ids = [...(el.textContent ?? "").matchAll(MUSIC_SHORTCODE_RE)].map((m) => m[1]);
+        if (ids.length === 0) continue;
+        const frag = document.createDocumentFragment();
+        for (const id of ids) {
+            const player = buildMusicPlayer(id, undefined);
+            frag.appendChild(player);
+            created.push({ el: player, id });
+        }
+        el.replaceWith(frag);
+    }
+
+    // 歌名 / 歌手 / 封面：拿到播放列表后再补，不影响播放（音频走 song-resources）
+    void loadPlaylist().then((map) => {
+        for (const { el, id } of created) {
+            const meta = map.get(id);
+            if (!meta || !el.isConnected) continue;
+            const nameEl = el.querySelector<HTMLElement>(".music-name");
+            if (nameEl && meta.name) nameEl.textContent = meta.name;
+            const artistEl = el.querySelector<HTMLElement>(".music-artist");
+            if (artistEl && meta.artist) artistEl.textContent = meta.artist;
+            const wrap = el.querySelector<HTMLElement>(".artwork-transition-wrapper");
+            if (wrap && meta.pic && !wrap.querySelector("img.artwork-image")) {
+                const img = document.createElement("img");
+                img.className = "artwork-image";
+                img.alt = "";
+                img.loading = "lazy";
+                img.src = meta.pic;
+                // 封面 404 时隐藏，露出 CSS ::before 的音符占位
+                img.addEventListener("error", () => {
+                    img.style.display = "none";
+                });
+                wrap.appendChild(img);
+            }
+        }
+    });
+}
+
 /** 音乐播放器增强：后端已渲染完整 UI（.music-player-container），这里绑定播放控制事件 */
 function enhanceMusic(root: HTMLElement, cleanupFns: (() => void)[]) {
     const players = root.querySelectorAll<HTMLElement>(".markdown-music-player");
@@ -984,6 +1197,7 @@ export function ArticleBody({
 
         // 插件增强
         enhanceInlineText(root);
+        enhanceImageCaptions(root);
         enhanceFolding(root);
         enhanceAdmonition(root);
         enhanceExternalLinks(root);
@@ -992,7 +1206,8 @@ export function ArticleBody({
         enhanceHidden(root);
         enhancePasswords(root);
         enhanceLinkCards(root);
-        enhanceMusic(root, cleanups);
+        enhanceMusicCards(root);
+    enhanceMusic(root, cleanups);
         void renderMermaid(root);
 
         // 主题切换时重渲染 mermaid（深色/浅色用不同 mermaid 主题）

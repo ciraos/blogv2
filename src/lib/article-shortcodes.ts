@@ -136,7 +136,7 @@ function blank(chars: string[], start: number, end: number): void {
  * 真正渲染成按钮的只有 26 处。不跳过就会把文档示例当成真按钮 → 两边数量对不上 →（按约束 2）整篇放弃补丁，
  * 功能等于没做。围栏支持 ``` 与 ~~~（含更长的围栏、最多 3 空格缩进），行内 code 用等长反引号配对。
  */
-function maskCodeRegions(md: string): string {
+export function maskCodeRegions(md: string): string {
     const chars = md.split("");
 
     // ① 围栏代码块：整行屏蔽（含围栏行本身）——顺带保证围栏里的反引号不会干扰下一步的行内 code 扫描
@@ -177,7 +177,7 @@ function maskCodeRegions(md: string): string {
  * 解析 `{btn` 与 `}` 之间的参数串（未知参数忽略；值可带引号，引号内允许空格）。
  * 键的取值表当参数传进来，将来加短代码时可以复用同一套正则。
  */
-function parseParams(body: string, keys: readonly string[]): Record<string, string> {
+export function parseParams(body: string, keys: readonly string[]): Record<string, string> {
     const raw: Record<string, string> = {};
     const re = /([A-Za-z][A-Za-z0-9_-]*)\s*=\s*("[^"]*"|'[^']*'|[^\s}]+)/g;
     let m: RegExpExecArray | null;
@@ -196,7 +196,7 @@ function parseParams(body: string, keys: readonly string[]): Record<string, stri
 }
 
 /** 是不是「文档占位示例」（url / text 写成了中文占位词）→ 不该渲染成真按钮 */
-function isPlaceholderExample(params: Record<string, string>): boolean {
+export function isPlaceholderExample(params: Record<string, string>): boolean {
     return (
         (params.url !== undefined && PLACEHOLDER_VALUES.has(params.url)) ||
         (params.text !== undefined && PLACEHOLDER_VALUES.has(params.text))
@@ -336,7 +336,7 @@ function findParagraphOnlyRange(html: string, anchor: ButtonAnchor): { start: nu
  * 以及 anheyu 原生写法 color-*）；十六进制之类的值没有对应类名——硬拼 `btn-#409eff` 是无效类名，
  * 所以只接受「字母开头的普通标识符」，其余一律不加（宁可不加，也不往 class 里塞垃圾）。
  */
-function colorClassSuffix(color: string): string | null {
+export function colorClassSuffix(color: string): string | null {
     const value = color.trim().toLowerCase();
     return /^[a-z][a-z0-9-]*$/.test(value) ? value : null;
 }

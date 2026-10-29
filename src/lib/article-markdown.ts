@@ -1,5 +1,12 @@
 import { createElement, type ComponentType } from "react";
 
+import {
+    buildTabsHtml,
+    renderMathInHtml,
+    renderShortcodesToHtml,
+    splitTabsBlocks,
+} from "@/lib/article-shortcodes-render";
+
 /**
  * 正文 Markdown → HTML（保存文章时提交给后端的 `content_html`）。
  *
@@ -245,12 +252,47 @@ function loadRenderer(): Promise<MarkdownToHtml> {
  * 纯函数：`md → html`（异步只因为渲染器要按需动态加载）。
  * 同样的输入永远得到同样的输出；空 Markdown 直接返回空串，不加载渲染器。
  * 未整理前的原始输出见 createRenderer，整理规则见 normalizeRenderedHtml。
+ *
+ * 渲染分两步：
+ * 1. `:::tabs` 需要**分段渲染**（每个标签页单独渲染成 HTML 再拼装）——把标签页 Markdown
+ *    塞进 `<div>` 指望 rehype 在 HTML 块里继续解析，遇到围栏代码块会整段丢失；
+ * 2. 其余内容：短代码 → Markdown 渲染 → 公式 → 清理。
  */
 export async function renderMarkdownToHtml(markdown: string): Promise<string> {
     const md = markdown ?? "";
     if (!md.trim()) return "";
     const render = await loadRenderer();
-    return normalizeRenderedHtml(render(md));
+
+    /**
+     * 顺序很关键：**先**把嵌套在 tabs 里的块级短代码（`:::btns` / `:::gallery` / `:::hidden`）
+     * 转成 HTML，**再**按 tabs 切分。
+     *
+     * 为什么：这些短代码自己也用 `:::` 收尾。如果先切 tabs，外层 `:::tabs … :::` 的惰性匹配会
+     * 把内层那个 `:::` 当成自己的结束符 —— tabs 块在那里提前收尾，最后那页的按钮组/图集就变成
+     * 未闭合的裸文本（实测：按钮组那一页显示 `<p>:::btns cols=3</p>` + 一串 `<li>`）。
+     */
+    const prepared = renderShortcodesToHtml(md);
+
+    /** 一段 Markdown → HTML（块级短代码已在上面统一转换过，这里不再重复跑） */
+    const renderSegment = (text: string): string => renderMathInHtml(normalizeRenderedHtml(render(text)));
+
+    const parts = splitTabsBlocks(prepared);
+    if (parts.length === 1 && parts[0].type === "md") return renderSegment(parts[0].text);
+
+    let tabsIndex = 0;
+    const html: string[] = [];
+    for (const part of parts) {
+        if (part.type === "md") {
+            const seg = renderSegment(part.text);
+            if (seg.trim()) html.push(seg);
+            continue;
+        }
+        const sections = part.sections.map((s) => ({ title: s.title, html: renderSegment(s.body) }));
+        if (sections.length === 0) continue;
+        tabsIndex += 1;
+        html.push(buildTabsHtml(part.head, sections, tabsIndex));
+    }
+    return html.join("\n");
 }
 
 /** resolveContentHtml 的返回：本次提交要带的 content_html，以及它是不是现渲染出来的 */

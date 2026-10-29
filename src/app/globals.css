@@ -753,6 +753,28 @@ body {
   box-shadow: 0 2px 16px color-mix(in oklch, var(--foreground) 10%, transparent);
 }
 
+/* ---------- 图片说明文字（把 alt/title 显示在图下） ----------
+ * 由 article-body 的 enhanceImageCaptions() 生成：span.image-figure > img + span.image-caption。
+ * 用 span 而不是 figure，因为它经常被包在 <p> 里（<p> 内放 <figure> 是非法嵌套）。 */
+.article-body .image-figure {
+  display: block;
+  margin: 1.2em 0;
+  text-align: center;
+}
+
+.article-body .image-figure img {
+  display: block;
+  margin: 0 auto;
+}
+
+.article-body .image-caption {
+  display: block;
+  margin-top: 0.5em;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+
 /* ============ 表格 ============ */
 .article-body .table-container {
   width: 100%;
@@ -1756,6 +1778,24 @@ body {
   opacity: 0.7;
 }
 
+/* 上下标（{sup}…{/sup} / {sub}…{/sub} 由 article-body 的 enhanceInlineText 转成原生标签）
+ * line-height: 0 + position: relative 是标准做法：不撑高行盒，避免带上下标的行看起来比别的行高。 */
+.article-body sup,
+.article-body sub {
+  position: relative;
+  font-size: 0.75em;
+  line-height: 0;
+  vertical-align: baseline;
+}
+
+.article-body sup {
+  top: -0.55em;
+}
+
+.article-body sub {
+  bottom: -0.25em;
+}
+
 .article-body .inline-kbd {
   display: inline-block;
   padding: 2px 6px;
@@ -1813,6 +1853,8 @@ body {
   text-underline-offset: 3px;
   cursor: help;
   transition: all 0.3s ease;
+  /* 旧数据（保存时渲染器还在写内联 border-bottom）会叠出两条线，这里强制去掉边框下划线 */
+  border-bottom: none;
 }
 
 .article-body .anzhiyu-tip-text:hover {
@@ -2886,19 +2928,32 @@ body {
   transition: all 0.3s ease;
 }
 
-/* ciraos 结构：.anzhiyu-tag-link 是外层 div，a.tag-Link 才是卡片（无 .tag-link-bottom） */
+/* ciraos 结构：.anzhiyu-tag-link 是外层 div，a.tag-Link 才是卡片（内含 .tag-link-tips + .tag-link-bottom） */
 .article-body .anzhiyu-tag-link:has(.tag-Link) {
   padding: 0;
   background: transparent;
   border: none;
   box-shadow: none;
   border-radius: 0;
+  /* 不占满整行：约 1/4 宽度，最小 240px 免得文字被挤断 */
+  max-width: 25%;
+  min-width: 240px;
+}
+
+@media (max-width: 640px) {
+  /* 移动端一列只有 350px 左右，25% 太窄，直接放宽到 100% */
+  .article-body .anzhiyu-tag-link:has(.tag-Link) {
+    max-width: 100%;
+    min-width: 0;
+  }
 }
 
 .article-body .anzhiyu-tag-link:has(.tag-Link) .tag-Link {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  /* 纵向排布：卡片只占 1/4 宽（~240px），横向排「图标+标题+tips+箭头」会把标题压到换行 */
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
   padding: 14px 16px;
   color: var(--foreground) !important;
   text-decoration: none !important;
@@ -2914,10 +2969,39 @@ body {
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.1);
 }
 
-/* ciraos 结构下 tips 靠右对齐 */
+/* 卡片内布局（窄卡 ~240px，纵向排布）：
+ *   🔗 标题
+ *      站点名
+ *   引用站外地址
+ * DOM 顺序是 tips 在前、bottom 在后，只靠 margin-left:auto 会把整块内容一起推到右边
+ *（实测整卡内容全挤在右侧），所以这里用 order 把 tips 排到最后一行。 */
+.article-body .anzhiyu-tag-link:has(.tag-Link) .tag-Link .tag-link-bottom {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+}
+
 .article-body .anzhiyu-tag-link:has(.tag-Link) .tag-Link .tag-link-tips {
-  margin: 0 0 0 auto;
-  flex-shrink: 0;
+  order: 3;
+  margin: 0;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 窄卡里那个装饰箭头挤占空间、还会插到标题和 tips 之间，直接不显示 */
+.article-body .anzhiyu-tag-link:has(.tag-Link) .tag-link-arrow-icon {
+  display: none;
+}
+
+/* 标题/站点名超长时省略，不拆词换行 */
+.article-body .anzhiyu-tag-link:has(.tag-Link) .tag-link-title,
+.article-body .anzhiyu-tag-link:has(.tag-Link) .tag-link-sitename {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .article-body .anzhiyu-tag-link:hover {
@@ -3181,7 +3265,6 @@ body {
     transform: rotate(360deg);
   }
 }
-
 /* ---------- Mermaid 图表 ---------- */
 .article-body .md-editor-mermaid {
   margin: 1em 0;
