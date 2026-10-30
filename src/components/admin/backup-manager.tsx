@@ -364,10 +364,10 @@ export function BackupManager() {
 
     const actionsDisabled = busy !== null;
 
-    // 移动端(<640px)：grid-cols-1 把每个单元格竖排成卡片；≥640px：恢复表格式列布局。
-    // min-w 只写在 sm: 以上 —— 窄屏若也撑宽，卡片就会被拉出横向滚动。
-    const rowGrid = "sm:grid-cols-[minmax(0,1.5fr)_88px_144px_minmax(0,1fr)_88px]";
-    const rowMinW = "sm:min-w-[860px]";
+    // 任何宽度都用同一套列模板：窄屏靠 .admin-scroll 横向滚动、操作列 sticky 固定，不再折成卡片。
+    // 窄屏也保持 min-w：整张表横向滚动，列不会被压扁。
+    const rowGrid = "grid-cols-[minmax(0,1.5fr)_88px_144px_minmax(0,1fr)_88px]";
+    const rowMinW = "min-w-[860px]";
 
     return (
         <div className="admin-card">
@@ -459,9 +459,9 @@ export function BackupManager() {
             {/* 列表：卡片内唯一滚动区（表头吸顶），磁贴 / 工具栏都不动。
                 加载 / 空 / 错误三态都渲染在这个 admin-scroll 里，外壳保持不变 */}
             <div className="admin-scroll">
-                {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
+                {/* 表头：任何宽度都显示（窄屏横向滚动时需要列名） */}
                 <div
-                    className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}
+                    className={`admin-sticky-head admin-list-head items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground grid ${rowMinW} ${rowGrid}`}
                 >
                     <span>备份文件名</span>
                     <span>大小</span>
@@ -475,7 +475,7 @@ export function BackupManager() {
                         {Array.from({ length: 4 }).map((_, i) => (
                             <div
                                 key={i}
-                                className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
+                                className={`grid admin-list-row items-center gap-x-3 gap-y-2 border-b px-4 py-3 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
                             >
                                 <div className="h-3 w-40 animate-pulse rounded bg-muted" />
                                 <div className="h-3 w-12 animate-pulse rounded bg-muted" />
@@ -513,7 +513,7 @@ export function BackupManager() {
                     list.map((item) => (
                         <div
                             key={item.filename}
-                            className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
+                            className={`grid admin-list-row items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
                         >
                             <div className="flex min-w-0 items-center gap-2">
                                 <DatabaseBackup className="size-4 shrink-0 text-muted-foreground/60" />
@@ -522,11 +522,9 @@ export function BackupManager() {
                                 </span>
                             </div>
                             <div className="text-xs tabular-nums text-muted-foreground">
-                                <span className="mr-1 sm:hidden">大小</span>
                                 {formatBytes(item.size)}
                             </div>
                             <div className="text-xs tabular-nums text-muted-foreground">
-                                <span className="mr-1 sm:hidden">创建时间</span>
                                 {formatDateTime(item.created_at)}
                             </div>
                             <div className="flex min-w-0 items-center gap-1.5">

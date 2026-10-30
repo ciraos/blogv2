@@ -44,9 +44,9 @@ export function LinkExportButton() {
     };
 
     return (
-        <Button variant="outline" onClick={handleExport} disabled={busy}>
+        <Button variant="outline" onClick={handleExport} disabled={busy} aria-label="导出" title="导出">
             <FolderOutputIcon size={16} />
-            {busy ? "导出中…" : "导出"}
+            <span className="hidden sm:inline">{busy ? "导出中…" : "导出"}</span>
         </Button>
     );
 }

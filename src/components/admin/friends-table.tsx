@@ -56,12 +56,23 @@ export interface FriendsFilterState {
 const PAGE_SIZES = [10, 20, 50];
 
 /**
- * 列表行栅格（桌面端）：选择 / 网站信息 / 描述 / 分类标签 / 状态 / 操作。
- * 列宽沿用改造前 flex 布局里的固定值：描述 w-40=160px、分类标签 w-28=112px、
- * 状态 w-20=80px、操作 w-24=96px；网站信息原本是 flex-1，等价换算成 minmax(0,1fr)，
- * 选择列与其它后台管理页保持一致取 28px（复选框本身 16px，留点击余量）。
+ * 列表行栅格：选择 / 网站信息 / 描述 / 分类标签 / 状态 / 操作。
+ * 列宽沿用改造前 flex 布局里的固定值：描述 w-40=160px、分类标签 w-28=112px、状态 w-20=80px；
+ * 网站信息原本是 flex-1，等价换算成 minmax(0,1fr)；选择列与其它后台管理页一致取 28px。
+ * 操作列留 136px：待审行有 4 个 28px 图标按钮（通过 / 拒绝 / 编辑 / 删除），96px 会溢出。
+ *
+ * 窄屏**不拆成卡片**：表格整体保持 880px 宽、由 .admin-scroll 横向滚动，
+ * 只有「操作」列 sticky 在右侧（见下面的 STICKY_ACTION_BASE），滚到哪都能点到编辑/删除。
  */
-const ROW_GRID = "sm:grid-cols-[28px_minmax(0,1fr)_160px_112px_80px_96px]";
+const ROW_GRID = "grid-cols-[28px_minmax(0,1fr)_160px_112px_80px_136px]";
+
+/**
+ * 右侧「操作」列的固定写法：sticky 到滚动容器右边缘，永远可见。
+ * 左侧一条分隔线把「固定列」和「可滚动区」分开。
+ * 表头与行内单元格都要自带**不透明底色**（行 bg-card / 表头 bg-muted），
+ * 否则横向滚动时被它盖住的列会从底下透出来、文字叠在一起。
+ */
+const STICKY_ACTION_BASE = "sticky right-0 border-l border-border/60 pl-2";
 
 /** 状态 → 中文 + 色块（背景淡色 + 同色系文字） */
 function statusBadge(status: string) {
@@ -415,10 +426,10 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
         <>
             {/* 表格滚动区：只有这块纵向 / 横向滚动（表头吸顶）；筛选栏与卡片底部工具栏都不动 */}
             <div className="admin-scroll">
-                {/* 表头：移动端隐藏（卡片内用 sm:hidden 辅助文字代替表头），≥sm 才以 grid 显示 */}
+                {/* 表头：任何宽度都显示（窄屏横向滚动时需要列名，否则分不清哪列是什么） */}
                 <div
                     className={cn(
-                        "admin-sticky-head hidden min-w-[880px] items-center gap-3 whitespace-nowrap border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid",
+                        "admin-sticky-head grid min-w-[880px] items-center gap-3 whitespace-nowrap border-b px-4 py-2.5 text-xs font-medium text-muted-foreground",
                         ROW_GRID
                     )}
                 >
@@ -446,11 +457,13 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                     <span className="truncate">描述</span>
                     <span>分类 / 标签</span>
                     <span className="text-center">状态</span>
-                    <span className="text-right">操作</span>
+                    {/* 操作列与行内单元格一样固定在右侧，否则横向滚动后表头会跟内容对不上。
+                        表头那格必须自带底色（bg-muted）：表头整体虽有背景，但被滚过去的列名会从这格底下透出来。 */}
+                    <span className={cn("bg-muted text-right", STICKY_ACTION_BASE)}>操作</span>
                 </div>
 
-                {/* 表体（min-w 只在 ≥sm 生效：窄屏不撑宽、不横向滚动；≥sm 撑到 880px，由外层 admin-scroll 横向滚动） */}
-                <div className="sm:min-w-[880px]">
+                {/* 表体：任何宽度都撑到 880px，由外层 admin-scroll 横向滚动（操作列 sticky 在右） */}
+                <div className="min-w-[880px]">
                     {loading ? (
                         <div className="py-12 text-center text-sm text-muted-foreground">加载中…</div>
                     ) : sortedLinks.length === 0 ? (
@@ -462,11 +475,13 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                                 <div
                                     key={link.id}
                                     className={cn(
-                                        "grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1",
+                                        // 任何宽度都是同一套 6 列栅格（表头也显示），窄屏靠 .admin-scroll 横向滚动；
+                                        // 只有最右的「操作」列 sticky 固定，滚到哪都能点到编辑/删除。
+                                        "grid items-center gap-x-3 gap-y-1 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40",
                                         ROW_GRID
                                     )}
                                 >
-                                    {/* 单元格 1：选择框 + 移动端序号（卡片没有表头，用序号帮助定位） */}
+                                    {/* 单元格 1：选择框 */}
                                     <span className="flex items-center gap-2">
                                         <input
                                             type="checkbox"
@@ -475,14 +490,14 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                                             aria-label={`选择 ${link.name}`}
                                             className="size-4 shrink-0 accent-primary"
                                         />
-                                        <span className="text-xs text-muted-foreground tabular-nums sm:hidden">#{link.id}</span>
                                     </span>
                                     {/* 网站信息 */}
                                     <div className="flex min-w-0 items-center gap-2.5">
                                         <LinkAvatarCell link={link} />
                                         <div className="min-w-0">
                                             <div className="truncate font-medium">{link.name}</div>
-                                            {/* URL：可点击外链，鲜艳蓝色与文字区分（截断处 hover 可看全文） */}
+                                            {/* URL：可点击外链，鲜艳蓝色与文字区分（截断处 hover 可看全文）。
+                                                只做截断不做换行：一行 URL 撑成三行会把整行拉高。 */}
                                             {link.url && (
                                                 <a
                                                     href={link.url.startsWith("http") ? link.url : `https://${link.url}`}
@@ -490,7 +505,7 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                                                     rel="noopener noreferrer nofollow"
                                                     title={link.url}
                                                     onClick={(e) => e.stopPropagation()}
-                                                    className="block whitespace-normal break-all text-xs/2.5 font-medium text-sky-500 transition-colors hover:text-sky-600 hover:underline dark:text-sky-400 dark:hover:text-sky-300"
+                                                    className="block truncate text-xs/2.5 font-medium text-sky-500 transition-colors hover:text-sky-600 hover:underline dark:text-sky-400 dark:hover:text-sky-300"
                                                 >
                                                     {link.url}
                                                 </a>
@@ -499,17 +514,11 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                                     </div>
                                     {/* 描述 */}
                                     <div className="min-w-0 truncate text-xs text-muted-foreground" title={link.description}>
-                                        {/* 移动端补「描述」提示，否则脱离表头后只是一段无来由的文字 */}
-                                        <span className="text-muted-foreground/70 sm:hidden">描述：</span>
                                         {link.description || "-"}
                                     </div>
                                     {/* 分类 / 标签 */}
                                     <div className="min-w-0">
-                                        <div className="truncate text-xs">
-                                            {/* 移动端补「分类」提示，标签本身是彩色小胶囊可自解释 */}
-                                            <span className="text-muted-foreground/70 sm:hidden">分类：</span>
-                                            {link.category?.name || "-"}
-                                        </div>
+                                        <div className="truncate text-xs">{link.category?.name || "-"}</div>
                                         {link.tag && (
                                             <span className="mt-0.5 inline-block rounded bg-accent px-1.5 py-px text-[10px] text-accent-foreground">
                                                 {link.tag.name}
@@ -522,8 +531,8 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                                             {badge.label}
                                         </span>
                                     </div>
-                                    {/* 操作 */}
-                                    <div className="flex items-center justify-end gap-1">
+                                    {/* 操作（固定列） */}
+                                    <div className={cn("flex items-center justify-end gap-1 bg-card", STICKY_ACTION_BASE)}>
                                         {/* 待审的友链才有通过 / 拒绝（走 /links/{id}/review，留审核痕迹） */}
                                         {link.status === "PENDING" && (
                                             <>
@@ -633,24 +642,28 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                         </div>
                     </div>
                 </div>
-                {/* 页码块 + 上一页 / 下一页，再跟上页码跳转 */}
+                {/* 页码块 + 上一页 / 下一页，再跟上页码跳转。
+                    窄屏（<640px）只留页码块：「上一页/下一页」由它自带的左右箭头承担，
+                    页码输入框 + 跳转按钮也一并藏起来（见 pagination-controls.tsx 的同款说明）。 */}
                 <div className="flex flex-wrap items-center gap-1">
                     <PaginationControls
                         page={page}
                         totalPages={totalPages}
                         onPageChange={goPage}
                     />
-                    <Input
-                        value={jumpPage}
-                        onChange={(e) => setJumpPage(e.target.value.replace(/\D/g, ""))}
-                        onKeyDown={(e) => { if (e.key === "Enter") jump(); }}
-                        placeholder="页码"
-                        className="h-7 w-14 text-xs"
-                        aria-label="跳转到页码"
-                    />
-                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={jump}>
-                        跳转
-                    </Button>
+                    <div className="hidden items-center gap-1 sm:flex">
+                        <Input
+                            value={jumpPage}
+                            onChange={(e) => setJumpPage(e.target.value.replace(/\D/g, ""))}
+                            onKeyDown={(e) => { if (e.key === "Enter") jump(); }}
+                            placeholder="页码"
+                            className="h-7 w-14 text-xs"
+                            aria-label="跳转到页码"
+                        />
+                        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={jump}>
+                            跳转
+                        </Button>
+                    </div>
                 </div>
             </div>
 

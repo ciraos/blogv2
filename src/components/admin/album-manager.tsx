@@ -486,21 +486,21 @@ export function AlbumManager() {
             {/* ===== 分类 Tab ===== */}
             {tab === "categories" && (
                 <div className="admin-scroll">
-                    <div className="admin-sticky-head hidden min-w-[560px] grid-cols-[60px_1fr_1fr_90px_140px] items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground sm:grid">
+                    <div className="admin-sticky-head admin-list-head min-w-[560px] grid-cols-[60px_1fr_1fr_90px_140px] items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground grid">
                         <span>ID</span>
                         <span>名称</span>
                         <span>描述</span>
                         <span className="text-center">排序</span>
                         <span className="text-right">操作</span>
                     </div>
-                    <div className="sm:min-w-[560px]">
+                    <div className="min-w-[560px]">
                         {categories.length === 0 ? (
                             <p className="px-4 py-12 text-center text-sm text-muted-foreground">还没有相册分类</p>
                         ) : (
                             categories.map((c) => (
                                 <div
                                     key={c.id}
-                                    className="grid grid-cols-1 items-center gap-x-3 gap-y-1 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:grid-cols-[60px_1fr_1fr_90px_140px]"
+                                    className="grid admin-list-row items-center gap-x-3 gap-y-1 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 grid-cols-[60px_1fr_1fr_90px_140px]"
                                 >
                                     <span className="font-mono text-xs text-muted-foreground">{c.id}</span>
                                     <span className="font-medium">{c.name}</span>

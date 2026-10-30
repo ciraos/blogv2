@@ -27,7 +27,7 @@ const PAGE_SIZE = 10;
  * 主列用 minmax(0,1fr) 承载「昵称 + @用户名 · 邮箱」，窄了才能 truncate 生效。
  */
 const ROW_GRID =
-    "sm:grid-cols-[minmax(0,1fr)_110px_96px_150px_150px_168px]";
+    "grid-cols-[minmax(0,1fr)_110px_96px_150px_150px_168px]";
 
 /** 新增/编辑表单初始值（新增弹窗打开时重置，避免残留上一人选中的用户数据；默认状态为「正常」） */
 const EMPTY_FORM = { username: "", email: "", nickname: "", password: "", userGroupID: "", status: "1" };
@@ -364,10 +364,10 @@ export function UserManagement() {
 
             {/* ===== 用户列表：<640px 单列堆叠卡片，≥640px 表格式栅格；只有这块滚动（表头吸顶） ===== */}
             <div className="admin-scroll">
-                {/* 表头：移动端隐藏，≥sm 才以 grid 显示；min-w 只在 sm 以上生效，窄屏不会撑出横向滚动 */}
+                {/* 表头：任何宽度都显示（窄屏横向滚动时需要列名） */}
                 <div
                     className={cn(
-                        "admin-sticky-head hidden min-w-[900px] items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid",
+                        "admin-sticky-head admin-list-head min-w-[900px] items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground grid",
                         ROW_GRID
                     )}
                 >
@@ -380,7 +380,7 @@ export function UserManagement() {
                 </div>
 
                 {/* 行容器：只有 ≥sm 才有 min-w，窄屏不撑宽，卡片不会被拉出横向滚动 */}
-                <div className="sm:min-w-[900px]">
+                <div className="min-w-[900px]">
                     {loading ? (
                         <div className="py-10 text-center text-sm text-muted-foreground">加载中…</div>
                     ) : !data || data.users.length === 0 ? (
@@ -390,7 +390,7 @@ export function UserManagement() {
                             <div
                                 key={user.id}
                                 className={cn(
-                                    "grid grid-cols-1 gap-x-3 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:items-center sm:gap-y-1",
+                                    "grid admin-list-row gap-x-3 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:items-center sm:gap-y-1",
                                     ROW_GRID
                                 )}
                             >
@@ -424,25 +424,21 @@ export function UserManagement() {
 
                                 {/* 用户组：手机上补「角色」字样，代替被隐藏的表头 */}
                                 <span className="flex items-center gap-1.5 text-sm">
-                                    <span className="shrink-0 text-xs text-muted-foreground sm:hidden">角色</span>
                                     <span className="truncate">{user.userGroup?.name ?? "—"}</span>
                                 </span>
 
                                 {/* 状态 */}
                                 <span className="flex items-center gap-1.5">
-                                    <span className="shrink-0 text-xs text-muted-foreground sm:hidden">状态</span>
                                     <StatusBadge status={user.status} />
                                 </span>
 
                                 {/* 最后登录 */}
                                 <span className="flex items-baseline gap-1.5 whitespace-nowrap text-sm text-muted-foreground">
-                                    <span className="shrink-0 text-xs sm:hidden">最后登录</span>
                                     <span>{formatTime(user.lastLoginAt)}</span>
                                 </span>
 
                                 {/* 创建时间 */}
                                 <span className="flex items-baseline gap-1.5 whitespace-nowrap text-sm text-muted-foreground">
-                                    <span className="shrink-0 text-xs sm:hidden">创建</span>
                                     <span>{formatTime(user.created_at)}</span>
                                 </span>
 

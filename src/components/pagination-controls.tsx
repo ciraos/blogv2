@@ -90,7 +90,10 @@ export function PaginationControls({
             )}
 
             {showPrevNext && (
-                <>
+                /* 小屏（<640px）只留左边的页码块：页码块里本来就有左右箭头，
+                   文字版「上一页 / 下一页」在窄屏会把页脚挤成两三行，纯属噪音。
+                   ≥sm 才显示，且**不删 DOM** —— 大屏用户体验不变。 */
+                <div className="hidden items-center gap-2 sm:flex">
                     <Button
                         variant="outline"
                         size="sm"
@@ -109,7 +112,7 @@ export function PaginationControls({
                     >
                         下一页
                     </Button>
-                </>
+                </div>
             )}
         </div>
     );

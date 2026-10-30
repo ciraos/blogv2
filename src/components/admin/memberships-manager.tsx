@@ -397,11 +397,11 @@ export function MembershipsManager() {
     const planNameById = new Map(plans.map((p) => [String(p.id), p.name]));
 
     // 移动端(<640px)：grid-cols-1 让每个单元格竖排成卡片；≥640px 恢复表格式列布局。
-    // min-w 只写在 sm: 以上 —— 窄屏若也撑宽，卡片会被拉出横向滚动。
-    const planGrid = "sm:grid-cols-[minmax(0,1fr)_160px_92px_88px_64px_124px]";
-    const planMinW = "sm:min-w-[800px]";
-    const memberGrid = "sm:grid-cols-[110px_minmax(0,1fr)_80px_140px_140px_80px_72px]";
-    const memberMinW = "sm:min-w-[880px]";
+    // 窄屏也保持 min-w：整张表横向滚动，列不会被压扁。
+    const planGrid = "grid-cols-[minmax(0,1fr)_160px_92px_88px_64px_124px]";
+    const planMinW = "min-w-[800px]";
+    const memberGrid = "grid-cols-[110px_minmax(0,1fr)_80px_140px_140px_80px_72px]";
+    const memberMinW = "min-w-[880px]";
 
     return (
         // admin-card：吃掉剩余高度，列表在卡片内部滚动，不顶高整页
@@ -564,7 +564,7 @@ export function MembershipsManager() {
                     {/* 唯一的滚动区：表头吸顶，工具栏与分页都不动 */}
                     <div className="admin-scroll">
                         <div
-                            className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground sm:grid ${planMinW} ${planGrid}`}
+                            className={`admin-sticky-head admin-list-head items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground grid ${planMinW} ${planGrid}`}
                         >
                             <span>方案名称</span>
                             <span>价格（元）</span>
@@ -593,7 +593,7 @@ export function MembershipsManager() {
                                 return (
                                     <div
                                         key={plan.id}
-                                        className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${planMinW} ${planGrid}`}
+                                        className={`grid admin-list-row items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${planMinW} ${planGrid}`}
                                     >
                                         <div className="min-w-0">
                                             <div className="truncate font-medium text-foreground">{plan.name || "—"}</div>
@@ -612,7 +612,6 @@ export function MembershipsManager() {
                                             )}
                                         </div>
                                         <div className="text-xs tabular-nums text-muted-foreground sm:text-center">
-                                            <span className="mr-1 sm:hidden">时长</span>
                                             {plan.duration_days ?? 0} 天
                                         </div>
                                         <div className="sm:text-center">
@@ -623,7 +622,6 @@ export function MembershipsManager() {
                                             </span>
                                         </div>
                                         <div className="text-xs tabular-nums text-muted-foreground sm:text-center">
-                                            <span className="mr-1 sm:hidden">排序</span>
                                             {plan.sort_order ?? 0}
                                         </div>
                                         <div className="flex items-center gap-1 sm:justify-end">
@@ -685,7 +683,7 @@ export function MembershipsManager() {
                 <>
                     <div className="admin-scroll">
                         <div
-                            className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground sm:grid ${memberMinW} ${memberGrid}`}
+                            className={`admin-sticky-head admin-list-head items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground grid ${memberMinW} ${memberGrid}`}
                         >
                             <span>用户</span>
                             <span>方案</span>
@@ -712,11 +710,10 @@ export function MembershipsManager() {
                                 return (
                                     <div
                                         key={`${member.id ?? member.user_id}-${member.plan_id}-${index}`}
-                                        className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${memberMinW} ${memberGrid}`}
+                                        className={`grid admin-list-row items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${memberMinW} ${memberGrid}`}
                                     >
                                         <div className="min-w-0">
                                             <span className="font-mono text-xs text-muted-foreground">
-                                                <span className="mr-1 font-sans sm:hidden">用户</span>
                                                 {member.user_id ?? "—"}
                                             </span>
                                         </div>
@@ -731,11 +728,9 @@ export function MembershipsManager() {
                                             </span>
                                         </div>
                                         <div className="text-xs text-muted-foreground">
-                                            <span className="mr-1 sm:hidden">开始</span>
                                             {formatDateTime(member.start_time)}
                                         </div>
                                         <div className="text-xs text-muted-foreground">
-                                            <span className="mr-1 sm:hidden">到期</span>
                                             {formatDateTime(member.expire_time)}
                                         </div>
                                         <div className="sm:text-center">

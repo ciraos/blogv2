@@ -525,10 +525,10 @@ export function EssaysManager() {
 
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-    // 移动端(<640px)：grid-cols-1 把每个单元格竖排成卡片；≥640px：恢复表格式列布局。
-    // min-w 只写在 sm: 以上 —— 窄屏若也撑宽，卡片就会被拉出横向滚动。
-    const rowGrid = "sm:grid-cols-[16px_minmax(0,1fr)_96px_64px_112px_128px_96px]";
-    const rowMinW = "sm:min-w-[820px]";
+    // 任何宽度都用同一套列模板：窄屏靠 .admin-scroll 横向滚动、操作列 sticky 固定，不再折成卡片。
+    // 窄屏也保持 min-w：整张表横向滚动，列不会被压扁。
+    const rowGrid = "grid-cols-[16px_minmax(0,1fr)_96px_64px_112px_128px_96px]";
+    const rowMinW = "min-w-[820px]";
 
     return (
         // admin-card：吃掉剩余高度，列表区域（admin-scroll）在卡片内部滚动，不再顶高整页
@@ -623,8 +623,8 @@ export function EssaysManager() {
 
             {/* 列表：卡片内唯一滚动区（表头吸顶），工具栏与分页都不动 */}
             <div className="admin-scroll">
-                {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
-                <div className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}>
+                {/* 表头：任何宽度都显示（窄屏横向滚动时需要列名） */}
+                <div className={`admin-sticky-head admin-list-head items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground grid ${rowMinW} ${rowGrid}`}>
                     <span className="flex items-center">
                         <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="全选本页" />
                     </span>
@@ -648,7 +648,7 @@ export function EssaysManager() {
                         return (
                             <div
                                 key={essay.id}
-                                className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
+                                className={`grid admin-list-row items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
                             >
                                 {/* 多选：批量删除 / 导出都基于这一列 */}
                                 <span className="flex items-center gap-2">

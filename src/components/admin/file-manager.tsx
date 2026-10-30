@@ -1381,14 +1381,14 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
                 ) : (
                     // 列表视图：表头吸顶；整个列表与网格视图共用外层 admin-scroll，这里不再自带滚动/边框
                     <div>
-                        <div className="admin-sticky-head hidden min-w-[800px] grid-cols-[1fr_80px_100px_150px_140px] items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid">
+                        <div className="admin-sticky-head admin-list-head min-w-[800px] grid-cols-[1fr_80px_100px_150px_140px] items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground grid">
                             <span>名称</span>
                             <span>类型</span>
                             <span className="text-right">大小</span>
                             <span>修改时间</span>
                             <span className="text-right">操作</span>
                         </div>
-                        <div className="sm:min-w-[800px]">
+                        <div className="min-w-[800px]">
                             {visible.map((item) => {
                                 const checked = selected.includes(item.id);
                                 return (
@@ -1398,7 +1398,7 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
                                             data-fm-item={item.id}
                                             className={cn(
                                                 // 勾选框列已按需求去掉（多选改用 Ctrl/Cmd+单击、Shift 范围选、工具条全选）
-                                                "grid grid-cols-1 items-center gap-x-3 gap-y-1 border-b px-4 py-2.5 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:grid-cols-[1fr_80px_100px_150px_140px]",
+                                                "grid admin-list-row items-center gap-x-3 gap-y-1 border-b px-4 py-2.5 text-sm transition-colors last:border-b-0 hover:bg-muted/40 grid-cols-[1fr_80px_100px_150px_140px]",
                                                 checked && "bg-primary/10 ring-1 ring-inset ring-primary/30"
                                             )}
                                         >

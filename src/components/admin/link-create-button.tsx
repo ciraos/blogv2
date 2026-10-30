@@ -124,9 +124,10 @@ export function LinkCreateButton() {
 
     return (
         <>
-            <Button onClick={() => setOpen(true)}>
+            {/* 窄屏只留图标：这一排 5 个动作按钮在手机上会折成两行，靠 title/aria-label 保留可读性 */}
+            <Button onClick={() => setOpen(true)} aria-label="新建友链" title="新建友链">
                 <Plus size={4} />
-                新建友链
+                <span className="hidden sm:inline">新建友链</span>
             </Button>
 
             {open && (

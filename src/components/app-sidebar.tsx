@@ -15,7 +15,6 @@ import {
   FileTextIcon,
   MessageSquareIcon,
   UsersIcon,
-  Settings2Icon,
   ExternalLinkIcon,
   CommandIcon,
   Grid2x2Plus,
@@ -89,12 +88,8 @@ const data = {
     }
   ],
   navClouds: [],
+  // 只留「访问前台」：「设置」在「系统管理 → 系统设置」里已经有了，底部这个入口是重复的。
   navSecondary: [
-    {
-      title: "设置",
-      url: "/admin/settings",
-      icon: (<Settings2Icon />),
-    },
     {
       title: "访问前台",
       url: "/",
@@ -152,7 +147,7 @@ export function AppSidebar({
         {/* <NavDocuments items={data.documents} /> */}
       </SidebarContent>
 
-      {/* 「设置 / 访问前台」原本贴在 SidebarContent 底部（mt-auto），菜单一长就跟着一起滚走。
+      {/* 「访问前台」原本贴在 SidebarContent 底部（mt-auto），菜单一长就跟着一起滚走。
           现在搬到滚动区外面：常驻在导航卡片下方、用户卡片上方，只有上面的菜单自己滚
           （sidebar-content 自带 overflow-auto，是唯一的滚动容器）。 */}
       <NavSecondary items={data.navSecondary} className="pb-1" />

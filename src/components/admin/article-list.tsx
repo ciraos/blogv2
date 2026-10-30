@@ -359,15 +359,18 @@ export function ArticleList() {
         setPage(1);
     };
 
-    // 移动端(<640px)：grid-cols-1 把每个单元格竖排成卡片；≥640px：恢复表格式列布局。
-    // min-w 只写在 sm: 以上 —— 窄屏若也撑宽，卡片就会被拉出横向滚动。
+    // 任何宽度都用同一套列模板：窄屏靠 .admin-scroll 横向滚动、操作列 sticky 固定，不再折成卡片。
+    // 窄屏也保持 min-w：整张表横向滚动，列不会被压扁。
     // 操作列：预览/编辑/删除 三个带文字的按钮（实测各 67.6px）+ 2 个 gap-1（4px）≈ 211px，列宽取 236px，
     // 余量 ≈25px，与改前（272px 装 4 个按钮）一致：去掉历史版本图标按钮后内容少了 32px 按钮 + 4px 间隔 = 36px，
     // 列宽同步收窄 36px，剩余三个按钮的宽度与间距完全不变。
     // 最前面 36px 是批量删除用的勾选列。
-    const rowGrid = "sm:grid-cols-[36px_minmax(0,1fr)_96px_80px_96px_236px]";
+    // ⚠️ 窄屏要两套模板：236px 的操作列在 390px 屏上会吃掉六成宽度、标题只剩几十像素，
+    //    所以 <640px 把按钮文字藏起来（列宽 120px）、标题列保底 220px；≥sm 恢复带文字的 236px。
+    const rowGrid =
+        "grid-cols-[36px_minmax(220px,1fr)_96px_80px_96px_120px] sm:grid-cols-[36px_minmax(0,1fr)_96px_80px_96px_236px]";
     // 876px → 840px：只跟着操作列收窄 36px，标题列（minmax(0,1fr)）的最小宽度保持不变
-    const rowMinW = "sm:min-w-[840px]";
+    const rowMinW = "min-w-[840px]";
 
     return (
         // admin-card：吃掉剩余高度，表格区域（admin-scroll）在卡片内部滚动，不再顶高整页
@@ -533,8 +536,8 @@ export function ArticleList() {
             {/* 列表：移动端(<640px)每个单元格竖排成卡片，≥640px 表格式 grid 并可横向滚动。
                 admin-scroll：只有这块纵向滚动（表头吸顶），卡片与工具栏都不动 */}
             <div className="admin-scroll">
-                {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
-                <div className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}>
+                {/* 表头：任何宽度都显示（窄屏横向滚动时需要列名） */}
+                <div className={`admin-sticky-head admin-list-head items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground grid ${rowMinW} ${rowGrid}`}>
                     {/* 全选只作用于本页可见行 */}
                     <Checkbox
                         checked={allSelected ? true : someSelected ? "indeterminate" : false}
@@ -558,7 +561,7 @@ export function ArticleList() {
                     list.map((article) => (
                         <div
                             key={article.id}
-                            className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
+                            className={`grid admin-list-row items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
                         >
                             {/* 勾选列：窄屏排在卡片最上方 */}
                             <div className="flex items-center">
@@ -605,7 +608,7 @@ export function ArticleList() {
                                 </span>
                             </div>
                             <div className="text-xs text-muted-foreground">{formatDate(article.created_at)}</div>
-                            {/* 操作列：窄屏靠左跟随内容流，≥sm 居中与表头对齐 */}
+                            {/* 操作列：窄屏只留图标（列宽 120px，见 rowGrid 的说明），≥sm 带文字 */}
                             <div className="flex items-center gap-1 sm:justify-center">
                                 <Button
                                     variant="ghost"
@@ -616,7 +619,8 @@ export function ArticleList() {
                                     asChild
                                 >
                                     <Link href={`/posts/${article.abbrlink || article.id}`}>
-                                        <Eye className="size-4" />预览
+                                        <Eye className="size-4" />
+                                        <span className="hidden sm:inline">预览</span>
                                     </Link>
                                 </Button>
                                 {/* 编辑 → /admin/post-management/[id]/edit（原来是 onClick toast 占位） */}
@@ -629,7 +633,8 @@ export function ArticleList() {
                                     asChild
                                 >
                                     <Link href={`/admin/post-management/${article.id}/edit`}>
-                                        <Pencil className="size-4" />编辑
+                                        <Pencil className="size-4" />
+                                        <span className="hidden sm:inline">编辑</span>
                                     </Link>
                                 </Button>
                                 <Button
@@ -641,7 +646,8 @@ export function ArticleList() {
                                     disabled={deletingId === article.id}
                                     onClick={() => void handleDelete(article)}
                                 >
-                                    <Trash2 className="size-4" />删除
+                                    <Trash2 className="size-4" />
+                                    <span className="hidden sm:inline">删除</span>
                                 </Button>
                             </div>
                         </div>

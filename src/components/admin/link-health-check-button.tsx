@@ -115,9 +115,15 @@ export function LinkHealthCheckButton() {
 
     return (
         <>
-            <Button className="bg-purple-600 text-white hover:bg-purple-600/90" onClick={() => setConfirmOpen(true)} disabled={running}>
+            <Button
+                className="bg-purple-600 text-white hover:bg-purple-600/90"
+                onClick={() => setConfirmOpen(true)}
+                disabled={running}
+                aria-label={running ? "检查中" : "健康检查"}
+                title={running ? "检查中…" : "健康检查"}
+            >
                 {running ? <LoaderCircle className="size-4 animate-spin" /> : <HeartPulse className="size-4" />}
-                {running ? "检查中…" : "健康检查"}
+                <span className="hidden sm:inline">{running ? "检查中…" : "健康检查"}</span>
             </Button>
 
             {/* 确认对话框：无右上角关闭按钮，仅 取消 / 确认 */}

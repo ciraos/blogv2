@@ -157,6 +157,11 @@ function enhanceImageCaptions(root: HTMLElement) {
     root.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
         if (img.closest(".image-figure")) return;
         /**
+         * 表情包（后端把 `:text:` 解析成 img.anzhiyu-owo-emotion）：alt 就是表情名，
+         * 包成 figure 会把行内小图标变成"图片 + 图注"一大块，必须跳过。
+         */
+        if (img.classList.contains("anzhiyu-owo-emotion")) return;
+        /**
          * 跳过「自己管理布局」的容器：图片组/视频组/链接卡/播放器里的 <img> 依赖
          * 父级的 aspect-ratio + width/height:100% 定位，多包一层 span 会让它们互相重叠
          *（实测：加了图注后图片组里多张图叠在一起）。这些容器本来也有自己的说明文字。

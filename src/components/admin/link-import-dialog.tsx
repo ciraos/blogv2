@@ -140,9 +140,9 @@ export function LinkImportDialog() {
     return (
         <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange}>
             <DialogPrimitive.Trigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" aria-label="导入" title="导入">
                     <FolderDownIcon size={16} />
-                    导入
+                    <span className="hidden sm:inline">导入</span>
                 </Button>
             </DialogPrimitive.Trigger>
             <DialogPrimitive.Portal>

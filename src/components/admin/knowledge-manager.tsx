@@ -172,10 +172,10 @@ const STAT_TILES = [
     { key: "total_tokens", label: "总 Token", icon: Hash, chip: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
 ] as const;
 
-// 移动端(<640px)：grid-cols-1 把每个单元格竖排成卡片；≥640px：恢复表格式列布局。
+// 任何宽度都用同一套列模板：窄屏靠 .admin-scroll 横向滚动、操作列 sticky 固定，不再折成卡片。
 // 列顺序：标题(含多选框) / 来源 / 类型 / 长度 / 状态 / 分块 / 索引时间 / 创建时间 / 操作
-const rowGrid = "sm:grid-cols-[minmax(0,1fr)_72px_104px_80px_88px_64px_140px_140px_128px]";
-const rowMinW = "sm:min-w-[1120px]";
+const rowGrid = "grid-cols-[minmax(0,1fr)_72px_104px_80px_88px_64px_140px_140px_128px]";
+const rowMinW = "min-w-[1120px]";
 
 /** 表头/数据行共用的表单控件高度，避免两个工具栏视觉跳变 */
 const CONTROL_H = "h-8";
@@ -205,7 +205,7 @@ function KnowledgeRow({
     };
     return (
         <div
-            className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
+            className={`grid admin-list-row items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
         >
             {/* 标题：多选框放第一格，避免为它单独加一列（列宽已经排满） */}
             <div className="flex min-w-0 items-start gap-2">
@@ -231,11 +231,9 @@ function KnowledgeRow({
                 </span>
             </div>
             <div className="truncate font-mono text-xs text-muted-foreground">
-                <span className="mr-1 font-sans sm:hidden">类型</span>
                 {item.content_type || "—"}
             </div>
             <div className="text-xs tabular-nums text-muted-foreground sm:text-right">
-                <span className="mr-1 sm:hidden">长度</span>
                 {formatCount(item.content_length)}
             </div>
             <div className="sm:text-center">
@@ -244,15 +242,12 @@ function KnowledgeRow({
                 </span>
             </div>
             <div className="text-xs tabular-nums text-muted-foreground sm:text-center">
-                <span className="mr-1 sm:hidden">分块</span>
                 {formatCount(item.chunk_count)}
             </div>
             <div className="text-xs text-muted-foreground">
-                <span className="mr-1 sm:hidden">索引</span>
                 {formatDateTime(item.indexed_at)}
             </div>
             <div className="text-xs text-muted-foreground">
-                <span className="mr-1 sm:hidden">创建</span>
                 {formatDateTime(item.created_at)}
             </div>
             <div className="flex items-center gap-1 sm:justify-end">
@@ -988,7 +983,7 @@ export function KnowledgeManager() {
             {/* 列表：卡片内唯一滚动区 */}
             <div className="admin-scroll">
                 <div
-                    className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}
+                    className={`admin-sticky-head admin-list-head items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground grid ${rowMinW} ${rowGrid}`}
                 >
                     <span className="flex items-center gap-2">
                         <Checkbox

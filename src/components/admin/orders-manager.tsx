@@ -402,10 +402,10 @@ export function OrdersManager() {
         toast.success("已导出当前页订单");
     };
 
-    // 移动端(<640px)：grid-cols-1 把每个单元格竖排成卡片；≥640px：恢复表格式列布局。
-    // min-w 只写在 sm: 以上 —— 窄屏若也撑宽，卡片就会被拉出横向滚动。
-    const rowGrid = "sm:grid-cols-[minmax(0,1fr)_84px_150px_92px_92px_84px_128px_128px_120px]";
-    const rowMinW = "sm:min-w-[1060px]";
+    // 任何宽度都用同一套列模板：窄屏靠 .admin-scroll 横向滚动、操作列 sticky 固定，不再折成卡片。
+    // 窄屏也保持 min-w：整张表横向滚动，列不会被压扁。
+    const rowGrid = "grid-cols-[minmax(0,1fr)_84px_150px_92px_92px_84px_128px_128px_120px]";
+    const rowMinW = "min-w-[1060px]";
 
     return (
         // admin-card：吃掉剩余高度，列表区域（admin-scroll）在卡片内部滚动，不再顶高整页
@@ -551,8 +551,8 @@ export function OrdersManager() {
             {/* 列表：卡片内唯一滚动区（表头吸顶），统计磁贴 / 工具栏 / 分页都不动。
                 三种状态都渲染在这一个 .admin-scroll 里，外壳结构保持不变。 */}
             <div className="admin-scroll">
-                {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
-                <div className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}>
+                {/* 表头：任何宽度都显示（窄屏横向滚动时需要列名） */}
+                <div className={`admin-sticky-head admin-list-head items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground grid ${rowMinW} ${rowGrid}`}>
                     <span>订单号 / 交易号</span>
                     <span>类型</span>
                     <span>用户</span>
@@ -616,7 +616,7 @@ export function OrdersManager() {
                         return (
                             <div
                                 key={order.id}
-                                className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
+                                className={`grid admin-list-row items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
                             >
                                 {/* order_no + trade_no */}
                                 <div className="flex items-start gap-2">
@@ -656,12 +656,10 @@ export function OrdersManager() {
                                 {/* pay_time（可能为空：未支付） */}
                                 <div className="text-xs tabular-nums text-muted-foreground">
                                     {/* 裸时间脱离表头看不懂，窄屏补个前缀 */}
-                                    <span className="mr-1 sm:hidden">支付</span>
                                     {formatDateTime(order.pay_time)}
                                 </div>
                                 {/* created_at */}
                                 <div className="text-xs tabular-nums text-muted-foreground">
-                                    <span className="mr-1 sm:hidden">创建</span>
                                     {formatDateTime(order.created_at)}
                                 </div>
                                 {/* 操作：详情 / 删除（软删除）。

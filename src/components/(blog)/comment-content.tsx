@@ -65,19 +65,38 @@ const LINE_BREAK = /<br\s*\/?>/gi;
 /** 找段落里最后一张 `<img>`（`g` 用于取全部匹配） */
 const IMAGE_TAG_GLOBAL = /<img\b[^>]*>/gi;
 
-/** 段落里有几张 `<img>` */
+/** 段落里有几张 `<img>`（**不算表情**，理由见 isEmojiImage 的说明） */
 function countImages(inner: string): number {
-    return inner.match(/<img\b/gi)?.length ?? 0;
+    return [...inner.matchAll(IMAGE_TAG_GLOBAL)].filter((match) => !isEmojiImageTag(match[0])).length;
 }
+
+/** 后端给表情图打的类名（见 isEmojiImageTag 的说明） */
+const EMOJI_IMAGE_CLASS = "anzhiyu-owo-emotion";
+
+/**
+ * 是不是「表情图」。
+ *
+ * 后端生成评论 HTML 时会把 `:heo-害羞:` 这类写法换成
+ * `<img class="anzhiyu-owo-emotion" alt="heo-害羞" src="…">`（见 anheyu-app
+ * pkg/service/parser/service.go 的 emojiReplacer）。它们和用户上传的照片**都是 `<img>`**，
+ * 但语义完全不同：照片要折行 + 缩略图 + 灯箱，表情要当一个行内小图标。
+ * 所以这里按类名区分，后续三处（折行、尺寸、灯箱）都只看「非表情图」。
+ */
+function isEmojiImageTag(tag: string): boolean {
+    return tag.includes(EMOJI_IMAGE_CLASS);
+}
+
+/** 正文里「非表情」的图片（尺寸归一 / 灯箱都只针对它们） */
+const PHOTO_IMAGE_SELECTOR = `img:not(.${EMOJI_IMAGE_CLASS})`;
 
 /** 去掉段内换行：`<img><br><img>` 里的 `<br>` 会让图竖排，交给 flex 换行 */
 function stripLineBreaks(inner: string): string {
     return inner.replace(LINE_BREAK, "");
 }
 
-/** 最后一张图结尾的位置（没有图片则 0） */
+/** 最后一张图结尾的位置（没有图片则 0；表情图不算） */
 function lastImageEnd(inner: string): number {
-    const tags = [...inner.matchAll(IMAGE_TAG_GLOBAL)];
+    const tags = [...inner.matchAll(IMAGE_TAG_GLOBAL)].filter((match) => !isEmojiImageTag(match[0]));
     const last = tags[tags.length - 1];
     return last && last.index !== undefined ? last.index + last[0].length : 0;
 }
@@ -101,21 +120,49 @@ function findTrailingTextStart(inner: string): number {
 }
 
 /**
- * 从「N 张图 + 末尾文字」的段落里拆出图片行与文字块。
- * `textStart` 由 findTrailingTextStart 给出（最后一张图之后、说明文字的起点）。
+ * 找出段首文字的结束位置（第一张图之前那段文字），没有则 0。
+ *
+ * 为什么要单独处理段首文字：用户实际发的是 `<p>评论带多图测试！<img><img></p>` ——
+ * 文字在**图前面**。这段段落会被整体套成 flex 行容器（见下面 restructureImageParagraph），
+ * 于是文字变成一个 flex item，被 `items-center` 垂直居中后**并排显示在图片左边**
+ * （实测截图：文字在左、两张图在右）。作者的原意是「字在上、图在下」，所以这里也要拆。
+ *
+ * 判定同 findTrailingTextStart：`&nbsp;` / 注释不算文字。
+ */
+function findLeadingTextEnd(inner: string): number {
+    // 只看「照片」：表情图是行内元素，留在文字块里更自然（它本来就不该进图片行）
+    const firstPhoto = [...inner.matchAll(IMAGE_TAG_GLOBAL)].find((match) => !isEmojiImageTag(match[0]));
+    if (!firstPhoto || firstPhoto.index === 0) return 0;
+    const before = inner.slice(0, firstPhoto.index);
+    const text = before.replace(/&nbsp;|&#160;|<!--[\s\S]*?-->/gi, "").replace(/<img\b[^>]*>|<[^>]+>/gi, "").trim();
+    if (!text) return 0;
+    // 末尾空白（含换行）不算文字：留下会把图片行挤出一段空白
+    return before.replace(/\s+$/, "").length;
+}
+
+/**
+ * 把「文字 + N 张图」的段落重排成「文字块 / 图片行 / 文字块」三个块级兄弟。
+ * `leadEnd` 由 findLeadingTextEnd 给出（段首文字结束位置，0 = 没有）；
+ * `trailStart` 由 findTrailingTextStart 给出（末尾文字起点，-1 = 没有）。
  *
  * ⚠️ 为什么不能图省事直接在 `<p>` 里塞 `<div>`：HTML 解析器遇到 `<p><div>` 会**自动闭合** `</p>`，
  * 于是本来想当子节点的行容器跑到段落外面、剩下一个空 `<p>`，图片反而散架
  * （实测：`<p><img><img>文字</p>` 加 div 后末端出现一个孤零零的 `</p>`）。
- * 所以这里换成两个合法的块级兄弟：`<p class="…flex…">图片</p><p class="w-full basis-full">文字</p>`，
- * 都是 `<p>`（块级），既横排、又让末尾文字独占一行，保持作者"图在上、字在下"的排版。
+ * 所以这里全部用 `<p>`（块级）当兄弟节点：图片行自己 flex 横排，文字各自独占一行 ——
+ * 顺序仍然是作者写的顺序（段首文字在上、末尾文字在下）。
  */
-function restructureImagesWithTrailingText(inner: string, textStart: number): string {
-    if (textStart <= 0) return `${IMAGE_RUN_ROW_OPEN}${stripLineBreaks(inner)}</p>`;
+function restructureImageParagraph(inner: string, leadEnd: number, trailStart: number): string {
+    const hasTrailing = trailStart > 0;
     // 去掉 `<br>` 之后还要 trim：换行标签常常带缩进/换行空白，留着会在图片行尾部多出一段空格
-    const images = stripLineBreaks(inner.slice(0, textStart)).trim();
-    const text = inner.slice(textStart).replace(/^[\s]+/, "");
-    return `${IMAGE_RUN_ROW_OPEN}${images}</p>${IMAGE_RUN_TEXT_OPEN}${text}</p>`;
+    const images = stripLineBreaks(inner.slice(leadEnd, hasTrailing ? trailStart : undefined)).trim();
+    const leading = leadEnd > 0 ? inner.slice(0, leadEnd).replace(/(?:\s|<br\s*\/?>)+$/i, "") : "";
+    const trailing = hasTrailing ? inner.slice(trailStart).replace(/^(?:\s|<br\s*\/?>)+/i, "") : "";
+
+    let out = "";
+    if (leading) out += `${IMAGE_RUN_TEXT_OPEN}${leading}</p>`;
+    out += `${IMAGE_RUN_ROW_OPEN}${images}</p>`;
+    if (trailing) out += `${IMAGE_RUN_TEXT_OPEN}${trailing}</p>`;
+    return out;
 }
 
 /**
@@ -123,14 +170,17 @@ function restructureImagesWithTrailingText(inner: string, textStart: number): st
  *   ① `<p><img/></p><p><img/></p>` —— 每张图一个段落，段落块级 → 必然一张一行；
  *   ② `<p><img/><br><img/></p>` —— 同一段里用 `<br>` 换行 → 也必然一张一行；
  *   ③ `<p><img/><br><img/><br><img/> 说明文字</p>` —— 多图后面还跟了一句说明
- *      （用户实际发的那条就是这种，见下面「图 + 文字」的处理）。
+ *      （用户实际发的那条就是这种，见下面「图 + 文字」的处理）；
+ *   ④ `<p>说明文字<img/><br><img/></p>` —— 文字在**图前面**（同样是用户实际发过的写法）。
  *
  * 规则：
  *  - 连续的单图段落（写法 ①）→ 合并进一个 `<div class="comment-image-row flex flex-wrap …">`；
  *  - 段内多图（写法 ②）→ 清掉 `<br>`，并**直接给这个段落套同一套 flex 类**当行容器
  *    （这就是"给段落加 flex 类"而不是"把 img 提出来"的答案：不动 `<p>` 之外任何节点，最安全）；
- *  - 段内多图 + 末尾文字（写法 ③）→ 拆成 `<p class="…flex…">图</p><p class="w-full basis-full">文字</p>`：
- *    图片横排、说明文字独占一行（详见 restructureImagesWithTrailingText 里"为什么不能塞 div"的说明）；
+ *  - 段内多图 + 文字（写法 ③ / ④）→ 拆成 `<p class="w-full basis-full">文字</p>` +
+ *    `<p class="…flex…">图</p>` 的块级兄弟：文字独占一行、图片在下面横排；
+ *    段首文字在上、段尾文字在下，顺序完全按作者写的来
+ *    （详见 restructureImageParagraph 里"为什么不能塞 div"的说明）；
  *  - 段里出现文字但**只有一张图**（如 `图1 <img>`）→ 整段原样留，不动；
  *  - 只有**紧邻**的图片段落会并进同一行：中间夹了其它内容先关掉当前行，不会"隔空合并"；
  *  - **顺序完全保留**：只把相邻段落放进同一个 flex 容器，不重排、不移动节点，
@@ -172,9 +222,8 @@ export function foldImageParagraphsIntoRows(html: string): string {
         // （图片后面还跟着说明文字时，还要把它拆成「图片行 + 整宽文字块」）
         if (countImages(inner) > 1) {
             result += closeRow() + html.slice(cursor, match.index);
-            result += hasTrailingText
-                ? restructureImagesWithTrailingText(inner, trailingTextStart)
-                : `${IMAGE_RUN_ROW_OPEN}${stripLineBreaks(inner)}</p>`;
+            // 段首/段尾的文字都拆成独立块：文字在上（作者先写字）、图片在下
+            result += restructureImageParagraph(inner, findLeadingTextEnd(inner), hasTrailingText ? trailingTextStart : -1);
             sawParagraph = true;
             cursor = match.index + match[0].length;
             continue;
@@ -286,6 +335,33 @@ function applyThumbnailSize(img: HTMLImageElement, referenceWidth: number) {
     img.setAttribute(SIZED_ATTR, "1");
 }
 
+/* ---------- 多图行的「等高」归一 ----------
+ * 单图用上面的宽度比例就够；但一行里有多张时，横图矮、竖图高摆在一起非常难看
+ *（实测：一张横版风景 + 一张竖版立绘，竖图把整条评论撑得很高、上下还错位）。
+ * 这里对「一行 ≥2 张」的图片改用**固定行高 + 宽度自适应 + object-fit: cover**，
+ * 视觉上变成整齐的一排缩略图（类似聊天软件的相册），点开仍看原图。
+ */
+/** 一行两张时的行高 */
+const ROW_HEIGHT_DOUBLE = 150;
+/** 一行三张及以上时的行高（再高就太占地方） */
+const ROW_HEIGHT_MANY = 110;
+
+/** 给「一行多图」的图片统一高度（单图不动） */
+function normalizeRowHeights(root: HTMLElement) {
+    root.querySelectorAll<HTMLElement>(".comment-image-row").forEach((row) => {
+        const imgs = Array.from(row.querySelectorAll<HTMLImageElement>("img"));
+        if (imgs.length < 2) return;
+        const height = imgs.length >= 3 ? ROW_HEIGHT_MANY : ROW_HEIGHT_DOUBLE;
+        for (const img of imgs) {
+            // 覆盖 applyThumbnailSize 写死的宽度，改成「高度固定、宽度自适应」
+            img.style.width = "auto";
+            img.style.maxWidth = "100%";
+            img.style.height = `${height}px`;
+            img.style.objectFit = "cover";
+        }
+    });
+}
+
 /** 正文容器相对「评论内容列」的最小占比（见 findReferenceWidth） */
 const COLUMN_MIN_RATIO = 1.5;
 /** 找不到内边距信息时的兜底留白（px） */
@@ -357,7 +433,10 @@ export function CommentContent({ html, codeBlock }: CommentContentProps) {
         const root = ref.current;
         if (!root) return;
         const referenceWidth = findReferenceWidth(root);
-        root.querySelectorAll<HTMLImageElement>("img").forEach((img) => applyThumbnailSize(img, referenceWidth));
+        root.querySelectorAll<HTMLImageElement>(PHOTO_IMAGE_SELECTOR).forEach((img) =>
+            applyThumbnailSize(img, referenceWidth)
+        );
+        normalizeRowHeights(root);
     }, []);
 
     useEffect(() => {
@@ -374,10 +453,12 @@ export function CommentContent({ html, codeBlock }: CommentContentProps) {
             const target = event.target as HTMLElement | null;
             if (!target || target.tagName !== "IMG") return;
             const img = target as HTMLImageElement;
+            // 表情图（后端 :text: 解析出来的小图标）不参与灯箱：它没有"看大图"的意义
+            if (img.classList.contains(EMOJI_IMAGE_CLASS)) return;
             // 图片本身可能被评论作者套在 <a> 里：别让点击顺带跳转
             event.preventDefault();
-            // 图集 = 这条评论正文里的全部图片（按 DOM 顺序），不跨评论
-            const imgs = Array.from(root.querySelectorAll<HTMLImageElement>("img"));
+            // 图集 = 这条评论正文里的全部照片（按 DOM 顺序），不跨评论、也不含表情
+            const imgs = Array.from(root.querySelectorAll<HTMLImageElement>(PHOTO_IMAGE_SELECTOR));
             restoreFocusRef.current = img;
             setGallery({
                 images: imgs.map((item) => ({
@@ -392,10 +473,13 @@ export function CommentContent({ html, codeBlock }: CommentContentProps) {
 
         // 图片是异步加载的：这里先按参照宽度量一遍（尺寸不依赖原图，先写也不会闪），
         // 加载完成后再量一次（这次能拿到 naturalWidth，用于"原图更小就不放大"的夹取）
-        const images = Array.from(root.querySelectorAll<HTMLImageElement>("img"));
+        // ⚠️ 只挑照片：表情图要按 CSS 的固定宽度行内显示，不能被缩略图逻辑碰
+        const images = Array.from(root.querySelectorAll<HTMLImageElement>(PHOTO_IMAGE_SELECTOR));
         const referenceWidth = findReferenceWidth(root);
         const onImageSettled = (event: Event) => {
             applyThumbnailSize(event.currentTarget as HTMLImageElement, findReferenceWidth(root));
+            // 单图重新量过宽度后，多图行仍要保持等高（否则竖图会把整行撑高）
+            normalizeRowHeights(root);
         };
         images.forEach((img) => {
             applyThumbnailSize(img, referenceWidth);
@@ -405,6 +489,8 @@ export function CommentContent({ html, codeBlock }: CommentContentProps) {
                 img.addEventListener("error", onImageSettled, { once: true });
             }
         });
+        // 初次渲染也要归一多图行（此前的尺寸循环只按宽度比例，横竖混排会一高一矮）
+        normalizeRowHeights(root);
 
         // 视口跨过 640px 断点 / 容器变宽（侧栏折叠等）都要重新夹取
         window.addEventListener("resize", sizeImages);

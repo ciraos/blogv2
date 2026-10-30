@@ -194,9 +194,9 @@ export function LinkTaxonomyDialog() {
     return (
         <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange}>
             <DialogPrimitive.Trigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" aria-label="分类标签" title="分类标签">
                     <TagIcon size={16} />
-                    分类标签
+                    <span className="hidden sm:inline">分类标签</span>
                 </Button>
             </DialogPrimitive.Trigger>
             <DialogPrimitive.Portal>

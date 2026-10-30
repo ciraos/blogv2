@@ -215,8 +215,11 @@ export function PageManager() {
                 </div>
             ) : (
                 <div className="admin-scroll">
-                    {/* 表头：<640px 隐藏（卡片式行内含标签），≥sm 才以 grid 显示并吸顶 */}
-                    <div className="admin-sticky-head hidden min-w-[820px] grid-cols-[1fr_180px_90px_70px_60px_150px_150px] items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid">
+                    {/* 表头：任何宽度都显示（窄屏横向滚动时需要列名）。
+                        窄屏那 356px 里，固定列（操作）就占掉 120px，所以：
+                          · 标题列保底 220px —— 用 1fr 会被压到 100 来 px、只剩几个字；
+                          · 操作列 120px（三个图标按钮够用）、路径 140px，把宽度让给标题。 */}
+                    <div className="admin-sticky-head admin-list-head min-w-[820px] grid-cols-[minmax(220px,1fr)_140px_84px_60px_56px_132px_120px] items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground grid">
                         <span>标题</span>
                         <span>路径</span>
                         <span>状态</span>
@@ -225,11 +228,11 @@ export function PageManager() {
                         <span>更新时间</span>
                         <span className="text-right">操作</span>
                     </div>
-                    <div className="sm:min-w-[820px]">
+                    <div className="min-w-[820px]">
                         {pages.map((item) => (
                             <div
                                 key={item.id}
-                                className="grid grid-cols-1 items-center gap-x-3 gap-y-1 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:grid-cols-[1fr_180px_90px_70px_60px_150px_150px]"
+                                className="grid admin-list-row items-center gap-x-3 gap-y-1 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 grid-cols-[minmax(220px,1fr)_140px_84px_60px_56px_132px_120px]"
                             >
                                 <div className="min-w-0">
                                     <div className="truncate font-medium" title={item.title}>

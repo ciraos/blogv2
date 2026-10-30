@@ -142,17 +142,17 @@ function deliveryLabel(method: DeliveryMethod): string {
     return method === "STOCK_ITEM" ? "卡密库存" : "固定回复";
 }
 
-// 移动端(<640px)：grid-cols-1 把每个单元格竖排成卡片；≥640px：恢复表格式列布局。
-// min-w 只写在 sm: 以上 —— 窄屏若也撑宽，卡片就会被拉出横向滚动。
+// 任何宽度都用同一套列模板：窄屏靠 .admin-scroll 横向滚动、操作列 sticky 固定，不再折成卡片。
+// 窄屏也保持 min-w：整张表横向滚动，列不会被压扁。
 // 表头与数据行共用这套列宽，列顺序：商品 / 价格 / 规格数 / 销量 / 收入 / 状态 / 首页展示 / 创建时间 / 操作
-const rowGrid = "sm:grid-cols-[minmax(0,1fr)_112px_56px_64px_104px_72px_72px_136px_168px]";
-const rowMinW = "sm:min-w-[1080px]";
+const rowGrid = "grid-cols-[minmax(0,1fr)_112px_56px_64px_104px_72px_72px_136px_168px]";
+const rowMinW = "min-w-[1080px]";
 
 /** 骨架行：列宽与真实行完全一致，加载时表格不跳版 */
 function ProductRowSkeleton() {
     return (
         <div
-            className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 last:border-b-0 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
+            className={`grid admin-list-row items-center gap-x-3 gap-y-2 border-b px-4 py-3 last:border-b-0 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
         >
             <div className="flex min-w-0 items-center gap-3">
                 <Skeleton className="size-9 shrink-0 rounded-lg" />
@@ -190,7 +190,7 @@ function ProductRow({ item, busy, onEdit, onVariants, onStock, onToggleStatus, o
     const published = item.status === ProductStatus.Published;
     return (
         <div
-            className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
+            className={`grid admin-list-row items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
         >
             {/* 商品：封面 cover_url + 标题 title */}
             <div className="flex min-w-0 items-center gap-3">
@@ -213,7 +213,6 @@ function ProductRow({ item, busy, onEdit, onVariants, onStock, onToggleStatus, o
             </div>
             {/* 价格：min_price ~ max_price（单位分 → 元；单一价格时只显示一个） */}
             <div className="text-xs tabular-nums">
-                <span className="mr-1 text-muted-foreground sm:hidden">价格</span>
                 <span className="font-semibold text-primary">
                     {Number(item.min_price) === Number(item.max_price)
                         ? `¥${yuan(item.min_price)}`
@@ -221,15 +220,12 @@ function ProductRow({ item, busy, onEdit, onVariants, onStock, onToggleStatus, o
                 </span>
             </div>
             <div className="text-xs tabular-nums text-muted-foreground sm:text-center">
-                <span className="mr-1 sm:hidden">规格数</span>
                 {item.variant_count || 0}
             </div>
             <div className="text-xs tabular-nums text-muted-foreground sm:text-right">
-                <span className="mr-1 sm:hidden">销量</span>
                 {item.total_sales || 0}
             </div>
             <div className="text-xs tabular-nums sm:text-right">
-                <span className="mr-1 text-muted-foreground sm:hidden">收入</span>
                 <span className="font-medium text-foreground">¥{yuan(item.total_revenue)}</span>
             </div>
             <div className="sm:text-center">
@@ -1600,9 +1596,9 @@ export function ProductsManager() {
 
             {/* 列表：卡片内唯一滚动区（表头吸顶），工具栏与分页都不动 */}
             <div className="admin-scroll">
-                {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
+                {/* 表头：任何宽度都显示（窄屏横向滚动时需要列名） */}
                 <div
-                    className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}
+                    className={`admin-sticky-head admin-list-head items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground grid ${rowMinW} ${rowGrid}`}
                 >
                     <span>商品</span>
                     <span>价格</span>

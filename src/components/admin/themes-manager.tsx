@@ -695,7 +695,7 @@ export function ThemesManager() {
                     )
                 ) : (
                     // 移动端(<640px)：grid-cols-1 卡片竖排；≥640px 起按屏宽铺开。
-                    // min-w 只写在 sm: 以上，窄屏不会被撑出横向滚动。
+                    // 窄屏也保持 min-w：整张表横向滚动，列不会被压扁。
                     <div className="grid grid-cols-1 gap-3 p-3 sm:min-w-[620px] sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                         {list.map((theme, index) => {
                             const badge = statusBadge(theme);

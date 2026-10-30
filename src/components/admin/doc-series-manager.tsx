@@ -110,11 +110,11 @@ const STAT_TILES = [
     },
 ] as const;
 
-// 移动端(<640px)：grid-cols-1 把每个单元格竖排成卡片；≥640px：恢复表格式列布局。
-// min-w 只写在 sm: 以上 —— 窄屏若也撑宽，卡片就会被拉出横向滚动。
+// 任何宽度都用同一套列模板：窄屏靠 .admin-scroll 横向滚动、操作列 sticky 固定，不再折成卡片。
+// 窄屏也保持 min-w：整张表横向滚动，列不会被压扁。
 // 表头与数据行共用这套列宽，列顺序：系列 / 简介 / 文档数 / 排序 / 创建时间 / 操作
-const rowGrid = "sm:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_72px_64px_150px_128px]";
-const rowMinW = "sm:min-w-[1000px]";
+const rowGrid = "grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_72px_64px_150px_128px]";
+const rowMinW = "min-w-[1000px]";
 
 /** 单行模板：字段与 DocSeries 一一对应 */
 function DocSeriesRow({
@@ -132,7 +132,7 @@ function DocSeriesRow({
 }) {
     return (
         <div
-            className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
+            className={`grid admin-list-row items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
         >
             {/* 系列：封面 cover_url + 名称 name，下方补一行更新时间 */}
             <div className="flex min-w-0 items-center gap-3">
@@ -157,25 +157,21 @@ function DocSeriesRow({
             </div>
             {/* 简介：description（后端多为单行文案，按 2 行截断） */}
             <div className="min-w-0 text-xs text-muted-foreground">
-                <span className="mr-1 sm:hidden">简介</span>
                 <span className="line-clamp-2">{item.description || PLACEHOLDER}</span>
             </div>
             {/* 文档数：doc_count */}
             <div className="sm:text-center">
                 <span className="inline-block rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
-                    <span className="mr-1 sm:hidden">文档数</span>
                     {item.doc_count ?? 0}
                 </span>
             </div>
             {/* 排序：sort */}
             <div className="text-xs tabular-nums text-muted-foreground sm:text-center">
                 {/* 裸数字脱离表头看不懂，窄屏补个前缀 */}
-                <span className="mr-1 sm:hidden">排序</span>
                 {item.sort ?? 0}
             </div>
             {/* 创建时间：created_at */}
             <div className="text-xs text-muted-foreground">
-                <span className="mr-1 sm:hidden">创建</span>
                 {formatDateTime(item.created_at)}
             </div>
             {/* 操作列：编辑 / 管理文档 / 删除（统一 h-8 的 icon 尺寸） */}
@@ -225,7 +221,7 @@ function DocSeriesSkeleton() {
             {Array.from({ length: 5 }).map((_, i) => (
                 <div
                     key={i}
-                    className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
+                    className={`grid admin-list-row items-center gap-x-3 gap-y-2 border-b px-4 py-3 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
                 >
                     <div className="flex items-center gap-3">
                         <div className="size-9 shrink-0 animate-pulse rounded-lg bg-muted" />
@@ -466,9 +462,9 @@ export function DocSeriesManager() {
             {/* 列表：卡片内唯一滚动区（表头吸顶），工具栏与分页都不动。
                 加载 / 空 / 错误三态都渲染在这个 admin-scroll 里，外壳保持不变 */}
             <div className="admin-scroll">
-                {/* 表头：移动端隐藏（卡片自带行内信息即可读懂），≥sm 才以 grid 显示 */}
+                {/* 表头：任何宽度都显示（窄屏横向滚动时需要列名） */}
                 <div
-                    className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}
+                    className={`admin-sticky-head admin-list-head items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground grid ${rowMinW} ${rowGrid}`}
                 >
                     <span>系列</span>
                     <span>简介</span>

@@ -391,10 +391,12 @@ export function SupportsManager() {
     // 类型下拉：只列当前加载到的 type（官方没给枚举，不猜取值去筛后端）
     const typeOptions = Array.from(new Set(tickets.map((t) => t.type).filter((v): v is string => !!v))).sort();
 
-    // 移动端(<640px)：grid-cols-1 把每个单元格竖排成卡片；≥640px：恢复表格式列布局。
-    // min-w 只写在 sm: 以上 —— 窄屏若也撑宽，卡片就会被拉出横向滚动。
-    const rowGrid = "sm:grid-cols-[112px_minmax(0,1fr)_168px_80px_88px_76px_128px_132px_188px]";
-    const rowMinW = "sm:min-w-[1200px]";
+    // 任何宽度都用同一套列模板：窄屏靠 .admin-scroll 横向滚动、操作列 sticky 固定，不再折成卡片。
+    // 窄屏也保持 min-w：整张表横向滚动，列不会被压扁。
+    // 列宽按「390px 屏上还能看见标题」反推：工单号 88 + 标题保底 180，操作列 104（窄屏「会话」只留图标，
+    // 三个图标按钮 ≈ 92px）。原来 112 + 188 的组合会让固定列吃掉大半屏，标题基本看不见。
+    const rowGrid = "grid-cols-[88px_minmax(180px,1fr)_160px_76px_84px_72px_124px_128px_104px]";
+    const rowMinW = "min-w-[1200px]";
 
     return (
         // admin-card：吃掉剩余高度，列表区域（admin-scroll）在卡片内部滚动，不再顶高整页
@@ -504,7 +506,7 @@ export function SupportsManager() {
             {/* 列表：卡片内唯一滚动区（表头吸顶），工具栏与分页都不动 */}
             <div className="admin-scroll">
                 <div
-                    className={`admin-sticky-head hidden items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground sm:grid ${rowMinW} ${rowGrid}`}
+                    className={`admin-sticky-head admin-list-head items-center gap-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground grid ${rowMinW} ${rowGrid}`}
                 >
                     <span>工单号</span>
                     <span>主题</span>
@@ -537,10 +539,9 @@ export function SupportsManager() {
                         return (
                             <div
                                 key={item.id}
-                                className={`grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
+                                className={`grid admin-list-row items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1 ${rowMinW} ${rowGrid}`}
                             >
                                 <div className="font-mono text-xs text-muted-foreground">
-                                    <span className="mr-1 font-sans sm:hidden">工单号</span>
                                     {item.ticket_no || "—"}
                                 </div>
                                 <div className="min-w-0">
@@ -552,11 +553,9 @@ export function SupportsManager() {
                                     </div>
                                 </div>
                                 <div className="truncate text-xs text-muted-foreground">
-                                    <span className="mr-1 sm:hidden">用户</span>
                                     {item.user_email || "—"}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                    <span className="mr-1 sm:hidden">类型</span>
                                     {item.type || "—"}
                                 </div>
                                 <div className="sm:text-center">
@@ -586,15 +585,12 @@ export function SupportsManager() {
                                 </div>
                                 <div className="text-xs tabular-nums text-muted-foreground sm:text-center">
                                     {/* 裸数字脱离表头看不懂，窄屏补个前缀 */}
-                                    <span className="mr-1 sm:hidden">消息</span>
                                     {item.message_count ?? 0}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                    <span className="mr-1 sm:hidden">最后回复</span>
                                     {formatDateTime(item.last_reply_at)}
                                 </div>
                                 <div className="truncate font-mono text-xs text-muted-foreground">
-                                    <span className="mr-1 font-sans sm:hidden">交易号</span>
                                     {item.trade_no || "—"}
                                 </div>
                                 <div className="flex items-center gap-1 sm:justify-end">
@@ -607,7 +603,7 @@ export function SupportsManager() {
                                         onClick={() => handleOpenDetail(item)}
                                     >
                                         <MessagesSquare className="size-4" />
-                                        会话
+                                        <span className="hidden sm:inline">会话</span>
                                     </Button>
                                     <Button
                                         variant="ghost"

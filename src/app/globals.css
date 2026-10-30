@@ -376,6 +376,32 @@ body {
   backdrop-filter: blur(10px);
 }
 
+/* ---------- 后台列表：窄屏横向滚动 + 操作列固定 ----------
+ * 列表页的表格在窄屏**不再**折成卡片（一行占 5~6 行高，一屏只看得到两三条），
+ * 而是保持同一套栅格、由行容器上的 min-w-[…] 撑开，滚动交给 .admin-scroll。
+ * 结构约定（由各列表组件上的类名保证）：
+ *   .admin-list-head  表头那一行（原来 hidden sm:grid，现在任何宽度都显示）
+ *   .admin-list-row   数据行（原来是 grid grid-cols-1，现在用同一套列模板）
+ * 最后一列在各表里都是「操作」，这里统一 sticky 到右边缘，横向滚到哪都能点到按钮。
+ * 只在小屏生效：桌面端列宽足够时不需要固定列，也不该多出一条分隔线。 */
+@media (max-width: 639px) {
+  .admin-list-head > :last-child,
+  .admin-list-row > :last-child {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    padding-left: 0.5rem;
+    background: var(--card);
+    border-left: 1px solid var(--border);
+  }
+
+  /* 表头那格要更“厚”一层：表头本身是 sticky + 半透明模糊，固定单元格得自带底色才不透字 */
+  .admin-list-head > :last-child {
+    z-index: 2;
+    background: var(--muted);
+  }
+}
+
 /* ===================== 文章正文排版（content_html） ===================== */
 /* 正文的英文 / 数字（拉丁字形）优先用 Georgia（屏幕友好的衬线体）：
    Georgia 不含中文字形，CSS 按「逐字形回落」继续往后找，最终落到系统中文黑体 ——
@@ -751,6 +777,27 @@ body {
   border-radius: 0.5rem;
   margin: 1.2em 0;
   box-shadow: 0 2px 16px color-mix(in oklch, var(--foreground) 10%, transparent);
+}
+
+/* ---------- 表情包（后端把 `:text:` 解析成 <img class="anzhiyu-owo-emotion">） ----------
+ * 和照片一样都是 <img>，但语义是「行内小图标」：不能有圆角、阴影、块级外边距，
+ * 也不能被 content-visibility 当成大图跳过渲染。
+ * 选择器带 .article-body/.comment-content 前缀是为了压过同优先级的 `.article-body img`
+ * （那条规则给照片加了阴影和外边距）；评论区的缩略图逻辑（comment-content.tsx）
+ * 已经在 JS 里按这个类名把表情排除掉了。 */
+.article-body img.anzhiyu-owo-emotion,
+.comment-content img.anzhiyu-owo-emotion,
+.anzhiyu-owo-emotion {
+  display: inline !important;
+  width: 1.75rem !important;
+  height: auto !important;
+  max-height: 1.75rem;
+  margin: 0 0.1em !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  vertical-align: -0.35em;
+  content-visibility: visible !important;
 }
 
 /* ---------- 图片说明文字（把 alt/title 显示在图下） ----------

@@ -55,7 +55,7 @@ const DEFAULT_PAGE_SIZE = 10;
 
 /** 列表行栅格（桌面端）：选择 / 文章 / 友链 / 作者 / 发布时间 / 抓取时间 / 操作 */
 const ROW_GRID =
-    "sm:grid-cols-[28px_minmax(0,1fr)_190px_100px_130px_130px_96px]";
+    "grid-cols-[28px_minmax(0,1fr)_190px_100px_130px_130px_96px]";
 
 /** 时间字符串 → 两行展示（日期 / 时分） */
 function TimeCell({ value }: { value?: string }) {
@@ -494,7 +494,7 @@ export function MomentManager() {
                     <>
                         <div
                             className={cn(
-                                "admin-sticky-head hidden min-w-[900px] items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground sm:grid",
+                                "admin-sticky-head admin-list-head min-w-[900px] items-center gap-3 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground grid",
                                 ROW_GRID
                             )}
                         >
@@ -510,12 +510,12 @@ export function MomentManager() {
                             <span>抓取时间</span>
                             <span className="text-right">操作</span>
                         </div>
-                        <div className="sm:min-w-[900px]">
+                        <div className="min-w-[900px]">
                             {moments.map((item) => (
                                 <div
                                     key={item.id}
                                     className={cn(
-                                        "grid grid-cols-1 items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1",
+                                        "grid admin-list-row items-center gap-x-3 gap-y-2 border-b px-4 py-3 text-sm transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-y-1",
                                         ROW_GRID
                                     )}
                                 >
@@ -525,9 +525,6 @@ export function MomentManager() {
                                             onCheckedChange={(v) => toggleOne(item.id, v === true)}
                                             aria-label={`选择 ${item.post_title || item.id}`}
                                         />
-                                        <span className="text-xs text-muted-foreground tabular-nums sm:hidden">
-                                            #{item.id}
-                                        </span>
                                     </span>
 
                                     <div className="min-w-0">

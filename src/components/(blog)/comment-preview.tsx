@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ComponentType } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 
 /**
  * 评论 Markdown 预览（仅用于评论区输入框的「预览」开关，不改动任何提交链路）。
@@ -42,6 +42,34 @@ export function createAnzhiyuImageUrlResolver(
     };
 }
 
+/**
+ * 表情占位（`:heo-害羞:`）→ Markdown 图片，供**预览**显示真实表情。
+ *
+ * 正式评论里这步由后端做（`pkg/service/parser` 的 emojiReplacer 把 `:text:` 换成
+ * `<img class="anzhiyu-owo-emotion">`），前端拿不到渲染后的 HTML，所以预览自己按同一份
+ * 表情包映射替换一次；`![alt](icon)` 的 alt 就是表情名，渲染后再由 rehypeRewrite 打上
+ * 同一个类名，CSS 就会把它显示成行内小图标。
+ *
+ * 代码块 / 行内代码里的 `:text:` 不替换（那里是源码，替换掉反而看不懂），
+ * 所以先按围栏代码块与反引号切段，只处理非代码段。
+ */
+function replaceEmojiMarkdown(markdown: string, emoji: Map<string, string>): string {
+    if (emoji.size === 0 || !markdown.includes(":")) return markdown;
+    const keys = Array.from(emoji.keys()).sort((a, b) => b.length - a.length);
+    const pattern = new RegExp(keys.map((key) => key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "g");
+    return markdown
+        .split(/(```[\s\S]*?```|`[^`\n]*`)/g)
+        .map((part) => {
+            if (part.startsWith("```")) return part;
+            if (part.startsWith("`") && part.endsWith("`")) return part;
+            return part.replace(pattern, (match) => `![${match.slice(1, -1)}](${emoji.get(match)})`);
+        })
+        .join("");
+}
+
+/** 空映射（默认值，避免每次渲染都新建一个 Map 让依赖抖动） */
+const NO_EMOJI = new Map<string, string>();
+
 /** rehype-rewrite 回调会用到的节点字段（自己声明，避免依赖传递包的内部类型） */
 interface RewriteNode {
     type?: string;
@@ -62,11 +90,17 @@ function textNode(value: string): RewriteNode {
  * 通过 MarkdownPreview 的 `rehypeRewrite` 传入：它在库自带的 rewrite（标题锚点、代码块复制按钮）
  * 之后被调用（rehypePlugins.js:10-25），所以这里只动 img 节点，不影响其它增强。
  */
-function rewriteInternalImages(resolveImageUrl: (url: string) => string | undefined) {
+function rewriteInternalImages(resolveImageUrl: (url: string) => string | undefined, emojiIcons?: Set<string>) {
     return (node: RewriteNode): void => {
         if (node.type !== "element" || node.tagName !== "img" || !node.properties) return;
         const rawSrc = node.properties.src;
-        if (typeof rawSrc !== "string" || !rawSrc.startsWith("anzhiyu://file/")) return;
+        if (typeof rawSrc !== "string") return;
+        // 表情图：打上后端用的同一个类名，交给 globals.css 显示成行内小图标
+        if (emojiIcons?.has(rawSrc)) {
+            node.properties.className = ["anzhiyu-owo-emotion"];
+            return;
+        }
+        if (!rawSrc.startsWith("anzhiyu://file/")) return;
 
         const fileId = /^anzhiyu:\/\/file\/([A-Za-z0-9_-]+)/.exec(rawSrc)?.[1] ?? "";
         const blobUrl = resolveImageUrl(rawSrc);
@@ -118,6 +152,11 @@ interface CommentMarkdownPreviewProps {
     markdown: string;
     /** `anzhiyu://file/{id}` → 本地预览 URL（取不到则显示占位提示） */
     resolveImageUrl: (url: string) => string | undefined;
+    /**
+     * 表情包映射：`:text:` → 图标 URL（来自后台 comment.emoji_cdn 指向的 JSON）。
+     * 不传 = 预览里不转换表情（显示原始 `:text:`）。
+     */
+    emoji?: Map<string, string>;
 }
 
 /**
@@ -146,11 +185,17 @@ function useHtmlDarkClass(): boolean {
     return isDark;
 }
 
-export function CommentMarkdownPreview({ markdown, resolveImageUrl }: CommentMarkdownPreviewProps) {
+export function CommentMarkdownPreview({ markdown, resolveImageUrl, emoji }: CommentMarkdownPreviewProps) {
     const [Renderer, setRenderer] = useState<MarkdownRenderer | null>(null);
     const [loadFailed, setLoadFailed] = useState(false);
     const loadingRef = useRef(false);
     const colorMode: "light" | "dark" = useHtmlDarkClass() ? "dark" : "light";
+
+    const emojiMap = emoji ?? NO_EMOJI;
+    /** 预览用的 Markdown：先把 `:text:` 换成表情图片（见 replaceEmojiMarkdown） */
+    const source = useMemo(() => replaceEmojiMarkdown(markdown, emojiMap), [markdown, emojiMap]);
+    /** 表情图标的 URL 集合：rehypeRewrite 靠它认出「这是表情，不是用户上传的图」 */
+    const emojiIcons = useMemo(() => new Set(emojiMap.values()), [emojiMap]);
 
     /**
      * 预览渲染器按需动态加载：只有用户点开预览才会下载这块 chunk（不进首屏包）。
@@ -207,7 +252,7 @@ export function CommentMarkdownPreview({ markdown, resolveImageUrl }: CommentMar
                     </pre>
                 ) : Renderer ? (
                     <Renderer
-                        source={markdown}
+                        source={source}
                         skipHtml
                         /**
                          * 皮肤覆盖必须走**顶层 className**，不能放 wrapperElement.className：
@@ -221,7 +266,9 @@ export function CommentMarkdownPreview({ markdown, resolveImageUrl }: CommentMar
                             "!p-0 !bg-transparent !font-[inherit] !text-sm !leading-relaxed " +
                             "[&_h1]:mt-3! [&_h1]:mb-1.5! [&_h1]:text-lg! [&_h2]:mt-3! [&_h2]:mb-1.5! [&_h2]:text-base! " +
                             "[&_h3]:mt-2! [&_h3]:mb-1! [&_h3]:text-[0.95rem]! [&_h4]:mt-2! [&_h4]:mb-1! [&_h4]:text-sm! " +
-                            "[&_p]:my-1.5! [&_ul]:my-1.5! [&_ol]:my-1.5! [&_pre]:my-2! [&_img]:my-2! [&_img]:max-w-full"
+                            "[&_p]:my-1.5! [&_ul]:my-1.5! [&_ol]:my-1.5! [&_pre]:my-2! " +
+                            // 表情图不参与「图片」的块级间距（它要行内显示，见 globals.css 的 .anzhiyu-owo-emotion）
+                            "[&_img:not(.anzhiyu-owo-emotion)]:my-2! [&_img:not(.anzhiyu-owo-emotion)]:max-w-full"
                         }
                         /* 直通 URL 变换：库默认实现会拦掉 anzhiyu:// 这类内部协议 */
                         urlTransform={(url) => url}
@@ -234,7 +281,7 @@ export function CommentMarkdownPreview({ markdown, resolveImageUrl }: CommentMar
                          * rehype 重写发生在渲染期，拿到的本来就是本次渲染的 resolver；
                          * 调用方 post-comments.tsx 传进来的 resolver 读的是同一个 blob Map，语义不变。
                          */
-                        rehypeRewrite={rewriteInternalImages(resolveImageUrl)}
+                        rehypeRewrite={rewriteInternalImages(resolveImageUrl, emojiIcons)}
                         wrapperElement={{ "data-color-mode": colorMode }}
                     />
                 ) : (

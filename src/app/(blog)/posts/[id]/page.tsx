@@ -4,6 +4,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { ArticleBody } from "@/components/(blog)/article-body";
+import { ArticleSummary } from "@/components/(blog)/article-summary";
 import { AiPodcastButton } from "@/components/(blog)/ai-podcast-button";
 import { JsonLd } from "@/components/(blog)/json-ld";
 import { PostActions } from "@/components/(blog)/post-actions";
@@ -316,6 +317,10 @@ export default async function Post({ params }: PostPageProps) {
                         )}
                     </header>
                 )}
+
+                {/* 文章摘要（后台「摘要 & SEO」里的 summaries，可用 AI 生成）：标题之下、正文之前。
+                    没有摘要时组件自己返回 null，不会留空档。 */}
+                <ArticleSummary summaries={article.summaries} />
 
                 {/* 后端渲染好的正文 HTML，客户端组件负责代码块高亮 + 复制按钮；正文白底卡片，深浅色随主题切换 */}
                 <div className="mt-6 rounded-xl border border-border/60 bg-card p-5 shadow-sm md:p-8">

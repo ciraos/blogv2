@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
 import Link from "next/link";
 
-import { Eye, EyeOff, Globe, ImagePlus, MapPin, MessageCircle, Monitor, Send, Sparkles, ThumbsUp, X } from "lucide-react";
+import { Eye, EyeOff, Globe, ImagePlus, MapPin, MessageCircle, Monitor, Send, Smile, Sparkles, ThumbsUp, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
@@ -77,6 +77,39 @@ function parseUserAgent(ua?: string): { os: string; browser: string } {
 
 /** 代码块配置（site-config post.code_block，与文章正文共用） */
 type CodeBlockConfig = { codeMaxLines?: number; macStyle?: boolean };
+
+/** 表情包里的单个表情（text 不带冒号，插入时补成 `:text:` 交给后端替换成图片） */
+interface EmojiPackItem {
+    text: string;
+    icon: string;
+}
+
+/** 一「包」表情 = 面板底部的一个 tab */
+interface EmojiPack {
+    name: string;
+    icon: string;
+    items: EmojiPackItem[];
+}
+
+/**
+ * 解析后端约定的表情包 JSON（默认值就是官方主题那份 twikoo.json，见后端
+ * internal/configdef/definition.go:226 的 comment.emoji_cdn）。结构：
+ *   { '<img src="…" title="包名">': { type: "image", container: [{ icon: '<img src="…">', text: "heo-害羞" }] } }
+ * 包名与图标都藏在 HTML 字符串里，所以这里用正则取 src / title，只留「有图标 + 有文字」的项。
+ */
+function parseEmojiPacks(json: Record<string, { container?: Array<{ icon?: string; text?: string }> }>): EmojiPack[] {
+    return Object.entries(json)
+        .map(([key, pack]) => ({
+            name: /title="([^"]+)"/.exec(key)?.[1] ?? "表情",
+            icon: /src="([^"]+)"/.exec(key)?.[1] ?? "",
+            items: (pack?.container ?? []).flatMap((item) => {
+                const icon = /src="([^"]+)"/.exec(item?.icon ?? "")?.[1];
+                const text = (item?.text ?? "").trim();
+                return icon && text ? [{ text, icon }] : [];
+            }),
+        }))
+        .filter((pack) => pack.items.length > 0);
+}
 
 /** 单条评论内容行（父评论/子评论共用；reverse 时头像在右、内容在左；背景由外层组容器提供） */
 function CommentRow({
@@ -387,6 +420,21 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
      * 再次点击隐藏。
      */
     const [previewOpen, setPreviewOpen] = useState(false);
+    /* ---------- 评论表情包（OwO 面板） ----------
+     * 配置来源：site-config 的 comment.emoji_cdn（后台「评论设置 → 表情包配置地址」）。
+     * 后端并不提供表情接口：面板自己去拉这个 CDN 上的 twikoo 风格 JSON
+     * （见 parseEmojiPacks 的注释），插入的形式是 ` :text: `，由后端在生成 content_html 时
+     * 换成一个 `<img class="anzhiyu-owo-emotion">`。所以：
+     *   - 面板只在第一次打开时才拉 JSON（几百 KB，不值得每次进页面都下载）；
+     *   - 插入前后各补一个空格，避免和相邻文字粘成别的词、也让后端替换更稳。 */
+    /** 表情包 JSON 地址；为空表示后台没配，按钮不显示 */
+    const [emojiCdn, setEmojiCdn] = useState("");
+    const [emojiOpen, setEmojiOpen] = useState(false);
+    const [emojiLoading, setEmojiLoading] = useState(false);
+    /** null = 还没拉过；[] = 拉过但为空 / 失败（不再重试，避免反复打 CDN） */
+    const [emojiPacks, setEmojiPacks] = useState<EmojiPack[] | null>(null);
+    const [emojiPackIndex, setEmojiPackIndex] = useState(0);
+    const emojiWrapRef = useRef<HTMLDivElement>(null);
     /**
      * 刚上传成功的图片：`anzhiyu://file/{id}` → 本地 blob URL。
      * 后端是在**返回评论列表时**才把内部协议换成一次性签名 URL 的
@@ -423,7 +471,7 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                 const res = await fetch("/api/public/site-config", { cache: "no-store" });
                 const json = (await res.json()) as {
                     data?: {
-                        comment?: { allow_image_upload?: boolean; placeholder?: string };
+                        comment?: { allow_image_upload?: boolean; placeholder?: string; emoji_cdn?: string };
                         post?: { code_block?: { code_max_lines?: number; mac_style?: boolean } };
                     };
                 };
@@ -439,6 +487,9 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                 if (commentCfg.placeholder) {
                     setCommentPlaceholder(commentCfg.placeholder);
                 }
+                if (commentCfg.emoji_cdn) {
+                    setEmojiCdn(commentCfg.emoji_cdn);
+                }
             } catch {
                 // 取不到配置保持默认
             }
@@ -447,6 +498,57 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
             cancelled = true;
         };
     }, []);
+
+    // 表情包 JSON：第一次打开面板时才拉（见上方 emojiPacks 的说明）
+    useEffect(() => {
+        if (!emojiOpen || emojiPacks !== null || !emojiCdn) return;
+        let cancelled = false;
+        (async () => {
+            setEmojiLoading(true);
+            try {
+                // 表情包是静态资源，允许走浏览器缓存（CDN 会给长缓存头）
+                const res = await fetch(emojiCdn);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const json = (await res.json()) as Record<
+                    string,
+                    { container?: Array<{ icon?: string; text?: string }> }
+                >;
+                if (cancelled) return;
+                const packs = parseEmojiPacks(json);
+                setEmojiPacks(packs);
+                setEmojiPackIndex(0);
+                if (packs.length === 0) toast.error("表情包内容为空");
+            } catch {
+                if (cancelled) return;
+                // 记成 []：本次会话不再重试（面板里会显示失败文案）
+                setEmojiPacks([]);
+                toast.error("表情包加载失败，请检查后台的表情包地址");
+            } finally {
+                if (!cancelled) setEmojiLoading(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [emojiOpen, emojiPacks, emojiCdn]);
+
+    // 面板的关闭方式：点面板外任意处 / 按 Esc
+    useEffect(() => {
+        if (!emojiOpen) return;
+        const onPointerDown = (event: MouseEvent) => {
+            if (emojiWrapRef.current?.contains(event.target as Node)) return;
+            setEmojiOpen(false);
+        };
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") setEmojiOpen(false);
+        };
+        document.addEventListener("mousedown", onPointerDown);
+        document.addEventListener("keydown", onKeyDown);
+        return () => {
+            document.removeEventListener("mousedown", onPointerDown);
+            document.removeEventListener("keydown", onKeyDown);
+        };
+    }, [emojiOpen]);
 
     // 进入评论区时回填上次发表评论用的昵称 / 邮箱 / 网址（仅客户端执行，避免水合不匹配）
     // 登录态已用账号信息初始化，不需要也不应该再被本地记忆覆盖
@@ -623,6 +725,28 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
         }
     }
 
+    /** 在光标处插入文本（没有焦点信息时退回追加到末尾），插完把光标放到插入内容之后 */
+    function insertAtCursor(text: string) {
+        const el = contentRef.current;
+        if (!el) {
+            setContent((prev) => prev + text);
+            return;
+        }
+        const start = el.selectionStart ?? content.length;
+        const end = el.selectionEnd ?? start;
+        setContent(content.slice(0, start) + text + content.slice(end));
+        requestAnimationFrame(() => {
+            el.focus();
+            const pos = start + text.length;
+            el.setSelectionRange(pos, pos);
+        });
+    }
+
+    /** 插入表情：` :text: `（前后空格见 emojiPacks 的说明）；面板不关，方便连续挑好几个 */
+    function insertEmoji(text: string) {
+        insertAtCursor(` :${text}: `);
+    }
+
     // 输入框区域最上方的块（决定谁带圆角）：引用 > 回复提示 > 输入框本身
     const topBlock: "quote" | "reply" | "textarea" = quoteText
         ? "quote"
@@ -644,6 +768,18 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
     const resolvePreviewImageUrl = createAnzhiyuImageUrlResolver({
         get: (fileId) => uploadedBlobUrls.get(fileId),
     });
+
+    /** 当前选中的那包表情（索引越界时退回第一包，避免拉取失败后 index 悬空） */
+    const activeEmojiPack = emojiPacks && emojiPacks.length > 0
+        ? emojiPacks[Math.min(emojiPackIndex, emojiPacks.length - 1)]
+        : null;
+
+    /** `:text:` → 图标：只给 Markdown 预览用（正式评论由后端替换成图片） */
+    const emojiMap = useMemo(() => {
+        const map = new Map<string, string>();
+        emojiPacks?.forEach((pack) => pack.items.forEach((item) => map.set(`:${item.text}:`, item.icon)));
+        return map;
+    }, [emojiPacks]);
 
     return (
         <section
@@ -807,6 +943,95 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                                     </button>
                                 </>
                             )}
+                            {/* 紧挨「插入图片」：表情包入口（后台配了 comment.emoji_cdn 才显示）。
+                                面板向上展开（工具栏在输入框底部，向下会把下面的昵称/发送按钮挡住），
+                                左对齐到按钮本身；里面的图都是 CDN 上的小图，统一 lazy 加载。 */}
+                            {emojiCdn ? (
+                                <div className="relative" ref={emojiWrapRef}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setEmojiOpen((open) => !open)}
+                                        aria-expanded={emojiOpen}
+                                        aria-haspopup="dialog"
+                                        aria-label={emojiOpen ? "关闭表情面板" : "打开表情面板"}
+                                        title={emojiOpen ? "关闭表情面板" : "插入表情"}
+                                        className={`rounded-md p-1.5 transition-colors hover:bg-muted hover:text-foreground ${emojiOpen ? "bg-muted text-foreground" : "text-muted-foreground"
+                                            }`}
+                                    >
+                                        <Smile className="size-4" />
+                                    </button>
+                                    {emojiOpen && (
+                                        <div
+                                            role="dialog"
+                                            aria-label="表情选择器"
+                                            className="absolute bottom-full left-0 z-50 mb-2 w-[min(19rem,calc(100vw-3rem))] overflow-hidden rounded-lg border bg-card shadow-lg"
+                                        >
+                                            {emojiLoading ? (
+                                                <div className="flex h-32 items-center justify-center text-xs text-muted-foreground">
+                                                    表情加载中…
+                                                </div>
+                                            ) : activeEmojiPack ? (
+                                                <>
+                                                    <div className="grid max-h-48 grid-cols-7 gap-0.5 overflow-y-auto p-2">
+                                                        {activeEmojiPack.items.map((item) => (
+                                                            <button
+                                                                key={item.text}
+                                                                type="button"
+                                                                title={item.text}
+                                                                onClick={() => insertEmoji(item.text)}
+                                                                className="flex h-9 items-center justify-center rounded-md transition-colors hover:bg-muted"
+                                                            >
+                                                                {/* 表情是 CDN 上的小图（28px），next/image 的优化流程在这里没收益，
+                                                                    而且每包上百张、还要给每个 CDN 域名配 remotePatterns */}
+                                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                                <img
+                                                                    src={item.icon}
+                                                                    alt={item.text}
+                                                                    loading="lazy"
+                                                                    className="size-7 object-contain"
+                                                                />
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    {/* 底部包切换：横向滚动，图标用包名 HTML 里的那张图 */}
+                                                    <div className="flex gap-1 overflow-x-auto border-t p-1.5">
+                                                        {emojiPacks?.map((pack, index) => (
+                                                            <button
+                                                                key={`${pack.name}-${index}`}
+                                                                type="button"
+                                                                title={pack.name}
+                                                                aria-pressed={index === emojiPackIndex}
+                                                                onClick={() => setEmojiPackIndex(index)}
+                                                                className={`flex size-9 shrink-0 items-center justify-center rounded-md transition-colors ${index === emojiPackIndex ? "bg-muted" : "hover:bg-muted"
+                                                                    }`}
+                                                            >
+                                                                {pack.icon ? (
+                                                                    <>
+                                                                        {/* 同上：表情包切换条的小图标，走 CDN 原图 */}
+                                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                                        <img
+                                                                            src={pack.icon}
+                                                                            alt={pack.name}
+                                                                            loading="lazy"
+                                                                            className="size-6 object-contain"
+                                                                        />
+                                                                    </>
+                                                                ) : (
+                                                                    <span className="text-[10px]">{pack.name.slice(0, 2)}</span>
+                                                                )}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="flex h-32 items-center justify-center px-4 text-center text-xs text-muted-foreground">
+                                                    没有可用的表情
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            ) : null}
                             {/* 紧挨「插入图片」：Markdown 预览开关（纯前端状态，不提交任何东西） */}
                             <button
                                 type="button"
@@ -835,6 +1060,7 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                         <CommentMarkdownPreview
                             markdown={content}
                             resolveImageUrl={resolvePreviewImageUrl}
+                            emoji={emojiMap}
                         />
                     )}
                 </div>
