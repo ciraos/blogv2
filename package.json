@@ -11,7 +11,9 @@
     "api:inventory:check": "node scripts/gen-api-inventory.mjs --check",
     "copy": "cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
     "deploy": "pnpm i && pnpm build && pnpm copy && export PORT=3126 && node .next/standalone/server.js",
-    "server": "node .next/standalone/server.js"
+    "server": "export PORT=3126 && node .next/standalone/server.js",
+    "deploy:win": "node deploy.mjs",
+    "server:win": "node deploy.mjs --serve"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
