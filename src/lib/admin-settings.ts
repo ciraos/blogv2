@@ -21,7 +21,6 @@ import {
     GalleryHorizontalEnd,
     Globe,
     House,
-    IdCard,
     Image as ImageIcon,
     Images,
     KeyRound,
@@ -62,6 +61,8 @@ export type SettingsFieldType =
     | "color"
     | "json"
     | "skin"
+    /** 代码块编辑：等宽 + 行高 + 语法高亮 + 格式化按钮（SettingsCodeField） */
+    | "code"
     /**
      * AI 区专用：整块交给 src/components/admin/ai-settings-panel.tsx 渲染（官方 AI 设置面板的
      * 分模块布局：AI 摘要 / AI 写作 / AI 播客 / AI 助手），草稿与保存仍走本文件的
@@ -101,8 +102,10 @@ export interface SettingsField {
     itemFields?: SettingsListField[];
     /** 独占整行 */
     wide?: boolean;
-    /** type=textarea 的行数（默认 3；邮件模板这类长文本用 10+） */
+    /** type=textarea 的行数（默认 3；邮件模板这类长文本用 10+）；type=code 时表示编辑器高度 */
     rows?: number;
+    /** type=code：highlight.js 的语言名（默认 html） */
+    language?: string;
     /**
      * 该键**不随公开的 /public/site-config 下发**（如 SMTP_*、DEFAULT_*_TEMPLATE）：
      * settings-manager 挂载时会额外走 POST /settings/get-by-keys 补读真实值，
@@ -462,6 +465,8 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                 id: "owner",
                 label: "站长与头像",
                 fields: [
+                    { key: "frontDesk.siteOwner.name", label: "站长名称", type: "text" },
+                    { key: "frontDesk.siteOwner.email", label: "站长邮箱", type: "text" },
                     { key: "USER_AVATAR", label: "站长头像", type: "image", placeholder: "图片地址" },
                     { key: "GRAVATAR_URL", label: "Gravatar 镜像", type: "text", placeholder: "https://cravatar.cn/avatar/" },
                     { key: "DEFAULT_GRAVATAR_TYPE", label: "默认头像风格", type: "select", options: GRAVATAR_TYPES },
@@ -2355,15 +2360,16 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
         group: "页面显示",
         icon: Backpack,
         keywords: ["装备", "equipment", "横幅", "banner", "背景图"],
-        desc: "装备页顶部横幅的标题、小字提示、描述与背景图。",
+        desc: "装备页顶部横幅的标题、小字提示、描述与背景图，以及下面的装备清单（分组 + 条目）。",
         groups: [
             {
                 id: "equipment",
                 label: "装备页横幅",
                 fields: [
-                    { key: "equipment.banner.title", label: "标题", type: "text" },
-                    { key: "equipment.banner.tip", label: "小字提示", type: "text" },
-                    { key: "equipment.banner.description", label: "描述", type: "text" },
+                    // 这三个键的名字和实际显示位置是错着来的（官方前端就是这么用的，线上 DOM 核过）
+                    { key: "equipment.banner.title", label: "角标（左上角小字）", type: "text" },
+                    { key: "equipment.banner.description", label: "主标题（大字）", type: "text" },
+                    { key: "equipment.banner.tip", label: "底部说明", type: "text" },
                     { key: "equipment.banner.background", label: "背景图", type: "image" },
                 ],
             },
@@ -2376,7 +2382,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                         label: "装备分组",
                         type: "list",
                         wide: true,
-                        hint: "本站前台未读取该键",
+                        hint: "前台按「分组 → 装备条目」渲染；没有条目的分组自动跳过",
                         itemFields: [
                             { name: "title", label: "分组标题", placeholder: "日常使用" },
                             { name: "description", label: "分组描述" },
@@ -2413,24 +2419,6 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                     { key: "recent_comments.banner.tip", label: "小字提示", type: "text" },
                     { key: "recent_comments.banner.description", label: "描述", type: "text" },
                     { key: "recent_comments.banner.background", label: "背景图", type: "image" },
-                ],
-            },
-        ],
-    },
-    {
-        id: "banner-frontdesk",
-        label: "前台站长信息",
-        group: "页面显示",
-        icon: IdCard,
-        keywords: ["站长", "前台", "frontDesk", "siteOwner", "名称", "邮箱"],
-        desc: "前台展示的站长名称与站长邮箱。",
-        groups: [
-            {
-                id: "frontdesk",
-                label: "前台站长信息",
-                fields: [
-                    { key: "frontDesk.siteOwner.name", label: "站长名称", type: "text" },
-                    { key: "frontDesk.siteOwner.email", label: "站长邮箱", type: "text" },
                 ],
             },
         ],
@@ -2473,20 +2461,35 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                 id: "player",
                 label: "播放器歌单",
                 fields: [
-                    { key: "music.player.playlist_id", label: "歌单 ID", type: "number", hint: "本站前台歌单来自后端接口，未读取该键" },
-                    { key: "music.player.custom_playlist", label: "自定义歌单", type: "text", hint: "本站前台未读取该键" },
-                    { key: "music.capsule.custom_playlist", label: "胶囊自定义歌单", type: "text", hint: "本站前台未读取该键" },
+                    {
+                        key: "music.player.playlist_id",
+                        label: "歌单 ID",
+                        type: "number",
+                        hint: "网易云歌单 ID。后端拉歌单时读它（pkg/service/music/service.go 的 getPlaylistID），改完刷新前台即生效；留空用默认 8152976493",
+                    },
+                    {
+                        key: "music.player.custom_playlist",
+                        label: "自定义歌单",
+                        type: "text",
+                        hint: "后端没有读取这个键（Go 侧只有定义、无使用点），本站前台也不读，填了不生效",
+                    },
+                    {
+                        key: "music.capsule.custom_playlist",
+                        label: "胶囊自定义歌单",
+                        type: "text",
+                        hint: "同上：后端未接、本站未读，填了不生效",
+                    },
                 ],
             },
         ],
     },
     {
         id: "friend-apply",
-        label: "友链申请",
+        label: "友链管理",
         group: "页面显示",
         icon: Link2,
         keywords: ["友链", "申请", "friend", "link", "条件", "占位", "默认分类"],
-        desc: "友链页的申请条件、申请表单占位文案与后端默认分类（占位文案本站前台还没读）。",
+        desc: "友链页的申请条件、申请表单占位文案、申请页自定义内容与后端默认分类。",
         groups: [
             {
                 id: "condition",
@@ -2505,11 +2508,11 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                 id: "placeholder",
                 label: "表单占位文案",
                 fields: [
-                    { key: "FRIEND_LINK_PLACEHOLDER_NAME", label: "名称", type: "text", hint: "本站申请表单占位目前是写死的，改这里暂不生效" },
-                    { key: "FRIEND_LINK_PLACEHOLDER_URL", label: "网址", type: "text", hint: "同上" },
-                    { key: "FRIEND_LINK_PLACEHOLDER_LOGO", label: "头像", type: "text", hint: "同上" },
-                    { key: "FRIEND_LINK_PLACEHOLDER_DESCRIPTION", label: "描述", type: "text", hint: "同上" },
-                    { key: "FRIEND_LINK_PLACEHOLDER_SITESHOT", label: "截图", type: "text", hint: "同上" },
+                    { key: "FRIEND_LINK_PLACEHOLDER_NAME", label: "名称", type: "text", hint: "友链申请表单里「网站名称」的占位文案；留空回退默认" },
+                    { key: "FRIEND_LINK_PLACEHOLDER_URL", label: "网址", type: "text", hint: "「网站链接」的占位文案；留空回退默认" },
+                    { key: "FRIEND_LINK_PLACEHOLDER_LOGO", label: "头像", type: "text", hint: "「Logo链接」的占位文案；留空回退默认" },
+                    { key: "FRIEND_LINK_PLACEHOLDER_DESCRIPTION", label: "描述", type: "text", hint: "「网站简介」的占位文案；留空回退默认" },
+                    { key: "FRIEND_LINK_PLACEHOLDER_SITESHOT", label: "截图", type: "text", hint: "「网站截图」的占位文案；留空回退默认" },
                 ],
             },
             {
@@ -2521,6 +2524,21 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                         label: "默认分类 ID",
                         type: "number",
                         hint: "后端建友链时使用；值是友链分类 ID（在友链管理页能看到）",
+                    },
+                ],
+            },
+            {
+                id: "custom-code",
+                label: "申请页自定义内容",
+                fields: [
+                    {
+                        key: "FRIEND_LINK_APPLY_CUSTOM_CODE_HTML",
+                        label: "自定义内容（前台渲染这段 HTML）",
+                        type: "code",
+                        language: "html",
+                        rows: 18,
+                        wide: true,
+                        hint: "友链页按「免责声明 → 相关须知 → 申请条件 → yaml 示例」排列：这段 HTML 里最后一个代码块会被自动切到申请条件之后，其余部分在申请条件之前。",
                     },
                 ],
             },

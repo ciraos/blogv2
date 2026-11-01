@@ -7,7 +7,30 @@ import { ApiError, LinkApplyPayload, submitLinkApplyApi } from "@/lib/api";
 interface LinkApplyFormProps {
     /** 提交成功后回调 */
     onSubmitted?: () => void;
+    /**
+     * 各输入框的占位文案，来自站点配置 FRIEND_LINK_PLACEHOLDER_*（后台「友链 → 表单占位文案」）。
+     * 某项为空时回退到下面的默认文案，保证表单不会出现空占位。
+     */
+    placeholders?: ApplyPlaceholders;
 }
+
+/** 申请表单里 5 个可配置占位的字段（邮箱 / RSS 后端没有对应配置键，仍用固定文案） */
+export interface ApplyPlaceholders {
+    name?: string;
+    url?: string;
+    logo?: string;
+    description?: string;
+    siteshot?: string;
+}
+
+/** 占位文案兜底（配置为空时用） */
+const DEFAULT_PLACEHOLDERS: Required<ApplyPlaceholders> = {
+    name: "你的网站名称",
+    url: "https://example.com",
+    logo: "https://example.com/logo.png",
+    description: "一句话介绍你的网站",
+    siteshot: "https://example.com/shot.png",
+};
 
 type ApplyMode = "create" | "update";
 
@@ -72,18 +95,20 @@ function Field({
 function BaseFields({
     form,
     onChange,
+    placeholders,
 }: {
     form: BaseForm;
     onChange: <K extends keyof BaseForm>(key: K, value: string) => void;
+    placeholders: Required<ApplyPlaceholders>;
 }) {
     return (
         <>
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="网站名称" required value={form.name} onChange={(v) => onChange("name", v)} placeholder="你的网站名称" />
-                <Field label="网站链接" required value={form.url} onChange={(v) => onChange("url", v)} placeholder="https://example.com" />
-                <Field label="Logo链接" required value={form.logo} onChange={(v) => onChange("logo", v)} placeholder="https://example.com/logo.png" />
-                <Field label="网站简介" required value={form.description} onChange={(v) => onChange("description", v)} placeholder="一句话介绍你的网站" />
-                <Field label="网站截图" optional value={form.siteshot} onChange={(v) => onChange("siteshot", v)} placeholder="https://example.com/shot.png" />
+                <Field label="网站名称" required value={form.name} onChange={(v) => onChange("name", v)} placeholder={placeholders.name} />
+                <Field label="网站链接" required value={form.url} onChange={(v) => onChange("url", v)} placeholder={placeholders.url} />
+                <Field label="Logo链接" required value={form.logo} onChange={(v) => onChange("logo", v)} placeholder={placeholders.logo} />
+                <Field label="网站简介" required value={form.description} onChange={(v) => onChange("description", v)} placeholder={placeholders.description} />
+                <Field label="网站截图" optional value={form.siteshot} onChange={(v) => onChange("siteshot", v)} placeholder={placeholders.siteshot} />
                 <Field label="联系邮箱" required type="email" value={form.email} onChange={(v) => onChange("email", v)} placeholder="you@example.com" />
             </div>
 
@@ -102,12 +127,21 @@ function BaseFields({
  * 友链申请块：标题「友链申请」+ 类型切换（新增申请 / 修改信息）。
  * 新增申请与修改信息共用同一表单字段，修改信息额外多「原友链URL（可选）」「修改原因」两项。
  */
-export function LinkApplyForm({ onSubmitted }: LinkApplyFormProps) {
+export function LinkApplyForm({ onSubmitted, placeholders }: LinkApplyFormProps) {
     const [mode, setMode] = useState<ApplyMode>("create");
     const [form, setForm] = useState<BaseForm>(EMPTY_BASE);
     const [originalUrl, setOriginalUrl] = useState("");
     const [reason, setReason] = useState("");
     const [submitting, setSubmitting] = useState(false);
+
+    /** 配置项逐个兜底：后台把某一项清空时，该字段仍显示默认文案 */
+    const resolvedPlaceholders: Required<ApplyPlaceholders> = {
+        name: placeholders?.name?.trim() || DEFAULT_PLACEHOLDERS.name,
+        url: placeholders?.url?.trim() || DEFAULT_PLACEHOLDERS.url,
+        logo: placeholders?.logo?.trim() || DEFAULT_PLACEHOLDERS.logo,
+        description: placeholders?.description?.trim() || DEFAULT_PLACEHOLDERS.description,
+        siteshot: placeholders?.siteshot?.trim() || DEFAULT_PLACEHOLDERS.siteshot,
+    };
 
     function set<K extends keyof BaseForm>(key: K, value: string) {
         setForm((prev) => ({ ...prev, [key]: value }));
@@ -194,7 +228,7 @@ export function LinkApplyForm({ onSubmitted }: LinkApplyFormProps) {
             </div>
 
             {/* 公共表单字段 */}
-            <BaseFields form={form} onChange={set} />
+            <BaseFields form={form} onChange={set} placeholders={resolvedPlaceholders} />
 
             {/* 修改信息额外字段：原友链URL（可选）+ 修改原因 */}
             {mode === "update" && (

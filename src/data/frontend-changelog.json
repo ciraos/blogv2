@@ -1,0 +1,37 @@
+[
+  {
+    "version": "v1.4.0",
+    "date": "2026-10-29T13:04:33+08:00",
+    "title": "短代码渲染补齐 / 图片图注 / 音乐播放器 / tabs 分段渲染 等 11 次提交",
+    "body": "自 v1.3.0（2026-10-15）以来累计 11 次提交、149 个文件变动；版本号 1.3.0 → 1.4.0 随本提交落库。\n## 文章正文渲染（本轮主线）\n- 新增块级短代码渲染器（lib/article-shortcodes-render.ts）：{btn} {linkcard} {tip} :::tabs :::btns\n  :::hidden {hide} :::gallery :::video-gallery 以及 $…$ / $$…$$ 公式，全部按官方同构 HTML 输出\n- 后端保存文章只做 SanitizeHTML、不渲染 Markdown：短代码的结构原先由官方 Tiptap 编辑器生成，\n  我们用 Markdown 编辑器保存后短代码会以纯文本入库，前台 CSS/增强脚本找不到目标 → 全文样式失效。\n  本次补的正是「Markdown → 结构」这一层\n- tabs 改为分段渲染：先把嵌套块级短代码转 HTML，再按 :::tabs 切分、每页内容单独渲染后拼装。\n  修掉「按钮组那一页只剩源码」「标签页数量少一页」（内层 ::: 被当成 tabs 结束符导致截断）\n- 所有块级替换都跳过围栏代码块；捕获组按偏移量取原文（对原文重跑正则会被代码块里的 ::: 截断）\n- 标签页标题不再带 “tab ” 前缀；围栏里的 == 不算分段\n## 前台交互\n- 图片图注：![说明](url) 在图片下方显示居中说明（alt 缺省用 title），\n  图片组/视频组/链接卡/播放器内的图片跳过（否则会因多包一层导致多图重叠）\n- 音乐播放器：{music id=…}{/music} 补成播放器卡片（封面/歌名/歌手/时长/进度/播放），\n  新增同源代理 /api/public/music/playlist 取歌名与封面；播放控制沿用已有 enhanceMusic\n- 行内短代码支持 color= 参数；{psw} 忽略 color（否则密码明文可见）\n- 新增上标下标 {sup}/{sub}；标签页里的 {u}{emp}{wavy}{del} 现在也生效（此前被 .tabs 守卫挡住）\n- {tip} 去掉内联 border-bottom（与 CSS 叠成两条下划线）；链接卡收窄到 1/4 宽、纵向排布、标题省略\n## 后台与工程\n- 编辑器默认关闭实时预览（长文滚动卡顿的主因），改为底部按钮按需开启\n- 后台设置新增评论审核/评论通知/评论专用 SMTP 三组（违禁词、限频、AI 检测、notify_admin、邮件模板）\n- /api/pro/f/* 增加同源代理；toSameOriginMediaUrl 白名单同步\n- 正文与预览图片加 content-visibility，屏幕外不渲染\n## 验证\n- tsc（仅 src）：0 error\n- pnpm lint：0 error 0 warning\n- pnpm build：exit 0；Compiled successfully in 19.3s；静态页 186/186；BUILD_ID=oiPORAtgegn2QcW9Fq6yL\n- 布局/主题回归（真实浏览器 PC 1440×900 + 移动 390×844 × 深浅色，共 16 例）：\n  主题切换正常、横向溢出 0、破图 0、JS 异常 0、图片组重叠 0\n  文章页结构：tabs 6 / 按钮组 4 / 隐藏块 3 / 图片组 5 / 音乐 3 / 图注 2 / 链接卡 9 / 提示 14 / 公式 2\n## 已知限制\n- 短代码是保存时渲染的：旧文章需要「后台打开 → 保存一次」才会重写正文 HTML；\n  纯前台增强（{u}/{kbd}/{sup}、图注、音乐）刷新页面即可生效\n- Windows 普通用户无法创建符号链接，standalone 打包会 EPERM；本地构建用 NEXT_SKIP_STANDALONE=1\n  （Linux / 容器 / CI 不要设这个变量）\n- 后台设置页三个新分组、音乐播放器的实际播放链路（需要歌单内的歌曲 ID）尚未逐项点选实测",
+    "url": "https://github.com/ciraos/blogv2/releases/tag/v1.4.0"
+  },
+  {
+    "version": "v1.3.0",
+    "date": "2026-10-15T17:33:14+08:00",
+    "title": "系统设置重构 / 后台批量接真 / AI 写作 / 文章短代码补丁 / 页面管理全屏 等 22 次提交",
+    "body": "自 v1.2.0（2026-10-08）以来累计 22 次提交、251 个文件（版本号 1.2.0 → 1.3.0 的改动随上一提交落库，\n本条只补发布说明与 tag 锚点）。\n\n【后台】系统设置重构为官方分组结构（字段 298→399）；页面批量接真接口（缓存管理 / 配置备份 / 插件管理 /\n知识库 / 图片样式 / 会员与工单 / SEO 推送与体检 / 社区问答）；仪表盘重排（统计区 CSS 多列瀑布流、修趋势柱\n不渲染与卡片重叠）；文章编辑页右栏重构并修掉左栏大片空白；AI 生成摘要 + 定时发布 + 文档模式入口；\nAI 写作（SSE 流式）与 AI 设置面板；友链导入导出与排序；文章/评论导入导出等。\n\n【前台】社区问答前后台（/questions 与 /admin/community-qa）；评论图片四件套（1/4 缩略 + 点击放大 +\n多图横排 + 左右切换）与评论区改造（蓝色边框 + 气泡尾巴 + 大肥鱼挂件）；评论 Markdown 预览；\n侧边栏「公告」卡；移动端侧边栏改为正文下方整块显示；文件管理上传入口；原生 confirm 全量替换为站内弹窗；\n深色模式原生控件（color-scheme）；404 去配图 + 加「返回仪表盘」；loading.tsx 全部删除。\n\n【修复】文章正文写入空白（后端不渲染 Markdown，前端渲染后同时提交 content_html）；分类/标签新增 405、\n改名/删除 404；文件删除失败（JSON body）；评论传图不显示（/needcache 前缀补后端源）；后台 404 不再套前台\n外壳；文章短代码前端补丁（{btn} layout=block → 容器 + 左中右；{tip} theme/position/delay 补类名）与 tip\n触发分层（click 档悬停不弹、点击才弹）；iconfont 豆腐块（真因是文章 HTML 的 <i> 不带 anzhiyufont 类）；\n文章正文按钮样式对齐官方；首字下沉不再套到自定义页面；页面管理弹窗改全屏并只留 Markdown 编辑框；\n访问日志卡改「左饼图 + 右前五」与图表多色令牌；友链「排序」弹窗删除；用户菜单未登录态图标圆角统一。\n\n【注意】所有写操作（保存/发布/审核/作答/点赞/上传/删除/导入导出）与页面管理的保存链路**从未对线上实测**，\n第一次使用请留意；仪表盘访问日志卡为 max-content 宽度，其右侧暂留白（砌体布局未采用）。",
+    "url": "https://github.com/ciraos/blogv2/releases/tag/v1.3.0"
+  },
+  {
+    "version": "v1.2.0",
+    "date": "2026-10-08T00:53:41+08:00",
+    "title": "定时主题与软导航进度条、前台自动刷新；友链导入导出接入",
+    "body": "package.json 由 1.1.0 提升为 1.2.0。本次是向后兼容的功能新增（主题跟随站点配置、前台自动刷新、\n后台友链批量导入导出），按语义化版本取 minor。\n\n内容：\n- 主题：支持站点配置 DEFAULT_THEME_MODE = \"auto\"，按 THEME_LIGHT_START_TIME / THEME_DARK_START_TIME\n  定时切换（口径对齐官方 theme-schedule）；手动切主题即解除托管；音乐馆不再写死深色，深浅色全部跟随配置。\n- 体验：软导航顶部进度条（nextjs-toploader）、后台保存设置后同源广播 + 前台定时/唤醒兜底刷新、\n  loading.tsx 从根段挪进各路由组并给不同分组各自的后备 UI。\n- 后台：友链管理的「分类标签 / 导入 / 导出」三个原先没有 onClick 的按钮接入 API\n  （分类标签 CRUD、导入导出同构 JSON），配套 4 个新同源路由与 8 个 API 函数。\n- 修复：/posts 分页链接指回首页；前台侧边栏 data-collapsed 的 hydration 不匹配。\n\n验证：pnpm lint 0 问题；pnpm build 通过（TypeScript、112/112 页面、standalone 产物）；\nPC 1440×900 / 移动 390×844 × 浅色/深色 × 6 个页面共 24 项布局巡检无横向溢出、无控制台报错。\n详见 d63f3a1。",
+    "url": "https://github.com/ciraos/blogv2/releases/tag/v1.2.0"
+  },
+  {
+    "version": "v1.1.0",
+    "date": "2026-09-30T16:38:20+08:00",
+    "title": "音乐馆接入播放接口",
+    "body": "package.json 由 1.0.0 提升为 1.1.0。本次是向后兼容的功能新增（音乐馆播放能力、\n后台列表移动端卡片式），按语义化版本取 minor。\n\n内容：音乐馆接入后端歌单 + Meting 音源解析、样式改用参照项目并换用站点 header；\n后台五个列表改移动端卡片式；正文字体英文改 Georgia 并修掉字体变量失效 bug。\n验证：pnpm lint 0 问题，pnpm build 通过（100/100 页面），UI 巡检 18 项全通过。详见 aa83b39。",
+    "url": "https://github.com/ciraos/blogv2/releases/tag/v1.1.0"
+  },
+  {
+    "version": "v1.0.0",
+    "date": "2026-09-28T22:33:51+08:00",
+    "title": "评论引用/回复、头像口径统一、后台打赏管理与前端版本号",
+    "body": "评论区\n- 回复：点某条评论的「回复」把主输入框切到回复态（引用提示条 + 自动滚动聚焦 + 目标评论高亮），\n  发送时带 parent_id / reply_to_id；回复子评论时 parent_id 仍是顶层父评论（保持两级结构）。\n- 引用：新增 comment-form-set-quote 事件约定（src/hooks/use-comment-quote.ts，即刻页与朋友圈页共用）。\n  卡片右下角「评论」按钮把该条内容摘要（前 50 字）送进页面底部评论区并滚动过去，提交时拼成\n  `> 引用` 前置到正文 —— 让所有读者都能看出这条评论说的是哪一条内容。\n  即刻页 / 朋友圈页各共用一个 target_path（/essay、/fcircle），与线上 CommentSection 的做法一致；\n  朋友圈卡片评论按钮是线上没有的，按需求新增。\n- 引用块样式：globals.css 补 .comment-content blockquote（主题色淡染底 + 3px 左侧竖线 + 引号装饰）。\n  之前只给 .article-body 写了引用样式，评论区的引用渲染出来跟正文糊在一起。\n\n头像\n- 新增 src/lib/avatar.ts（resolveCommentAvatar）：统一按站点配置 GRAVATAR_URL + DEFAULT_GRAVATAR_TYPE 拼，\n  邮箱没有自定义头像时由 d= 生成兜底头像，地址永远有值（不再出现「头像啥也不显示」）。\n- (blog) layout 用 GravatarProvider 下发配置 —— 复用 layout 已经取到的 site-config，\n  客户端不再重复请求，也不会出现「先渲染错头像再换一次」的闪动。\n- 替换 5 处各写各的实现（评论区、侧边栏「最近评论」、最近评论页、用户中心、首页评论时间轴）。\n  原先它们读构建期 NEXT_PUBLIC_GRAVATAR_URL 且写死 d=identicon / d=mp，改后台设置必须重新构建才生效。\n- 后端直给的 avatar_url 若只是 Gravatar 链接（只含邮箱哈希），按站点配置重建：后端写死 d=identicon，\n  否则同一个人会在同一页出现两个不同头像（父评论走前端拼、子评论用后端给的）。\n\n后台\n- 打赏管理页（PRO）：统计磁贴 + 状态筛选 + 列表（多选批量删除）+ 新增/编辑弹窗 + 分页。\n- 新增同源代理 /api/admin/donations（列表/新增）、/api/admin/donations/[id]（单条/更新/删除）、\n  /api/admin/donations/total（总额；静态段优先于同级 [id]）。\n- app-sidebar 底部显示前端版本号（收起为图标模式时隐藏）。\n\n版本号\n- package.json 0.1.0 → 1.0.0（首个正式版基线）。与后端程序版本（/api/version）和站点配置里的\n  APP_VERSION 无关，仅代表本前端项目自身。\n- next.config.ts 从 package.json 读取并注入 env.APP_VERSION；src/lib/version.ts 作为单一访问点。\n  改版本只需改 package.json 一处，生产环境重新构建生效。\n\n配置修正（由本地对照源码暴露）\n- eslint.config.mjs 与 tsconfig.json 排除 scripts/**：该目录已被 .gitignore 忽略（本地探测脚本与\n  拉下来对照的官方源码），却仍参与 lint 与类型检查，会把官方源码报成项目错误\n  （83 个 lint error + 1 个 build 类型错误）。\n\n验证\n- pnpm lint 0 问题；pnpm build 通过（TypeScript 无错误、standalone 产物正常，/admin/* 一并编译）。\n- 评论引用/回复：PC 1440×900 与移动端 390×844 下点卡片「评论」→ 引用预览 → 自动聚焦 → 滚到评论区；\n  提交载荷经 CDP 拦截核对（target_path、`> 引用` 前缀、parent_id/reply_to_id），未向线上写入数据。\n- 即刻页在引用抽取逻辑抽成共用 hook 后做了回归，逐字一致。\n- 头像：5 个位置共 25 个头像全部为统一口径且加载成功。\n- 打赏管理：临时预览页 + CDP 模拟接口，20 次调用覆盖统计/筛选/分页/新增/编辑/删除/批量删除。\n- 版本号：确认取自 package.json（v0.1.0 → v1.0.0）；前台页脚展示按要求撤掉，改为后台侧边栏。",
+    "url": "https://github.com/ciraos/blogv2/releases/tag/v1.0.0"
+  }
+]

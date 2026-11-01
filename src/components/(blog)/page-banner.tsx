@@ -34,7 +34,12 @@ export function PageBanner({ background, tip, title, description, action }: Page
     return (
         <div
             data-page-banner=""
-            className="relative flex h-56 flex-col justify-between overflow-hidden rounded-xl p-5 text-white md:h-75 md:p-8"
+            className={
+                "relative flex h-56 flex-col justify-between overflow-hidden rounded-xl p-5 text-white md:h-75 md:p-8 " +
+                // 没有配背景图时给一层主题色渐变：横幅文案是白字，纯浅色底上会"隐形"
+                // （更新日志页就是固定文案、没有背景图的情况）
+                (bg ? "" : "bg-gradient-to-br from-primary to-primary/55")
+            }
         >
             {bg && (
                 <>

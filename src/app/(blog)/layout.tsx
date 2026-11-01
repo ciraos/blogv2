@@ -45,6 +45,12 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+/**
+ * 首次访问就默认收起右侧边栏的页面（数组必须是**模块级常量**：
+ * 内联写在 JSX 里每次渲染都是新引用，会触发 Provider 里 effect 反复重跑）。
+ */
+const SIDEBAR_DEFAULT_COLLAPSED_PATHS = ["/equipment"] as const;
+
 /** 站点公告条（SITE_ANNOUNCEMENT）：后端定义（internal/configdef/definition.go 第 54 行）为
  *  「站点公告（HTML 片段），展示在导航栏下方；留空不显示」，所以固定渲染在 header 之后、
  *  首屏大图/正文之前，通栏铺满；空值（trim 后）整条不渲染。
@@ -135,8 +141,9 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
           {/* 应用内确认弹窗：前台目前只有用户中心的「退出登录」用到（替代 window.confirm）。
               只做 Provider 包裹，不动下面的布局逻辑。 */}
           <ConfirmProvider>
-            {/* 侧边栏收缩状态：前台右侧边栏（CollapsibleAside）与右下角悬浮按钮共用同一份状态 */}
-            <SidebarCollapseProvider>
+            {/* 侧边栏收缩状态：前台右侧边栏（CollapsibleAside）与右下角悬浮按钮共用同一份状态。
+                defaultCollapsedPaths：这些页面「本地没有记录时」默认收起（目前只有装备页，卡片区需要更宽） */}
+            <SidebarCollapseProvider defaultCollapsedPaths={SIDEBAR_DEFAULT_COLLAPSED_PATHS}>
             {/* flex 列布局 + min-h-dvh：内容不足一屏时 footer 吸附在视口底部 */}
             <div id="CIRAOS" className="flex min-h-dvh flex-col">
               <Header {...header} />

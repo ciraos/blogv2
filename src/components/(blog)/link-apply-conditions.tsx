@@ -3,15 +3,17 @@
 import { useMemo, useState } from "react";
 import { Check, ClipboardList } from "lucide-react";
 
-import { LinkApplyForm } from "@/components/(blog)/link-apply-form";
+import { LinkApplyForm, type ApplyPlaceholders } from "@/components/(blog)/link-apply-form";
 
 interface LinkApplyConditionsProps {
     /** 申请条件文案（site-config FRIEND_LINK_APPLY_CONDITION，含 HTML 标签） */
     conditions: string[];
+    /** 表单占位文案（site-config FRIEND_LINK_PLACEHOLDER_*），原样透传给申请表 */
+    placeholders?: ApplyPlaceholders;
 }
 
 /** 友链申请条件：勾选全部后自动在下方弹出「友链申请」块（条件文案来自站点配置，支持 <b> 等 HTML） */
-export function LinkApplyConditions({ conditions }: LinkApplyConditionsProps) {
+export function LinkApplyConditions({ conditions, placeholders }: LinkApplyConditionsProps) {
     const [checked, setChecked] = useState<boolean[]>(() => conditions.map(() => false));
     const allChecked = useMemo(() => checked.length > 0 && checked.every(Boolean), [checked]);
 
@@ -77,7 +79,7 @@ export function LinkApplyConditions({ conditions }: LinkApplyConditionsProps) {
             {/* 全部勾选后，自动在下方弹出友链申请块 */}
             {allChecked && (
                 <div className="pt-5 m-0">
-                    <LinkApplyForm />
+                    <LinkApplyForm placeholders={placeholders} />
                 </div>
             )}
         </>

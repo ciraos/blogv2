@@ -49,6 +49,7 @@ import {
 } from "@/lib/admin-settings";
 import { AiSettingsPanel } from "@/components/admin/ai-settings-panel";
 import { PaymentSettingsPanel } from "@/components/admin/payment-settings-panel";
+import { SettingsCodeField } from "@/components/admin/settings-code-field";
 import { TestEmailButton } from "@/components/admin/test-email-button";
 import { TokenColorEditor } from "@/components/admin/token-color-editor";
 import { updateAdminSettingsApi, uploadAdminImageApi } from "@/lib/api";
@@ -596,6 +597,7 @@ function SettingsGroupCard({
                                         field.type === "list" ||
                                         field.type === "stringlist" ||
                                         field.type === "tokens" ||
+                                        field.type === "code" ||
                                         field.type === "json"
                                         ? "lg:col-span-2"
                                         : ""
@@ -820,6 +822,20 @@ function FieldControl({
                     )}
                 />
             </label>
+        );
+    }
+
+    if (field.type === "code") {
+        return (
+            <div className="block">
+                {label}
+                <SettingsCodeField
+                    value={String(value ?? "")}
+                    onChange={onChange}
+                    language={field.language ?? "html"}
+                    rows={field.rows ?? 14}
+                />
+            </div>
         );
     }
 

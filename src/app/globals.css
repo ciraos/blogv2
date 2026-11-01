@@ -402,6 +402,46 @@ body {
   }
 }
 
+/* ---------- 后台设置里的代码字段（SettingsCodeField）----------
+ * highlight.js 的配色原本只写在 :is(.article-body, .comment-content) 作用域里，
+ * 设置页不在那两个作用域内，所以这里补一套精简配色（浅色写实色，深色走提亮版）。 */
+.settings-code .hljs-tag,
+.settings-code .hljs-name,
+.settings-code .hljs-selector-tag {
+  color: var(--primary);
+}
+
+.settings-code .hljs-attr {
+  color: #b45309;
+}
+
+.settings-code .hljs-string {
+  color: #15803d;
+}
+
+.settings-code .hljs-comment {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.settings-code .hljs-keyword,
+.settings-code .hljs-built_in {
+  color: #7c3aed;
+}
+
+.dark .settings-code .hljs-attr {
+  color: #fbbf24;
+}
+
+.dark .settings-code .hljs-string {
+  color: #4ade80;
+}
+
+.dark .settings-code .hljs-keyword,
+.dark .settings-code .hljs-built_in {
+  color: #c4b5fd;
+}
+
 /* ===================== 文章正文排版（content_html） ===================== */
 /* 正文的英文 / 数字（拉丁字形）优先用 Georgia（屏幕友好的衬线体）：
    Georgia 不含中文字形，CSS 按「逐字形回落」继续往后找，最终落到系统中文黑体 ——
@@ -1047,6 +1087,17 @@ body {
   border: 1px solid #e1e4e8;
   background: #fafafa;
   overflow: hidden;
+}
+
+/* 后端 md-editor 代码块里的 <pre>：
+ * 外层 details 已经有描边 + 底色，内层 pre 若还带着 `margin: 1em 0` / 圆角 / var(--muted) 底色，
+ * 就会在代码区四周留出一圈"白边"（浅色下最明显，截图里代码块上下各一条白带就是它）。
+ * 这里把内层压平，只保留内边距，颜色交给容器。 */
+:is(.article-body, .comment-content) .md-editor-code > pre {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0;
+  background: transparent;
 }
 
 /* macOS 标题栏（两种结构共用）：三个圆点 + 语言标签 + 复制按钮 */

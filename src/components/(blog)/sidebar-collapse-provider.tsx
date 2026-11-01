@@ -29,7 +29,17 @@ interface SidebarCollapseValue {
 
 const SidebarCollapseContext = createContext<SidebarCollapseValue | null>(null);
 
-export function SidebarCollapseProvider({ children }: { children: React.ReactNode }) {
+export function SidebarCollapseProvider({
+    children,
+    defaultCollapsedPaths = [],
+}: {
+    children: React.ReactNode;
+    /**
+     * 「本地没有任何记录时默认收起」的页面路径（如装备页 /equipment）。
+     * 用户手动点过开合后以 localStorage 的记录为准，这里只在首次访问生效。
+     */
+    defaultCollapsedPaths?: readonly string[];
+}) {
     const pathname = usePathname();
     // 初值固定 false：与服务端渲染保持一致，避免 hydration 不匹配；挂载后再按 localStorage 恢复
     const [collapsed, setCollapsed] = useState(false);
@@ -43,13 +53,18 @@ export function SidebarCollapseProvider({ children }: { children: React.ReactNod
                     saved = window.localStorage.getItem(LEGACY_KEY);
                     if (saved !== null) window.localStorage.setItem(keyFor(pathname), saved);
                 }
+                if (saved === null) {
+                    // 没有任何记录：该页在「默认收起」名单里就收起，否则保持展开
+                    setCollapsed(defaultCollapsedPaths.includes(pathname));
+                    return;
+                }
                 setCollapsed(saved === "1");
             } catch {
                 // 隐私模式等读不到 localStorage：保持展开
             }
         }, 0);
         return () => clearTimeout(timer);
-    }, [pathname]);
+    }, [pathname, defaultCollapsedPaths]);
 
     const toggle = useCallback(() => {
         setCollapsed((prev) => {

@@ -17,7 +17,7 @@
 - **朋友圈**：拉取并展示友链站点动态
 - **搜索**：站内搜索
 - **评论**：文章评论、评论时间线、评论图片上传（支持匿名评论）
-- **其它**：关于页、相册（`/album`）、音乐播放器（`/music`）、留言板
+- **其它**：关于页、相册（`/album`）、音乐播放器（`/music`）、留言板、装备页（`/equipment`）、更新日志（`/update`）
 
 ### 后台（`admin` 路由组）
 
@@ -31,7 +31,7 @@
 
 明暗主题（默认模式由后端配置决定）、响应式布局、移动端汉堡菜单、悬浮操作按钮、回到顶部、Token 过期静默登出提示。
 
-> 说明：`air-conditioner`、`equipment`、`update` 等页面为预留占位，暂无内容。
+> 说明：`air-conditioner` 等页面为预留占位，暂无内容。`equipment` 装备页与 `update` 更新日志页已接通：装备页读 site-config 的 `equipment.*`；更新日志拉官方 changelog 聚合接口（`anheyuofficialwebsiteapi.anheyu.com`，最近 10 条 Release）。
 
 ## 🧱 技术栈
 
