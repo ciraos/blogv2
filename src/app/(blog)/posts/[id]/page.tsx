@@ -264,7 +264,7 @@ export default async function Post({ params }: PostPageProps) {
                         {/* 渐变遮罩：底部最暗 → 顶部渐明，确保标题/元信息在浅色图上也可读 */}
                         <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-black/20" />
                         <div className="relative flex min-h-60 flex-col justify-end p-5 md:min-h-76 md:p-8">
-                            <h1 className="text-2xl font-bold leading-snug tracking-tight text-white drop-shadow-sm md:text-3xl">
+                            <h1 className="post-title text-2xl font-bold leading-snug tracking-tight text-white drop-shadow-sm md:text-3xl">
                                 {article.title}
                             </h1>
                             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/80">
@@ -293,7 +293,7 @@ export default async function Post({ params }: PostPageProps) {
                 ) : (
                     /* 无封面图：回退为普通文章头部 */
                     <header className="space-y-3 border-b pb-6">
-                        <h1 className="text-2xl font-bold leading-snug tracking-tight md:text-3xl">{article.title}</h1>
+                        <h1 className="post-title text-2xl font-bold leading-snug tracking-tight md:text-3xl">{article.title}</h1>
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                             <span>发布于 {formatDate(article.created_at)}</span>
                             {article.ip_location && <span>· {article.ip_location}</span>}

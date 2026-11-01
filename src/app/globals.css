@@ -1,3 +1,9 @@
+/* 标题用的「可爱体」：站酷快乐体（ZCOOL KuaiLe，OFL 免费商用）。
+   走 Google Fonts 的国内镜像 fonts.googleapis.cn —— 它返回的切片地址是 fonts.gstatic.cn，
+   大陆可直连；整包中文会很大，这个接口本身按 unicode-range 分片，只下用到的字。
+   注意：必须放在所有 @import 的最前面 —— 下面 `@import "./iconfont.css"` 会被 PostCSS 内联成规则，
+   排在它后面的 @import 就成了「import 跟在普通规则之后」，直接报 Parsing CSS source code failed。 */
+@import url("https://fonts.googleapis.cn/css2?family=ZCOOL+KuaiLe&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -71,6 +77,8 @@
   --font-base-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
     "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
     "Noto Color Emoji";
+  /* 展示字体（标题/全站 UI 用）：站酷快乐体，圆润可爱；回退走系统字体。 */
+  --font-display: "ZCOOL KuaiLe", var(--font-base-stack);
   /* 等宽字体栈（代码块 / kbd / 快捷键等）。同样只在 :root 定义一次，
      供 @theme 的 --font-mono 以及下方各处 var(--font-mono-stack, …) 引用。 */
   --font-mono-stack: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
@@ -440,6 +448,44 @@ body {
 .dark .settings-code .hljs-keyword,
 .dark .settings-code .hljs-built_in {
   color: #c4b5fd;
+}
+
+/* ---------- 全站字体（展示体）----------
+ * 前台所有文字默认用站酷快乐体（--font-display），例外只有三类，都是「可读性/功能优先」：
+ *   · 文章正文 / 评论正文：长文用花体读着累，保持原字体栈（Georgia 衬线 + 中文系统字体）
+ *   · 表单控件：输入时字宽跳动，体验很差
+ *   · 代码：必须等宽
+ * 作用域挂在 #CIRAOS 上（(blog) 布局的根节点），后台 /admin 不受影响。 */
+#CIRAOS {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+}
+
+#CIRAOS .article-body {
+  font-family: Georgia, "Times New Roman", var(--font-base-stack);
+  letter-spacing: 0;
+}
+
+#CIRAOS .comment-content {
+  font-family: var(--font-base-stack);
+  letter-spacing: 0;
+}
+
+#CIRAOS :is(pre, code, kbd, samp) {
+  font-family: var(--font-mono-stack);
+}
+
+#CIRAOS :is(input, textarea, select) {
+  font-family: var(--font-base-stack);
+  letter-spacing: 0;
+}
+
+/* 正文里的小标题、文章大标题、横幅标题仍然用展示体（它们被上面 .article-body 的字体栈继承了） */
+.post-title,
+.article-body :is(h1, h2, h3, h4),
+[data-page-banner] [data-banner-title] {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
 }
 
 /* ===================== 文章正文排版（content_html） ===================== */

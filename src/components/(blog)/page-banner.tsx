@@ -52,7 +52,11 @@ export function PageBanner({ background, tip, title, description, action }: Page
 
             <div className="relative z-10">
                 {tip && <div className="mb-2 text-[.75rem] font-medium text-white/80">{tip}</div>}
-                {title && <div className="text-3xl font-bold leading-[1.2] md:text-[2.25rem]">{title}</div>}
+                {title && (
+                    <div data-banner-title className="text-3xl font-bold leading-[1.2] md:text-[2.25rem]">
+                        {title}
+                    </div>
+                )}
             </div>
 
             {(description || action?.text) && (
