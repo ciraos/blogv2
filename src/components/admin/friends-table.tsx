@@ -496,8 +496,9 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                                         <LinkAvatarCell link={link} />
                                         <div className="min-w-0">
                                             <div className="truncate font-medium">{link.name}</div>
-                                            {/* URL：可点击外链，鲜艳蓝色与文字区分（截断处 hover 可看全文）。
-                                                只做截断不做换行：一行 URL 撑成三行会把整行拉高。 */}
+                                            {/* URL：可点击外链。以前的 `text-xs/2.5` 把行高压到 10px
+                                                （字号 12px > 行高），字母上下缘会被裁掉，看起来「显示不全」；
+                                                改成 text-xs/4（16px 行高）+ 两行折行，字母完整、长域名也放得下。 */}
                                             {link.url && (
                                                 <a
                                                     href={link.url.startsWith("http") ? link.url : `https://${link.url}`}
@@ -505,7 +506,7 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                                                     rel="noopener noreferrer nofollow"
                                                     title={link.url}
                                                     onClick={(e) => e.stopPropagation()}
-                                                    className="block truncate text-xs/2.5 font-medium text-sky-500 transition-colors hover:text-sky-600 hover:underline dark:text-sky-400 dark:hover:text-sky-300"
+                                                    className="line-clamp-2 break-all py-0.5 text-xs/4 font-medium text-sky-500 transition-colors hover:text-sky-600 hover:underline dark:text-sky-400 dark:hover:text-sky-300"
                                                 >
                                                     {link.url}
                                                 </a>
