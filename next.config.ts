@@ -107,11 +107,21 @@ const appVersion = (
   JSON.parse(fs.readFileSync(path.join(process.cwd(), "package.json"), "utf8")) as { version?: string }
 ).version ?? "0.0.0";
 
+/**
+ * 是否跳过 standalone 打包（严格布尔解析）。
+ *
+ * 只有 1 / true / yes / on 算「开启」；0 / false / 空 / 未设置都算「不跳过」。
+ * 不要退回 `process.env.X ? … : …` 的写法：那样 `=0` 和 `=false` 也会被当成开启。
+ */
+const skipStandaloneEnabled = ["1", "true", "yes", "on"].includes(
+  (process.env.NEXT_SKIP_STANDALONE ?? "").trim().toLowerCase()
+);
+
 const nextConfig: NextConfig = {
 
   /* config options here */
   distDir: ".next",
-  // standalone：部署产物（Dockerfile / `pnpm start` 用的就是它）。
+  // standalone：部署产物（Dockerfile 用的就是它）。
   // 但 Next 组装 `.next/standalone` 时会在 node_modules 里大量建**符号链接**，
   // 而 Windows 默认不允许普通用户建符号链接 —— 报
   //   EPERM: operation not permitted, symlink '..\..\..\@swc+helpers@…'
@@ -119,7 +129,11 @@ const nextConfig: NextConfig = {
   // 所以给一个本地开关：Windows 想完整跑一次 `pnpm build` 时用
   //   $env:NEXT_SKIP_STANDALONE=1 ; pnpm build
   // 跳过 standalone 打包（Linux / 容器 / CI **不要**设这个变量，否则镜像里没有 server.js）。
-  output: process.env.NEXT_SKIP_STANDALONE ? undefined : "standalone",
+  //
+  // 取值按**严格布尔**解析（不能只看 truthy）：之前写的是 `process.env.X ? … : …`，
+  // 于是 NEXT_SKIP_STANDALONE=0 / false 也会被当成「开启」（字符串 "0" 是真值），
+  // 一复制到 .env 就静默产出没有 server.js 的镜像。现在只有 1/true/yes/on 才算开启。
+  output: skipStandaloneEnabled ? undefined : "standalone",
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
   reactCompiler: true,
   reactStrictMode: false,
