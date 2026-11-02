@@ -1,9 +1,10 @@
-/* 标题用的「可爱体」：站酷快乐体（ZCOOL KuaiLe，OFL 免费商用）。
-   走 Google Fonts 的国内镜像 fonts.googleapis.cn —— 它返回的切片地址是 fonts.gstatic.cn，
-   大陆可直连；整包中文会很大，这个接口本身按 unicode-range 分片，只下用到的字。
+/* 全站字体「站酷快乐体」（ZCOOL KuaiLe，OFL 免费商用）—— 已自托管：
+   public/fonts/zcool-kuaile/ 下是 93 个 unicode-range 分片（合计约 1MB），
+   src/app/zcool-kuaile.css 是本地的 @font-face 表（由 scripts/mirror-zcool-kuaile.mjs 生成，
+   跑 `pnpm fonts:mirror` 可重新镜像），不再依赖 Google Fonts。
    注意：必须放在所有 @import 的最前面 —— 下面 `@import "./iconfont.css"` 会被 PostCSS 内联成规则，
    排在它后面的 @import 就成了「import 跟在普通规则之后」，直接报 Parsing CSS source code failed。 */
-@import url("https://fonts.googleapis.cn/css2?family=ZCOOL+KuaiLe&display=swap");
+@import "./zcool-kuaile.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";

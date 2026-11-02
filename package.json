@@ -13,7 +13,9 @@
     "server:linux": "export PORT=3126 && node .next/standalone/server.js",
     "api:inventory": "node scripts/gen-api-inventory.mjs",
     "api:inventory:check": "node scripts/gen-api-inventory.mjs --check",
-    "changelog:frontend": "node scripts/gen-frontend-changelog.mjs"
+    "changelog:frontend": "node scripts/gen-frontend-changelog.mjs",
+    "fonts:mirror": "node scripts/mirror-zcool-kuaile.mjs",
+    "test": "node --test \"tests/*.test.ts\""
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
