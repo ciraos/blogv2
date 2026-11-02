@@ -17,6 +17,7 @@ import { resolveAssetUrl } from "@/lib/utils";
 import { resolveAppearance } from "@/lib/appearance";
 import { resolveThemeSchedule } from "@/lib/scheduled-theme";
 import { isAdminUser } from "@/lib/auth";
+import { getBackendEdition } from "@/lib/edition";
 import { getSiteConfigs, resolveSiteIcons } from "@/lib/site-config";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -57,6 +58,9 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
     // 角色守卫：非管理员直接跳回主页（与官方后台 router.replace("/") 行为一致，不再显示无权限提示页）
     if (!isAdminUser(user)) redirect("/");
 
+    // 后端发行版：社区版隐藏侧边栏里带 PRO 标记的页面（工单 / 会员 / 订单等只存在于 PRO 模块）
+    const isPro = (await getBackendEdition()) === "pro";
+
     return (
         <html lang="zh-CN" suppressHydrationWarning data-skin={appearance.skinId}>
             <head>
@@ -81,7 +85,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
                       <ConfirmProvider>
                         {/* 整页锁 100dvh 且不滚动：滚动交给内容区（以及列表页内部的表格区域） */}
                         <SidebarProvider className="h-dvh overflow-hidden">
-                            <AppSidebar user={navUser} config={config} />
+                            <AppSidebar user={navUser} config={config} isPro={isPro} />
                             <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-2 overflow-y-auto px-5 py-1.5">
                                 <SidebarTriggerFallback />
                                 {/* 内容区是 flex 列。注意这里**不能**给所有页面根节点加 min-h-0/flex-auto：

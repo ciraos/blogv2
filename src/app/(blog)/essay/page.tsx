@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 import { EssayWaterfall } from "@/components/(blog)/essay-waterfall";
 import { NumberedPagination } from "@/components/(blog)/numbered-pagination";
@@ -11,6 +12,7 @@ import { getCommentAuthor } from "@/lib/comment-author";
 import { generateBlogMetadata } from "@/lib/seo";
 import { getSiteConfigs } from "@/lib/site-config";
 import { EmptyState } from "@/components/(blog)/empty-state";
+import { isProEdition } from "@/lib/edition";
 import { NotebookPen } from "lucide-react";
 
 const PAGE_SIZE = 10;
@@ -24,6 +26,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Essay({ searchParams }: { searchParams: Promise<EssaySearchParams> }) {
+    // PRO 专属页面：社区版后端没有对应接口（/public/essays 等），直接按 404 处理
+    if (!(await isProEdition())) notFound();
+
     const config = await getSiteConfigs();
     const { page: pageRaw } = await searchParams;
     const page = Math.max(1, parseInt(pageRaw ?? "1", 10) || 1);

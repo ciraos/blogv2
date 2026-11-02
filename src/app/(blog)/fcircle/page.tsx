@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { ArrowUpDown } from "lucide-react";
@@ -15,6 +16,7 @@ import { getCommentAuthor } from "@/lib/comment-author";
 import { generateBlogMetadata } from "@/lib/seo";
 import { getSiteConfigs } from "@/lib/site-config";
 import { EmptyState } from "@/components/(blog)/empty-state";
+import { isProEdition } from "@/lib/edition";
 import { MessagesSquare } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -27,6 +29,9 @@ interface FcircleSearchParams {
 }
 
 export default async function Fcircle({ searchParams }: { searchParams: Promise<FcircleSearchParams> }) {
+    // PRO 专属页面：社区版后端没有对应接口（/public/essays 等），直接按 404 处理
+    if (!(await isProEdition())) notFound();
+
     const sp = await searchParams;
     const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
     // 排序：published_at（发布时间，默认）/ created_at（抓取时间）

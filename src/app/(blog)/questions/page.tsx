@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 
 import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 import { QaQuestions } from "@/components/(blog)/qa-questions";
 import { API_URL } from "@/lib/api";
 import { generateBlogMetadata } from "@/lib/seo";
+import { isProEdition } from "@/lib/edition";
 
 // 页面要读登录 cookie，本来就是动态渲染；显式声明避免被误当作可静态化（构建时也少一次探测）。
 export const dynamic = "force-dynamic";
@@ -43,6 +45,9 @@ async function readQaEnabled(): Promise<boolean | null> {
  * 登录态由服务端 cookie 判断后下传：未登录不显示「我的提问」与提问表单，改为明确的登录引导。
  */
 export default async function QuestionsPage() {
+    // PRO 专属页面：社区版后端没有对应接口（/public/essays 等），直接按 404 处理
+    if (!(await isProEdition())) notFound();
+
     const [enabled, cookieStore] = await Promise.all([readQaEnabled(), cookies()]);
     const isLoggedIn = Boolean(cookieStore.get("token")?.value);
 

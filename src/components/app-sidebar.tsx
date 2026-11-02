@@ -103,13 +103,27 @@ const data = {
 export function AppSidebar({
   user,
   config,
+  isPro = true,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
   /** 当前登录用户（由 admin layout 从 /user/info 获取） */
   user: { name: string; email: string; avatar: string }
   /** 站点配置（由 admin layout 传入，避免这里再发一次 /public/site-config） */
   config?: SiteConfig
+  /** 后端是否 PRO 版：社区版把带 `pro: true` 的菜单项整条隐藏（默认 true，避免接口抖动时误伤） */
+  isPro?: boolean
 }) {
+  // 社区版：过滤掉标记了 pro 的子项；某分组过滤后没有子项则整组不渲染
+  const navMain = isPro
+    ? data.navMain
+    : data.navMain
+        .map((group) =>
+          "items" in group && Array.isArray(group.items)
+            ? { ...group, items: group.items.filter((item) => !("pro" in item) || !item.pro) }
+            : group
+        )
+        .filter((group) => !("items" in group) || !Array.isArray(group.items) || group.items.length > 0)
+
   return (
     <Sidebar collapsible="icon" variant="floating" className="dsh-sidebar-flat" {...props}>
 
@@ -143,7 +157,7 @@ export function AppSidebar({
       </SidebarHeader>
 
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={navMain} />
         {/* <NavDocuments items={data.documents} /> */}
       </SidebarContent>
 

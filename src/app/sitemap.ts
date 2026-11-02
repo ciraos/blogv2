@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 
+import { getBackendEdition } from "@/lib/edition";
 import { getAllPublicArticlesCached } from "@/lib/public-content-cache";
 import { SiteConfigResponse } from "@/types/site-config";
 
@@ -55,8 +56,13 @@ export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const siteUrl = await resolveSiteUrl();
+    // 社区版没有 PRO 模块接口，这些页面会 404 —— 不要写进站点地图
+    const isPro = (await getBackendEdition()) === "pro";
+    const proOnlyPaths = new Set(["/essay", "/fcircle", "/questions"]);
 
-    const entries: MetadataRoute.Sitemap = STATIC_ENTRIES.map(({ path, changeFrequency, priority }) => ({
+    const entries: MetadataRoute.Sitemap = STATIC_ENTRIES.filter(
+        (entry) => isPro || !proOnlyPaths.has(entry.path)
+    ).map(({ path, changeFrequency, priority }) => ({
         url: `${siteUrl}${path}`,
         changeFrequency,
         priority,
