@@ -39,7 +39,11 @@ function isDynamicServerUsage(error: unknown): boolean {
 export const getSiteConfigs = cache(async (): Promise<SiteConfig | undefined> => {
     try {
         const res = await fetch(`${api_url}/public/site-config`, {
-            next: { revalidate: 60, tags: [SITE_CONFIG_TAG] },
+            // 开发环境不缓存：后台改完配置想立刻在前台看到，否则要等 60 秒（还可能先拿到旧值）
+            next: {
+                revalidate: process.env.NODE_ENV === "development" ? 0 : 60,
+                tags: [SITE_CONFIG_TAG],
+            },
         });
         if (!res.ok) throw new Error(`获取站点配置失败：HTTP ${res.status}`);
         const data = (await res.json()) as SiteConfigResponse;

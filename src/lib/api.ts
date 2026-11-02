@@ -134,10 +134,15 @@ export async function request<T>(
 
     // 缓存策略：传了 cacheOptions 就交给 Next 数据缓存（public 只读接口），否则维持 no-store。
     // 注意不能同时给 `cache` 和 `next`，所以两条分支互斥。
+    //
+    // 开发环境强制不缓存（revalidate: 0）：后台改完内容想立刻在前台看到时，
+    // 60 秒的 revalidate + stale-while-revalidate 意味着「第一次请求还拿旧的、后台再刷」，
+    // 最坏要等两个周期，调试时非常像「不更新」。生产仍然是调用方传入的秒数。
+    const isDev = process.env.NODE_ENV === "development";
     const init: RequestInit = { ...options, headers };
     if (cacheOptions) {
         (init as RequestInit & { next?: { revalidate?: number; tags?: string[] } }).next = {
-            ...(cacheOptions.revalidate !== undefined ? { revalidate: cacheOptions.revalidate } : {}),
+            revalidate: isDev ? 0 : cacheOptions.revalidate,
             ...(cacheOptions.tags ? { tags: cacheOptions.tags } : {}),
         };
     } else {
