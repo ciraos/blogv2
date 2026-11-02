@@ -30,7 +30,9 @@ const FALLBACK_MUSIC_API = {
 
 export default async function Music() {
     // 歌单在服务端取（后端无 CORS，浏览器端要用同源代理；歌单是进页面就要用的，RSC 最省事）
-    const [config, songs] = await Promise.all([getSiteConfigs(), getMusicPlaylist()]);
+    const config = await getSiteConfigs();
+    // 歌单优先用站点配置里的自定义歌单（music.player.custom_playlist），没配就回落后端歌单
+    const songs = await getMusicPlaylist(config?.music?.player?.custom_playlist);
 
     const vinyl = {
         background: config?.music?.vinyl?.background || FALLBACK_VINYL.background,

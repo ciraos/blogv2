@@ -5,10 +5,13 @@ import { LinkCustomHtml } from "@/components/(blog)/link-custom-html";
 import { LinkPond } from "@/components/(blog)/link-pond";
 import { LinkSections } from "@/components/(blog)/link-sections";
 import { PostComments } from "@/components/(blog)/post-comments";
-import { getCommentsWithChildrenApi, getLinksByCategoryApi, getLinksGroupedByCategoryApi, getPublicLinkCategoriesApi, getPublicSiteConfigApi, getRandomMomentPostApi } from "@/lib/api";
+import { getCommentsWithChildrenApi, getLinksByCategoryApi, getLinksGroupedByCategoryApi, getPublicLinkCategoriesApi, getRandomMomentPostApi } from "@/lib/api";
 import { getCommentAuthor } from "@/lib/comment-author";
 import { pickFishLine } from "@/lib/fish-lines";
+import { requireSiteConfigs } from "@/lib/site-config";
 import { generateBlogMetadata } from "@/lib/seo";
+import { EmptyState } from "@/components/(blog)/empty-state";
+import { Link2 } from "lucide-react";
 
 // 友链来自远端实时数据，不做构建期静态预渲染
 export const dynamic = "force-dynamic";
@@ -76,7 +79,7 @@ function splitLinkApplyCustomHtml(html: string): { header: string; middle: strin
 
 export default async function Link() {
     // 站点配置（用于页脚自定义内容）
-    const config = await getPublicSiteConfigApi().catch(() => null);
+    const config = await requireSiteConfigs().catch(() => null);
 
     // 友链分区：按分类展示该分类下的「全部友链」——包含状态为 INVALID 的已失联友链，
     // 所以分区标题里的计数是该分类的总条数（不是其中「已通过」的条数）。
@@ -141,7 +144,7 @@ export default async function Link() {
             <LinkPond initial={randomPost} initialPrefix={pickFishLine()} />
 
             {visible.length === 0 ? (
-                <p className="py-16 text-center text-muted-foreground">暂无友情链接</p>
+                <EmptyState icon={Link2} title="暂无友情链接" description="还没有通过审核的友链，欢迎在下方申请。" />
             ) : (
                 /* 分区渲染：按分类 id 升序，分区内按友链 id 降序（新友链在前） */
                 <LinkSections sections={visible} />

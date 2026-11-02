@@ -8,6 +8,8 @@ import { ApiError, getLatestCommentsApi, type RecentComment } from "@/lib/api";
 import { resolveCommentAvatar, type GravatarConfig } from "@/lib/avatar";
 import { generateBlogMetadata } from "@/lib/seo";
 import { getSiteConfigs } from "@/lib/site-config";
+import { EmptyState } from "@/components/(blog)/empty-state";
+import { MessageCircle } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
     return generateBlogMetadata("最近评论");
@@ -112,9 +114,11 @@ export default async function RecentComments({ searchParams }: { searchParams: P
         return (
             <div className="w-full space-y-6">
                 <h1 className="text-2xl font-bold tracking-tight">最近评论</h1>
-                <p className="py-16 text-center text-sm text-muted-foreground">
-                    {errorMessage ? `暂时无法获取内容：${errorMessage}` : "暂无评论，来抢沙发吧"}
-                </p>
+                <EmptyState
+                    icon={MessageCircle}
+                    title={errorMessage ? "暂时无法获取内容" : "暂无评论，来抢沙发吧"}
+                    description={errorMessage ?? undefined}
+                />
             </div>
         );
     }

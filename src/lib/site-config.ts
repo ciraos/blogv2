@@ -1,9 +1,9 @@
 import { cache } from "react";
 
-import { SITE_CONFIG_TAG } from "@/lib/api";
-import type { SiteConfig, SiteConfigResponse } from "@/types/site-config";
+import { getPublicSiteConfigApi } from "@/lib/api";
+import type { SiteConfig } from "@/types/site-config";
 
-const api_url = process.env.NEXT_PUBLIC_API_URL;
+
 
 /**
  * 判断是不是 Next 抛的「这条路由必须是动态的」信号（DYNAMIC_SERVER_USAGE）。
@@ -38,22 +38,27 @@ function isDynamicServerUsage(error: unknown): boolean {
  */
 export const getSiteConfigs = cache(async (): Promise<SiteConfig | undefined> => {
     try {
-        const res = await fetch(`${api_url}/public/site-config`, {
-            // 开发环境不缓存：后台改完配置想立刻在前台看到，否则要等 60 秒（还可能先拿到旧值）
-            next: {
-                revalidate: process.env.NODE_ENV === "development" ? 0 : 60,
-                tags: [SITE_CONFIG_TAG],
-            },
-        });
-        if (!res.ok) throw new Error(`获取站点配置失败：HTTP ${res.status}`);
-        const data = (await res.json()) as SiteConfigResponse;
-        return data.data;
+        // 走 api.ts 里同一个被 React `cache()` 包住的实现：
+        // 同一次渲染里 layout / metadata / 页面 / 侧边栏各叫一次，实际只发一个请求。
+        return await getPublicSiteConfigApi();
     } catch (error) {
         if (isDynamicServerUsage(error)) throw error;
         console.error("[site-config] 读取站点配置失败：", error);
         return undefined;
     }
 });
+
+/**
+ * 拿站点配置，失败时**抛出**（而不是返回 undefined）。
+ *
+ * 给那些「没有配置就没法渲染」的页面用（文章页的作者兜底链、关于页的整页内容等）：
+ * 行为与原来直接调 getPublicSiteConfigApi 一致，但和 layout/侧边栏共享同一次 fetch。
+ */
+export async function requireSiteConfigs(): Promise<SiteConfig> {
+    const config = await getSiteConfigs();
+    if (!config) throw new Error("获取站点配置失败");
+    return config;
+}
 
 /**
  * 站点图标（favicon / apple-touch-icon）用的地址解析，三个 layout 的 generateMetadata 共用。

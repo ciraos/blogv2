@@ -579,18 +579,27 @@ export async function BlogSidebar({ config }: { config?: SiteConfig }) {
                 {recentPost?.enable && <RecentPostsCard count={recentPost.count} />}
                 {/* 标签云（config.sidebar.tags） */}
                 {tagsConfig?.enable && <TagsCard highlight={tagsConfig.highlight} />}
-                <ArchivesCard displayMonths={config?.sidebar?.archive?.displayMonths || 6} />
+                {/* 下面三张是「信息型」卡片（归档 / 最近评论 / 网站信息）：
+                    移动端侧边栏整块跟在正文后面，这三张会把页面拖得很长，内容在导航和对应页面
+                    里也都能看到 → 小屏整块隐藏，lg 起（右侧固定栏）恢复显示。 */}
+                <div className="hidden lg:block">
+                    <ArchivesCard displayMonths={config?.sidebar?.archive?.displayMonths || 6} />
+                </div>
                 {/* 最近评论：位于网站信息上方 */}
-                <RecentCommentsCard
-                    gravatar={{ url: config?.GRAVATAR_URL, defaultType: config?.DEFAULT_GRAVATAR_TYPE }}
-                />
-                {config && (
-                    <SiteInfoCard
-                        totalPostCount={siteinfo?.totalPostCount}
-                        totalWordCount={siteinfo?.totalWordCount}
-                        runtimeEnable={siteinfo?.runtimeEnable}
-                        createdAt={earliestCreated}
+                <div className="hidden lg:block">
+                    <RecentCommentsCard
+                        gravatar={{ url: config?.GRAVATAR_URL, defaultType: config?.DEFAULT_GRAVATAR_TYPE }}
                     />
+                </div>
+                {config && (
+                    <div className="hidden lg:block">
+                        <SiteInfoCard
+                            totalPostCount={siteinfo?.totalPostCount}
+                            totalWordCount={siteinfo?.totalWordCount}
+                            runtimeEnable={siteinfo?.runtimeEnable}
+                            createdAt={earliestCreated}
+                        />
+                    </div>
                 )}
             </div>
         </CollapsibleAside>

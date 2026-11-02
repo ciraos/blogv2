@@ -3,6 +3,8 @@ import Link from 'next/link';
 import "./globals.css";
 
 import { BackButton } from "@/components/back-button";
+import { getSiteConfigs } from "@/lib/site-config";
+import { resolveAssetUrl } from "@/lib/utils";
 import { SiteConfigResponse } from "@/types/site-config";
 
 const site_url = process.env.NEXT_PUBLIC_SITE_URL;
@@ -26,11 +28,12 @@ export async function generateMetadata(): Promise<Metadata> {
     }
 }
 
-export default function NotFound() {
-    // 404 不再渲染后端配图：用户明确说"不要骷髅"（原实现取 site-config post.page404.default_image，
-    // 线上是 /static/img/background-effect.gif 那张骷髅/心形图，铺底后会压住幽灵本体）。
-    // 配置键 post.page404.default_image 仍保留在后端与设置页里，但前台不再消费它。
-    // 同时这里刻意不取 site-config：让 404 页零接口依赖，后端挂了也能正常出页面。
+export default async function NotFound() {
+    // 404 配图：取 site-config 的 post.page404.default_image（后台「文章 → 404 页面」里可换），
+    // 当作页面背后的装饰图层（压暗后铺底），不挡 404 大字、幽灵和按钮。
+    // 取不到配置就整层不渲染 —— 404 页不能因为后端挂了而报错。
+    const config = await getSiteConfigs().catch(() => undefined);
+    const page404Image = resolveAssetUrl(config?.post?.page404?.default_image);
 
     return (
         <div className="relative flex min-h-[calc(100dvh-10rem)] w-full flex-col items-center justify-center gap-7 overflow-hidden py-16 text-center">
@@ -50,14 +53,25 @@ export default function NotFound() {
                 404
             </div>
 
-            {/* CSS 幽灵（会漂浮） */}
-            <div className="nf-ghost relative" aria-hidden="true">
-                <span className="absolute left-[26px] top-[46px] size-3.5 rounded-full bg-foreground" />
-                <span className="absolute right-[26px] top-[46px] size-3.5 rounded-full bg-foreground" />
-                <span className="absolute left-[33px] top-[61px] size-2.5 rounded-full bg-pink-300/80" />
-                <span className="absolute right-[33px] top-[61px] size-2.5 rounded-full bg-pink-300/80" />
-                <span className="absolute left-1/2 top-[80px] h-2 w-7 -translate-x-1/2 rounded-b-full border-b-2 border-foreground" />
-            </div>
+            {/* 404 配图（site-config 的 post.page404.default_image，后台可换）：
+                配了图就显示图、不再画 CSS 幽灵（两者叠在一起会很乱）；没配图回落到幽灵。
+                深色模式下反色 + screen 混合，让白底图的线条在深色背景上也能看清。 */}
+            {page404Image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                    src={page404Image}
+                    alt=""
+                    className="relative h-[200px] w-auto max-w-[70%] select-none object-contain mix-blend-multiply md:h-[240px] dark:invert dark:mix-blend-screen"
+                />
+            ) : (
+                <div className="nf-ghost relative" aria-hidden="true">
+                    <span className="absolute left-[26px] top-[46px] size-3.5 rounded-full bg-foreground" />
+                    <span className="absolute right-[26px] top-[46px] size-3.5 rounded-full bg-foreground" />
+                    <span className="absolute left-[33px] top-[61px] size-2.5 rounded-full bg-pink-300/80" />
+                    <span className="absolute right-[33px] top-[61px] size-2.5 rounded-full bg-pink-300/80" />
+                    <span className="absolute left-1/2 top-[80px] h-2 w-7 -translate-x-1/2 rounded-b-full border-b-2 border-foreground" />
+                </div>
+            )}
 
             {/* 文案 */}
             <div className="relative space-y-2">

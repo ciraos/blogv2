@@ -10,6 +10,8 @@ import { ApiError, getCommentsWithChildrenApi, getPublicEssaysApi } from "@/lib/
 import { getCommentAuthor } from "@/lib/comment-author";
 import { generateBlogMetadata } from "@/lib/seo";
 import { getSiteConfigs } from "@/lib/site-config";
+import { EmptyState } from "@/components/(blog)/empty-state";
+import { NotebookPen } from "lucide-react";
 
 const PAGE_SIZE = 10;
 
@@ -42,9 +44,11 @@ export default async function Essay({ searchParams }: { searchParams: Promise<Es
             <PageWithSidebar>
                 <div className="w-full space-y-6">
                     <h1 className="text-2xl font-bold tracking-tight">即刻</h1>
-                    <p className="py-16 text-center text-sm text-muted-foreground">
-                        {errorMessage ? `暂时无法获取内容：${errorMessage}` : "暂无内容，敬请期待"}
-                    </p>
+                    <EmptyState
+                        icon={NotebookPen}
+                        title={errorMessage ? "暂时无法获取内容" : "暂无内容，敬请期待"}
+                        description={errorMessage ?? undefined}
+                    />
                 </div>
             </PageWithSidebar>
         );

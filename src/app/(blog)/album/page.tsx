@@ -7,10 +7,10 @@ import {
     getCommentsWithChildrenApi,
     getPublicAlbumCategoriesApi,
     getPublicAlbumsApi,
-    getPublicSiteConfigApi,
     type Album,
 } from "@/lib/api";
 import { getCommentAuthor } from "@/lib/comment-author";
+import { requireSiteConfigs } from "@/lib/site-config";
 import { generateBlogMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -46,7 +46,7 @@ export default async function AlbumPage() {
     const [categories, albums, config] = await Promise.all([
         getPublicAlbumCategoriesApi().catch(() => []),
         getAllAlbums(),
-        getPublicSiteConfigApi().catch(() => null),
+        requireSiteConfigs().catch(() => null),
     ]);
 
     const album = config?.album;

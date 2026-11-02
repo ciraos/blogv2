@@ -12,10 +12,11 @@ import { PostComments } from "@/components/(blog)/post-comments";
 import { PostWaves } from "@/components/(blog)/post-waves";
 import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
-import { ApiError, getCommentsWithChildrenApi, getPublicArticleApi, getPublicSiteConfigApi } from "@/lib/api";
+import { ApiError, getCommentsWithChildrenApi, getPublicArticleApi } from "@/lib/api";
 import { patchArticleContent } from "@/lib/article-shortcodes";
 import { getCommentAuthor } from "@/lib/comment-author";
 import { renderCopyrightHtml, type ArticleCopyCopyrightConfig } from "@/lib/post-copyright";
+import { requireSiteConfigs } from "@/lib/site-config";
 import { splitKeywords } from "@/lib/seo";
 import { articleSchema, breadcrumbSchema } from "@/lib/structured-data";
 import { resolveAssetUrl } from "@/lib/utils";
@@ -46,7 +47,7 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
         // 仅在「无封面」或「无文章关键词」时才拉站点配置（一次拿全回退数据）
         if (!shareImage || articleKeywords.length === 0) {
             try {
-                const config = await getPublicSiteConfigApi();
+                const config = await requireSiteConfigs();
                 if (!shareImage) shareImage = resolveAssetUrl(config.LOGO_URL_512x512 || config.LOGO_URL || config.ICON_URL);
                 siteName = config.APP_NAME || undefined;
                 if (articleKeywords.length === 0) keywords = splitKeywords(config.SITE_KEYWORDS);
@@ -121,7 +122,7 @@ export default async function Post({ params }: PostPageProps) {
     // extra_config（只读探活 2026-10），所以这里只能按全局开关决定显不显示（见 ai-podcast-button.tsx 注释）。
     let aiPodcast: { enable: boolean; buttonText?: string; buttonIcon?: string } | null = null;
     try {
-        const config = await getPublicSiteConfigApi();
+        const config = await requireSiteConfigs();
         // 作者名兜底链照官方 PostCopyright/index.tsx 的顺序，但去掉 owner_name 那一级：
         // 后端公开文章接口只返回 owner_nickname（无 owner_name，实测 2026-10），所以是 昵称 → 前台站长名 → 站点名 → 博主
         const authorName = article.owner_nickname || config.frontDesk?.siteOwner?.name || config.APP_NAME || "博主";
@@ -174,7 +175,7 @@ export default async function Post({ params }: PostPageProps) {
     // 代码块配置（mac 风格 / 超过多少行折叠）：取自 site-config post.code_block（后端 snake_case → 前端 camelCase）
     let codeBlock: { codeMaxLines: number; macStyle: boolean } | undefined;
     try {
-        const config = await getPublicSiteConfigApi();
+        const config = await requireSiteConfigs();
         const cb = config.post?.code_block;
         if (cb) {
             codeBlock = { codeMaxLines: cb.code_max_lines, macStyle: cb.mac_style };
@@ -184,10 +185,10 @@ export default async function Post({ params }: PostPageProps) {
     }
 
     // 正文结尾的装饰波浪开关（site-config post.waves.enable）。
-    // 上面的 getPublicSiteConfigApi 是同一个 URL 的 GET，Next 在一次渲染内会自动去重，不会多打一次后端。
+    // 上面几次拿配置都走 lib/site-config 里被 React `cache()` 包住的实现，同一次渲染只会真正请求一次。
     let wavesEnabled = false;
     try {
-        const config = await getPublicSiteConfigApi();
+        const config = await requireSiteConfigs();
         wavesEnabled = config.post?.waves?.enable === true;
     } catch {
         // 配置获取失败时不渲染波浪（纯装饰，不能影响正文）

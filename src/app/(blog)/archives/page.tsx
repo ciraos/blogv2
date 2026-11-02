@@ -9,6 +9,8 @@ import { getPublicArchivesCached } from "@/lib/public-content-cache";
 import { generateBlogMetadata } from "@/lib/seo";
 import { getSiteConfigs } from "@/lib/site-config";
 import type { PostItem } from "@/types/articles";
+import { EmptyState } from "@/components/(blog)/empty-state";
+import { Archive } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
     return generateBlogMetadata("归档");
@@ -67,7 +69,7 @@ export default async function Archives({ searchParams }: { searchParams: Promise
                 <div className="w-full space-y-8">
                     <h1 className="text-2xl font-bold tracking-tight">归档</h1>
                     {years.length === 0 ? (
-                        <p className="py-16 text-center text-muted-foreground">暂无归档</p>
+                        <EmptyState icon={Archive} title="暂无归档" description="有文章之后这里会按年份列出全部归档。" />
                     ) : (
                         <div className="space-y-8">
                             {years.map((group) => (

@@ -1,4 +1,4 @@
-// 后端 API 客户端：统一处理 Bearer 鉴权、JSON 解析与错误
+﻿// 后端 API 客户端：统一处理 Bearer 鉴权、JSON 解析与错误
 //
 // 注意：后端不开放 CORS，浏览器不能直连远端 API。
 // 所有需要从客户端发起的请求（如登录）都必须走本应用同源的 /api/* 路由，
@@ -101,13 +101,15 @@ export interface RequestCacheOptions {
     tags?: string[];
 }
 
+/** 单个请求的超时时间（毫秒）：后端无响应时避免整页 SSR 一直挂着 */
+const REQUEST_TIMEOUT_MS = 15_000;
+
 export async function request<T>(
     path: string,
     options: RequestInit = {},
     token?: string | null,
     cacheOptions?: RequestCacheOptions
-): Promise<T> {
-    const headers = new Headers(options.headers);
+): Promise<T> {    const headers = new Headers(options.headers);
     // 统一声明要 JSON：原先 api-plugins.ts 的本地 request 会带这个头，其余副本不带，
     // 合并到公共实现后统一带上（远端是 gin，不校验 Accept，但带上语义更准确）。
     if (!headers.has("Accept")) {
@@ -149,13 +151,26 @@ export async function request<T>(
         init.cache = "no-store";
     }
 
+    // 超时：后端卡住时不能让整页 SSR 无限等下去（调用方自己传了 signal 就合并，不覆盖）。
+    // 15 秒对本站的普通 JSON 接口足够宽松；上传类走的是各自的分片/长任务接口，不受这里影响。
+    const timeoutSignal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+    init.signal = options.signal ? AbortSignal.any([options.signal, timeoutSignal]) : timeoutSignal;
+
     let res: Response;
     try {
         res = await fetch(url, init);
-    } catch {
+    } catch (err) {
+        // Next 的「这条路由必须动态渲染」信号必须原样往上抛，不能被当成网络错误吞掉
+        // （吞掉后构建期会把本该动态的页面预渲染成静态产物）
+        if ((err as { digest?: string } | null)?.digest === "DYNAMIC_SERVER_USAGE") throw err;
+        // 超时（AbortSignal.timeout 抛的 DOMException，name 为 TimeoutError / AbortError）单独报，
+        // 否则用户只看到「网络请求失败」，分不清是断网还是后端卡住
+        const name = (err as { name?: string } | null)?.name;
+        if (name === "TimeoutError" || name === "AbortError") {
+            throw new ApiError(`请求超时（${REQUEST_TIMEOUT_MS / 1000} 秒）`, 408, 408);
+        }
         throw new ApiError("网络请求失败，请检查网络连接", 0, 0);
     }
-
     let json: ApiResponse<T> | null = null;
     try {
         json = (await res.json()) as ApiResponse<T>;
@@ -1071,7 +1086,13 @@ export async function getRandomMomentPostClientApi(): Promise<RandomMomentPost |
     }
 }
 
-/** GET /public/site-config 站点公开配置（服务端调用） */
+/**
+ * GET /public/site-config 站点公开配置。
+ *
+ * 注意：这个模块同时被客户端代码引用（登录、后台表单等），所以**不能**在这里用 React 的
+ * `cache()` —— 客户端 bundle 里没有那个导出，会在模块求值时就炸（ReferenceError: cache is not defined）。
+ * 渲染内去重放在只跑在服务端的 lib/site-config.ts 里做。
+ */
 export function getPublicSiteConfigApi(): Promise<SiteConfig> {
     return request<SiteConfig>("/public/site-config", { method: "GET" }, undefined, {
         revalidate: 60,

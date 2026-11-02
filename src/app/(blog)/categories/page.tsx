@@ -9,6 +9,8 @@ import { getAllPublicArticlesCached } from "@/lib/public-content-cache";
 import { collectCategories } from "@/lib/articles";
 import { generateBlogMetadata } from "@/lib/seo";
 import { getSiteConfigs } from "@/lib/site-config";
+import { EmptyState } from "@/components/(blog)/empty-state";
+import { FolderOpen } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
     return generateBlogMetadata("分类");
@@ -62,7 +64,7 @@ export default async function Categories({ searchParams }: { searchParams: Promi
         <div className="w-full space-y-6">
             <h1 className="text-2xl font-bold tracking-tight">全部分类</h1>
             {categories.length === 0 ? (
-                <p className="py-16 text-center text-muted-foreground">暂无分类</p>
+                <EmptyState icon={FolderOpen} title="暂无分类" description="给文章设置分类后，这里会自动汇总。" />
             ) : (
                 <div className="flex flex-wrap gap-3">
                     {categories.map((category) => (

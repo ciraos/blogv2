@@ -1,5 +1,7 @@
 import { LinkCard } from "@/components/(blog)/link-card";
 import type { LinkCategoryGroup } from "@/types/links";
+import { EmptyState } from "@/components/(blog)/empty-state";
+import { Link2 } from "lucide-react";
 
 /**
  * 友链分区列表（纯展示）：
@@ -10,7 +12,7 @@ import type { LinkCategoryGroup } from "@/types/links";
  */
 export function LinkSections({ sections }: { sections: LinkCategoryGroup[] }) {
     if (sections.length === 0) {
-        return <p className="py-16 text-center text-muted-foreground">暂无友情链接</p>;
+        return <EmptyState icon={Link2} title="暂无友情链接" description="还没有通过审核的友链，欢迎申请。" />;
     }
 
     return (

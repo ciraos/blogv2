@@ -9,6 +9,8 @@ import { highlightText } from "@/components/(blog)/search-highlight";
 import { ApiError, searchArticlesApi, type SearchHit } from "@/lib/api";
 import { generateBlogMetadata } from "@/lib/seo";
 import { resolveAssetUrl } from "@/lib/utils";
+import { EmptyState } from "@/components/(blog)/empty-state";
+import { Search as SearchIcon, SearchX, TriangleAlert } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
     return generateBlogMetadata("搜索");
@@ -91,9 +93,11 @@ export default async function Search({ searchParams }: { searchParams: Promise<S
             <PageWithSidebar>
                 <div className="w-full space-y-6">
                     <h1 className="text-2xl font-bold tracking-tight">搜索</h1>
-                    <p className="py-16 text-center text-sm text-muted-foreground">
-                        输入关键词搜索站内文章、页面等内容。
-                    </p>
+                    <EmptyState
+                        icon={SearchIcon}
+                        title="输入关键词开始搜索"
+                        description="可以搜文章标题、正文、页面内容。"
+                    />
                 </div>
             </PageWithSidebar>
         );
@@ -124,13 +128,17 @@ export default async function Search({ searchParams }: { searchParams: Promise<S
                 </header>
 
                 {errorMessage ? (
-                    <p className="py-16 text-center text-sm text-muted-foreground">
-                        搜索失败：{errorMessage}
-                    </p>
+                    <EmptyState
+                        icon={TriangleAlert}
+                        title="搜索失败"
+                        description={errorMessage}
+                    />
                 ) : hits.length === 0 ? (
-                    <p className="py-16 text-center text-sm text-muted-foreground">
-                        没有找到与「{q}」相关的内容，换个关键词试试吧。
-                    </p>
+                    <EmptyState
+                        icon={SearchX}
+                        title={`没有找到与「${q}」相关的内容`}
+                        description="换个关键词试试，或者只保留其中一两个词。"
+                    />
                 ) : (
                     <>
                         <div className="space-y-3">

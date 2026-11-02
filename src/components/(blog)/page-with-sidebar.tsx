@@ -1,5 +1,5 @@
 import { BlogSidebar } from "@/components/(blog)/blog-sidebar";
-import { getPublicSiteConfigApi } from "@/lib/api";
+import { getSiteConfigs } from "@/lib/site-config";
 import type { SiteConfig } from "@/types/site-config";
 
 /**
@@ -11,11 +11,12 @@ import type { SiteConfig } from "@/types/site-config";
  * 不需要侧边栏的页面直接返回内容即可（(blog)/layout.tsx 只提供居中容器与内边距）。
  */
 export async function PageWithSidebar({ children }: { children: React.ReactNode }) {
-    // 服务端取站点配置（同一请求内 Next 会复用已有请求）。
-    // 取不到时降级为「不显示侧边栏」，页面主体照常渲染 —— 与原来 layout 里 getSiteConfigs 的容错口径一致。
+    // 走 lib/site-config 里被 React `cache()` 包住的实现：同一次渲染内 layout / 页面 / 侧边栏
+    // 各取一次配置，实际只发一个请求（以前这里单独调 getPublicSiteConfigApi，会多打一次）。
+    // 取不到时降级为「不显示侧边栏」，页面主体照常渲染。
     let config: SiteConfig | null = null;
     try {
-        config = await getPublicSiteConfigApi();
+        config = (await getSiteConfigs()) ?? null;
     } catch {
         config = null;
     }

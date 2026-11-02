@@ -4,14 +4,15 @@ import Link from "next/link";
 import { AboutSiteTips } from "@/components/(blog)/about-site-tips";
 import { AboutStatisticCard } from "@/components/(blog)/about-statistic-card";
 
-import { getPublicBasicStatsApi, getPublicSiteConfigApi } from "@/lib/api";
+import { getPublicBasicStatsApi } from "@/lib/api";
+import { getSiteConfigs, requireSiteConfigs } from "@/lib/site-config";
 import { generateBlogMetadata } from "@/lib/seo";
 import { resolveAssetUrl } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-    const config = await getPublicSiteConfigApi().catch(() => null);
+    const config = await getSiteConfigs();
     const name = config?.about?.page?.name || "";
     const description = config?.about?.page?.description || "关于本站";
     return {
@@ -50,7 +51,7 @@ function Card({
 // ===================== 页面主体 =====================
 
 export default async function About() {
-    const config = await getPublicSiteConfigApi();
+    const config = await requireSiteConfigs();
     const page = config.about.page;
     const enable = page.enable;
     const avatar = resolveAssetUrl(config.USER_AVATAR || page.avatar_img);

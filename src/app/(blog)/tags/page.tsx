@@ -9,6 +9,8 @@ import { getAllPublicArticlesCached } from "@/lib/public-content-cache";
 import { collectTags } from "@/lib/articles";
 import { generateBlogMetadata } from "@/lib/seo";
 import { getSiteConfigs } from "@/lib/site-config";
+import { EmptyState } from "@/components/(blog)/empty-state";
+import { Tags as TagsIcon } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
     return generateBlogMetadata("标签");
@@ -62,7 +64,7 @@ export default async function Tags({ searchParams }: { searchParams: Promise<Tag
         <div className="w-full space-y-6">
             <h1 className="text-2xl font-bold tracking-tight">全部标签</h1>
             {tags.length === 0 ? (
-                <p className="py-16 text-center text-muted-foreground">暂无标签</p>
+                <EmptyState icon={TagsIcon} title="暂无标签" description="给文章打上标签后，这里会自动汇总。" />
             ) : (
                 <div className="flex flex-wrap gap-2">
                     {tags.map((tag) => (

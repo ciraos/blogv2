@@ -143,7 +143,10 @@ export function PostToc({
               });
 
     return (
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
+        // 只在桌面端（lg 起，此时右侧栏才并排）显示：
+        // 移动端侧边栏是跟随正文纵向堆叠的，目录卡片会插在评论和正文之间，既占地方又没用
+        // —— 移动端的目录入口是右下角那个悬浮按钮（floating-actions 的目录抽屉）。
+        <div className="hidden rounded-xl border bg-card p-5 shadow-sm lg:block">
             {/* 标题：渐变小徽章 + 文字 */}
             <div className="mb-3 flex items-center gap-2">
                 <span className="flex size-6 items-center justify-center rounded-md bg-linear-to-br from-pink-500 to-indigo-500 text-white shadow-sm">

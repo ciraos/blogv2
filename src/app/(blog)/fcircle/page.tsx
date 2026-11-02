@@ -14,6 +14,8 @@ import { ApiError, getCommentsWithChildrenApi, getPublicMomentsApi } from "@/lib
 import { getCommentAuthor } from "@/lib/comment-author";
 import { generateBlogMetadata } from "@/lib/seo";
 import { getSiteConfigs } from "@/lib/site-config";
+import { EmptyState } from "@/components/(blog)/empty-state";
+import { MessagesSquare } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
     return generateBlogMetadata("朋友圈");
@@ -66,9 +68,11 @@ export default async function Fcircle({ searchParams }: { searchParams: Promise<
             <PageWithSidebar>
                 <div className="w-full space-y-6">
                     {banner ?? <h1 className="text-2xl font-bold tracking-tight">朋友圈</h1>}
-                    <p className="py-16 text-center text-sm text-muted-foreground">
-                        {errorMessage ? `暂时无法获取内容：${errorMessage}` : "暂无内容，敬请期待"}
-                    </p>
+                    <EmptyState
+                        icon={MessagesSquare}
+                        title={errorMessage ? "暂时无法获取内容" : "暂无内容，敬请期待"}
+                        description={errorMessage ?? undefined}
+                    />
                 </div>
             </PageWithSidebar>
         );
