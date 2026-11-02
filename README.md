@@ -92,7 +92,7 @@ pnpm dev        # 开发服务器：http://localhost:3126
 
 ```bash
 pnpm build      # 产出 standalone 产物
-pnpm copy       # 将 public / .next/static 并入 standalone（仅 Linux/macOS）
+pnpm copy       # 将 public / .next/static 并入 standalone（cpy-cli，跨平台）
 pnpm start      # 或：PORT=3126 node .next/standalone/server.js
 ```
 
@@ -171,13 +171,15 @@ docker run -d -p 3126:3126 --name blog-app blog-app
 | `pnpm build` | 生产构建（standalone） |
 | `pnpm start` | 启动 Next 服务 |
 | `pnpm lint` | ESLint 检查 |
-| `pnpm copy` | 将 `public/`、`.next/static` 并入 standalone 产物（依赖 `cp`，仅 Linux/macOS） |
+| `pnpm copy` | 将 `public/`、`.next/static` 并入 standalone 产物（cpy-cli 实现，Windows / Linux / macOS 通用） |
 | `pnpm deploy` | 安装依赖 → 构建 → 拷贝 → `node .next/standalone/server.js` |
 
 ## 📄 许可证
 
+> **本项目是 anheyu-app 的第三方前端，与 anheyu 官方无隶属关系，也不属于官方发行版。**
+
 本项目基于 [anzhiyu-c/anheyu-app](https://github.com/anzhiyu-c/anheyu-app) 与 [anzhiyu-c/hexo-theme-anzhiyu](https://github.com/anzhiyu-c/hexo-theme-anzhiyu) 移植/重写，两者均为 **GPL-3.0** 许可。本仓库作为其衍生作品，同样以 **GNU GPL v3.0**（或兼容的后续版本）发布，详见 [LICENSE](./LICENSE)。
 
 - 修改与再分发须遵循 GPL-3.0 的 copyleft 条款（保留版权声明、提供源码、不得改成更宽松许可）。
-- 资源文件（`public/iconfont/` 的 AnZHiYu 图标库、音乐唱片等媒体素材）来源各自有授权，不随代码自动获得再分发权，请以 NOTICE 或 README 注明出处。
+- 第三方组件、字体（站酷快乐体 OFL-1.1）与媒体素材的授权说明见 [NOTICE](./NOTICE)；`public/iconfont/` 的 AnZHiYu 图标库、音乐唱片等素材来源各自有授权，不随代码自动获得再分发权。
 - 本前端配套的后端亦为 anzhiyu 生态的 GPL 开源项目。
