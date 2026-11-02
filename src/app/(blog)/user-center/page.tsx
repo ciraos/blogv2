@@ -6,6 +6,7 @@ import { UserCenterContent, type UserCenterUser } from "@/components/(blog)/user
 import { getUserInfoApi } from "@/lib/api";
 import { resolveCommentAvatar } from "@/lib/avatar";
 import { isAdminUser } from "@/lib/auth";
+import { isProEdition } from "@/lib/edition";
 import { generateBlogMetadata } from "@/lib/seo";
 import { getSiteConfigs } from "@/lib/site-config";
 import { resolveAssetUrl } from "@/lib/utils";
@@ -65,5 +66,8 @@ export default async function UserCenter() {
         }
     }
 
-    return <UserCenterContent user={user} />;
+    // 我的工单 / 第三方账号 是 PRO 模块才有的能力，社区版不显示这两个入口
+    const isPro = await isProEdition();
+
+    return <UserCenterContent user={user} isPro={isPro} />;
 }

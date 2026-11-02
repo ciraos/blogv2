@@ -1,4 +1,4 @@
-﻿// 后端 API 客户端：统一处理 Bearer 鉴权、JSON 解析与错误
+// 后端 API 客户端：统一处理 Bearer 鉴权、JSON 解析与错误
 //
 // 注意：后端不开放 CORS，浏览器不能直连远端 API。
 // 所有需要从客户端发起的请求（如登录）都必须走本应用同源的 /api/* 路由，
@@ -223,11 +223,24 @@ export async function loginApi(email: string, password: string): Promise<void> {
  * POST /api/auth/register（本应用同源路由，服务端转发到远端 /auth/register）
  * 注意：后端要求 nickname 必填（文档未列全），注册成功后不会自动登录。
  */
-export async function registerApi(nickname: string, email: string, password: string, repeatPassword: string): Promise<void> {
-    await request<unknown>("/api/auth/register", {
+/**
+ * POST /auth/register 注册。
+ *
+ * 后端在「开启邮箱激活」时会返回 `{ activation_required: true }`，并把新用户建为未激活状态，
+ * 同时异步发一封激活邮件（24 小时有效）。前端据此决定：跳登录页，还是提示「去邮箱激活」。
+ */
+export async function registerApi(
+    nickname: string,
+    email: string,
+    password: string,
+    repeatPassword: string
+): Promise<{ activationRequired: boolean }> {
+    const data = await request<{ activation_required?: boolean } | null>("/api/auth/register", {
         method: "POST",
         body: JSON.stringify({ nickname, email, password, repeat_password: repeatPassword }),
     });
+    // 老版本后端可能不返回这个字段（data 为 null）：按「不需要激活」处理，保持原来的跳转行为
+    return { activationRequired: data?.activation_required === true };
 }
 
 /** POST /auth/activate 激活用户账号（仅限服务端调用；参数来自激活链接） */
@@ -1413,6 +1426,44 @@ export function getNotificationSettingsApi(): Promise<UserNotificationSettings> 
 /** PUT /api/user/notification-settings 保存通知设置 */
 export function updateNotificationSettingsApi(payload: UserNotificationSettings): Promise<unknown> {
     return request<unknown>("/api/user/notification-settings", { method: "PUT", body: JSON.stringify(payload) });
+}
+
+// ===================== 第三方账号绑定（PRO 模块） =====================
+// 远端接口（实测存在，均需登录）：
+//   GET    /pro/oauth/bindings           已绑定的第三方账号
+//   POST   /pro/oauth/{provider}/bind    发起绑定（返回授权地址）
+//   DELETE /pro/oauth/{provider}/unbind  解绑
+// 社区版后端没有这些路由（404），所以入口只在 PRO 环境显示。
+
+/** GET /api/user/oauth-bindings 已绑定的第三方账号（结构由后端决定，前端做兼容解析） */
+export function getOAuthBindingsApi(): Promise<unknown> {
+    return request<unknown>("/api/user/oauth-bindings", { method: "GET" });
+}
+
+/** POST /api/user/oauth-bindings/{provider}/bind 发起绑定，返回授权跳转地址 */
+export function bindOAuthProviderApi(provider: string): Promise<{ url?: string } | null> {
+    return request<{ url?: string } | null>("/api/user/oauth-bindings/" + provider + "/bind", {
+        method: "POST",
+        body: JSON.stringify({}),
+    });
+}
+
+/** DELETE /api/user/oauth-bindings/{provider}/unbind 解绑 */
+export function unbindOAuthProviderApi(provider: string): Promise<unknown> {
+    return request<unknown>("/api/user/oauth-bindings/" + provider + "/unbind", { method: "DELETE" });
+}
+
+// ===================== 我的工单（PRO 模块） =====================
+
+/**
+ * GET /api/user/support-tickets 我的工单列表。
+ *
+ * PRO 后端目前只提供管理端列表（/pro/admin/support/tickets）和用户侧「按 ID 查详情 / 回复」
+ * （/pro/support/tickets/{id}），没有用户侧列表接口，这个请求现在会 404；
+ * 弹窗把它当作「后端暂未开放」处理，等 PRO 补上同路径后前端无需改动。
+ */
+export function getMySupportTicketsApi(): Promise<unknown> {
+    return request<unknown>("/api/user/support-tickets", { method: "GET" });
 }
 
 // ===================== 消息通知（/pro/notifications，需登录） =====================

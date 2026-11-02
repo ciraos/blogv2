@@ -8,7 +8,9 @@ import { toast } from "sonner";
 import {
     ChangePasswordDialog,
     EditProfileDialog,
+    MyTicketsDialog,
     NotificationSettingsDialog,
+    OAuthBindingsDialog,
 } from "@/components/(blog)/user-center-dialogs";
 import { ApiError, uploadUserAvatarApi } from "@/lib/api";
 import { useConfirm } from "@/components/confirm-provider";
@@ -35,12 +37,14 @@ export interface UserCenterUser {
  * 与官方的差异：用户信息来自服务端 props（本应用没有 zustand auth store），
  * 保存后调用 router.refresh() 重新取服务端数据（官方是整页 reload）。
  */
-export function UserCenterContent({ user }: { user: UserCenterUser | null }) {
+export function UserCenterContent({ user, isPro = false }: { user: UserCenterUser | null; isPro?: boolean }) {
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [showEditProfile, setShowEditProfile] = useState(false);
     const [showChangePassword, setShowChangePassword] = useState(false);
     const [showNotificationSettings, setShowNotificationSettings] = useState(false);
+    const [showTickets, setShowTickets] = useState(false);
+    const [showOAuthBindings, setShowOAuthBindings] = useState(false);
     const [avatarUploading, setAvatarUploading] = useState(false);
 
     // 应用内确认弹窗（替代 window.confirm，见 components/confirm-provider.tsx，
@@ -117,9 +121,13 @@ export function UserCenterContent({ user }: { user: UserCenterUser | null }) {
         { icon: <Pencil size={20} />, title: "编辑资料", desc: "修改个人信息", accent: "#409eff", onClick: () => setShowEditProfile(true) },
         { icon: <Lock size={20} />, title: "修改密码", desc: "更改登录密码", accent: "#9c27b0", onClick: () => setShowChangePassword(true) },
         { icon: <Bell size={20} />, title: "通知设置", desc: "管理通知偏好", accent: "#e6a23c", onClick: () => setShowNotificationSettings(true) },
-        // 后端目前没有用户端工单 / 第三方账号绑定接口，先占位（管理员的工单在后台「售后工单」）
-        { icon: <Ticket size={20} />, title: "我的工单", desc: "查看与提交工单", accent: "#67c23a", onClick: () => toast.info("我的工单功能待接入") },
-        { icon: <Link2 size={20} />, title: "第三方账号", desc: "绑定与解绑账号", accent: "#13c2c2", onClick: () => toast.info("第三方账号绑定功能待接入") },
+        // 我的工单 / 第三方账号是 PRO 模块能力：社区版后端没有对应接口，整条不显示
+        ...(isPro
+            ? [
+                  { icon: <Ticket size={20} />, title: "我的工单", desc: "查看与提交工单", accent: "#67c23a", onClick: () => setShowTickets(true) },
+                  { icon: <Link2 size={20} />, title: "第三方账号", desc: "绑定与解绑账号", accent: "#13c2c2", onClick: () => setShowOAuthBindings(true) },
+              ]
+            : []),
     ];
 
     return (
@@ -224,6 +232,8 @@ export function UserCenterContent({ user }: { user: UserCenterUser | null }) {
             {showChangePassword && (
                 <ChangePasswordDialog open onClose={() => setShowChangePassword(false)} />
             )}
+            {showTickets && <MyTicketsDialog open onClose={() => setShowTickets(false)} />}
+            {showOAuthBindings && <OAuthBindingsDialog open onClose={() => setShowOAuthBindings(false)} />}
             {showNotificationSettings && (
                 <NotificationSettingsDialog open onClose={() => setShowNotificationSettings(false)} />
             )}
