@@ -303,11 +303,11 @@ export function UserManagement() {
         // admin-card：吃掉剩余高度，表格区域（admin-scroll）在卡片内部滚动
         <div className="admin-card">
             {/* ===== 工具栏：搜索 + 状态下拉 + 用户组下拉 + 新增/重置（固定在卡片顶部，不随表格滚动） ===== */}
-            <div className="flex shrink-0 flex-wrap items-center gap-2 border-b p-3">
-                <div className="relative">
+            <div className="flex shrink-0 flex-col gap-2 border-b p-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="relative w-full sm:w-auto">
                     <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                        className="w-56 pl-8"
+                        className="w-full pl-8 sm:w-56"
                         placeholder="搜索用户名 / 昵称 / 邮箱"
                         value={query.keyword}
                         onChange={(e) => setQuery((q) => ({ ...q, keyword: e.target.value }))}
@@ -321,7 +321,7 @@ export function UserManagement() {
                     value={query.status}
                     onValueChange={(v) => applyFilters({ ...query, status: v, page: 1 })}
                 >
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger className="w-full sm:w-32">
                         <SelectValue placeholder="状态" />
                     </SelectTrigger>
                     <SelectContent>
@@ -337,7 +337,7 @@ export function UserManagement() {
                     value={query.groupID}
                     onValueChange={(v) => applyFilters({ ...query, groupID: v, page: 1 })}
                 >
-                    <SelectTrigger className="w-44">
+                    <SelectTrigger className="w-full sm:w-44">
                         <SelectValue placeholder="用户组" />
                     </SelectTrigger>
                     <SelectContent>
@@ -350,14 +350,14 @@ export function UserManagement() {
                     </SelectContent>
                 </Select>
 
-                <div className="ml-auto flex items-center gap-2">
-                    <Button onClick={() => { setForm(EMPTY_FORM); setCreateOpen(true); }}>
+                <div className="ml-auto flex w-full items-center gap-2 sm:w-auto">
+                    <Button className="shrink-0" onClick={() => { setForm(EMPTY_FORM); setCreateOpen(true); }}>
                         <Plus className="size-4" />
-                        新增用户
+                        <span className="hidden sm:inline">新增用户</span>
                     </Button>
-                    <Button variant="outline" onClick={() => applyFilters(INITIAL_QUERY)}>
+                    <Button variant="outline" className="shrink-0" onClick={() => applyFilters(INITIAL_QUERY)}>
                         <RotateCcw className="size-4" />
-                        重置
+                        <span className="hidden sm:inline">重置</span>
                     </Button>
                 </div>
             </div>

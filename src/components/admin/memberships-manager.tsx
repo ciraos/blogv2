@@ -431,7 +431,7 @@ export function MembershipsManager() {
             </div>
 
             {/* ===== Tab + 工具（固定在卡片顶部，不随内容滚动） ===== */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b p-3">
+            <div className="flex shrink-0 flex-col gap-2 border-b p-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 <div className="flex items-center overflow-hidden rounded-xl border bg-card shadow-sm">
                     <button
                         type="button"
@@ -458,7 +458,7 @@ export function MembershipsManager() {
                     </button>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                     {tab === "plans" ? (
                         <>
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -470,7 +470,7 @@ export function MembershipsManager() {
                                         setPlanPage(1);
                                     }}
                                 >
-                                    <SelectTrigger className="h-8 w-24 rounded-xl text-xs">
+                                    <SelectTrigger className="h-8 w-full min-w-0 rounded-xl text-xs sm:w-24">
                                         <SelectValue placeholder="全部" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -483,7 +483,7 @@ export function MembershipsManager() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="relative">
+                            <div className="relative w-full sm:w-auto">
                                 <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                                 <Input
                                     value={planKeyword}
@@ -492,7 +492,7 @@ export function MembershipsManager() {
                                         setPlanPage(1);
                                     }}
                                     placeholder="搜索方案名称…"
-                                    className="h-8 w-40 rounded-xl pl-8 text-xs"
+                                    className="h-8 w-full rounded-xl pl-8 text-xs sm:w-40"
                                 />
                             </div>
                             <Button
@@ -500,14 +500,14 @@ export function MembershipsManager() {
                                 size="icon"
                                 aria-label="刷新"
                                 title="刷新"
-                                className="rounded-xl"
+                                className="shrink-0 rounded-xl"
                                 onClick={() => setRefreshKey((k) => k + 1)}
                             >
                                 <RefreshCw className="size-4" />
                             </Button>
-                            <Button size="sm" className="h-8 rounded-xl text-xs" onClick={openCreate}>
+                            <Button size="sm" className="h-8 shrink-0 rounded-xl text-xs" onClick={openCreate}>
                                 <Plus className="size-3.5" />
-                                新增方案
+                                <span className="hidden sm:inline">新增方案</span>
                             </Button>
                         </>
                     ) : (
@@ -521,7 +521,7 @@ export function MembershipsManager() {
                                         setMemberPage(1);
                                     }}
                                 >
-                                    <SelectTrigger className="h-8 w-24 rounded-xl text-xs">
+                                    <SelectTrigger className="h-8 w-full min-w-0 rounded-xl text-xs sm:w-24">
                                         <SelectValue placeholder="全部" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -534,13 +534,13 @@ export function MembershipsManager() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="relative">
+                            <div className="relative w-full sm:w-auto">
                                 <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                                 <Input
                                     value={memberKeyword}
                                     onChange={(e) => setMemberKeyword(e.target.value)}
                                     placeholder="按用户 ID / 方案名过滤本页…"
-                                    className="h-8 w-52 rounded-xl pl-8 text-xs"
+                                    className="h-8 w-full rounded-xl pl-8 text-xs sm:w-52"
                                 />
                             </div>
                             <Button
@@ -548,7 +548,7 @@ export function MembershipsManager() {
                                 size="icon"
                                 aria-label="刷新"
                                 title="刷新"
-                                className="rounded-xl"
+                                className="shrink-0 rounded-xl"
                                 onClick={() => setRefreshKey((k) => k + 1)}
                             >
                                 <RefreshCw className="size-4" />

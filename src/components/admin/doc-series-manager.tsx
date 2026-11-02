@@ -395,9 +395,9 @@ export function DocSeriesManager() {
 
             {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动。
                 左：关键词 + 重置；右：新增系列 / 刷新 */}
-            <div className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-muted/40 px-4 py-2.5">
-                <div className="flex flex-1 flex-wrap items-center gap-2">
-                    <div className="relative w-56">
+            <div className="flex shrink-0 flex-col gap-2 border-b bg-muted/40 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                    <div className="relative w-full sm:w-56">
                         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             value={keyword}
@@ -406,7 +406,7 @@ export function DocSeriesManager() {
                                 if (e.key === "Enter") submitSearch();
                             }}
                             placeholder="搜索系列名称 / 简介"
-                            className="h-8 pl-8 pr-8 text-xs"
+                            className="h-8 w-full pl-8 pr-8 text-xs sm:w-56"
                             aria-label="搜索文档系列"
                         />
                         {keyword && (
@@ -424,11 +424,11 @@ export function DocSeriesManager() {
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8"
+                        className="h-8 shrink-0"
                         onClick={clearKeyword}
                     >
                         <RotateCcw className="size-3.5" />
-                        重置
+                        <span className="hidden sm:inline">重置</span>
                     </Button>
 
                     <span className="text-xs text-muted-foreground">
@@ -436,25 +436,25 @@ export function DocSeriesManager() {
                     </span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex w-full items-center gap-2 sm:w-auto">
                     <Button
                         size="sm"
-                        className="h-8 bg-primary text-primary-foreground hover:bg-primary/90"
+                        className="h-8 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
                         disabled={busy}
                         onClick={openCreate}
                     >
                         <Plus className="size-3.5" />
-                        新增系列
+                        <span className="hidden sm:inline">新增系列</span>
                     </Button>
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8"
+                        className="h-8 shrink-0"
                         disabled={loading}
                         onClick={retry}
                     >
                         <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
-                        刷新
+                        <span className="hidden sm:inline">刷新</span>
                     </Button>
                 </div>
             </div>

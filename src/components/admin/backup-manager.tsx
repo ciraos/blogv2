@@ -387,25 +387,25 @@ export function BackupManager() {
             </div>
 
             {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动 */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2">
+            <div className="flex shrink-0 flex-col gap-2 border-b bg-muted/40 px-4 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
                 <span className="text-xs text-muted-foreground">
                     共 <span className="font-medium text-foreground">{loading ? "—" : list.length}</span> 个备份
                     <span className="ml-2 text-muted-foreground/70">备份内容为数据库中的系统设置（与「导出配置」一致）</span>
                 </span>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                     <Button
                         size="sm"
-                        className="h-8 px-2 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                        className="h-8 shrink-0 bg-primary px-2 text-xs text-primary-foreground hover:bg-primary/90"
                         disabled={actionsDisabled}
                         onClick={() => setCreateOpen(true)}
                     >
                         {busy === "创建备份" ? <LoaderCircle className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
-                        创建备份
+                        <span className="hidden sm:inline">创建备份</span>
                     </Button>
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 px-2 text-xs"
+                        className="h-8 shrink-0 px-2 text-xs"
                         disabled={actionsDisabled}
                         onClick={() => {
                             setCleanKeep("5");
@@ -413,37 +413,37 @@ export function BackupManager() {
                         }}
                     >
                         <Eraser className="size-3.5" />
-                        清理旧备份
+                        <span className="hidden sm:inline">清理旧备份</span>
                     </Button>
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 px-2 text-xs"
+                        className="h-8 shrink-0 px-2 text-xs"
                         disabled={actionsDisabled}
                         onClick={handleExport}
                     >
                         {busy === "导出配置" ? <LoaderCircle className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-                        导出配置
+                        <span className="hidden sm:inline">导出配置</span>
                     </Button>
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 px-2 text-xs"
+                        className="h-8 shrink-0 px-2 text-xs"
                         disabled={actionsDisabled}
                         onClick={() => fileInputRef.current?.click()}
                     >
                         <Upload className="size-3.5" />
-                        导入配置
+                        <span className="hidden sm:inline">导入配置</span>
                     </Button>
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 px-2 text-xs"
+                        className="h-8 shrink-0 px-2 text-xs"
                         disabled={actionsDisabled || loading}
                         onClick={refresh}
                     >
                         <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
-                        刷新
+                        <span className="hidden sm:inline">刷新</span>
                     </Button>
                     {/* 导入用的隐藏文件选择框：accept 只是提示，真正的 .json 校验在选中后做 */}
                     <input

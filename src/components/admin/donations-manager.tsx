@@ -427,12 +427,12 @@ export function DonationsManager() {
 
             {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动。
                 工具栏 / 表头 / 数据行共用同一套响应式规则：<640px 竖排成卡片（不撑宽），≥640px 表格式布局 */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2.5">
-                <div className="flex items-center gap-3">
+            <div className="flex shrink-0 flex-col gap-2 border-b bg-muted/40 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+                <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         状态
                         <Select value={statusFilter || "all"} onValueChange={(v) => setStatusFilter(v === "all" ? "" : v)}>
-                            <SelectTrigger className="h-7 w-max text-xs">
+                            <SelectTrigger className="h-7 w-full text-xs sm:w-max">
                                 <SelectValue placeholder="全部" />
                             </SelectTrigger>
                             <SelectContent>
@@ -449,17 +449,19 @@ export function DonationsManager() {
                         共 <span className="font-medium text-foreground">{total}</span> 条打赏记录
                     </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                     {selected.size > 0 && (
                         <Button
                             variant="outline"
                             size="sm"
                             disabled={deleting}
-                            className="h-7 px-2 text-xs text-red-600 hover:text-red-600 dark:text-red-400"
+                            className="h-7 shrink-0 px-2 text-xs text-red-600 hover:text-red-600 dark:text-red-400"
                             onClick={handleBatchDelete}
                         >
                             <Trash2 className="size-3.5" />
-                            {deleting ? "删除中…" : `批量删除（${selected.size}）`}
+                            <span className="hidden sm:inline">
+                                {deleting ? "删除中…" : `批量删除（${selected.size}）`}
+                            </span>
                         </Button>
                     )}
                     {/* 导出：勾选了就导出勾选的，没勾选就导出全部（远端 GET export 的语义） */}
@@ -467,19 +469,21 @@ export function DonationsManager() {
                         variant="outline"
                         size="sm"
                         disabled={exporting}
-                        className="h-7 px-2 text-xs"
+                        className="h-7 shrink-0 px-2 text-xs"
                         title={selected.size > 0 ? `导出已勾选的 ${selected.size} 条` : "未勾选任何记录时导出全部"}
                         onClick={handleExport}
                     >
                         <Download className="size-3.5" />
-                        {exporting ? "导出中…" : selected.size > 0 ? `导出（${selected.size}）` : "导出"}
+                        <span className="hidden sm:inline">
+                            {exporting ? "导出中…" : selected.size > 0 ? `导出（${selected.size}）` : "导出"}
+                        </span>
                     </Button>
                     {/* 导入：弹窗内选文件 + 二次确认；导入会批量写打赏表 */}
                     <Button
                         variant="outline"
                         size="sm"
                         disabled={importing}
-                        className="h-7 px-2 text-xs"
+                        className="h-7 shrink-0 px-2 text-xs"
                         title="从 JSON 文件导入打赏记录"
                         onClick={() => {
                             resetImport();
@@ -487,24 +491,24 @@ export function DonationsManager() {
                         }}
                     >
                         <Upload className="size-3.5" />
-                        导入
+                        <span className="hidden sm:inline">导入</span>
                     </Button>
                     <Button
                         size="sm"
-                        className="h-7 px-2 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                        className="h-7 shrink-0 bg-primary px-2 text-xs text-primary-foreground hover:bg-primary/90"
                         onClick={openCreate}
                     >
                         <Plus className="size-3.5" />
-                        新增打赏
+                        <span className="hidden sm:inline">新增打赏</span>
                     </Button>
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 px-2 text-xs"
+                        className="h-7 shrink-0 px-2 text-xs"
                         onClick={() => setRefreshKey((k) => k + 1)}
                     >
                         <RefreshCw className="size-3.5" />
-                        刷新
+                        <span className="hidden sm:inline">刷新</span>
                     </Button>
                 </div>
             </div>

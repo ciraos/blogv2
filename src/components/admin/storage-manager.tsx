@@ -775,8 +775,8 @@ export function StorageManager() {
             </div>
 
             {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动 */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2.5">
-                <div className="flex flex-wrap items-center gap-3">
+            <div className="flex shrink-0 flex-col gap-2 border-b bg-muted/40 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+                <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         类型
                         <Select
@@ -786,7 +786,7 @@ export function StorageManager() {
                                 setPage(1);
                             }}
                         >
-                            <SelectTrigger className="h-7 w-max text-xs">
+                            <SelectTrigger className="h-7 w-full min-w-0 text-xs sm:w-max">
                                 <SelectValue placeholder="全部" />
                             </SelectTrigger>
                             <SelectContent>
@@ -803,8 +803,8 @@ export function StorageManager() {
                         共 <span className="font-medium text-foreground">{filtered.length}</span> 个存储策略
                     </span>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                    <div className="relative">
+                <div className="flex flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+                    <div className="relative w-full sm:w-auto">
                         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             value={keyword}
@@ -813,27 +813,27 @@ export function StorageManager() {
                                 setPage(1);
                             }}
                             placeholder="搜索策略名称 / 域名…"
-                            className="h-7 w-44 pl-8 text-xs sm:w-56"
+                            className="h-7 w-full pl-8 text-xs sm:w-56"
                         />
                     </div>
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 px-2 text-xs"
+                        className="h-7 shrink-0 px-2 text-xs"
                         onClick={retry}
                         disabled={loading}
                         title="重新拉取存储策略列表"
                     >
                         <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
-                        刷新
+                        <span className="hidden sm:inline">刷新</span>
                     </Button>
                     <Button
                         size="sm"
-                        className="h-7 px-2 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                        className="h-7 shrink-0 bg-primary px-2 text-xs text-primary-foreground hover:bg-primary/90"
                         onClick={() => setPickingType(true)}
                     >
                         <Plus className="size-3.5" />
-                        新建策略
+                        <span className="hidden sm:inline">新建策略</span>
                     </Button>
                 </div>
             </div>

@@ -126,9 +126,9 @@ export function PageManager() {
         // admin-card：吃掉剩余高度；工具栏 / 分页固定，表格在 admin-scroll 内部滚动
         <div className="admin-card">
             {/* ===== 工具栏（固定在卡片顶部，不随表格滚动） ===== */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b p-3">
-                <div className="flex flex-wrap items-center gap-2">
-                    <div className="relative">
+            <div className="flex shrink-0 flex-col gap-2 border-b p-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                    <div className="relative w-full sm:w-auto">
                         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             value={searchInput}
@@ -137,10 +137,11 @@ export function PageManager() {
                                 if (e.key === "Enter") submitSearch();
                             }}
                             placeholder="搜索标题 / 路径…"
-                            className="h-9 w-48 pl-8 text-xs sm:w-64"
+                            className="h-9 w-full pl-8 text-xs sm:w-64"
                         />
                     </div>
-                    <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs" onClick={submitSearch}>
+                    {/* 查询按钮没有图标，窄屏也不藏文字，否则会变成空按钮 */}
+                    <Button variant="outline" size="sm" className="h-9 shrink-0 rounded-xl text-xs" onClick={submitSearch}>
                         查询
                     </Button>
                     <Select
@@ -150,7 +151,7 @@ export function PageManager() {
                             setPage(1);
                         }}
                     >
-                        <SelectTrigger className="h-9 w-32 rounded-xl text-xs">
+                        <SelectTrigger className="h-9 w-full rounded-xl text-xs sm:w-32">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -164,7 +165,7 @@ export function PageManager() {
                         size="icon-sm"
                         aria-label="刷新"
                         title="刷新"
-                        className="size-9 rounded-xl"
+                        className="size-9 shrink-0 rounded-xl"
                         disabled={loading}
                         onClick={() => void load()}
                     >
@@ -176,21 +177,21 @@ export function PageManager() {
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-9 rounded-xl text-xs"
+                        className="h-9 shrink-0 rounded-xl text-xs"
                         disabled={busy}
                         onClick={() => void handleInitialize()}
                     >
                         <Sparkles className="size-3.5" />
-                        初始化默认页面
+                        <span className="hidden sm:inline">初始化默认页面</span>
                     </Button>
                     <Button
                         size="sm"
-                        className="h-9 rounded-xl text-xs"
+                        className="h-9 shrink-0 rounded-xl text-xs"
                         disabled={busy}
                         onClick={() => router.push("/admin/page-management/new")}
                     >
                         <Plus className="size-3.5" />
-                        新建页面
+                        <span className="hidden sm:inline">新建页面</span>
                     </Button>
                 </div>
             </div>

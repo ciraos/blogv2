@@ -608,34 +608,34 @@ export function CommentsManager() {
             {/* ===== 筛选栏（移动端两列换行，桌面端单行；固定在卡片顶部，不随表格滚动） ===== */}
             <form
                 onSubmit={submitFilters}
-                className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-muted/40 px-4 py-2.5"
+                className="flex shrink-0 flex-col gap-2 border-b bg-muted/40 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:items-center"
             >
                 <Input
                     value={filters.nickname}
                     onChange={(e) => setFilters({ ...filters, nickname: e.target.value })}
                     placeholder="昵称"
-                    className="h-7 w-[calc(50%-0.25rem)] text-xs xl:w-28"
+                    className="h-7 w-full text-xs sm:w-[calc(50%-0.25rem)] xl:w-28"
                 />
                 <Input
                     value={filters.email}
                     onChange={(e) => setFilters({ ...filters, email: e.target.value })}
                     placeholder="邮箱"
-                    className="h-7 w-[calc(50%-0.25rem)] text-xs xl:w-40"
+                    className="h-7 w-full text-xs sm:w-[calc(50%-0.25rem)] xl:w-40"
                 />
                 <Input
                     value={filters.content}
                     onChange={(e) => setFilters({ ...filters, content: e.target.value })}
                     placeholder="评论内容"
-                    className="h-7 w-[calc(50%-0.25rem)] text-xs xl:w-40"
+                    className="h-7 w-full text-xs sm:w-[calc(50%-0.25rem)] xl:w-40"
                 />
                 <Input
                     value={filters.target_path}
                     onChange={(e) => setFilters({ ...filters, target_path: e.target.value })}
                     placeholder="目标路径 /post/xxx"
-                    className="h-7 w-[calc(50%-0.25rem)] text-xs xl:w-40"
+                    className="h-7 w-full text-xs sm:w-[calc(50%-0.25rem)] xl:w-40"
                 />
                 <Select value={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })}>
-                    <SelectTrigger className="h-7 w-max text-xs">
+                    <SelectTrigger className="h-7 w-full text-xs sm:w-max">
                         <SelectValue placeholder="全部状态" />
                     </SelectTrigger>
                     <SelectContent>
@@ -646,23 +646,23 @@ export function CommentsManager() {
                         ))}
                     </SelectContent>
                 </Select>
-                <Button type="submit" size="sm" className="h-7 px-2 text-xs">
+                <Button type="submit" size="sm" className="h-7 shrink-0 px-2 text-xs">
                     <Search className="size-3.5" />
-                    查询
+                    <span className="hidden sm:inline">查询</span>
                 </Button>
-                <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={resetFilters}>
+                <Button type="button" variant="outline" size="sm" className="h-7 shrink-0 px-2 text-xs" onClick={resetFilters}>
                     <RotateCcw className="size-3.5" />
-                    重置
+                    <span className="hidden sm:inline">重置</span>
                 </Button>
                 <span className="ml-1 text-xs text-muted-foreground">
                     共 <span className="font-medium text-foreground">{total}</span> 条评论
                     {totalWithChildren > total && <>（含回复 {totalWithChildren} 条）</>}
                 </span>
-                <div className="ml-auto flex items-center gap-2">
+                <div className="ml-auto flex w-full flex-wrap items-center gap-2 sm:w-auto">
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 px-2 text-xs"
+                        className="h-7 shrink-0 px-2 text-xs"
                         disabled={exporting}
                         title={
                             selected.length > 0
@@ -672,35 +672,39 @@ export function CommentsManager() {
                         onClick={() => void handleExport()}
                     >
                         <Archive className="size-3.5" />
-                        {exporting
-                            ? "导出中…"
-                            : selected.length > 0
-                              ? `导出（${selected.length}）`
-                              : "导出"}
+                        <span className="hidden sm:inline">
+                            {exporting
+                                ? "导出中…"
+                                : selected.length > 0
+                                  ? `导出（${selected.length}）`
+                                  : "导出"}
+                        </span>
                     </Button>
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 px-2 text-xs"
+                        className="h-7 shrink-0 px-2 text-xs"
                         title="从 .json / .zip 文件导入评论"
                         onClick={() => setImportOpen(true)}
                     >
                         <ArchiveRestore className="size-3.5" />
-                        导入
+                        <span className="hidden sm:inline">导入</span>
                     </Button>
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                        className="h-7 shrink-0 px-2 text-xs text-destructive hover:text-destructive"
                         disabled={selected.length === 0}
                         onClick={handleBatchDelete}
                     >
                         <Trash2 className="size-3.5" />
-                        批量删除{selected.length > 0 ? `（${selected.length}）` : ""}
+                        <span className="hidden sm:inline">
+                            批量删除{selected.length > 0 ? `（${selected.length}）` : ""}
+                        </span>
                     </Button>
-                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={reload}>
+                    <Button variant="outline" size="sm" className="h-7 shrink-0 px-2 text-xs" onClick={reload}>
                         <RefreshCw className="size-3.5" />
-                        刷新
+                        <span className="hidden sm:inline">刷新</span>
                     </Button>
                 </div>
             </form>

@@ -203,7 +203,7 @@ export function AlbumManager() {
         // admin-card：吃掉剩余高度；Tab/工具固定在卡片顶部，内容在 admin-scroll 内部滚动
         <div className="admin-card">
             {/* ===== 顶部：Tab + 工具（固定在卡片顶部，不随内容滚动） ===== */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b p-3">
+            <div className="flex shrink-0 flex-col gap-2 border-b p-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 <div className="flex items-center overflow-hidden rounded-xl border bg-card shadow-sm">
                     <button
                         type="button"
@@ -230,10 +230,10 @@ export function AlbumManager() {
                     </button>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                     {tab === "images" ? (
                         <>
-                            <div className="relative">
+                            <div className="relative w-full sm:w-auto">
                                 <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                                 <Input
                                     value={tagInput}
@@ -245,7 +245,7 @@ export function AlbumManager() {
                                         }
                                     }}
                                     placeholder="按标签筛选…"
-                                    className="h-9 w-36 pl-8 text-xs"
+                                    className="h-9 w-full pl-8 text-xs sm:w-36"
                                 />
                             </div>
                             <Select
@@ -255,7 +255,7 @@ export function AlbumManager() {
                                     setPage(1);
                                 }}
                             >
-                                <SelectTrigger className="h-9 w-36 rounded-xl text-xs">
+                                <SelectTrigger className="h-9 w-full rounded-xl text-xs sm:w-36">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -268,7 +268,7 @@ export function AlbumManager() {
                                 </SelectContent>
                             </Select>
                             <Select value={sort} onValueChange={setSort}>
-                                <SelectTrigger className="h-9 w-32 rounded-xl text-xs">
+                                <SelectTrigger className="h-9 w-full rounded-xl text-xs sm:w-32">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -284,7 +284,7 @@ export function AlbumManager() {
                                 size="icon-sm"
                                 aria-label="刷新"
                                 title="刷新"
-                                className="size-9 rounded-xl"
+                                className="size-9 shrink-0 rounded-xl"
                                 disabled={loading}
                                 onClick={reload}
                             >
@@ -293,34 +293,38 @@ export function AlbumManager() {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-9 rounded-xl text-xs text-destructive hover:text-destructive"
+                                className="h-9 shrink-0 rounded-xl text-xs text-destructive hover:text-destructive"
                                 disabled={busy || selected.length === 0}
                                 onClick={removeSelected}
                             >
                                 <Trash2 className="size-3.5" />
-                                删除{selected.length > 0 ? `（${selected.length}）` : ""}
+                                <span className="hidden sm:inline">
+                                    删除{selected.length > 0 ? `（${selected.length}）` : ""}
+                                </span>
                             </Button>
-                            <Button size="sm" className="h-9 rounded-xl text-xs" onClick={() => setImportOpen(true)}>
+                            <Button size="sm" className="h-9 shrink-0 rounded-xl text-xs" onClick={() => setImportOpen(true)}>
                                 <Upload className="size-3.5" />
-                                批量导入
+                                <span className="hidden sm:inline">批量导入</span>
                             </Button>
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-9 rounded-xl text-xs"
+                                className="h-9 shrink-0 rounded-xl text-xs"
                                 onClick={() => setFileImportOpen(true)}
                             >
                                 <FileUp className="size-3.5" />
-                                文件导入
+                                <span className="hidden sm:inline">文件导入</span>
                             </Button>
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-9 rounded-xl text-xs"
+                                className="h-9 shrink-0 rounded-xl text-xs"
                                 onClick={() => setExportOpen(true)}
                             >
                                 <Download className="size-3.5" />
-                                导出{selected.length > 0 ? `（${selected.length}）` : ""}
+                                <span className="hidden sm:inline">
+                                    导出{selected.length > 0 ? `（${selected.length}）` : ""}
+                                </span>
                             </Button>
                         </>
                     ) : (
@@ -331,14 +335,14 @@ export function AlbumManager() {
                                 size="icon-sm"
                                 aria-label="刷新分类"
                                 title="刷新"
-                                className="size-9 rounded-xl"
+                                className="size-9 shrink-0 rounded-xl"
                                 onClick={() => void loadCategories()}
                             >
                                 <RefreshCw className="size-4" />
                             </Button>
-                            <Button size="sm" className="h-9 rounded-xl text-xs" onClick={() => setCategoryDialog("new")}>
+                            <Button size="sm" className="h-9 shrink-0 rounded-xl text-xs" onClick={() => setCategoryDialog("new")}>
                                 <Plus className="size-3.5" />
-                                新建分类
+                                <span className="hidden sm:inline">新建分类</span>
                             </Button>
                         </>
                     )}

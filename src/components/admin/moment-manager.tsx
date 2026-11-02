@@ -298,7 +298,7 @@ export function MomentManager() {
         // admin-card：吃掉剩余高度，列表区域（admin-scroll）在卡片内部滚动，不再顶高整页
         <div className="admin-card">
             {/* 统计 / 抓取状态、工具栏、批量操作条：固定在卡片顶部（shrink-0），不随列表滚动 */}
-            <div className="shrink-0 space-y-3 border-b p-3">
+            <div className="shrink-0 space-y-2 border-b p-3 sm:space-y-3">
                 {/* ===== 统计 / 抓取状态 ===== */}
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
                     <span>
@@ -323,9 +323,9 @@ export function MomentManager() {
                 </div>
 
                 {/* ===== 工具栏 ===== */}
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <div className="relative">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                        <div className="relative w-full sm:w-auto">
                             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 value={keywordInput}
@@ -334,7 +334,7 @@ export function MomentManager() {
                                     if (e.key === "Enter") submitFilters();
                                 }}
                                 placeholder="搜索标题 / 摘要…"
-                                className="h-9 w-44 pl-8 text-xs sm:w-56"
+                                className="h-9 w-full pl-8 text-xs sm:w-56"
                             />
                         </div>
                         <Input
@@ -346,20 +346,21 @@ export function MomentManager() {
                             inputMode="numeric"
                             placeholder="友链 ID"
                             aria-label="按友链 ID 筛选"
-                            className="h-9 w-24 text-xs tabular-nums"
+                            className="h-9 w-full text-xs tabular-nums sm:w-24"
                         />
-                        <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs" onClick={submitFilters}>
+                        {/* 查询没有图标，窄屏保留文字，否则会变成空按钮 */}
+                        <Button variant="outline" size="sm" className="h-9 shrink-0 rounded-xl text-xs" onClick={submitFilters}>
                             查询
                         </Button>
                         {hasFilter && (
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-9 rounded-xl text-xs"
+                                className="h-9 shrink-0 rounded-xl text-xs"
                                 onClick={resetFilters}
                             >
                                 <RotateCcw className="size-3.5" />
-                                重置
+                                <span className="hidden sm:inline">重置</span>
                             </Button>
                         )}
                         <Select
@@ -369,7 +370,7 @@ export function MomentManager() {
                                 setPage(1);
                             }}
                         >
-                            <SelectTrigger className="h-9 w-32 rounded-xl text-xs" aria-label="排序字段">
+                            <SelectTrigger className="h-9 w-full rounded-xl text-xs sm:w-32" aria-label="排序字段">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -387,7 +388,7 @@ export function MomentManager() {
                                 setPage(1);
                             }}
                         >
-                            <SelectTrigger className="h-9 w-24 rounded-xl text-xs" aria-label="排序方向">
+                            <SelectTrigger className="h-9 w-full rounded-xl text-xs sm:w-24" aria-label="排序方向">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -403,7 +404,7 @@ export function MomentManager() {
                             size="icon-sm"
                             aria-label="刷新"
                             title="刷新列表"
-                            className="size-9 rounded-xl"
+                            className="size-9 shrink-0 rounded-xl"
                             disabled={loading}
                             onClick={() => void load()}
                         >
@@ -411,25 +412,25 @@ export function MomentManager() {
                         </Button>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                         <Button
                             size="sm"
-                            className="h-9 rounded-xl text-xs"
+                            className="h-9 shrink-0 rounded-xl text-xs"
                             disabled={busy !== ""}
                             onClick={() => void handleTriggerFetch()}
                         >
                             {busy === "fetch" ? <Loader2 className="size-3.5 animate-spin" /> : <Zap className="size-3.5" />}
-                            抓取
+                            <span className="hidden sm:inline">抓取</span>
                         </Button>
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-9 rounded-xl text-xs"
+                            className="h-9 shrink-0 rounded-xl text-xs"
                             disabled={busy !== ""}
                             onClick={() => void handleClearCache()}
                         >
                             {busy === "clear" ? <Loader2 className="size-3.5 animate-spin" /> : <Eraser className="size-3.5" />}
-                            清理缓存
+                            <span className="hidden sm:inline">清理缓存</span>
                         </Button>
                     </div>
                 </div>

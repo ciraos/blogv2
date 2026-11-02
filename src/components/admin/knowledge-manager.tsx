@@ -739,15 +739,15 @@ export function KnowledgeManager() {
             )}
 
             {/* 工具栏 */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2">
-                <div className="flex flex-1 flex-wrap items-center gap-2">
-                    <div className="relative w-56">
+            <div className="flex shrink-0 flex-col gap-2 border-b bg-muted/40 px-4 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+                <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                    <div className="relative w-full sm:w-56">
                         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             value={keyword}
                             onChange={(e) => setKeyword(e.target.value)}
                             placeholder="搜索本页文档（标题/类型）"
-                            className={`${CONTROL_H} pl-8 pr-8 text-xs`}
+                            className={`${CONTROL_H} w-full pl-8 pr-8 text-xs sm:w-56`}
                             aria-label="搜索当前页知识库文档"
                         />
                         {keyword && (
@@ -769,7 +769,7 @@ export function KnowledgeManager() {
                             setPage(1);
                         }}
                     >
-                        <SelectTrigger className={`${CONTROL_H} w-max text-xs`} aria-label="状态筛选">
+                        <SelectTrigger className={`${CONTROL_H} w-full text-xs sm:w-max`} aria-label="状态筛选">
                             <SelectValue placeholder="全部状态" />
                         </SelectTrigger>
                         <SelectContent>
@@ -782,9 +782,9 @@ export function KnowledgeManager() {
                         </SelectContent>
                     </Select>
 
-                    <Button variant="outline" size="sm" className={CONTROL_H} onClick={resetFilters}>
+                    <Button variant="outline" size="sm" className={`${CONTROL_H} shrink-0`} onClick={resetFilters}>
                         <RotateCcw className="size-3.5" />
-                        重置
+                        <span className="hidden sm:inline">重置</span>
                     </Button>
 
                     <span className="text-xs text-muted-foreground">
@@ -797,59 +797,59 @@ export function KnowledgeManager() {
                     </span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                     {selectedIds.length > 0 && (
                         <Button
                             variant="outline"
                             size="sm"
-                            className={`${CONTROL_H} text-red-600 dark:text-red-400`}
+                            className={`${CONTROL_H} shrink-0 text-red-600 dark:text-red-400`}
                             disabled={busy}
                             onClick={handleBatchDelete}
                         >
                             <Trash2 className="size-3.5" />
-                            批量删除（{selectedIds.length}）
+                            <span className="hidden sm:inline">批量删除（{selectedIds.length}）</span>
                         </Button>
                     )}
                     <Button
                         variant="outline"
                         size="sm"
-                        className={CONTROL_H}
+                        className={`${CONTROL_H} shrink-0`}
                         disabled={busy}
                         onClick={handleClearAll}
                     >
                         <Trash2 className="size-3.5" />
-                        清空
+                        <span className="hidden sm:inline">清空</span>
                     </Button>
                     <Button
                         variant="outline"
                         size="sm"
-                        className={CONTROL_H}
+                        className={`${CONTROL_H} shrink-0`}
                         disabled={busy}
                         onClick={() => handleSync(false)}
                     >
                         <Sparkles className="size-3.5" />
-                        同步文章
+                        <span className="hidden sm:inline">同步文章</span>
                     </Button>
                     <Button
                         variant="outline"
                         size="sm"
-                        className={CONTROL_H}
+                        className={`${CONTROL_H} shrink-0`}
                         disabled={busy}
                         title="重新嵌入所有文章，耗时较长"
                         onClick={() => handleSync(true)}
                     >
                         <Sparkles className="size-3.5" />
-                        强制同步
+                        <span className="hidden sm:inline">强制同步</span>
                     </Button>
                     <Button
                         variant="outline"
                         size="sm"
-                        className={CONTROL_H}
+                        className={`${CONTROL_H} shrink-0`}
                         disabled={busy}
                         onClick={() => fileInputRef.current?.click()}
                     >
                         <Upload className="size-3.5" />
-                        批量导入
+                        <span className="hidden sm:inline">批量导入</span>
                     </Button>
                     {/* 隐藏的 file input：accept 用后端 supported-types 拼，拿不到就不限制 */}
                     <input
@@ -864,22 +864,22 @@ export function KnowledgeManager() {
                     />
                     <Button
                         size="sm"
-                        className={`${CONTROL_H} bg-primary text-primary-foreground hover:bg-primary/90`}
+                        className={`${CONTROL_H} shrink-0 bg-primary text-primary-foreground hover:bg-primary/90`}
                         disabled={busy}
                         onClick={() => setShowCreate((v) => !v)}
                     >
                         <Plus className="size-3.5" />
-                        新建索引
+                        <span className="hidden sm:inline">新建索引</span>
                     </Button>
                     <Button
                         variant="outline"
                         size="sm"
-                        className={CONTROL_H}
+                        className={`${CONTROL_H} shrink-0`}
                         disabled={busy}
                         onClick={refreshAll}
                     >
                         <RefreshCw className="size-3.5" />
-                        刷新
+                        <span className="hidden sm:inline">刷新</span>
                     </Button>
                 </div>
             </div>

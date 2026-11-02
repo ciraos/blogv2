@@ -431,9 +431,9 @@ export function OrdersManager() {
 
             {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动。
                 筛选条件与列表列共用同一套响应式规则：<640px 竖排成卡片，≥640px 表格式布局 */}
-            <div className="flex shrink-0 flex-wrap items-center gap-2 border-b p-3">
-                {/* 左：筛选条件 + 查询 / 重置 */}
-                <div className="flex flex-1 flex-wrap items-center gap-2">
+            <div className="flex shrink-0 flex-col gap-2 border-b p-3 sm:flex-row sm:flex-wrap sm:items-center">
+                {/* 左：筛选条件 + 查询 / 重置（窄屏竖排、每项占满一行；≥sm 恢复横排） */}
+                <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                     {/* order_no */}
                     <Input
                         value={draft.orderNo}
@@ -441,7 +441,7 @@ export function OrdersManager() {
                         onKeyDown={handleEnter}
                         placeholder="订单号"
                         aria-label="按订单号筛选"
-                        className="h-8 w-36 text-sm"
+                        className="h-8 w-full text-sm sm:w-36"
                     />
                     {/* trade_no */}
                     <Input
@@ -450,7 +450,7 @@ export function OrdersManager() {
                         onKeyDown={handleEnter}
                         placeholder="交易号"
                         aria-label="按交易号筛选"
-                        className="h-8 w-36 text-sm"
+                        className="h-8 w-full text-sm sm:w-36"
                     />
                     {/* user_email */}
                     <Input
@@ -459,12 +459,12 @@ export function OrdersManager() {
                         onKeyDown={handleEnter}
                         placeholder="用户邮箱"
                         aria-label="按用户邮箱筛选"
-                        className="h-8 w-44 text-sm"
+                        className="h-8 w-full text-sm sm:w-44"
                     />
 
                     {/* payment_status（下拉变更立即查询） */}
                     <Select value={draft.status} onValueChange={(v) => commit({ status: v })}>
-                        <SelectTrigger className="h-8 w-28 shrink-0" aria-label="按订单状态筛选">
+                        <SelectTrigger className="h-8 w-full shrink-0 sm:w-28" aria-label="按订单状态筛选">
                             <SelectValue placeholder="订单状态" />
                         </SelectTrigger>
                         <SelectContent>
@@ -478,7 +478,7 @@ export function OrdersManager() {
 
                     {/* payment_provider */}
                     <Select value={draft.provider} onValueChange={(v) => commit({ provider: v })}>
-                        <SelectTrigger className="h-8 w-28 shrink-0" aria-label="按支付方式筛选">
+                        <SelectTrigger className="h-8 w-full shrink-0 sm:w-28" aria-label="按支付方式筛选">
                             <SelectValue placeholder="支付方式" />
                         </SelectTrigger>
                         <SelectContent>
@@ -492,7 +492,7 @@ export function OrdersManager() {
 
                     {/* order_type */}
                     <Select value={draft.orderType} onValueChange={(v) => commit({ orderType: v })}>
-                        <SelectTrigger className="h-8 w-26 shrink-0" aria-label="按订单类型筛选">
+                        <SelectTrigger className="h-8 w-full shrink-0 sm:w-26" aria-label="按订单类型筛选">
                             <SelectValue placeholder="订单类型" />
                         </SelectTrigger>
                         <SelectContent>
@@ -504,15 +504,15 @@ export function OrdersManager() {
                         </SelectContent>
                     </Select>
 
-                    {/* start_date / end_date：日期范围（回车提交） */}
-                    <div className="flex items-center gap-1.5">
+                    {/* start_date / end_date：日期范围（回车提交）。窄屏两个日期输入等分一行 */}
+                    <div className="flex w-full items-center gap-1.5">
                         <Input
                             type="date"
                             value={draft.startDate}
                             onChange={(e) => setDraft((prev) => ({ ...prev, startDate: e.target.value }))}
                             onKeyDown={handleEnter}
                             aria-label="开始日期"
-                            className="h-8 w-36 text-sm"
+                            className="h-8 w-full min-w-0 text-sm sm:w-36"
                         />
                         <span className="text-xs text-muted-foreground">至</span>
                         <Input
@@ -521,29 +521,29 @@ export function OrdersManager() {
                             onChange={(e) => setDraft((prev) => ({ ...prev, endDate: e.target.value }))}
                             onKeyDown={handleEnter}
                             aria-label="结束日期"
-                            className="h-8 w-36 text-sm"
+                            className="h-8 w-full min-w-0 text-sm sm:w-36"
                         />
                     </div>
 
-                    <Button variant="outline" size="sm" className="h-8" onClick={runQuery}>
+                    <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={runQuery}>
                         <Search size={14} />
-                        查询
+                        <span className="hidden sm:inline">查询</span>
                     </Button>
-                    <Button variant="outline" size="sm" className="h-8" onClick={resetFilters}>
+                    <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={resetFilters}>
                         <RotateCcw size={14} />
-                        重置
+                        <span className="hidden sm:inline">重置</span>
                     </Button>
                 </div>
 
                 {/* 右：刷新（真重拉）/ 导出（前端 CSV —— 后端没有导出接口） */}
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" className="h-8" onClick={retry} disabled={loading}>
+                <div className="flex w-full items-center gap-2 sm:w-auto">
+                    <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={retry} disabled={loading}>
                         <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-                        刷新
+                        <span className="hidden sm:inline">刷新</span>
                     </Button>
-                    <Button variant="outline" size="sm" className="h-8" onClick={handleExport}>
+                    <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={handleExport}>
                         <Download size={14} />
-                        导出本页
+                        <span className="hidden sm:inline">导出本页</span>
                     </Button>
                 </div>
             </div>

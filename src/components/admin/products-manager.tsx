@@ -1508,9 +1508,9 @@ export function ProductsManager() {
 
             {/* 工具栏：固定在卡片顶部（shrink-0），不随下方表格滚动。
                 左：搜索 + 状态筛选 + 重置；右：新增商品 / 刷新（卡密库存入口在每行操作列里） */}
-            <div className="flex shrink-0 flex-wrap items-center gap-2 border-b p-3">
-                <div className="flex flex-1 flex-wrap items-center gap-2">
-                    <div className="relative w-56">
+            <div className="flex shrink-0 flex-col gap-2 border-b p-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                    <div className="relative w-full sm:w-56">
                         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             value={input}
@@ -1547,7 +1547,7 @@ export function ProductsManager() {
                             setPage(1);
                         }}
                     >
-                        <SelectTrigger className="h-8 w-28 shrink-0" aria-label="按商品状态筛选">
+                        <SelectTrigger className="h-8 w-full shrink-0 sm:w-28" aria-label="按商品状态筛选">
                             <SelectValue placeholder="商品状态" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1563,12 +1563,12 @@ export function ProductsManager() {
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8"
+                        className="h-8 shrink-0"
                         onClick={resetFilters}
                         disabled={!hasFilter}
                     >
                         <RotateCcw size={14} />
-                        重置
+                        <span className="hidden sm:inline">重置</span>
                     </Button>
 
                     <span className="text-xs text-muted-foreground">
@@ -1576,20 +1576,20 @@ export function ProductsManager() {
                     </span>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Button size="sm" className="h-8" onClick={openCreate}>
+                <div className="flex w-full items-center gap-2 sm:w-auto">
+                    <Button size="sm" className="h-8 shrink-0" onClick={openCreate}>
                         <Plus size={14} />
-                        新增商品
+                        <span className="hidden sm:inline">新增商品</span>
                     </Button>
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8"
+                        className="h-8 shrink-0"
                         onClick={() => void fetchProducts()}
                         disabled={loading}
                     >
                         <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-                        刷新
+                        <span className="hidden sm:inline">刷新</span>
                     </Button>
                 </div>
             </div>

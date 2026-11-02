@@ -662,9 +662,9 @@ export function PluginsManager() {
             </div>
 
             {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动 */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2">
-                <div className="flex flex-wrap items-center gap-2">
-                    <div className="relative w-52">
+            <div className="flex shrink-0 flex-col gap-2 border-b bg-muted/40 px-4 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                    <div className="relative w-full sm:w-52">
                         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             value={input}
@@ -673,7 +673,7 @@ export function PluginsManager() {
                                 setKeyword(e.target.value);
                             }}
                             placeholder="搜索插件名称、id、简介、作者"
-                            className="h-8 pl-8 pr-7 text-xs"
+                            className="h-8 w-full pl-8 pr-7 text-xs sm:w-52"
                             aria-label="搜索插件"
                         />
                         {input && (
@@ -692,7 +692,7 @@ export function PluginsManager() {
                     </div>
 
                     <Select value={status} onValueChange={setStatus}>
-                        <SelectTrigger className="h-8 w-26 shrink-0 text-xs" aria-label="状态筛选">
+                        <SelectTrigger className="h-8 w-full shrink-0 text-xs sm:w-26" aria-label="状态筛选">
                             <SelectValue placeholder="全部状态" />
                         </SelectTrigger>
                         <SelectContent>
@@ -710,19 +710,19 @@ export function PluginsManager() {
                     </span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex w-full items-center gap-2 sm:w-auto">
                     <Button
                         size="sm"
-                        className="h-8 px-2 text-xs"
+                        className="h-8 shrink-0 px-2 text-xs"
                         onClick={() => setInstallOpen(true)}
                     >
                         <Download className="size-3.5" />
-                        安装插件
+                        <span className="hidden sm:inline">安装插件</span>
                     </Button>
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 px-2 text-xs"
+                        className="h-8 shrink-0 px-2 text-xs"
                         disabled={loading}
                         onClick={() => void load()}
                     >
@@ -731,7 +731,7 @@ export function PluginsManager() {
                         ) : (
                             <RefreshCw className="size-3.5" />
                         )}
-                        刷新
+                        <span className="hidden sm:inline">刷新</span>
                     </Button>
                 </div>
             </div>

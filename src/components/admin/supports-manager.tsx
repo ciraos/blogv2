@@ -418,9 +418,9 @@ export function SupportsManager() {
             </div>
 
             {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动 */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2">
-                <div className="flex flex-wrap items-center gap-2">
-                    <div className="relative w-56">
+            <div className="flex shrink-0 flex-col gap-2 border-b bg-muted/40 px-4 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                    <div className="relative w-full sm:w-56">
                         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             value={keyword}
@@ -429,7 +429,7 @@ export function SupportsManager() {
                                 setPage(1);
                             }}
                             placeholder="搜索工单号 / 主题 / 用户邮箱"
-                            className="h-8 pl-8 text-xs"
+                            className="h-8 w-full pl-8 text-xs sm:w-56"
                             aria-label="搜索工单"
                         />
                     </div>
@@ -443,7 +443,7 @@ export function SupportsManager() {
                                 setPage(1);
                             }}
                         >
-                            <SelectTrigger className="h-8 w-max text-xs">
+                            <SelectTrigger className="h-8 w-full min-w-0 text-xs sm:w-max">
                                 <SelectValue placeholder="全部" />
                             </SelectTrigger>
                             <SelectContent>
@@ -467,7 +467,7 @@ export function SupportsManager() {
                             }}
                             disabled={typeOptions.length === 0}
                         >
-                            <SelectTrigger className="h-8 w-max text-xs">
+                            <SelectTrigger className="h-8 w-full min-w-0 text-xs sm:w-max">
                                 <SelectValue placeholder={typeOptions.length === 0 ? "暂无可选类型" : "全部"} />
                             </SelectTrigger>
                             <SelectContent>
@@ -481,9 +481,9 @@ export function SupportsManager() {
                         </Select>
                     </div>
 
-                    <Button variant="outline" size="sm" className="h-8" onClick={resetFilters}>
+                    <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={resetFilters}>
                         <RotateCcw className="size-3.5" />
-                        重置
+                        <span className="hidden sm:inline">重置</span>
                     </Button>
 
                     <span className="text-xs text-muted-foreground">
@@ -491,14 +491,14 @@ export function SupportsManager() {
                     </span>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" className="h-8" onClick={handleExport}>
+                <div className="flex w-full items-center gap-2 sm:w-auto">
+                    <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={handleExport}>
                         <Download className="size-3.5" />
-                        导出本页
+                        <span className="hidden sm:inline">导出本页</span>
                     </Button>
-                    <Button variant="outline" size="sm" className="h-8" onClick={refresh} disabled={loading}>
+                    <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={refresh} disabled={loading}>
                         <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
-                        刷新
+                        <span className="hidden sm:inline">刷新</span>
                     </Button>
                 </div>
             </div>

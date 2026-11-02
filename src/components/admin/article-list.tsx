@@ -376,10 +376,10 @@ export function ArticleList() {
         // admin-card：吃掉剩余高度，表格区域（admin-scroll）在卡片内部滚动，不再顶高整页
         <div className="admin-card">
             {/* 工具栏：搜索 + 四个筛选下拉 + 重置 + 右侧按钮（固定在卡片顶部，不随表格滚动） */}
-            <div className="flex shrink-0 flex-wrap items-center gap-2 border-b p-3">
-                {/* 左：搜索 + 筛选 + 重置 */}
-                <div className="flex flex-1 flex-wrap items-center gap-2">
-                    <div className="relative w-48">
+            <div className="flex shrink-0 flex-col gap-2 border-b p-3 sm:flex-row sm:flex-wrap sm:items-center">
+                {/* 左：搜索 + 筛选 + 重置（窄屏竖排、每项占满一行；≥sm 恢复横排） */}
+                <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                    <div className="relative w-full sm:w-48">
                         <Input
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
@@ -407,7 +407,7 @@ export function ArticleList() {
 
                     {/* 文章状态 */}
                     <Select value={status} onValueChange={setStatus}>
-                        <SelectTrigger className="h-8 w-30 shrink-0">
+                        <SelectTrigger className="h-8 w-full shrink-0 sm:w-30">
                             <SelectValue placeholder="文章状态" />
                         </SelectTrigger>
                         <SelectContent>
@@ -421,7 +421,7 @@ export function ArticleList() {
 
                     {/* 审核状态 */}
                     <Select value={review} onValueChange={setReview}>
-                        <SelectTrigger className="h-8 w-28 shrink-0">
+                        <SelectTrigger className="h-8 w-full shrink-0 sm:w-28">
                             <SelectValue placeholder="审核状态" />
                         </SelectTrigger>
                         <SelectContent>
@@ -435,7 +435,7 @@ export function ArticleList() {
 
                     {/* 分类 */}
                     <Select value={category} onValueChange={setCategory}>
-                        <SelectTrigger className="h-8 w-26 shrink-0">
+                        <SelectTrigger className="h-8 w-full shrink-0 sm:w-26">
                             <SelectValue placeholder="全部分类" />
                         </SelectTrigger>
                         <SelectContent>
@@ -459,7 +459,7 @@ export function ArticleList() {
 
                     {/* 标签 */}
                     <Select value={tag} onValueChange={setTag}>
-                        <SelectTrigger className="h-8 w-26 shrink-0">
+                        <SelectTrigger className="h-8 w-full shrink-0 sm:w-26">
                             <SelectValue placeholder="全部标签" />
                         </SelectTrigger>
                         <SelectContent>
@@ -481,54 +481,58 @@ export function ArticleList() {
                         </SelectContent>
                     </Select>
 
-                    {/* 重置筛选 */}
-                    <Button variant="outline" size="sm" className="h-8" onClick={resetFilters}>
+                    {/* 重置筛选：窄屏只留图标，≥sm 才显示文字 */}
+                    <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={resetFilters}>
                         <RotateCcw size={14} />
-                        重置
+                        <span className="hidden sm:inline">重置</span>
                     </Button>
                 </div>
 
-                {/* 右：批量删除 / 分类标签 / 新增 / 导入 / 导出 */}
+                {/* 右：批量删除 / 分类标签 / 新增 / 导入 / 导出（窄屏只留图标） */}
                 <div className="flex flex-wrap items-center gap-2">
                     {/* 批量删除：勾选后才可用，二次确认后按 100 篇分片调用远端 DELETE /articles/batch */}
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 text-destructive hover:text-destructive"
+                        className="h-8 shrink-0 text-destructive hover:text-destructive"
                         disabled={selected.length === 0 || batchBusy}
                         onClick={() => void handleBatchDelete()}
                     >
                         <Trash2 size={14} />
-                        {batchBusy ? "删除中…" : `批量删除${selected.length > 0 ? `（${selected.length}）` : ""}`}
+                        <span className="hidden sm:inline">
+                            {batchBusy ? "删除中…" : `批量删除${selected.length > 0 ? `（${selected.length}）` : ""}`}
+                        </span>
                     </Button>
                     {/* 分类 / 标签管理：POST|PUT|DELETE /api/admin/article-{categories,tags} */}
-                    <Button variant="outline" size="sm" className="h-8" onClick={() => setTaxonomyOpen(true)}>
+                    <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={() => setTaxonomyOpen(true)}>
                         <FolderTree size={14} />
-                        分类标签
+                        <span className="hidden sm:inline">分类标签</span>
                     </Button>
                     {/* 新建文章 → /admin/post-management/new */}
-                    <Button size="sm" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90" asChild>
+                    <Button size="sm" className="h-8 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90" asChild>
                         <Link href="/admin/post-management/new">
                             <Plus size={14} />
-                            新增文章
+                            <span className="hidden sm:inline">新增文章</span>
                         </Link>
                     </Button>
                     {/* 导入：弹窗内选文件 + 二次确认；导入会批量写文章表 */}
-                    <Button variant="outline" size="sm" className="h-8" onClick={() => setImportOpen(true)}>
+                    <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={() => setImportOpen(true)}>
                         <Upload size={14} />
-                        导入
+                        <span className="hidden sm:inline">导入</span>
                     </Button>
                     {/* 导出：勾选了就导出勾选的，没勾选就导出当前筛选下的全部（zip 文件流） */}
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8"
+                        className="h-8 shrink-0"
                         disabled={exportBusy}
                         title={selected.length > 0 ? `导出已勾选的 ${selected.length} 篇` : "导出当前筛选下的全部文章"}
                         onClick={() => void handleExport()}
                     >
                         <FolderOutputIcon size={14} />
-                        {exportBusy ? "导出中…" : "导出"}
+                        <span className="hidden sm:inline">
+                            {exportBusy ? "导出中…" : "导出"}
+                        </span>
                     </Button>
                 </div>
             </div>
