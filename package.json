@@ -8,7 +8,7 @@
     "start": "next start",
     "start:win": "next start -p 3126",
     "lint": "eslint",
-    "copy": "cpy \"public/**/*\" .next/standalone/public && cpy \".next/static/**/*\" .next/standalone/.next/static",
+    "copy": "cpy \"public/**/*\" .next/standalone/ --base=cwd && cpy \".next/static/**/*\" .next/standalone/ --base=cwd",
     "deploy": "pnpm i && pnpm build && pnpm copy",
     "server:linux": "export PORT=3126 && node .next/standalone/server.js",
     "api:inventory": "node scripts/gen-api-inventory.mjs",
