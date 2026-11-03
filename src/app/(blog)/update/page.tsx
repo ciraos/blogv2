@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { ExternalLink } from "lucide-react";
 
-import frontendReleases from "@/data/frontend-changelog.json";
 import { ChangelogTabs } from "@/components/(blog)/changelog-tabs";
 import { ChangelogTimeline, type ChangelogListItem } from "@/components/(blog)/changelog-timeline";
 import { PageBanner } from "@/components/(blog)/page-banner";
 
 import { getChangelogEntries, getInstalledVersion } from "@/lib/changelog";
+import { getFrontendReleases } from "@/lib/frontend-changelog";
 import { generateBlogMetadata } from "@/lib/seo";
 
 /** 更新日志来自官方 changelog 接口：整页缓存一小时，和接口那边的缓存口径一致 */
@@ -14,15 +14,6 @@ export const revalidate = 3600;
 
 const GITHUB_RELEASES_URL = "https://github.com/anzhiyu-c/anheyu-app/releases";
 const FRONTEND_REPO_URL = "https://github.com/ciraos/blogv2";
-
-/** 前端发版记录的结构（由 scripts/gen-frontend-changelog.mjs 从 git tag 生成后提交） */
-interface FrontendRelease {
-    version: string;
-    date: string;
-    title: string;
-    body: string;
-    url: string;
-}
 
 export async function generateMetadata(): Promise<Metadata> {
     return generateBlogMetadata("更新日志");
@@ -32,12 +23,16 @@ export async function generateMetadata(): Promise<Metadata> {
  * 更新日志页：两个 tab —— 后端 anheyu-app / 前端 ciraos/blogv2。
  *
  * - 后端：官方官网的 changelog 聚合接口（见 lib/changelog.ts），公开只读，服务端直连；
- * - 前端：本仓库是私有仓库，GitHub API 拿不到 Release，所以由本地 git tag 生成
- *   src/data/frontend-changelog.json 并随版本提交（每次发版重跑一次生成脚本）。
+ * - 前端：仓库已开源，直接读 GitHub Releases（见 lib/frontend-changelog.ts），
+ *   不再依赖本地 git；拉不到时回退到仓库内的 JSON 快照。
  * 两个 tab 的条目最后都归一成 ChangelogListItem，共用同一个时间线组件。
  */
 export default async function Update() {
-    const [backendEntries, installedVersion] = await Promise.all([getChangelogEntries(), getInstalledVersion()]);
+    const [backendEntries, installedVersion, frontendReleases] = await Promise.all([
+        getChangelogEntries(),
+        getInstalledVersion(),
+        getFrontendReleases(),
+    ]);
 
     const backendItems: ChangelogListItem[] = (backendEntries ?? []).map((entry) => ({
         id: `backend-${entry.id}`,
@@ -48,7 +43,7 @@ export default async function Update() {
         body: entry.body,
     }));
 
-    const frontendItems: ChangelogListItem[] = (frontendReleases as FrontendRelease[]).map((release, index) => ({
+    const frontendItems: ChangelogListItem[] = frontendReleases.map((release, index) => ({
         id: `frontend-${release.version}`,
         version: release.version,
         date: release.date,

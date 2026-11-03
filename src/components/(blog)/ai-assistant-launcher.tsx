@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Info, Search, SendHorizontal, Sparkles, X } from "lucide-react";
+import { Search, SendHorizontal, Sparkles, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,12 +30,15 @@ export function AiAssistantLauncher({
     welcome,
     chatSuggestions,
     searchSuggestions,
+    embedded = false,
 }: {
     enabled?: boolean;
     name?: string;
     welcome?: string;
     chatSuggestions?: string[];
     searchSuggestions?: string[];
+    /** 由外层容器统一负责定位（与音乐播放器共用左下角一列）时传 true */
+    embedded?: boolean;
 }) {
     const [open, setOpen] = useState(false);
     const [draft, setDraft] = useState("");
@@ -62,7 +65,7 @@ export function AiAssistantLauncher({
     const searches = (searchSuggestions ?? []).filter((s) => s && s.trim());
 
     return (
-        <div ref={rootRef} className="fixed bottom-5 left-5 z-50 flex flex-col items-start gap-3">
+        <div ref={rootRef} className={embedded ? "flex flex-col items-start gap-3" : "fixed bottom-5 left-5 z-50 flex flex-col items-start gap-3"}>
             {/* 对话面板 */}
             {open && (
                 <div
@@ -96,19 +99,6 @@ export function AiAssistantLauncher({
                                 {welcome}
                             </div>
                         )}
-
-                        {/* 后端能力缺失的真实状态：不伪造回答，直接说明 */}
-                        <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-                            <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                            <div className="space-y-1">
-                                <div className="font-medium">后端未提供对话接口</div>
-                                <div>
-                                    服务端没有开放 AI 助手的问答/检索接口，所以这里不生成回答。
-                                    欢迎语与建议词都来自后台「设置 → AI → AI 助手」的真实配置；
-                                    下面的搜索建议可以直接用（走站内搜索）。
-                                </div>
-                            </div>
-                        </div>
 
                         {chats.length > 0 && (
                             <div className="space-y-1.5">
@@ -152,14 +142,14 @@ export function AiAssistantLauncher({
                         <Input
                             value={draft}
                             onChange={(e) => setDraft(e.target.value)}
-                            placeholder="后端未提供对话接口"
+                            placeholder="输入你的问题…"
                             aria-label="提问内容"
                             className="h-8 text-sm"
                         />
                         <Button
                             className="h-8 shrink-0 rounded-lg text-xs"
                             disabled
-                            title="后端未提供 AI 助手对话接口，这里不会伪造回答"
+                            title="暂未开放对话能力"
                         >
                             <SendHorizontal className="size-3.5" />
                             发送

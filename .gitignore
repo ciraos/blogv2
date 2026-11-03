@@ -52,3 +52,6 @@ package-lock.json
 
 # 本地提交说明草稿（不进版本库）
 commit-msg.txt
+
+# 单元测试（本地跑 pnpm test，不进版本库）
+/tests/

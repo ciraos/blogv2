@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 
@@ -25,7 +25,7 @@ export function ChangelogTabs({ tabs }: { tabs: ChangelogTab[] }) {
 
     return (
         <div className="space-y-4">
-            <div role="tablist" aria-label="更新日志来源" className="flex flex-wrap items-center gap-2">
+            <div role="tablist" aria-label="更新日志来源" className="flex flex-wrap items-center justify-center gap-2">
                 {tabs.map((tab) => {
                     const selected = tab.id === activeTab?.id;
                     return (
