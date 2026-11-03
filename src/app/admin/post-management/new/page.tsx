@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function NewArticlePage() {
     return (
         // flex + overflow-hidden：给里面的 .admin-page 一个确定高度，卡片才能内部滚动而不是溢出被裁
-        <div className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-background">
+        <div className="article-editor-page fixed inset-0 z-[60] flex flex-col overflow-hidden bg-background">
             <ArticleForm mode="create" />
         </div>
     );

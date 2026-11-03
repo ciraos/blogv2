@@ -1,7 +1,8 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { ImagePlus, Loader2, WandSparkles } from "lucide-react";
+import { commands as mdCommands, type ICommand } from "@uiw/react-md-editor";
+import { Heading1, Heading2, Heading3, ImagePlus, Loader2, WandSparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { AIWritingDialog } from "@/components/admin/ai-writing-dialog";
@@ -53,19 +54,37 @@ export function MarkdownEditor({
         const resize = () => {
             const editor = el.querySelector<HTMLElement>(".w-md-editor");
             if (!editor) return;
-            // 高度 = 编辑器上沿 → 滚动容器可见底部 之间，再扣掉底部工具条与一点留白。
-            // 用「相对容器的偏移」而不是视口坐标：容器滚动时两者同步变化，差值不变，所以不用监听 scroll。
             const host = el.closest<HTMLElement>(".admin-scroll") ?? document.documentElement;
+            const area = editor.querySelector<HTMLElement>(".w-md-editor-area");
+            // 工具栏高度**实测**，不要写死：按钮从 20px 放大到 30px 后工具栏是 43px，
+            // 写死旧值 42 会让内容区多出 1px，textarea 于是自己滚起来（看起来像多了一条滚动条）。
+            const toolbar = editor.querySelector<HTMLElement>(".w-md-editor-toolbar");
+            const toolbarH = toolbar ? Math.round(toolbar.getBoundingClientRect().height) : 42;
+
+            /** 应用高度：外层编辑器 = h，内容区 = h - 工具栏 */
+            const apply = (h: number) => {
+                editor.style.height = `${h}px`;
+                if (area) area.style.height = `${h - toolbarH}px`;
+            };
+
+            // 高度 = 编辑器上沿 → 滚动容器可见底部，再扣掉底部工具条与留白。
+            // 用「相对容器的偏移」而不是视口坐标：容器滚动时两者同步变化，差值不变，所以不用监听 scroll。
             const hostRect = host.getBoundingClientRect();
             const offsetInHost = el.getBoundingClientRect().top - hostRect.top;
             const footer = el.querySelector<HTMLElement>("[data-editor-footer]");
             const footerH = footer ? footer.getBoundingClientRect().height : 0;
-            const next = Math.max(300, Math.round(host.clientHeight - offsetInHost - footerH - 16));
-            // 已经是目标高度就什么都不做（ResizeObserver 会因我们改高度再次触发，这里避免来回抖）
-            if (Math.abs(editor.getBoundingClientRect().height - next) < 2) return;
-            editor.style.height = `${next}px`;
-            const area = editor.querySelector<HTMLElement>(".w-md-editor-area");
-            if (area) area.style.height = `${next - 42}px`; // 减掉编辑器自己的工具栏
+            const target = Math.max(300, Math.round(host.clientHeight - offsetInHost - footerH - 16));
+
+            // 已经是目标高度就进入「校正」分支（ResizeObserver 会因我们改高度再次触发，避免来回抖）
+            if (Math.abs(editor.getBoundingClientRect().height - target) >= 2) apply(target);
+
+            // 二次校正：算出来的高度仍让外层容器溢出几像素时（内边距、标签行高有出入），
+            // 把编辑器再压回去，直到外层不出滚动条 —— 这样页面上只剩编辑器内部那一条。
+            const overflow = host.scrollHeight - host.clientHeight;
+            if (overflow > 0) {
+                const shrunk = Math.max(240, editor.getBoundingClientRect().height - overflow - 2);
+                if (Math.abs(editor.getBoundingClientRect().height - shrunk) >= 2) apply(shrunk);
+            }
         };
         resize();
         window.addEventListener("resize", resize);
@@ -122,6 +141,78 @@ export function MarkdownEditor({
         [uploadFiles]
     );
 
+    /**
+     * 工具栏（两段）：
+     * - 左侧排版/插入命令：标题 1~3、加粗/斜体/删除线、引用、行内码、代码块、链接、图片、表格、
+     *   分割线、三种列表；用分隔线按「文字样式 / 块级 / 插入 / 列表」分组，比默认那一排更好认。
+     * - 右侧：AI 写作 + 帮助。AI 按钮就是需求里要挪到最右边的那个。
+     * 按钮尺寸/间距在 globals.css 的 .w-md-editor-toolbar 规则里放大（默认 20px 高太小太挤）。
+     */
+    const toolbarCommands = useMemo<ICommand[]>(() => {
+        // 标题：包内置的 title 命令用文字当图标，放大按钮后会糊成一团，这里换成图标命令
+        const heading = (level: 1 | 2 | 3): ICommand => ({
+            name: `h${level}`,
+            keyCommand: `h${level}`,
+            buttonProps: { "aria-label": `标题 ${level}`, title: `标题 ${level}` },
+            icon:
+                level === 1 ? (
+                    <Heading1 className="size-4" />
+                ) : level === 2 ? (
+                    <Heading2 className="size-4" />
+                ) : (
+                    <Heading3 className="size-4" />
+                ),
+            execute: (_state, api) => api.replaceSelection(`${"#".repeat(level)} `),
+        });
+
+        // 图片：默认命令只插 ![]() 空语法，这里改成走我们自己的上传（也能 Ctrl+V 粘贴截图）
+        const imageUpload: ICommand = {
+            name: "image-upload",
+            keyCommand: "image-upload",
+            buttonProps: { "aria-label": "插入图片", title: "插入图片（也可以直接 Ctrl+V 粘贴截图）" },
+            icon: <ImagePlus className="size-4" />,
+            execute: () => fileRef.current?.click(),
+        };
+
+        return [
+            heading(1),
+            heading(2),
+            heading(3),
+            mdCommands.divider,
+            mdCommands.bold,
+            mdCommands.italic,
+            mdCommands.strikethrough,
+            mdCommands.divider,
+            mdCommands.quote,
+            mdCommands.code,
+            mdCommands.codeBlock,
+            mdCommands.divider,
+            mdCommands.link,
+            imageUpload,
+            mdCommands.table,
+            mdCommands.hr,
+            mdCommands.divider,
+            mdCommands.unorderedListCommand,
+            mdCommands.orderedListCommand,
+            mdCommands.checkedListCommand,
+        ];
+    }, []);
+
+    const toolbarExtra = useMemo<ICommand[]>(
+        () => [
+            {
+                name: "ai-writing",
+                keyCommand: "ai-writing",
+                buttonProps: { "aria-label": "AI 写作", title: "AI 写作" },
+                icon: <WandSparkles className="size-4 text-primary" />,
+                execute: () => setAiOpen(true),
+            },
+            mdCommands.divider,
+            mdCommands.help,
+        ],
+        []
+    );
+
     return (
         <div ref={wrapRef} className="overflow-hidden rounded-md border" data-color-mode="light">
             <div onPaste={onPaste}>
@@ -140,6 +231,8 @@ export function MarkdownEditor({
                      * 而且后台本来就有独立预览（article-form 的「预览」按钮 → 与前台同源的 ArticleBody），
                      * 这里的实时预览是重复的。真要实时看，可用下方「实时预览」按钮临时打开。
                      */
+                    commands={toolbarCommands}
+                    extraCommands={toolbarExtra}
                     preview={livePreview ? "live" : "edit"}
                     visibleDragbar={false}
                     textareaProps={{ placeholder }}
@@ -169,16 +262,6 @@ export function MarkdownEditor({
                         title="长文开启后会明显变卡（页面里会多渲染一份完整正文）"
                     >
                         {livePreview ? "关闭实时预览" : "实时预览"}
-                    </button>
-                    {/* AI 写作（PRO 接口 POST /api/pro/admin/ai/writing，同源代理透传 SSE）：
-                        生成结果追加到正文末尾，插入逻辑与上面的图片插入一致 */}
-                    <button
-                        type="button"
-                        onClick={() => setAiOpen(true)}
-                        className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-                    >
-                        <WandSparkles className="size-3.5" />
-                        AI 写作
                     </button>
                 </div>
                 <span className="text-[11px] tabular-nums text-muted-foreground">{value.length} 字</span>

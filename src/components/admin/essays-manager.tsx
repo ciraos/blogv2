@@ -802,9 +802,14 @@ export function EssaysManager() {
                                     onChange={(e) => setForm({ ...form, content: e.target.value })}
                                     rows={4}
                                     maxLength={CONTENT_MAX}
-                                    placeholder="请输入说说内容..."
+                                    placeholder="请输入说说内容... 支持 Markdown：**粗体** *斜体* ~~删除线~~ `代码` [链接](url) ![图片](url)"
                                     className="max-h-48 min-h-[5.5rem] w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
                                 />
+                                {/* 与前台 essay-content.tsx 的轻量解析保持一致：只支持行内语法，换行按原样保留 */}
+                                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                                    支持轻量 Markdown：**粗体**、*斜体*、~~删除线~~、`行内代码`、[文字](链接)、![说明](图片)；
+                                    换行原样保留。标题/列表/代码块请发文章。
+                                </p>
                             </FormField>
 
                             {/* 图片列表：缩略图贴片 + 上传 + 手动贴链接 */}

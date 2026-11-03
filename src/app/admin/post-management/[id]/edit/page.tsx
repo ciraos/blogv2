@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function EditArticlePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     return (
-        <div className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-background">
+        <div className="article-editor-page fixed inset-0 z-[60] flex flex-col overflow-hidden bg-background">
             <ArticleForm mode="edit" articleId={id} />
         </div>
     );

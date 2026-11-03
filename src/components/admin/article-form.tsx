@@ -11,7 +11,6 @@ import {
     Eye,
     History,
     ImagePlus,
-    Info,
     Loader2,
     Plus,
     Save,
@@ -215,16 +214,6 @@ function ProBadge() {
         <span className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-amber-600 dark:text-amber-400">
             PRO
         </span>
-    );
-}
-
-/** 「后端没有这个字段」的如实说明：不造假输入框，只讲清楚为什么禁用 */
-function NotSupportedNote({ children }: { children: React.ReactNode }) {
-    return (
-        <p className="flex items-start gap-1.5 rounded-md border border-dashed px-2 py-1.5 text-[11px] leading-relaxed text-muted-foreground">
-            <Info className="mt-0.5 size-3 shrink-0" aria-hidden />
-            <span>{children}</span>
-        </p>
     );
 }
 
@@ -1185,7 +1174,7 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                         {/* lg 下和左栏一样锁成滚动容器高度，并且自己滚：
                             这样设置项再长也只滚右栏，不会把左栏（正文）拖出一片空白 */}
                         <aside
-                            className={`flex-col gap-3 lg:h-full lg:min-h-0 lg:overflow-y-auto ${
+                            className={`editor-sidebar-scroll flex-col gap-3 lg:h-full lg:min-h-0 lg:overflow-y-auto ${
                                 showSettings ? "flex" : "hidden"
                             }`}
                         >
@@ -1268,11 +1257,6 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                                         <p className="text-[11px] leading-relaxed text-muted-foreground">
                                             用于前台列表、归档与排序的发布日期（对应文章创建时间）；留空则使用保存时的当前时间。
                                         </p>
-                                        <NotSupportedNote>
-                                            后端还有 custom_published_at（自定义发布日期），但前端提交载荷 AdminArticlePayload
-                                            里仍没声明它，所以这个输入框保持禁用；定时发布不受影响 —— 状态选「定时」后会出现「定时发布」卡
-                                            （scheduled_at 已加进载荷）。
-                                        </NotSupportedNote>
                                     </SettingCard>
 
                                     {/* 定时发布：只在状态选「定时」时出现（对齐官方 EditorSidebar.tsx:930-958）。
@@ -1604,10 +1588,6 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                                             checked={false}
                                             disabled
                                         />
-                                        <NotSupportedNote>
-                                            后端的文章模型（model.CreateArticleRequest / model.ArticleExtraConfig）里没有会员可见性或所需等级字段，
-                                            前端载荷 AdminArticlePayload 也没有，所以本卡是禁用呈现，等后端补字段后再接入。
-                                        </NotSupportedNote>
                                     </SettingCard>
 
                                     <SettingCard title="全文隐藏">
@@ -1617,9 +1597,6 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                                             checked={false}
                                             disabled
                                         />
-                                        <NotSupportedNote>
-                                            后端只有账号体系的 password 字段，文章模型里没有「文章密码 / 全文隐藏」字段，本卡为禁用呈现。
-                                        </NotSupportedNote>
                                     </SettingCard>
 
                                     {/* 高级：IP 属地可直接提交；自定义 JS / 文档模式的字段后端有、载荷没声明 */}
@@ -1642,11 +1619,6 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                                                 placeholder="仅管理员可用。填写后会在该文章的详情页执行。"
                                                 className="w-full resize-y rounded-md border border-input bg-muted/40 px-3 py-2 font-mono text-xs outline-none"
                                             />
-                                            <div className="mt-1.5">
-                                                <NotSupportedNote>
-                                                    后端字段是 extra_config.custom_js，但前端载荷没声明 extra_config，本次不提交、只做禁用呈现。
-                                                </NotSupportedNote>
-                                            </div>
                                         </div>
                                         <div>
                                             {/* 文档模式：做成「入口」而不是表单开关。
