@@ -8,8 +8,16 @@ import { getMusicPlaylist } from "@/lib/music";
 import { getSiteConfigs, requireSiteConfigs } from "@/lib/site-config";
 import { generateBlogMetadata } from "@/lib/seo";
 import { resolveAssetUrl } from "@/lib/utils";
+import type { PostListData } from "@/types/articles";
+import type { CommentListData } from "@/lib/api";
+import type { EssayListData } from "@/types/essays";
 
 export const dynamic = "force-dynamic";
+
+// 各块取数失败时的空列表兜底（必须带齐 page / pageSize 等字段，否则类型不成立）
+const EMPTY_POSTS: PostListData = { list: [], total: 0, page: 1, pageSize: 1 };
+const EMPTY_ESSAYS: EssayListData = { list: [], total: 0, page: 1, page_size: 1 };
+const EMPTY_COMMENTS: CommentListData = { list: [], total: 0, page: 1, pageSize: 1, total_with_children: 0 };
 
 export async function generateMetadata(): Promise<Metadata> {
     const config = await getSiteConfigs();
@@ -83,18 +91,18 @@ export default async function About() {
     const since = config.footer?.owner?.since;
     const days = since ? daysSince(since) : null;
 
-    // 数据全部并行取；任何一块失败只影响自己
+    // 数据全部并行取；任何一块失败只影响自己（兜底值必须是完整的列表结构，见 types 里的 PostListData / EssayListData）
     const [articles, essays, comments, songs] = await Promise.all([
-        safe(getPublicArticlesApi({ page: 1, pageSize: 1 }), { total: 0, list: [] }),
-        safe(getPublicEssaysApi({ page: 1, page_size: 1 }), { total: 0, list: [] }),
-        safe(getLatestCommentsApi({ page: 1, pageSize: 1 }), { total: 0, list: [] }),
+        safe(getPublicArticlesApi({ page: 1, pageSize: 1 }), EMPTY_POSTS),
+        safe(getPublicEssaysApi({ page: 1, page_size: 1 }), EMPTY_ESSAYS),
+        safe(getLatestCommentsApi({ page: 1, pageSize: 1 }), EMPTY_COMMENTS),
         safe(getMusicPlaylist(config?.music?.player?.custom_playlist), []),
     ]);
 
     // 最近动态：最近 3 篇文章 + 3 条说说，按时间混排
     const [recentPosts, recentEssays] = await Promise.all([
-        safe(getPublicArticlesApi({ page: 1, pageSize: 3 }), { total: 0, list: [] }),
-        safe(getPublicEssaysApi({ page: 1, page_size: 3 }), { total: 0, list: [] }),
+        safe(getPublicArticlesApi({ page: 1, pageSize: 3 }), EMPTY_POSTS),
+        safe(getPublicEssaysApi({ page: 1, page_size: 3 }), EMPTY_ESSAYS),
     ]);
 
     const timeline: TimelineItem[] = [
@@ -130,7 +138,7 @@ export default async function About() {
     const equipmentItems = (equipmentGroup?.equipment_list ?? []).slice(0, 4).map((item) => ({
         name: item.name,
         description: item.description ?? "",
-        image: item.image ? resolveAssetUrl(item.image) : "",
+        image: item.image ? (resolveAssetUrl(item.image) ?? "") : "",
     }));
 
     const stats = [
