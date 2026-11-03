@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
 import { Info, Mic, X } from "lucide-react";
 
@@ -33,12 +34,17 @@ export function AiPodcastButton({
     buttonIcon?: string;
 }) {
     const [open, setOpen] = useState(false);
+    const pathname = usePathname();
 
-    // 未开启就整块不渲染（线上默认 ai_podcast.enable = false）。
+    // 只在文章详情页显示（/posts/{id}）：列表页 /posts、分类标签页都不显示。
+    // 用 usePathname 而不是服务端 x-pathname —— 软导航时也能立刻跟着切。
+    const isPostPage = /^\/posts\/[^/]+\/?$/.test(pathname ?? "");
+
+    // 未开启、或不在文章页，就整块不渲染（线上默认 ai_podcast.enable = false）。
     // ⚠️ 属性名与站点配置字段保持一致（enable，不是 enabled）：早先写成 enabled 时，
     // 页面那边 {...aiPodcast} 展开传的是 enable，属性名对不上 → 组件永远返回 null，
     // 而且类型系统不会报错（可选属性 + 变量展开不做多余属性检查），只能靠运行态发现。
-    if (!enable) return null;
+    if (!enable || !isPostPage) return null;
 
     const label = buttonText?.trim() || "AI 播客";
     // 官方存的是 iconify 名（默认 ri:mic-fill），本项目没有那套图标源 → 统一退化为 lucide 的 Mic，
@@ -47,19 +53,16 @@ export function AiPodcastButton({
 
     return (
         <>
-            <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border bg-card p-4 shadow-sm">
-                <Mic className="size-4 shrink-0 text-primary" aria-hidden />
-                <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium">AI 播客</div>
-                    <div className="text-xs text-muted-foreground">
-                        把本文转成双人对话音频（由后台 AI 播客配置的语音服务生成）
-                    </div>
-                </div>
-                <Button variant="outline" className="h-8 shrink-0 rounded-lg text-xs" onClick={() => setOpen(true)}>
-                    <Mic className="size-3.5" />
-                    {label}
-                </Button>
-            </div>
+            {/* 左下角悬浮入口：与 AI 助手 / 音乐播放器并排成同一列，样式保持一致（圆形图标按钮） */}
+            <button
+                type="button"
+                onClick={() => setOpen(true)}
+                aria-label={label}
+                title={label}
+                className="flex size-10 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-lg backdrop-blur transition-colors hover:border-primary hover:text-primary"
+            >
+                <Mic className="size-4" />
+            </button>
 
             {open && typeof document !== "undefined" && createPortal(
                 <div

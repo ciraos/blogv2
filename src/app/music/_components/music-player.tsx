@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import type { LyricLine, PlayMode, Song } from "@/types/music";
+import { parseLrc } from "@/lib/lyrics";
 import { LyricsScroll } from "./lyrics-scroll";
 import styles from "../music.module.css";
 
@@ -44,30 +45,6 @@ const FALLBACK_ACCENT_2 = "#764ba2";
 /** http → https：后端返回的音源是 http 直链，HTTPS 站点直接播放会被当 mixed content 拦掉 */
 function ensureHttps(url: string): string {
     return url.startsWith("http://") ? url.replace("http://", "https://") : url;
-}
-
-/**
- * 解析 LRC 歌词文本。
- * 容错三种时间格式：`[mm:ss.xx]`、`[mm:ss:xx]`、`[mm:ss]`；
- * 时间戳后面允许多余字符（线上实测有 `[00:00.00-1] 作曲 : xxx` 这种带 `-1` 的写法）。
- */
-function parseLrc(text: string): LyricLine[] {
-    if (!text) return [];
-    const lines: LyricLine[] = [];
-    for (const raw of text.split(/\r?\n/)) {
-        const stamps = [...raw.matchAll(/\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?[^\]]*\]/g)];
-        if (stamps.length === 0) continue;
-        const content = raw.replace(/\[[^\]]*\]/g, "").trim();
-        if (!content) continue;
-        for (const m of stamps) {
-            const min = Number(m[1]);
-            const sec = Number(m[2]);
-            const frac = m[3] ? Number(`0.${m[3]}`) : 0;
-            lines.push({ time: min * 60 + sec + frac, text: content });
-        }
-    }
-    // 多时间戳行会打乱顺序，统一按时间排一次
-    return lines.sort((a, b) => a.time - b.time);
 }
 
 function formatTime(seconds: number): string {

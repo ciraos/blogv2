@@ -9,6 +9,8 @@ import { TopProgress } from "@/components/ui/top-progress";
 import Header from "@/components/header";
 import { ConfirmProvider } from "@/components/confirm-provider";
 import { FloatingActions } from "@/components/(blog)/floating-actions";
+import { AiPodcastButton } from "@/components/(blog)/ai-podcast-button";
+import { MiniMusicPlayer } from "@/components/(blog)/mini-music-player";
 import { AiAssistantLauncher } from "@/components/(blog)/ai-assistant-launcher";
 import { AuthExpiredNotifier } from "@/components/(blog)/auth-expired-notifier";
 import { FooterBadges } from "@/components/(blog)/footer-badges";
@@ -144,100 +146,114 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
             {/* 侧边栏收缩状态：前台右侧边栏（CollapsibleAside）与右下角悬浮按钮共用同一份状态。
                 defaultCollapsedPaths：这些页面「本地没有记录时」默认收起（目前只有装备页，卡片区需要更宽） */}
             <SidebarCollapseProvider defaultCollapsedPaths={SIDEBAR_DEFAULT_COLLAPSED_PATHS}>
-            {/* flex 列布局 + min-h-dvh：内容不足一屏时 footer 吸附在视口底部 */}
-            <div id="CIRAOS" className="flex min-h-dvh flex-col">
-              <Header {...header} />
+              {/* flex 列布局 + min-h-dvh：内容不足一屏时 footer 吸附在视口底部 */}
+              <div id="CIRAOS" className="flex min-h-dvh flex-col">
+                <Header {...header} />
 
-              {/* 站点公告条（SITE_ANNOUNCEMENT）：导航正下方的通栏条，位于首屏大图/正文之前 */}
-              <AnnouncementBar html={config?.SITE_ANNOUNCEMENT} />
+                {/* 站点公告条（SITE_ANNOUNCEMENT）：导航正下方的通栏条，位于首屏大图/正文之前 */}
+                <AnnouncementBar html={config?.SITE_ANNOUNCEMENT} />
 
-              {/* 页面顶部大图（OneImage）：home/archives/tags/categories 各自 enable 控制；
+                {/* 页面顶部大图（OneImage）：home/archives/tags/categories 各自 enable 控制；
                   header 透明悬浮其上，滚动离开首屏后恢复 */}
-              <OneImageHero oneImage={config?.page?.one_image} appName={config?.APP_NAME ?? "博客"} />
+                <OneImageHero oneImage={config?.page?.one_image} appName={config?.APP_NAME ?? "博客"} />
 
-              {/* 页面容器：只负责居中 / 最大宽度 / 内边距。
+                {/* 页面容器：只负责居中 / 最大宽度 / 内边距。
                   右侧边栏改由「页面」按需渲染（对齐官方做法，见 components/(blog)/page-with-sidebar.tsx） */}
-              <div className="main w-full max-w-300 mx-auto mt-10 px-4 sm:px-0 flex-1">
-                {/* 头像配置下发：评论区 / 评论列表据此拼 Gravatar（GRAVATAR_URL + DEFAULT_GRAVATAR_TYPE），
+                <div className="main w-full max-w-300 mx-auto mt-10 px-4 sm:px-0 flex-1">
+                  {/* 头像配置下发：评论区 / 评论列表据此拼 Gravatar（GRAVATAR_URL + DEFAULT_GRAVATAR_TYPE），
                     用 layout 已经取到的 site-config，客户端不必再请求一次，也不会先渲染错头像再替换 */}
-                <GravatarProvider value={{ url: config?.GRAVATAR_URL, defaultType: config?.DEFAULT_GRAVATAR_TYPE }}>
-                  {children}
-                </GravatarProvider>
-              </div>
-
-              {/* footer 外层全宽：整页背景模式下承载 footer 背景色与顶部渐隐带（铺满屏幕），
-                  非 hero 页无 .one-image-footer-fade 时等同透明，不影响常规布局 */}
-              <div id="footer" className="footer relative mt-15 w-full">
-                <div className="mx-auto w-full max-w-300 px-4 sm:px-0">
-                  {/* 页脚社交栏：左右社交图标 + 中间头像（config.footer.socialBar），位于页脚顶部 */}
-                  <FooterSocialBar
-                    left={config?.footer?.socialBar?.left}
-                    right={config?.footer?.socialBar?.right}
-                    centerImg={config?.footer?.socialBar?.centerImg}
-                  />
-
-                  {/* 运行时间（footer.runtime）+ 自定义文案（footer.custom_text）：
-                      官方 footer.pug 里这两块就排在社交栏之后、项目链接之前 */}
-                  <FooterRuntime config={config?.footer?.runtime} />
-                  <FooterCustomText text={config?.footer?.custom_text} />
-
-                  <div className="footer-project">
-                    {config?.footer?.project?.list?.length ? (
-                      <div className="grid grid-cols-2 gap-6 pt-0 sm:grid-cols-4">
-                        {config.footer.project.list.map((group) => (
-                          <div key={group.title}>
-                            <h3 className="mb-3 text-sm font-semibold">{group.title}</h3>
-                            <ul className="space-y-2">
-                              {group.links.map((item) => {
-                                const isExternal = item.link.startsWith("http");
-                                return (
-                                  <li key={item.title}>
-                                    <Link
-                                      href={item.link}
-                                      {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                                      className="rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
-                                    >
-                                      {item.title}
-                                    </Link>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          </div>
-                        ))}
-                        <FooterRandomLinks initialLinks={randomLinks} count={randomFriendsCount} />
-                      </div>
-                    ) : null}
-                  </div>
-
-                  {/* 徽章（footer.badge，官方排在项目链接之后） */}
-                  <FooterBadges config={config?.footer?.badge} />
+                  <GravatarProvider value={{ url: config?.GRAVATAR_URL, defaultType: config?.DEFAULT_GRAVATAR_TYPE }}>
+                    {children}
+                  </GravatarProvider>
                 </div>
-                {/* 页脚底栏（通栏，自己铺满宽度）：©年份 · 站长 / 备案 + 运行状态 → 右侧底栏链接 + CC 协议。
+
+                {/* footer 外层全宽：整页背景模式下承载 footer 背景色与顶部渐隐带（铺满屏幕），
+                  非 hero 页无 .one-image-footer-fade 时等同透明，不影响常规布局 */}
+                <div id="footer" className="footer relative mt-15 w-full">
+                  <div className="mx-auto w-full max-w-300 px-4 sm:px-0">
+                    {/* 页脚社交栏：左右社交图标 + 中间头像（config.footer.socialBar），位于页脚顶部 */}
+                    <FooterSocialBar
+                      left={config?.footer?.socialBar?.left}
+                      right={config?.footer?.socialBar?.right}
+                      centerImg={config?.footer?.socialBar?.centerImg}
+                    />
+                    {/* 运行时间（footer.runtime）+ 自定义文案（footer.custom_text）：
+                      官方 footer.pug 里这两块就排在社交栏之后、项目链接之前 */}
+                    <FooterRuntime config={config?.footer?.runtime} />
+                    <FooterCustomText text={config?.footer?.custom_text} />
+                    <div className="footer-project">
+                      {config?.footer?.project?.list?.length ? (
+                        <div className="grid grid-cols-2 gap-6 pt-0 sm:grid-cols-4">
+                          {config.footer.project.list.map((group) => (
+                            <div key={group.title}>
+                              <h3 className="mb-3 text-sm font-semibold">{group.title}</h3>
+                              <ul className="space-y-2">
+                                {group.links.map((item) => {
+                                  const isExternal = item.link.startsWith("http");
+                                  return (
+                                    <li key={item.title}>
+                                      <Link
+                                        href={item.link}
+                                        {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                                        className="rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                                      >
+                                        {item.title}
+                                      </Link>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          ))}
+                          <FooterRandomLinks initialLinks={randomLinks} count={randomFriendsCount} />
+                        </div>
+                      ) : null}
+                    </div>
+                    {/* 徽章（footer.badge，官方排在项目链接之后） */}
+                    <FooterBadges config={config?.footer?.badge} />
+                  </div>
+                  {/* 页脚底栏（通栏，自己铺满宽度）：©年份 · 站长 / 备案 + 运行状态 → 右侧底栏链接 + CC 协议。
                     对齐官方主题 Blog Footer 的 Bottom Bar，配色走主题令牌，深浅色自适应。 */}
-                <FooterBottomBar
-                  owner={config?.footer?.owner}
-                  bar={config?.footer?.bar}
-                  icpNumber={config?.ICP_NUMBER}
-                  policeRecordNumber={config?.POLICE_RECORD_NUMBER}
-                  policeRecordIcon={config?.POLICE_RECORD_ICON}
-                  kuma={config?.footer?.uptime_kuma}
-                />
+                  <FooterBottomBar
+                    owner={config?.footer?.owner}
+                    bar={config?.footer?.bar}
+                    icpNumber={config?.ICP_NUMBER}
+                    policeRecordNumber={config?.POLICE_RECORD_NUMBER}
+                    policeRecordIcon={config?.POLICE_RECORD_ICON}
+                    kuma={config?.footer?.uptime_kuma}
+                  />
+                </div>
+
               </div>
-            </div>
-            {/* (blog) 全局右下角悬浮按钮组：外层展开 → 目录（仅文章页）+ 回到顶部 */}
-            <FloatingActions />
-            {/* AI 助手悬浮入口（左下角，避免与右下角悬浮组重叠）：
-                未开启（ai_assistant.enable = false）时组件内部直接返回 null；
-                当前后端没有对话接口，所以面板只呈现后台配置的名称/欢迎语/建议词 + 真实的状态说明 */}
-            <AiAssistantLauncher
-                enabled={config?.ai_assistant?.enable}
-                name={config?.ai_assistant?.name}
-                welcome={config?.ai_assistant?.welcome}
-                chatSuggestions={config?.ai_assistant?.chat_suggestions}
-                searchSuggestions={config?.ai_assistant?.search_suggestions}
-            />
-          </SidebarCollapseProvider>
+
+              {/* (blog) 全局右下角悬浮按钮组：外层展开 → 目录（仅文章页）+ 回到顶部 */}
+              <FloatingActions />
+
+              {/* 左下角一列（从上到下）：AI 播客 → AI 助手 → 迷你音乐播放器（gap-2）。
+                三者都拆掉各自的 fixed 定位，由这层容器统一锚定，避免各自算偏移量对不齐。
+                · AI 播客只在文章详情页渲染（组件内部按 /posts/{id} 判断）
+                · AI 助手在 ai_assistant.enable = false 时内部返回 null
+                · 播放器没有歌单时内部返回 null */}
+              <div className="fixed bottom-5 left-5 z-50 flex flex-col items-start gap-2">
+                <AiPodcastButton
+                  enable={config?.ai_podcast?.enable}
+                  buttonText={config?.ai_podcast?.button_text}
+                  buttonIcon={config?.ai_podcast?.button_icon}
+                />
+                <AiAssistantLauncher
+                  embedded
+                  enabled={config?.ai_assistant?.enable}
+                  name={config?.ai_assistant?.name}
+                  welcome={config?.ai_assistant?.welcome}
+                  chatSuggestions={config?.ai_assistant?.chat_suggestions}
+                  searchSuggestions={config?.ai_assistant?.search_suggestions}
+                />
+                {/* 迷你音乐播放器：歌单来自后端 /public/music/playlist（后台 music.player.*） */}
+                <MiniMusicPlayer embedded />
+              </div>
+
+            </SidebarCollapseProvider>
+
           </ConfirmProvider>
         </ThemeProvider>
       </body>

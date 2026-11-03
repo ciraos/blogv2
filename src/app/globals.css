@@ -1,4 +1,4 @@
-/* 全站字体「站酷快乐体」（ZCOOL KuaiLe，OFL 免费商用）—— 已自托管：
+﻿/* 全站字体「站酷快乐体」（ZCOOL KuaiLe，OFL 免费商用）—— 已自托管：
    public/fonts/zcool-kuaile/ 下是 93 个 unicode-range 分片（合计约 1MB），
    src/app/zcool-kuaile.css 是本地的 @font-face 表（由 scripts/mirror-zcool-kuaile.mjs 生成，
    跑 `pnpm fonts:mirror` 可重新镜像），不再依赖 Google Fonts。
@@ -1542,7 +1542,7 @@ body {
   position: relative;
   width: 180px;
   height: 180px;
-  /* 两侧 margin 由 JSX 的 mx-7 md:mx-8 控制（技能标签与头像的间距） */
+  /* 两侧 margin 由 JSX 的 mx-3 md:mx-4 控制（技能标签与头像的间距） */
 }
 
 @media (max-width: 768px) {
@@ -1573,20 +1573,21 @@ body {
   right: 8px;
   bottom: 8px;
   z-index: 2;
-  width: 30px;
-  height: 30px;
+  /* 直径 36px ≈ 头像直径的 20%，再小会像个噪点（用户反馈太小） */
+  width: 36px;
+  height: 36px;
   background: #2ecc71;
   border: 4px solid var(--background);
   border-radius: 50%;
-  box-shadow: 0 0 6px rgb(0 0 0 / 0.15);
+  box-shadow: 0 0 8px rgb(0 0 0 / 0.18);
 }
 
 @media (max-width: 768px) {
   .avatar-online {
     right: 5px;
     bottom: 5px;
-    width: 22px;
-    height: 22px;
+    width: 26px;
+    height: 26px;
     border-width: 3px;
   }
 }
@@ -3996,4 +3997,79 @@ body:has(.one-image-hero) .main {
     animation-duration: 22s;
     animation-direction: reverse;
   }
+}
+
+/* ---------- 后台 Markdown 编辑器工具栏（@uiw/react-md-editor） ----------
+ * 默认样式里按钮只有 20px 高、li 之间没有间距，图标挤成一条细线（用户反馈「太小太挤」）。
+ * 这里统一放大到 30px、加 2px 间距、hover 给底色，分隔线也拉高，观感向官方富文本编辑器靠。
+ * 只作用于 .w-md-editor-toolbar，不影响其它组件。 */
+.w-md-editor-toolbar {
+  padding: 6px 10px !important;
+}
+
+.w-md-editor-toolbar ul {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+}
+
+.w-md-editor .w-md-editor-toolbar li > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0 !important;
+  border-radius: 6px;
+  color: var(--muted-foreground);
+}
+
+.w-md-editor .w-md-editor-toolbar li > button:hover,
+.w-md-editor .w-md-editor-toolbar li > button:focus {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.w-md-editor .w-md-editor-toolbar li > button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.w-md-editor .w-md-editor-toolbar-divider {
+  height: 18px;
+  margin: 0 6px !important;
+  background-color: var(--border);
+}
+
+/* ---------- 文章编辑页：只保留正文编辑器内部那条滚动条 ----------
+ * 编辑页是 fixed 满屏 + .admin-scroll 内部滚动的结构，实际会出现三条滚动条：
+ *   ① 外层 .admin-scroll（整张卡片）
+ *   ② 右栏设置区自己滚（lg:overflow-y-auto）
+ *   ③ Markdown 编辑器内部的 .w-md-editor-area
+ * 用户反馈"右边有俩"，这里把 ① ② 的滚动条隐藏掉（**只是不显示**，滚轮/触控板照常能滚），
+ * 视觉上只留下编辑器那一条。作用域限定在 .article-editor-page，不影响其它后台页。 */
+.article-editor-page .admin-scroll,
+.article-editor-page .editor-sidebar-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.article-editor-page .admin-scroll::-webkit-scrollbar,
+.article-editor-page .editor-sidebar-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* ---------- 编辑器内部只留一条滚动条 ----------
+ * @uiw/react-md-editor 的 .w-md-editor-area 之外，还可能有一层容器（版本/浏览器差异）也在滚，
+ * 结果右侧出现两条并排的竖条。这里把编辑器内部除 .w-md-editor-area 以外的所有滚动条隐藏，
+ * 只保留正文那一条。 */
+.article-editor-page .w-md-editor *:not(.w-md-editor-area) {
+  scrollbar-width: none;
+}
+
+.article-editor-page .w-md-editor *:not(.w-md-editor-area)::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }

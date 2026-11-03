@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Clock3, MapPin, MessageCircle, UserRound } from "lucide-react";
 
+import { EssayContent } from "@/components/(blog)/essay-content";
 import type { Essay } from "@/types/essays";
 import { resolveAssetUrl } from "@/lib/utils";
 
@@ -60,10 +61,11 @@ export function EssayCard({ essay, onImageClick, onComment }: EssayCardProps) {
 
     return (
         <article className="rounded-xl border bg-card p-4 pb-2 shadow-sm transition-shadow hover:shadow-md">
-            {/* 说说内容 */}
-            <p className="mb-2 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-foreground sm:text-sm">
-                {essay.content}
-            </p>
+            {/* 说说内容：轻量 Markdown（换行原样保留，另支持 **粗体** *斜体* ~~删除线~~ `代码` [链接](url) ![图片](url)） */}
+            <EssayContent
+                content={essay.content}
+                className="mb-2 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-foreground sm:text-sm"
+            />
 
             {/* 方形缩略图（对齐线上 117px，点击打开看图器） */}
             {images.length > 0 && (

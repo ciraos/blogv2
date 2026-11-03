@@ -5,7 +5,6 @@ import { notFound } from "next/navigation";
 
 import { ArticleBody } from "@/components/(blog)/article-body";
 import { ArticleSummary } from "@/components/(blog)/article-summary";
-import { AiPodcastButton } from "@/components/(blog)/ai-podcast-button";
 import { JsonLd } from "@/components/(blog)/json-ld";
 import { PostActions } from "@/components/(blog)/post-actions";
 import { PostComments } from "@/components/(blog)/post-comments";
@@ -117,10 +116,6 @@ export default async function Post({ params }: PostPageProps) {
     } | null = null;
     // 复制正文时的版权配置（post.copy.*）；null = 配置没取到，客户端不拦截也不追加
     let copyCopyright: ArticleCopyCopyrightConfig | null = null;
-    // AI 播客入口配置（ai_podcast.*）：开关/文案/图标都来自后台；线上默认 enable = false。
-    // 注意：文章级的 enable_ai_podcast 拿不到 —— 线上 GET /api/public/articles/{id} 实测不返回
-    // extra_config（只读探活 2026-10），所以这里只能按全局开关决定显不显示（见 ai-podcast-button.tsx 注释）。
-    let aiPodcast: { enable: boolean; buttonText?: string; buttonIcon?: string } | null = null;
     try {
         const config = await requireSiteConfigs();
         // 作者名兜底链照官方 PostCopyright/index.tsx 的顺序，但去掉 owner_name 那一级：
@@ -161,11 +156,6 @@ export default async function Post({ params }: PostPageProps) {
             isReprint,
             copyrightAuthor: article.copyright_author ?? "",
             copyrightUrl: article.copyright_url ?? "",
-        };
-        aiPodcast = {
-            enable: config.ai_podcast?.enable === true,
-            buttonText: config.ai_podcast?.button_text,
-            buttonIcon: config.ai_podcast?.button_icon,
         };
     } catch {
         // 配置获取失败时不渲染版权块、不做复制拦截（不阻塞文章正文）
@@ -327,9 +317,6 @@ export default async function Post({ params }: PostPageProps) {
                 <div className="mt-6 rounded-xl border border-border/60 bg-card p-5 shadow-sm md:p-8">
                     <ArticleBody html={contentHtml} codeBlock={codeBlock} copyCopyright={copyCopyright} />
                 </div>
-
-                {/* AI 播客入口（ai_podcast.enable）：按官方口径渲染按钮，未开启时组件自己返回 null */}
-                {aiPodcast && <AiPodcastButton {...aiPodcast} />}
 
                 {/* 正文结尾的装饰波浪（post.waves.enable）：纯装饰，不影响正文排版 */}
                 {wavesEnabled && <PostWaves />}
