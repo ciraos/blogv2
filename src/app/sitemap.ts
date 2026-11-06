@@ -3,8 +3,9 @@ import type { MetadataRoute } from "next";
 import { getBackendEdition } from "@/lib/edition";
 import { getAllPublicArticlesCached } from "@/lib/public-content-cache";
 import { SiteConfigResponse } from "@/types/site-config";
+import { API_URL } from "@/lib/api";
 
-const api_url = process.env.NEXT_PUBLIC_API_URL;
+
 const env_site_url = process.env.NEXT_PUBLIC_SITE_URL ?? "";
 
 /** 前台静态路由（收录可公开访问的内容页；search/random-post 为动态/跳转页不入） */
@@ -41,7 +42,7 @@ const STATIC_ENTRIES: StaticEntry[] = [
 async function resolveSiteUrl(): Promise<string> {
     if (env_site_url) return env_site_url.replace(/\/+$/, "");
     try {
-        const res = await fetch(`${api_url}/public/site-config`);
+        const res = await fetch(`${API_URL}/public/site-config`);
         const data: SiteConfigResponse = await res.json();
         const cfgUrl = data.data.SITE_URL;
         if (cfgUrl) return cfgUrl.replace(/\/+$/, "");

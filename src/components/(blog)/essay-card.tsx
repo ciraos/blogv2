@@ -60,7 +60,7 @@ export function EssayCard({ essay, onImageClick, onComment }: EssayCardProps) {
     const timeText = now === null ? formatAbsolute(essay.created_at) : formatRelative(essay.created_at, now);
 
     return (
-        <article className="rounded-xl border bg-card p-4 pb-2 shadow-sm transition-shadow hover:shadow-md">
+        <article className="border-b border-border/60 pb-4">
             {/* 说说内容：轻量 Markdown（换行原样保留，另支持 **粗体** *斜体* ~~删除线~~ `代码` [链接](url) ![图片](url)） */}
             <EssayContent
                 content={essay.content}
@@ -75,7 +75,7 @@ export function EssayCard({ essay, onImageClick, onComment }: EssayCardProps) {
                             key={i}
                             type="button"
                             onClick={() => onImageClick(i)}
-                            className="block cursor-zoom-in overflow-hidden rounded-lg"
+                            className="block cursor-zoom-in overflow-hidden rounded-md"
                             aria-label={`查看图片 ${i + 1}`}
                         >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -83,19 +83,16 @@ export function EssayCard({ essay, onImageClick, onComment }: EssayCardProps) {
                                 src={src}
                                 alt=""
                                 loading="lazy"
-                                className="size-[104px] rounded-lg object-cover transition-transform duration-300 hover:scale-105 sm:size-[117px]"
+                                className="size-[104px] rounded-md object-cover transition-transform duration-300 hover:scale-105 sm:size-[117px]"
                             />
                         </button>
                     ))}
                 </div>
             )}
 
-            {/* 虚线分隔 */}
-            <hr className="my-4 border-t border-dashed border-border" />
-
             {/* 底部信息条 */}
-            <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <div className="mt-3 flex items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[10px] tracking-[0.12em] text-muted-foreground/80 uppercase">
                     <span className="inline-flex items-center gap-1">
                         <Clock3 className="size-3.5" />
                         {timeText}

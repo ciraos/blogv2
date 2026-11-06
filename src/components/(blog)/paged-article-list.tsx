@@ -1,8 +1,8 @@
-import type { PostItem } from "@/types/articles";
+﻿import type { PostItem } from "@/types/articles";
 import { ArticleCard } from "@/components/(blog)/article-card";
 import { NumberedPagination } from "@/components/(blog)/numbered-pagination";
 import { getSiteConfigs } from "@/lib/site-config";
-import { cn, resolveAssetUrl } from "@/lib/utils";
+import { resolveAssetUrl } from "@/lib/utils";
 
 interface PagedArticleListProps {
     articles: PostItem[];
@@ -36,8 +36,6 @@ export async function PagedArticleList({
     const config = await getSiteConfigs();
     const defaults = config?.post?.default;
     const defaultCover = resolveAssetUrl(defaults?.cover);
-    // 官方语义：double_column 缺省为 true（多栏卡片流），显式 false 才是单栏
-    const doubleColumn = defaults?.double_column !== false;
     const enablePrimaryColorTag = defaults?.enable_primary_color_tag === true;
 
     return (
@@ -47,8 +45,8 @@ export async function PagedArticleList({
                     {page > 1 ? "该页没有文章" : emptyText}
                 </div>
             ) : (
-                // 单栏（double_column=false）时不挂 .article-grid，避免 container query 把它撑成多列
-                <div className={cn("grid grid-cols-1 gap-4", doubleColumn && "article-grid")}>
+                // 编辑部风：单栏顺序列表（行内自带发丝分割线），不再用卡片网格
+                <div className="w-full border-t border-border/60">
                     {articles.map((article) => (
                         <ArticleCard
                             key={article.id}

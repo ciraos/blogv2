@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CommentImageLightbox, type CommentLightboxImage } from "@/components/(blog)/comment-image-lightbox";
+import { BACKEND_ORIGIN } from "@/lib/api";
 import { DEFAULT_CODE_BLOCK_OPTIONS, enhanceCodeBlocks, type CodeBlockOptions } from "@/lib/code-block";
 
 interface CommentContentProps {
@@ -13,14 +14,9 @@ interface CommentContentProps {
 }
 
 /**
- * 远端后端源：`NEXT_PUBLIC_API_URL` 去掉结尾的 `/api`（本机 = `https://blog.ciraos.top/api` → `https://blog.ciraos.top`）。
- * 拿不到合法绝对地址（未配置 / 是 `/api` 这类相对值）时返回空串，此时不做任何改写（保持原行为）。
+ * 远端后端源（`lib/api` 的 BACKEND_ORIGIN：API_URL 去掉结尾 `/api`）。
+ * 未配置后端地址时它会是空串，下面的改写逻辑会原样跳过（保持原行为）。
  */
-const BACKEND_ORIGIN = (() => {
-    const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "").trim().replace(/\/+$/, "");
-    if (!/^https?:\/\//i.test(apiUrl)) return "";
-    return apiUrl.replace(/\/api$/i, "");
-})();
 
 /**
  * 评论正文里的图片地址兜底修复。

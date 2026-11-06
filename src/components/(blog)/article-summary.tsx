@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import { Bot, ChevronDown, ChevronUp } from "lucide-react";
@@ -63,7 +63,7 @@ export function ArticleSummary({ summaries }: ArticleSummaryProps) {
         return (
             <section
                 aria-label="文章摘要"
-                className="mt-6 overflow-hidden rounded-xl border border-dashed border-border bg-muted/30"
+                className="mt-6 overflow-hidden border border-dashed border-border bg-transparent"
             >
                 <div className="flex items-center gap-2 px-4 pt-3 text-muted-foreground md:px-5 md:pt-4">
                     <Bot className="size-4 shrink-0" aria-hidden />
@@ -81,7 +81,7 @@ export function ArticleSummary({ summaries }: ArticleSummaryProps) {
     return (
         <section
             aria-label="文章摘要"
-            className="mt-6 overflow-hidden rounded-xl border border-primary/25 bg-primary/[0.045]"
+            className="mt-6 overflow-hidden border border-primary/25 bg-primary/[0.03]"
         >
             <div className="flex items-center gap-2 px-4 pt-3 text-primary md:px-5 md:pt-4">
                 <Bot className="size-4 shrink-0" aria-hidden />

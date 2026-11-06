@@ -98,7 +98,18 @@ function useWallWallItems(links: FriendLink[]) {
  * 渐变标题「与数百名博主无限进步」 + 右上「随机访问 / 申请友链」 + 底部两排交错滚动的友链 logo 墙。
  * 随机访问：从全部友链中随机选一个跳转；申请友链：锚点滚动到 #apply。
  */
-export function FlinkBanner({ links }: { links: FriendLink[] }) {
+/** 友链页顶部横幅：整块由环境变量控制（默认关闭），文案也可通过环境变量覆盖 */
+export function FlinkBanner({
+    links,
+    label = "友情链接",
+    title = "与数百名博主无限进步",
+}: {
+    links: FriendLink[];
+    /** 小字标签，默认「友情链接」 */
+    label?: string;
+    /** 渐变大标题，默认「与数百名博主无限进步」 */
+    title?: string;
+}) {
     const { top, bottom } = useWallWallItems(links);
 
     /** 随机访问：随机挑一个友链在新标签打开 */
@@ -114,9 +125,9 @@ export function FlinkBanner({ links }: { links: FriendLink[] }) {
         <div className="relative flex min-h-[26rem] flex-col overflow-hidden rounded-xl border bg-card shadow-sm md:min-h-[30rem]">
             {/* 标题：左上 */}
             <div className="absolute left-6 top-6 z-10 md:left-10 md:top-8">
-                <p className="mb-2 ml-0.5 text-xs text-muted-foreground">友情链接</p>
+                <p className="mb-2 ml-0.5 text-xs text-muted-foreground">{label}</p>
                 <h2 className="bg-gradient-to-r from-[#4285f4] via-[#9b59b6] via-[#e91e63] to-[#f44336] bg-clip-text text-2xl font-extrabold leading-none text-transparent md:text-[2rem]">
-                    与数百名博主无限进步
+                    {title}
                 </h2>
             </div>
 

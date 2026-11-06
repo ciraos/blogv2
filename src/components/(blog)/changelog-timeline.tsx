@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+﻿import { ExternalLink } from "lucide-react";
 
 import { renderChangelogMarkdown } from "@/lib/changelog-markdown";
 
@@ -40,7 +40,7 @@ function formatPublishedAt(iso: string): string {
  */
 export function ChangelogTimeline({ entries }: { entries: ChangelogListItem[] }) {
     return (
-        <ol className="relative space-y-4">
+        <ol className="relative space-y-4 [overflow-wrap:anywhere]">
             {/* 竖线：从第一张卡的中线拉到最后一行的中线附近 */}
             <span aria-hidden className="absolute bottom-6 left-[7px] top-6 w-px bg-border" />
 
@@ -52,7 +52,7 @@ export function ChangelogTimeline({ entries }: { entries: ChangelogListItem[] })
                         className={`absolute left-0 top-6 size-3.5 rounded-full border-2 border-background ${entry.badge ? "bg-primary" : "bg-border"}`}
                     />
 
-                    <article className="rounded-xl border bg-card p-5 shadow-sm">
+                    <article className="rounded-lg border bg-card p-5 [overflow-wrap:anywhere] break-words">
                         <div className="border-b pb-3">
                             <div className="flex flex-wrap items-center gap-2">
                                 <h2 className="text-xl font-bold tracking-tight">{entry.version}</h2>

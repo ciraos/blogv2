@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -125,7 +125,7 @@ export function RegisterPage() {
     return (
         <form onSubmit={handleSubmit} className="w-full">
             <FieldSet>
-                <div className="text-center">
+                <div>
                     <h1 className="text-xl font-semibold tracking-tight">注册</h1>
                     <p className="mt-2 text-sm text-muted-foreground">创建一个新账号</p>
                 </div>

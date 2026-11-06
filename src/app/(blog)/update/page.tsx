@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { ExternalLink } from "lucide-react";
 
 import { ChangelogTabs } from "@/components/(blog)/changelog-tabs";
@@ -82,7 +82,7 @@ export default async function Update() {
         );
 
     return (
-        <div className="w-full space-y-6">
+        <div className="mx-auto w-full space-y-6">
             <PageBanner tip="更新日志" title="更新日志" description="每一次更新，都是一次成长" />
 
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">

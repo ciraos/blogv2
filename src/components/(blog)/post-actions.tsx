@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import Link from "next/link";
 import {
     Bell,
@@ -74,7 +74,7 @@ export function PostActions({
     const showButtons = showRewardButton || showSubscribeButton || showShareButton;
 
     return (
-        <div className="mt-16 w-full rounded-lg border border-border/50 bg-linear-to-br from-primary/10 via-card/60 to-primary/10 py-4 dark:from-primary/15 dark:via-card/75 dark:to-primary/15">
+        <div className="mt-16 w-full border-y border-border/60 bg-linear-to-r from-transparent via-primary/[0.04] to-transparent py-5">
             <div className="flex flex-col items-center gap-2">
                 {userAvatar && (
                     <Link href={siteUrl} target="_blank" className="block relative z-10 -mt-12">
@@ -98,7 +98,7 @@ export function PostActions({
                         <button
                             type="button"
                             onClick={handleReward}
-                            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-red-500 px-5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-md bg-red-500 px-5 text-sm font-medium text-white transition-opacity hover:opacity-90"
                             aria-label="打赏作者"
                         >
                             <Coins className="size-4" />
@@ -109,7 +109,7 @@ export function PostActions({
                         <button
                             type="button"
                             onClick={handleSubscribe}
-                            className="inline-flex h-9 items-center gap-1.5 rounded-full border bg-green-500 px-5 text-sm font-medium text-white transition-colors hover:opacity-90"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-md border bg-green-500 px-5 text-sm font-medium text-white transition-colors hover:opacity-90"
                             aria-label="订阅"
                         >
                             <Bell className="size-4" />
@@ -120,7 +120,7 @@ export function PostActions({
                         <button
                             type="button"
                             onClick={handleShare}
-                            className="inline-flex h-9 items-center gap-1.5 rounded-full border bg-blue-500 px-5 text-sm font-medium text-white transition-colors hover:opacity-90"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-md border bg-blue-500 px-5 text-sm font-medium text-white transition-colors hover:opacity-90"
                             aria-label="分享"
                         >
                             <Share2 className="size-4" />

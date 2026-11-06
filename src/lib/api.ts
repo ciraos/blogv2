@@ -1,4 +1,4 @@
-// 后端 API 客户端：统一处理 Bearer 鉴权、JSON 解析与错误
+﻿// 后端 API 客户端：统一处理 Bearer 鉴权、JSON 解析与错误
 //
 // 注意：后端不开放 CORS，浏览器不能直连远端 API。
 // 所有需要从客户端发起的请求（如登录）都必须走本应用同源的 /api/* 路由，
@@ -41,7 +41,22 @@ import type { AdminDocSeriesListParams, DocSeriesListData } from "@/types/doc-se
 import type { StoragePolicyListData } from "@/types/storage-policy";
 import type { ThemeListData } from "@/types/themes";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+/**
+ * 远端 API 基址（带 `/api` 后缀）。
+ *
+ * 优先级：NEXT_PUBLIC_API_URL → NEXT_PUBLIC_SITE_URL + `/api`。
+ * 也就是说「后端与站点同源」时**根本不用配** NEXT_PUBLIC_API_URL，
+ * 只有后端独立部署在别的域名/端口时才需要显式写一个不同的地址。
+ * 末尾斜杠统一去掉，避免拼出 `//public/xxx`。
+ */
+const SITE_ORIGIN = (process.env.NEXT_PUBLIC_SITE_URL ?? "").trim().replace(/\/+$/, "");
+export const API_URL = ((process.env.NEXT_PUBLIC_API_URL ?? "").trim() || (SITE_ORIGIN ? `${SITE_ORIGIN}/api` : "")).replace(
+    /\/+$/,
+    ""
+);
+
+/** 后端源（去掉结尾的 `/api`）：给「需要原样拼后端绝对路径」的地方用，如评论里的签名下载地址 */
+export const BACKEND_ORIGIN = API_URL.replace(/\/api$/i, "");
 
 /**
  * 缓存标签（配合 `request()` 的第 4 个参数与写操作后的 revalidateTag 使用）。
@@ -212,10 +227,14 @@ export function unwrapList<T>(raw: unknown): { list: T[]; total: number } {
  * POST /api/auth/login（本应用同源路由，服务端转发到远端 /auth/login）
  * 登录成功后由路由设置 httpOnly cookie，客户端无需保存 token。
  */
-export async function loginApi(email: string, password: string): Promise<void> {
+/**
+ * 登录。`remember` = 勾选「记住我」：true 时 cookie 持久化 7 天，
+ * false 时写会话 cookie（关掉浏览器即失效）。
+ */
+export async function loginApi(email: string, password: string, remember = true): Promise<void> {
     await request<unknown>("/api/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, remember }),
     });
 }
 

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -40,9 +40,6 @@ const RECENT_SHOWN = 3;
  */
 const cardCls = "flex flex-col rounded-xl border bg-card p-4 shadow-sm";
 
-/** 两卡统一的最小高度：等高、不留大片空白，内容多了卡内滚动 */
-const cardMinH = "min-h-[248px]";
-
 /** 卡内容区：撑满剩余高度、超出卡内滚动（不裁掉任何一条） */
 const cardBodyCls = "min-h-0 flex-1 overflow-y-auto";
 
@@ -50,8 +47,6 @@ const cardBodyCls = "min-h-0 flex-1 overflow-y-auto";
 const iconBadgeCls = "flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary";
 
 /** 左右两卡容器：1 列 → lg 两列并排；items-stretch 让两卡等高 */
-const feedCls = "grid grid-cols-1 items-stretch gap-3 lg:grid-cols-2";
-
 /** 状态徽章（1=已发布 2=待审核，配色与评论管理页一致） */
 function statusBadge(status?: number) {
     if (status === 1) return { label: "已发布", cls: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400" };
@@ -149,12 +144,16 @@ function CommentRow({ comment }: { comment: AdminComment }) {
     );
 }
 
-/** 加载骨架：左右两张等高卡占位（与真实布局同样的列规则） */
+/** 加载骨架：一张大卡占位（与真实布局同样的「卡内两栏」结构） */
 function Skeleton() {
     return (
-        <div className={feedCls} aria-busy="true" aria-label="动态加载中">
+        <div
+            className="grid grid-cols-1 gap-0 divide-y divide-border/60 rounded-lg border bg-card lg:grid-cols-[minmax(0,1fr)_20rem] lg:divide-x lg:divide-y-0"
+            aria-busy="true"
+            aria-label="动态加载中"
+        >
             {Array.from({ length: 2 }).map((_, i) => (
-                <div key={i} className="h-[248px] animate-pulse rounded-xl border bg-card" />
+                <div key={i} className="h-[248px] animate-pulse" />
             ))}
         </div>
     );
@@ -195,31 +194,37 @@ export function CommentFeed() {
     const recentShown = sortByLengthAsc(recent).slice(0, RECENT_SHOWN);
 
     return (
-        <div className={feedCls}>
-            {/* ===== 左：最新评论（前 3 条，条目间横线分隔） ===== */}
-            <section className={`${cardCls} ${cardMinH}`}>
-                <CardHeader
-                    icon={<MessageSquare className="size-3.5" />}
-                    title="最新评论"
-                    href="/admin/comments"
-                    linkText="全部评论"
-                />
-                <div className={cardBodyCls}>
-                    {recentShown.length === 0 ? (
-                        <p className="py-8 text-center text-xs text-muted-foreground">暂无评论</p>
-                    ) : (
-                        // divide-y：相邻条目之间一条横杠，把每条评论区分开（不再是一整块文字）
-                        <ul className="divide-y divide-border/60">
-                            {recentShown.map((c) => (
-                                <CommentRow key={c.id} comment={c} />
-                            ))}
-                        </ul>
-                    )}
+        // 动态 = 一张大卡：内部左右两栏（左「最新评论」、右「待审友链」），中间一条竖线分隔。
+        // 原来是两张独立卡并肩放，右边只有 1 条数据时会被拉成和左边一样高、下方一大片空白。
+        <section className={`${cardCls} p-0`}>
+            <div className="grid flex-1 grid-cols-1 divide-y divide-border/60 lg:grid-cols-[minmax(0,1fr)_20rem] lg:divide-x lg:divide-y-0">
+                {/* ===== 左：最新评论（前 3 条，条目间横线分隔） ===== */}
+                <div className="flex min-h-0 flex-col p-4">
+                    <CardHeader
+                        icon={<MessageSquare className="size-3.5" />}
+                        title="最新评论"
+                        href="/admin/comments"
+                        linkText="全部评论"
+                    />
+                    <div className={cardBodyCls}>
+                        {recentShown.length === 0 ? (
+                            <p className="py-8 text-center text-xs text-muted-foreground">暂无评论</p>
+                        ) : (
+                            // divide-y：相邻条目之间一条横杠，把每条评论区分开（不再是一整块文字）
+                            <ul className="divide-y divide-border/60">
+                                {recentShown.map((c) => (
+                                    <CommentRow key={c.id} comment={c} />
+                                ))}
+                            </ul>
+                        )}
+                    </div>
                 </div>
-            </section>
 
-            {/* ===== 右：待审友链（全部 status=PENDING 的申请，卡内滚动，与左卡等高） ===== */}
-            <PendingLinksCard />
-        </div>
+                {/* ===== 右：待审友链（全部 status=PENDING，卡内滚动） ===== */}
+                <div className="flex min-h-0 flex-col p-4">
+                    <PendingLinksCard embedded />
+                </div>
+            </div>
+        </section>
     );
 }

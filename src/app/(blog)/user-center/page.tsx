@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { createHash } from "node:crypto";
 import { cookies } from "next/headers";
 
@@ -69,5 +69,9 @@ export default async function UserCenter() {
     // 我的工单 / 第三方账号 是 PRO 模块才有的能力，社区版不显示这两个入口
     const isPro = await isProEdition();
 
-    return <UserCenterContent user={user} isPro={isPro} />;
+    return (
+        <div className="mx-auto w-full">
+            <UserCenterContent user={user} isPro={isPro} />
+        </div>
+    );
 }

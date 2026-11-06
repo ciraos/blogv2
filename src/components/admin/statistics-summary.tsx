@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import {
     ArrowDownRight,
@@ -30,13 +30,29 @@ interface RankItem {
  * **高度由内容决定**（不设固定高度、不做卡内滚动）——「一目了然」看全排行。
  * 卡片在普通 CSS Grid 里按行铺排（左→右、上→下），单元格不会互相重叠。
  */
-const cardCls = "flex flex-col rounded-xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md";
+const cardCls = "flex flex-col rounded-lg border bg-card p-4 transition-colors hover:border-primary/40";
 
 /** 统计卡片容器：CSS 多列瀑布流（columns-*）——卡片高度由内容决定，列内紧密排列、
  *  **绝不会重叠**，也不会有「行内最高的卡把其它卡顶出空洞」的空隙。
  *  代价：阅读顺序是**列优先**（先填满第一列再填第二列），不是行优先。
  *  卡片 `break-inside-avoid` + `mb-3` 保证不被拆列、列内间距 12px（与 gap-3 一致）。 */
-const cardGridCls = "columns-1 gap-3 sm:columns-2 xl:columns-3 [&>*]:mb-3 [&>*]:break-inside-avoid";
+const cardGridCls = "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3";
+
+/** 排行项名可能是 URL 编码的页面路径（/tags/Qexo%E5%90%8E…），显示前解码，读起来才像人话 */
+function displayName(name: string): string {
+    // 页面路径可能是「编码过一次」也可能是「双重编码」（/tags/Qexo%E5%90%8E…），循环解到不能再解为止
+    let out = name;
+    for (let i = 0; i < 3; i += 1) {
+        try {
+            const next = decodeURIComponent(out);
+            if (next === out) break;
+            out = next;
+        } catch {
+            break;
+        }
+    }
+    return out;
+}
 
 function toRank(items: { [k: string]: unknown }[] | null | undefined, nameKey: string, subKey?: string): RankItem[] {
     // 后端空数据可能返回 null（Go nil 切片），统一按空数组处理
@@ -52,8 +68,8 @@ function toRank(items: { [k: string]: unknown }[] | null | undefined, nameKey: s
 /** 分组标题：小图标徽章 + 标题 */
 function GroupTitle({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
     return (
-        <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">
-            <span className="flex size-6 items-center justify-center rounded-md bg-primary/10 text-primary">{icon}</span>
+        <h3 className="editorial-serif mb-4 flex items-center gap-2 text-[15px] font-semibold">
+            <span className="text-primary/60">{icon}</span>
             {children}
         </h3>
     );
@@ -68,29 +84,25 @@ function RankList({ title, items, bare = false }: { title?: string; items: RankI
             {items.length === 0 ? (
                 <p className="py-2 text-xs text-muted-foreground">暂无数据</p>
             ) : (
-                <ol className="space-y-3">
+                <ol className="space-y-2.5">
                     {items.map((item, i) => (
                         <li key={i}>
-                            <div className="flex items-center gap-2.5">
-                                {/* 前 3 名用主题色徽章，其余用灰底 */}
-                                <span
-                                    className={`flex size-5 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold tabular-nums ${
-                                        i < 3 ? "bg-primary/12 text-primary" : "bg-muted text-muted-foreground"
-                                    }`}
-                                >
+                            <div className="flex items-baseline gap-2">
+                                {/* 序号改成等宽小字，不再占一个色块 */}
+                                <span className="w-4 shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground/60">
                                     {i + 1}
                                 </span>
-                                <span className="min-w-0 flex-1 truncate text-sm" title={item.sub || item.name}>
-                                    {item.name}
+                                <span className="min-w-0 flex-1 truncate text-[13px] leading-snug" title={item.sub || displayName(item.name)}>
+                                    {displayName(item.name)}
                                 </span>
-                                <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">{item.count}</span>
+                                <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">{item.count}</span>
                             </div>
-                            {item.sub && <div className="ml-7 truncate text-xs text-muted-foreground/70">{item.sub}</div>}
-                            <div className="mt-1.5 ml-7 h-1 overflow-hidden rounded-full bg-muted">
-                                <div
-                                    className="h-full rounded-full bg-linear-to-r from-primary/45 to-primary/85"
-                                    style={{ width: `${(item.count / max) * 100}%` }}
-                                />
+                            {item.sub && displayName(item.sub) !== displayName(item.name) && (
+                                <div className="ml-6 truncate text-[11px] text-muted-foreground/70">{displayName(item.sub)}</div>
+                            )}
+                            {/* 占比条：只画彩色那一段，不画灰色轨道 —— 有轨道时每行都像带下划线的链接 */}
+                            <div className="mt-1.5 ml-6 h-[2px] overflow-hidden rounded-full">
+                                <div className="h-full rounded-full bg-primary/55" style={{ width: `${(item.count / max) * 100}%` }} />
                             </div>
                         </li>
                     ))}
@@ -179,8 +191,8 @@ function TrendCard({ data, mode }: { data: DateRangeStats[] | null | undefined; 
     return (
         <div className={cardCls}>
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
-                <h3 className="flex items-center gap-2 text-sm font-semibold">
-                    <span className="flex size-6 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <h3 className="editorial-serif flex items-center gap-2 text-[15px] font-semibold">
+                    <span className="text-primary/60">
                         <TrendingUp className="size-3.5" />
                     </span>
                     趋势 · {title}
@@ -208,8 +220,9 @@ function TrendCard({ data, mode }: { data: DateRangeStats[] | null | undefined; 
                                     title={`${d.date}：访问 ${d.views} / 人数 ${d.visitors}`}
                                 />
                             </div>
-                            <span className="w-full truncate text-center text-[10px] leading-none text-muted-foreground">
-                                {formatDate(d.date, mode)}
+                            {/* 10 根柱子挤在 280px 里，标签必然放不下：隔一根显示一个，字号压到 9px */}
+                            <span className="w-full truncate text-center text-[9px] leading-none text-muted-foreground/80">
+                                {i % 2 === 0 ? formatDate(d.date, mode) : ""}
                             </span>
                         </div>
                     ))}
@@ -237,41 +250,31 @@ function StatChip({
         pct = Math.round(((value - yesterday) / yesterday) * 100);
     }
     const tone = pct === null || pct === 0 ? "flat" : pct > 0 ? "up" : "down";
-    const deltaCls =
-        tone === "up"
-            ? "bg-red-500/10 text-red-600 dark:text-red-400"
-            : tone === "down"
-              ? "bg-green-500/10 text-green-700 dark:text-green-400"
-              : "bg-muted text-muted-foreground";
+    // 涨跌只保留文字颜色（原来还有一层 pill 底色，和「较昨日」三个字挤在一起）
+    const deltaTextCls =
+        tone === "up" ? "text-red-600 dark:text-red-400" : tone === "down" ? "text-green-600 dark:text-green-400" : "text-muted-foreground";
     const DeltaIcon = tone === "up" ? ArrowUpRight : tone === "down" ? ArrowDownRight : Minus;
 
     return (
-        <div className={`group relative overflow-hidden ${cardCls}`}>
-            {/* 右上角主题色柔光，鼠标悬停时更明显 */}
-            <span
-                aria-hidden="true"
-                className="pointer-events-none absolute -right-8 -top-8 size-24 rounded-full bg-primary/10 blur-2xl transition-opacity group-hover:opacity-70"
-            />
-            <div className="relative flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                    <div className="text-xs font-medium text-muted-foreground">{label}</div>
-                    <div className="mt-1.5 text-2xl font-semibold tracking-tight tabular-nums">{value ?? 0}</div>
-                </div>
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    {icon}
-                </span>
+        // 编辑部风：标签小字大写 → 衬线大数字 → 一行小字涨跌。
+        // 原来右上角还有一团主题色柔光 + 方块图标徽章 + 圆角胶囊涨跌标签，三样一起把卡片挤得很闹。
+        <div className={cardCls}>
+            <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase">{label}</span>
+                <span className="shrink-0 text-primary/50">{icon}</span>
             </div>
-            <div className="relative mt-3">
+            <div className="mt-2 flex items-baseline gap-2">
+                <span className="editorial-serif text-[30px] leading-none font-semibold tabular-nums">{value ?? 0}</span>
                 {pct === null ? (
-                    <span className="text-xs text-muted-foreground/70">—</span>
+                    <span className="text-[11px] text-muted-foreground/60">—</span>
                 ) : (
-                    <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-medium ${deltaCls}`}>
+                    <span className={`inline-flex items-center gap-0.5 text-[11px] font-medium tabular-nums ${deltaTextCls}`}>
                         <DeltaIcon className="size-3" />
                         {tone === "flat" ? "持平" : `${Math.abs(pct)}%`}
-                        <span className="ml-0.5 font-normal opacity-70">较昨日</span>
                     </span>
                 )}
             </div>
+            <span className="mt-1 text-[10px] tracking-wide text-muted-foreground/60">较昨日</span>
         </div>
     );
 }
@@ -515,28 +518,37 @@ export function StatisticsSummary() {
                     {hotPages.length > 0 && (
                         <section className={`${cardCls} min-w-0`}>
                             <GroupTitle icon={<Flame className="size-3.5" />}>热门页面 TOP</GroupTitle>
+                            {/* 与排行卡同一套行样式：等宽序号 + 名称 + 计数 + 一条彩色占比线（不画灰轨道） */}
                             <div className="space-y-2.5">
                                 {hotPages.map((item, i) => {
                                     const max = hotPages[0]?.count || 1;
                                     return (
-                                        <div key={i} className="flex items-center gap-2.5">
-                                            <span
-                                                className={`flex size-5 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold tabular-nums ${
-                                                    i < 3 ? "bg-primary/12 text-primary" : "bg-muted text-muted-foreground"
-                                                }`}
-                                            >
-                                                {i + 1}
-                                            </span>
-                                            <span className="min-w-0 flex-1">
-                                                <span className="block truncate text-sm" title={item.sub || item.name}>{item.name}</span>
-                                                <span className="mt-1 block h-1 overflow-hidden rounded-full bg-muted">
-                                                    <span
-                                                        className="block h-full rounded-full bg-linear-to-r from-primary/45 to-primary/85"
-                                                        style={{ width: `${(item.count / max) * 100}%` }}
-                                                    />
+                                        <div key={i}>
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="w-4 shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground/60">
+                                                    {i + 1}
                                                 </span>
-                                            </span>
-                                            <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">{item.count}</span>
+                                                <span
+                                                    className="min-w-0 flex-1 truncate text-[13px] leading-snug"
+                                                    title={item.sub || displayName(item.name)}
+                                                >
+                                                    {displayName(item.name)}
+                                                </span>
+                                                <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
+                                                    {item.count}
+                                                </span>
+                                            </div>
+                                            {item.sub && displayName(item.sub) !== displayName(item.name) && (
+                                                <div className="ml-6 truncate text-[11px] text-muted-foreground/70">
+                                                    {displayName(item.sub)}
+                                                </div>
+                                            )}
+                                            <div className="mt-1.5 ml-6 h-[2px] overflow-hidden rounded-full">
+                                                <div
+                                                    className="h-full rounded-full bg-primary/55"
+                                                    style={{ width: `${(item.count / max) * 100}%` }}
+                                                />
+                                            </div>
                                         </div>
                                     );
                                 })}

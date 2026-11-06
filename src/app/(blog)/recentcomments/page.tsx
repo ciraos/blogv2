@@ -113,7 +113,7 @@ export default async function RecentComments({ searchParams }: { searchParams: P
     if (!data || data.list.length === 0) {
         return (
             <div className="w-full space-y-6">
-                <h1 className="text-2xl font-bold tracking-tight">最近评论</h1>
+                <h1 className="editorial-serif text-3xl font-bold tracking-tight">最近评论</h1>
                 <EmptyState
                     icon={MessageCircle}
                     title={errorMessage ? "暂时无法获取内容" : "暂无评论，来抢沙发吧"}
@@ -128,7 +128,7 @@ export default async function RecentComments({ searchParams }: { searchParams: P
     return (
         <div className="w-full space-y-6">
             <header>
-                <h1 className="text-2xl font-bold tracking-tight">最近评论</h1>
+                <h1 className="editorial-serif text-3xl font-bold tracking-tight">最近评论</h1>
                 <p className="mt-1 text-sm text-muted-foreground">全站最新 {data.total} 条评论</p>
             </header>
 

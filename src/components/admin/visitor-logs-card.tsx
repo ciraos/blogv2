@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 // 访问日志（仪表盘**最后一块卡片**，宽度贴合内容 width: max-content）：卡头（图标 + 卡名 + 日期/刷新）+
 // 「左饼图 + 右数据（只显示前五）」——排版口径与 statistics-summary.tsx 的
@@ -54,7 +54,7 @@ const DIMENSION: { field: "url_path" | "city"; label: string; emptyLabel: string
  *   - 只动这一张卡自己的宽度，**不改父容器**（仪表盘那个砌体列里其它卡片仍是各自的宽度）；
  *   - `break-inside-avoid`：仪表盘主区块是 CSS 多列砌体，这张卡绝不能被列边界切成两半。
  */
-const cardCls = "w-full max-w-full break-inside-avoid rounded-xl border bg-card p-4 shadow-sm sm:w-max";
+const cardCls = "w-full max-w-full rounded-lg border bg-card p-4";
 
 /** 卡头图标徽章（与统计卡 GroupTitle 同款） */
 const iconBadgeCls = "flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary";
@@ -151,6 +151,20 @@ function resolveDefaultRange(): { start: string; end: string } {
 }
 
 /** 访问日志卡：图标 + 卡内标题 + 日期区间 / 刷新 + 左环图（前 5 名 + 其他）/ 右前 5 名数据 */
+/** 访问路径是 URL 编码的（/tags/Qexo%E5%90%8E%E5%8F%B0），展示前解码；双重编码也一起解掉 */
+function displayPath(path: string): string {
+    let out = path;
+    for (let i = 0; i < 3; i += 1) {
+        try {
+            const next = decodeURIComponent(out);
+            if (next === out) break;
+            out = next;
+        } catch {
+            break;
+        }
+    }
+    return out;
+}
 export function VisitorLogsCard() {
     const [logs, setLogs] = useState<VisitorLog[]>([]);
     /** 区间内的日志总条数（后端 total，可能大于本次取回的样本量） */
@@ -281,9 +295,9 @@ export function VisitorLogsCard() {
                 // 贡献反推，列宽会随路径长短飘；写死列宽才能既贴合内容又给长路径一个明确上限。
                 // `minmax(0,20rem)`：长路径最多把数据列撑到 20rem，再长就 truncate —— 不用横向滚动条。
                 // 窄屏（<768px）grid-cols-1 自动堆叠成「图在上、数据在下」。
-                <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-[13rem_minmax(0,20rem)]">
+                <div className="grid grid-cols-1 items-center gap-6 md:grid-cols-[13rem_minmax(0,1fr)]">
                     <PathPie items={ranks} />
-                    <ol className="min-w-0 space-y-3">
+                    <ol className="grid min-w-0 grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
                         {ranks.slice(0, TOP_N).map((item, i) => {
                             const raw = sampleTotal > 0 ? (item.count / sampleTotal) * 100 : 0;
                             return (
@@ -295,8 +309,8 @@ export function VisitorLogsCard() {
                                             className="size-2.5 shrink-0 rounded-full"
                                             style={{ backgroundColor: sliceColor(i) }}
                                         />
-                                        <span className="min-w-0 flex-1 truncate text-sm" title={item.name}>
-                                            {item.name}
+                                        <span className="min-w-0 flex-1 truncate text-sm" title={displayPath(item.name)}>
+                                            {displayPath(item.name)}
                                         </span>
                                         <span className="shrink-0 text-xs font-medium tabular-nums">
                                             {formatPct(item.count, sampleTotal)}

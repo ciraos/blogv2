@@ -1,4 +1,4 @@
-# blog-app · Blog Frontend
+﻿# blog-app · Blog Frontend
 
 [简体中文](./README.md) · [English](./README.en.md)
 
@@ -101,7 +101,7 @@ pnpm start      # Or: PORT=3126 node .next/standalone/server.js
 | Variable | Required | Description |
 | --- | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | ✅ | Public origin of the site (no path). Used for SEO, sitemap, icons, etc. |
-| `NEXT_PUBLIC_API_URL` | ✅ | Remote API base URL (**must include the `/api` suffix**), used by server-side code |
+| `NEXT_PUBLIC_API_URL` | — | Remote API base URL (**must include the `/api` suffix**). Defaults to `NEXT_PUBLIC_SITE_URL + /api`; only needed when the backend lives on another origin |ed by server-side code |
 | `NEXT_PUBLIC_GRAVATAR_URL` | — | Avatar service URL, defaults to `https://cravatar.cn/` |
 | `BACKEND_URL` | — | Development only: backend base URL for the `rewrites()` proxy (no `/api`) |
 | `API_URL` | — | Production only: same as above |

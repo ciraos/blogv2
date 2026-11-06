@@ -1,4 +1,4 @@
-# blog-app · 博客前端
+﻿# blog-app · 博客前端
 
 [简体中文](./README.md) · [English](./README.en.md)
 
@@ -101,7 +101,7 @@ pnpm start      # 或：PORT=3126 node .next/standalone/server.js
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | ✅ | 站点对外 origin（不带路径），用于 SEO、站点地图、图标等 |
-| `NEXT_PUBLIC_API_URL` | ✅ | 远端 API 基址（**带 `/api` 后缀**），供服务端直连后端 |
+| `NEXT_PUBLIC_API_URL` | — | 远端 API 基址（**带 `/api` 后缀**）。不填时自动用 `NEXT_PUBLIC_SITE_URL + /api`，只有后端独立域名时才需要 |
 | `NEXT_PUBLIC_GRAVATAR_URL` | — | 头像服务地址，默认 `https://cravatar.cn/` |
 | `BACKEND_URL` | — | 仅开发环境：`rewrites()` 代理后端时的基址（不带 `/api`） |
 | `API_URL` | — | 仅生产环境：同上 |

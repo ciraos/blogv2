@@ -72,7 +72,7 @@ export default async function Fcircle({ searchParams }: { searchParams: Promise<
         return (
             <PageWithSidebar>
                 <div className="w-full space-y-6">
-                    {banner ?? <h1 className="text-2xl font-bold tracking-tight">朋友圈</h1>}
+                    {banner ?? <h1 className="editorial-serif text-3xl font-bold tracking-tight">朋友圈</h1>}
                     <EmptyState
                         icon={MessagesSquare}
                         title={errorMessage ? "暂时无法获取内容" : "暂无内容，敬请期待"}
@@ -96,7 +96,7 @@ export default async function Fcircle({ searchParams }: { searchParams: Promise<
         <PageWithSidebar>
             <div className="w-full space-y-6">
                 <header>
-                    {banner ?? <h1 className="text-2xl font-bold tracking-tight">朋友圈</h1>}
+                    {banner ?? <h1 className="editorial-serif text-3xl font-bold tracking-tight">朋友圈</h1>}
                     {/* 统计 + 排序按钮（移动端纵向堆叠，桌面端同行；有横幅时与横幅留出间距） */}
                     <div
                         className={`${banner ? "mt-4" : "mt-1"} flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center`}

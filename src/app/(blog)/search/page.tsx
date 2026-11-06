@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -38,10 +38,10 @@ function SearchResultItem({ hit, query }: { hit: SearchHit; query: string }) {
     return (
         <Link
             href={href}
-            className="group flex flex-col gap-2 rounded-lg border bg-card p-4 shadow-sm transition-shadow hover:shadow-md sm:flex-row sm:items-start"
+            className="group flex flex-col gap-2 border-b border-border/60 py-5 transition-colors hover:shadow-md sm:flex-row sm:items-start"
         >
             {cover && (
-                <div className="relative h-24 w-full shrink-0 overflow-hidden rounded-md bg-muted sm:w-36">
+                <div className="relative h-24 w-full shrink-0 overflow-hidden rounded-md sm:w-36">
                     {/* 缩略图走 next/image（封面来自本站后端，是已知图源） */}
                     <Image
                         src={cover}
@@ -53,7 +53,7 @@ function SearchResultItem({ hit, query }: { hit: SearchHit; query: string }) {
                 </div>
             )}
             <div className="min-w-0 flex-1">
-                <h2 className="line-clamp-2 text-base font-semibold leading-snug group-hover:text-primary">
+                <h2 className="editorial-serif line-clamp-2 text-base font-semibold leading-snug transition-colors group-hover:text-primary">
                     {highlightText(hit.title, query)}
                 </h2>
                 {hit.snippet && (
@@ -92,7 +92,7 @@ export default async function Search({ searchParams }: { searchParams: Promise<S
         return (
             <PageWithSidebar>
                 <div className="w-full space-y-6">
-                    <h1 className="text-2xl font-bold tracking-tight">搜索</h1>
+                    <h1 className="editorial-serif text-3xl font-bold tracking-tight">搜索</h1>
                     <EmptyState
                         icon={SearchIcon}
                         title="输入关键词开始搜索"
@@ -121,7 +121,7 @@ export default async function Search({ searchParams }: { searchParams: Promise<S
         <PageWithSidebar>
             <div className="w-full space-y-6">
                 <header>
-                    <h1 className="text-2xl font-bold tracking-tight">搜索</h1>
+                    <h1 className="editorial-serif text-3xl font-bold tracking-tight">搜索</h1>
                     <p className="mt-1 text-sm text-muted-foreground">
                         关键词「{q}」共找到 {total} 条结果
                     </p>

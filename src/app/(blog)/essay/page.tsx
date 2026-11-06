@@ -48,7 +48,7 @@ export default async function Essay({ searchParams }: { searchParams: Promise<Es
         return (
             <PageWithSidebar>
                 <div className="w-full space-y-6">
-                    <h1 className="text-2xl font-bold tracking-tight">即刻</h1>
+                    <h1 className="editorial-serif text-3xl font-bold tracking-tight">即刻</h1>
                     <EmptyState
                         icon={NotebookPen}
                         title={errorMessage ? "暂时无法获取内容" : "暂无内容，敬请期待"}
@@ -78,7 +78,7 @@ export default async function Essay({ searchParams }: { searchParams: Promise<Es
                         description={config.essay.subtitle}
                         action={{ text: config.essay.button_text, link: config.essay.button_link }}
                     />
-                ) : (<h1 className="text-2xl font-bold tracking-tight">即刻</h1>)}
+                ) : (<h1 className="editorial-serif text-3xl font-bold tracking-tight">即刻</h1>)}
 
                 {/* JS 瀑布流：桌面 3 列 / 平板 2 列 / 移动端 1 列，最短列放置；图片可点击打开看图器；
                     卡片右下角「评论」会把该条说说作为引用送到下方评论区（沿用同一个 target_path） */}

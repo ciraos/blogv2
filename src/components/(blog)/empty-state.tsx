@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+﻿import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -28,13 +28,13 @@ export function EmptyState({
     className?: string;
 }) {
     return (
-        <div className={cn("flex flex-col items-center justify-center gap-2 py-16 text-center", className)}>
+        <div className={cn("flex flex-col items-center justify-center gap-2 border-t border-border/60 py-16 text-center", className)}>
             {Icon && (
-                <span className="mb-1 flex size-12 items-center justify-center rounded-full bg-muted/60">
-                    <Icon className="size-6 text-muted-foreground/60" aria-hidden />
+                <span className="mb-2 flex size-10 items-center justify-center rounded-md border border-border/60">
+                    <Icon className="size-5 text-muted-foreground/60" aria-hidden />
                 </span>
             )}
-            <p className="text-sm text-muted-foreground">{title}</p>
+            <p className="editorial-serif text-base text-muted-foreground">{title}</p>
             {description && <p className="max-w-sm text-xs leading-relaxed text-muted-foreground/70">{description}</p>}
             {action && <div className="mt-2">{action}</div>}
         </div>

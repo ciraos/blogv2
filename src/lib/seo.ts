@@ -3,8 +3,9 @@ import type { Metadata } from "next";
 
 import { resolveAssetUrl } from "@/lib/utils";
 import { SiteConfigResponse } from "@/types/site-config";
+import { API_URL } from "@/lib/api";
 
-const api_url = process.env.NEXT_PUBLIC_API_URL;
+
 
 /** 关键词拆分：兼容中/英文逗号、分号与空白，去空项 */
 export function splitKeywords(kw?: string | null): string[] {
@@ -18,7 +19,7 @@ export function splitKeywords(kw?: string | null): string[] {
 /** 生成统一的站点 metadata；titleSuffix 为空时使用「站名 - 副标题」 */
 export async function generateBlogMetadata(titleSuffix?: string): Promise<Metadata> {
     try {
-        const res = await fetch(`${api_url}/public/site-config`);
+        const res = await fetch(`${API_URL}/public/site-config`);
         const data: SiteConfigResponse = await res.json();
         const appName = data.data.APP_NAME;
         const subTitle = data.data.SUB_TITLE;

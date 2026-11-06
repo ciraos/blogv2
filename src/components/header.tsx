@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -103,18 +103,12 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
         };
     }, [heroEnabled]);
 
-    // 超级岛式弹性切换：spring 过冲曲线（cubic-bezier 回弹）+ 缩放形变。
-    // hero 页且未滚离首屏：胶囊透明（无背景/阴影/边框），文字白色投影悬浮大图上；
-    // 其余情况：白底胶囊（scrolled 时半透明毛玻璃）。
+    // 编辑部风：导航不再用「胶囊」承载，改成通栏细线 + 衬线站名。
+    // hero 首屏仍然透明悬浮在大图上（白字 + 投影），滚动离开后有底色与发丝下边线。
     const heroOverlay = heroEnabled && !scrolled;
-    const pillCls = cn(
-        "transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] will-change-transform",
-        heroOverlay
-            ? "scale-100 bg-transparent text-white shadow-none [text-shadow:0_1px_3px_rgba(0,0,0,0.45)] [&_button]:text-white [&_button]:[text-shadow:0_1px_3px_rgba(0,0,0,0.45)]"
-            : scrolled
-                ? "scale-[0.94] bg-card/60 shadow-sm backdrop-blur-md"
-                : "scale-100 bg-card shadow-md"
-    );
+    const textCls = heroOverlay
+        ? "text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.45)] [&_button]:text-white"
+        : "text-foreground";
     function handleEnter(title: string) {
         if (closeTimer.current !== null) {
             window.clearTimeout(closeTimer.current);
@@ -129,13 +123,26 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
 
     return (
         <>
-            <div className="header w-full max-w-300 h-12 my-1 mx-auto px-2 sm:px-0 sticky top-0 z-50 bg-none rounded-none flex items-center justify-between">
-                <Link href="/" className={`h-11 py-1 px-3 rounded-[99px] ${pillCls} text-base text-center content-center font-bold tracking-tight hover:opacity-80 hover:shadow-xl`}>{appName}</Link>
+            <div
+                className={cn(
+                    "header sticky top-0 z-50 mx-auto flex h-14 w-full max-w-300 items-center justify-between border-b px-2 transition-colors sm:px-0",
+                    heroOverlay ? "border-transparent bg-transparent text-white" : "border-border/60 bg-background/85 text-foreground backdrop-blur-md"
+                )}
+            >
+                <Link
+                    href="/"
+                    className={cn(
+                        "editorial-serif py-2 pr-3 text-xl font-bold tracking-tight transition-opacity hover:opacity-70",
+                        textCls
+                    )}
+                >
+                    {appName}
+                </Link>
 
                 {/* 桌面端导航（≥768px）：自研下拉，面板绝对定位在触发器正下方 */}
                 {menu.length > 0 && (
                     <nav className="hidden md:block">
-                        <ul className={`py-1 px-3 rounded-[99px] ${pillCls} flex items-center gap-0.5 hover:shadow-xl`}>
+                        <ul className="flex items-center gap-6">
                             {menu.map((group) => (
                                 <li
                                     key={group.title}
@@ -165,7 +172,7 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
                                     {/* 下拉面板：紧贴触发器正下方居中（宽度按内容自适应，防止文字换行）。
                                         text-shadow 不继承自 ul（hero 悬浮态的白字投影只在图上需要） */}
                                     {openGroup === group.title && (
-                                        <div className="absolute left-1/2 top-full z-50 mt-2 w-max min-w-28 -translate-x-1/2 rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-lg [text-shadow:none]">
+                                        <div className="absolute left-1/2 top-full z-50 w-max min-w-28 -translate-x-1/2 border bg-popover p-1.5 text-popover-foreground shadow-md [text-shadow:none]">
                                             <ul className="space-y-1 [text-shadow:none]">
                                                 {group.items.map((item) => (
                                                     <li key={item.path + item.title}>
@@ -192,7 +199,7 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
                 <div className="flex items-center justify-around gap-1 md:gap-4">
                     {/* 搜索 + 移动端汉堡：共用同一个白色胶囊背景（滚动时一起收缩）。
                         桌面端汉堡隐藏、搜索保留；两个按钮无缝拼接，中间接缝不设圆角 */}
-                    <div className={`flex items-center rounded-full ${pillCls} hover:shadow-xl`}>
+                    <div className="flex items-center gap-0.5">
                         {/* 站内搜索：点击放大镜弹出搜索对话框 */}
                         <SearchDialog />
 
@@ -200,7 +207,7 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
                         <Sheet>
                             <SheetTrigger asChild>
                                 <button
-                                    className="inline-flex size-11 items-center justify-center rounded-l-none rounded-r-lg text-muted-foreground transition-colors hover:text-primary md:hidden"
+                                    className="inline-flex size-10 items-center justify-center text-muted-foreground transition-colors hover:text-primary md:hidden"
                                     aria-label="打开菜单"
                                 >
                                     <Menu className="size-5" />

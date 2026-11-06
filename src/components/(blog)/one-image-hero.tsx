@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -130,7 +130,7 @@ export function OneImageHero({ oneImage, appName = "博客" }: OneImageHeroProps
             {/* 桌面媒体（≥md）：video 或 image，fixed 相对视口 → 整页滚动背景不动 */}
             {isDesktopVideo ? (
                 <video
-                    className="fixed inset-0 z-0 hidden h-[100svh] w-full object-cover md:block"
+                    className="absolute inset-0 z-0 hidden h-full w-full object-cover md:block"
                     src={desktopBg ?? undefined}
                     autoPlay={cfg.videoAutoplay}
                     loop={cfg.videoLoop}
@@ -143,7 +143,7 @@ export function OneImageHero({ oneImage, appName = "博客" }: OneImageHeroProps
                     <img
                         src={desktopBg}
                         alt=""
-                        className="fixed inset-0 z-0 hidden h-[100svh] w-full object-cover md:block"
+                        className="absolute inset-0 z-0 hidden h-full w-full object-cover md:block"
                     />
                 )
             )}
@@ -152,7 +152,7 @@ export function OneImageHero({ oneImage, appName = "博客" }: OneImageHeroProps
                 背景层 z-0；正文与 footer 由 CSS 提升 z-index:1 悬浮其上 */}
             {isMobileVideo ? (
                 <video
-                    className="fixed inset-0 z-0 block h-[100svh] w-full object-cover md:hidden"
+                    className="absolute inset-0 z-0 block h-full w-full object-cover md:hidden"
                     src={mobileBg ?? undefined}
                     autoPlay={cfg.mobileVideoAutoplay}
                     loop={cfg.mobileVideoLoop}
@@ -165,7 +165,7 @@ export function OneImageHero({ oneImage, appName = "博客" }: OneImageHeroProps
                     <img
                         src={mobileBg}
                         alt=""
-                        className="fixed inset-0 z-0 block h-[100svh] w-full object-cover md:hidden"
+                        className="absolute inset-0 z-0 block h-full w-full object-cover md:hidden"
                     />
                 )
             )}

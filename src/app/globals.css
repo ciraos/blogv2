@@ -126,7 +126,8 @@
   /* 「其他」段/色点固定中性灰：它不是一个具体数据项，不该占用彩色槽位
      （占用了就会把相邻两项挤成相近色）。取 muted-foreground，随主题/换肤一起走。 */
   --chart-other: var(--muted-foreground);
-  --radius: 0.625rem;
+  /* 编辑部风：圆角整体收紧一档（10px → 6px），卡片更像纸张/表格，少一点「圆润 SaaS」感 */
+  --radius: 0.375rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -4072,4 +4073,297 @@ body:has(.one-image-hero) .main {
 .article-editor-page .w-md-editor *:not(.w-md-editor-area)::-webkit-scrollbar {
   width: 0;
   height: 0;
+}
+
+/* ===================== 编辑部风（Editorial）布局层 =====================
+ * 目标：摆脱「胶囊导航 + 圆角卡片堆叠」的观感，用衬线标题 / 日期列 / 发丝线建立层次。
+ * 只作用于前台外壳（#CIRAOS）的排版，文章正文 .article-body 与评论正文保持原样。 */
+:root {
+  --font-editorial: Georgia, "Times New Roman", "Songti SC", "Noto Serif SC", "Source Han Serif SC", "SimSun",
+    serif;
+}
+
+/* 衬线体类：前台用，后台的页头/统计数字也用（同一个类，作用域放开到全站） */
+.editorial-serif {
+  font-family: var(--font-editorial);
+  letter-spacing: 0.005em;
+}
+
+
+/* 侧栏：卡片保留原本的白底 / 描边 / 圆角，只把分组标题换成衬线体，
+   让她看起来是「同一套排版里的侧栏」，而不是被压平的一片文字。 */
+#CIRAOS .editorial-sidebar h3 {
+  font-family: var(--font-editorial);
+  letter-spacing: 0.01em;
+}
+
+/* 页脚跟同一套语言：链接不做胶囊 hover，标题用衬线 */
+#CIRAOS #footer a {
+  border-radius: 0;
+}
+
+#CIRAOS #footer h3 {
+  font-family: var(--font-editorial);
+  letter-spacing: 0.01em;
+}
+
+/* 编辑部风：正文区与页脚改成不透明「纸张」，壁纸只保留在首屏 hero 里。
+ * 原设计是卡片浮在整页壁纸之上；换成编辑排版后，长文本需要稳定底色。 */
+#CIRAOS .main {
+  background: var(--background);
+  /* 不再画顶边：header 自己已经有 border-bottom，两条线相隔 40px 只会显得像多余的横杠 */
+  padding-top: 2.5rem;
+  padding-bottom: 3rem;
+}
+
+#CIRAOS #footer {
+  background: var(--background);
+  border-top: 1px solid var(--border);
+}
+
+
+/* 作者卡：保留一块强调色（去圆角，但底色/渐变仍在），避免侧栏全灰 */
+#CIRAOS .editorial-sidebar .editorial-accent {
+  border-radius: var(--radius-xl);
+  background-image: linear-gradient(to bottom right, color-mix(in oklab, var(--primary) 90%, transparent), var(--primary));
+}
+/* 内容为空时不要撑出一大片「纸张」：让正文区按内容高度收尾，页脚由布局贴底 */
+#CIRAOS .main {
+  flex: 0 0 auto;
+}
+
+/* 有整页壁纸的页面（首页 / 归档 / 标签 / 分类）：正文区不再整块铺纸，
+ * 改成给「内容块」加 .paper（列表、文章），纸张只跟内容走，空处露出壁纸。 */
+body:has(.one-image-hero) #CIRAOS .main {
+  background: transparent;
+  border-top: 0;
+}
+
+#CIRAOS .paper {
+  background: var(--background);
+}
+
+/* 无壁纸的页面保留整块纸张，长文本才不会浮在背景上 */
+body:not(:has(.one-image-hero)) #CIRAOS .main {
+  background: var(--background);
+}
+/* ===================== 编辑部风 · 壁纸页收口 =====================
+ * hero 图片不再 fixed 到视口，而是随页面滚走；正文纸张通栏铺满、内部仍按 1200px 居中，
+ * 这样首屏是「封面图」，往下是「纸张」，不会出现白色浮岛和两侧壁纸缝。 */
+body:has(.one-image-hero) #CIRAOS .main {
+  background: var(--background);
+  border-top: 0;
+  max-width: none;
+  padding-inline: max(1rem, calc((100vw - 1200px) / 2));
+}
+
+body:has(.one-image-hero) #CIRAOS #footer {
+  border-top: 1px solid var(--border);
+}
+/* hero 与纸张之间不要留灰缝：去掉间距，并在 hero 底部加一段淡出到纸张色的渐变 */
+body:has(.one-image-hero) #CIRAOS .main {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.one-image-hero::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 140px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--background));
+}
+/* ---------- 分页：编辑排版版 ----------
+ * 默认的分页是「圆角块 + 实心页码」，和现在的细线列表不在一个语言里。
+ * 这里去掉圆角与底色，当前页改成「下划线 + 主题色」，像目录里的定位标记。
+ * 只影响前台（#CIRAOS），后台的 PaginationControls 不受影响。 */
+#CIRAOS .editorial-pager > div {
+  gap: 0.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+#CIRAOS .editorial-pager > div > a,
+#CIRAOS .editorial-pager > div > span {
+  min-width: 2rem;
+  height: auto;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0;
+  border-bottom: 1px solid transparent;
+}
+
+#CIRAOS .editorial-pager > div > a:hover {
+  background: transparent;
+  color: var(--primary);
+}
+
+#CIRAOS .editorial-pager > div > [class*="bg-primary"] {
+  background: transparent;
+  color: var(--primary);
+  font-weight: 600;
+  border-bottom-color: var(--primary);
+}
+
+/* 分页两侧的「上一页 / 下一页」也去掉方块边框，改成文字 + 下划线 hover */
+#CIRAOS .editorial-pager > a {
+  height: auto;
+  padding: 0.25rem 0.5rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted-foreground);
+}
+
+#CIRAOS .editorial-pager > a:hover {
+  background: transparent;
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* 禁用态的「上一页 / 下一页」是 span，同样去掉边框 */
+#CIRAOS .editorial-pager > span {
+  height: auto;
+  padding: 0.25rem 0.5rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* ===================== 后台：与前台同一套「平」的语言 =====================
+ * 前台已经收成细线 + 6px 圆角的编辑部风，后台原来是大圆角 + 大片投影，两边像两个产品。
+ * 这里只动观感（圆角 / 阴影 / 表头底色），不改任何布局与交互。 */
+.admin-card {
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 3%);
+}
+
+/* 列表页表头：滚动时保持不透明，避免内容从表头底下透出来 */
+.admin-card thead th {
+  background: var(--card);
+}
+
+/* 后台分组标题（侧栏二级标题）用统一的大写字距，和前台栏目名呼应 */
+[data-slot="sidebar-group-label"] {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ===================== 后台：排版与表格 =====================
+ * 作用域限定在后台内容区（.dsh-main），不碰前台，也不影响文章正文里的表格。
+ * 目标：表头变成「小字 + 字距」、行更紧凑、页头主副标题拉开层级。 */
+.dsh-main .admin-page-head h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.dsh-main .admin-page-head p {
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+}
+
+/* 表格 */
+.dsh-main [data-slot="table-head"] {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 2.25rem;
+  background: var(--card);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.dsh-main [data-slot="table-row"] {
+  height: 3rem;
+}
+
+.dsh-main [data-slot="table-cell"] {
+  font-size: 0.8125rem;
+}
+
+/* 表格里的操作按钮：字号收一档，避免和正文一样重 */
+.dsh-main [data-slot="table-cell"] button {
+  font-size: 0.75rem;
+}
+
+/* ===================== 后台：编辑部语言（作用域 .dsh-main） =====================
+ * 与前台对齐的三件事：衬线标题、细线分隔、无阴影卡片。
+ * 数据密集的区域（表格、表单）保持无衬线，只统一圆角与描边。 */
+.dsh-main .admin-page-head h2 {
+  font-family: var(--font-editorial);
+  font-size: 1.375rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.dsh-main .admin-page-head p {
+  font-size: 0.75rem;
+  color: color-mix(in oklch, var(--muted-foreground) 88%, transparent);
+}
+
+/* 设置页 / 各区块的小标题也用衬线，和前台栏目名呼应 */
+.dsh-main h3.font-semibold,
+.dsh-main h3.font-medium {
+  font-family: var(--font-editorial);
+  letter-spacing: 0;
+}
+
+/* 卡片彻底去阴影，只留一圈描边（更像纸张而不是浮层） */
+.admin-card {
+  box-shadow: none;
+}
+
+/* 输入框与下拉：圆角跟随全局，高度对齐 36px */
+.dsh-main input:not([type="checkbox"]):not([type="radio"]),
+.dsh-main textarea,
+.dsh-main [role="combobox"] {
+  border-radius: var(--radius);
+}
+
+/* 后台列表：首列（标题/名称）加粗，其余列维持小字，让表格一眼能扫到重点 */
+.dsh-main [data-slot="table"] tbody [data-slot="table-cell"]:first-child {
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+/* 认证页（登录/注册/激活）：表单面板里的标题走衬线，和左栏刊头同一套语言 */
+#CIRAOS .auth-panel h1 {
+  font-family: var(--font-editorial);
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+#CIRAOS .auth-panel p {
+  letter-spacing: 0.01em;
+}
+
+/* 认证页表单：下划线式输入框（只有一条底线，更像纸质表格） */
+#CIRAOS .auth-panel input:not([type="checkbox"]):not([type="radio"]) {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  padding-left: 0;
+  padding-right: 0;
+  box-shadow: none;
+}
+
+#CIRAOS .auth-panel input:not([type="checkbox"]):not([type="radio"]):focus-visible {
+  border-bottom-color: var(--primary);
+  outline: none;
+  box-shadow: none;
+}
+
+/* 输入框右侧的「显示密码」按钮跟着底线一起收进来 */
+#CIRAOS .auth-panel input:not([type="checkbox"]):not([type="radio"]) ~ button {
+  right: 0;
 }

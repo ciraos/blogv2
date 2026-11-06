@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -167,7 +167,7 @@ export function FloatingActions() {
                     onClick={toggleSidebar}
                     aria-label={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
                     title={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
-                    className={`hidden size-10 items-center justify-center rounded-full border shadow-lg backdrop-blur transition-colors lg:flex ${sidebarCollapsed
+                    className={`hidden size-10 items-center justify-center rounded-full border shadow-lg backdrop-blur transition-colors ${sidebarCollapsed
                         ? "border-foreground bg-black text-white"
                         : "border-border bg-card text-foreground hover:border-primary hover:text-primary"
                         }`}

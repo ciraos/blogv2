@@ -1,8 +1,9 @@
-// 订阅源（RSS 2.0 / Atom）共享逻辑：站点信息 + 文章数据 + XML 工具函数
+﻿// 订阅源（RSS 2.0 / Atom）共享逻辑：站点信息 + 文章数据 + XML 工具函数
 import { getAllPublicArticlesCached } from "@/lib/public-content-cache";
 import { SiteConfigResponse } from "@/types/site-config";
+import { API_URL } from "@/lib/api";
 
-const api_url = process.env.NEXT_PUBLIC_API_URL;
+
 const env_site_url = process.env.NEXT_PUBLIC_SITE_URL ?? "";
 
 /** 供 feed 使用的文章精简信息 */
@@ -32,7 +33,7 @@ export interface FeedData {
 async function resolveSiteUrl(): Promise<string> {
     if (env_site_url) return env_site_url.replace(/\/+$/, "");
     try {
-        const res = await fetch(`${api_url}/public/site-config`);
+        const res = await fetch(`${API_URL}/public/site-config`);
         const data: SiteConfigResponse = await res.json();
         const cfgUrl = data.data.SITE_URL;
         if (cfgUrl) return cfgUrl.replace(/\/+$/, "");
@@ -48,7 +49,7 @@ export async function getFeedData(): Promise<FeedData> {
     let description = "";
 
     try {
-        const res = await fetch(`${api_url}/public/site-config`);
+        const res = await fetch(`${API_URL}/public/site-config`);
         const data: SiteConfigResponse = await res.json();
         name = data.data.APP_NAME || name;
         description = data.data.SUB_TITLE || data.data.SITE_DESCRIPTION || "";

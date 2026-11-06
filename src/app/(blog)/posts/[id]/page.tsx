@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -238,11 +238,12 @@ export default async function Post({ params }: PostPageProps) {
     return (
         <PageWithSidebar>
             {/* 单栏文章正文；右侧目录（TOC）由全局侧边栏顶部的「文章目录」卡片接管 */}
-            <article className="min-w-0">
+            {/* 编辑部风：正文页收成 720px 沉浸阅读宽度（左侧留白均匀），文章内的 Markdown 样式不动 */}
+            <article className="mx-auto w-full min-w-0 max-w-[720px]">
                 <JsonLd data={structuredData} />
                 {cover ? (
                     /* 封面大图：文章信息叠加在图上，底部渐变遮罩保证文字清晰 */
-                    <header className="relative overflow-hidden rounded-xl border">
+                    <header className="relative overflow-hidden">
                         {/* 封面大图：整块 header 是定位容器，图用 fill 铺满；priority 因为它是首屏最大的图 */}
                         <Image
                             src={cover}
@@ -314,7 +315,7 @@ export default async function Post({ params }: PostPageProps) {
                 <ArticleSummary summaries={article.summaries} />
 
                 {/* 后端渲染好的正文 HTML，客户端组件负责代码块高亮 + 复制按钮；正文白底卡片，深浅色随主题切换 */}
-                <div className="mt-6 rounded-xl border border-border/60 bg-card p-5 shadow-sm md:p-8">
+                <div className="mt-8 border-t border-border/60 pt-8">
                     <ArticleBody html={contentHtml} codeBlock={codeBlock} copyCopyright={copyCopyright} />
                 </div>
 
@@ -328,9 +329,9 @@ export default async function Post({ params }: PostPageProps) {
 
                 {/* 上一篇 / 下一篇（放在评论区上方） */}
                 {(prev || next) && (
-                    <nav className="mt-10 grid grid-cols-1 gap-3 border-none pt-6 sm:grid-cols-2">
+                    <nav className="mt-10 grid grid-cols-1 gap-0 border-t border-border/60 pt-2 sm:grid-cols-2">
                         {prev ? (
-                            <Link href={`/posts/${prev.id}`} className="group rounded-lg border p-3 transition-colors hover:border-primary">
+                            <Link href={`/posts/${prev.id}`} className="group border-t border-border/60 py-3 transition-colors">
                                 <div className="text-xs text-muted-foreground">← 上一篇</div>
                                 <div className="mt-1 line-clamp-1 text-sm font-medium group-hover:text-primary">{prev.title}</div>
                             </Link>
@@ -338,7 +339,7 @@ export default async function Post({ params }: PostPageProps) {
                             <span />
                         )}
                         {next && (
-                            <Link href={`/posts/${next.id}`} className="group rounded-lg border p-3 text-right transition-colors hover:border-primary">
+                            <Link href={`/posts/${next.id}`} className="group border-t border-border/60 py-3 text-right transition-colors sm:border-t-0 sm:border-l sm:pl-5">
                                 <div className="text-xs text-muted-foreground">下一篇 →</div>
                                 <div className="mt-1 line-clamp-1 text-sm font-medium group-hover:text-primary">{next.title}</div>
                             </Link>

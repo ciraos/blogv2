@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PagedArticleList } from "@/components/(blog)/paged-article-list";
@@ -38,7 +38,7 @@ export default async function Tags({ searchParams }: { searchParams: Promise<Tag
             <PageWithSidebar>
                 <div className="w-full space-y-4">
                     <div className="flex items-baseline justify-between gap-4">
-                        <h1 className="text-2xl font-bold tracking-tight">标签：# {name}</h1>
+                        <h1 className="editorial-serif text-3xl font-bold tracking-tight">标签：# {name}</h1>
                         <Link href="/tags" className="shrink-0 text-sm text-muted-foreground hover:underline">
                             ← 全部标签
                         </Link>
@@ -62,18 +62,18 @@ export default async function Tags({ searchParams }: { searchParams: Promise<Tag
 
     return (
         <div className="w-full space-y-6">
-            <h1 className="text-2xl font-bold tracking-tight">全部标签</h1>
+            <h1 className="editorial-serif text-3xl font-bold tracking-tight">全部标签</h1>
             {tags.length === 0 ? (
                 <EmptyState icon={TagsIcon} title="暂无标签" description="给文章打上标签后，这里会自动汇总。" />
             ) : (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-x-5 gap-y-2">
                     {tags.map((tag) => (
                         <Link
                             key={tag.id}
                             href={`/tags?name=${encodeURIComponent(tag.name)}`}
-                            className="group rounded-full border px-3 py-1 transition-colors hover:border-primary"
+                            className="group inline-flex items-baseline gap-1.5 border-b border-transparent pb-0.5 transition-colors hover:border-primary"
                         >
-                            <span className="text-sm group-hover:text-primary">#{tag.name}</span>
+                            <span className="editorial-serif text-[15px] group-hover:text-primary">#{tag.name}</span>
                             <span className="ml-1.5 text-xs text-muted-foreground">{tag.count}</span>
                         </Link>
                     ))}

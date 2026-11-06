@@ -1,12 +1,15 @@
-import { NextResponse } from "next/server"
+﻿import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { ACCESS_TOKEN_KEY } from "@/lib/auth";
 
 // 登录后写入的 accessToken cookie 名（见 src/lib/auth.ts）
 const TOKEN_COOKIE = ACCESS_TOKEN_KEY
 
-// 远端后端地址（NEXT_PUBLIC_API_URL 已含 /api 前缀）
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ""
+// 远端后端地址（含 /api 前缀）。
+// 与 lib/api 的派生规则保持一致：没配 NEXT_PUBLIC_API_URL 时回退成 SITE_URL + /api。
+// 不能直接 import "@/lib/api"：中间件跑在 Edge 运行时，别把整包服务端模块拖进来。
+const SITE_ORIGIN = (process.env.NEXT_PUBLIC_SITE_URL ?? "").trim().replace(/\/+$/, "")
+const API_URL = ((process.env.NEXT_PUBLIC_API_URL ?? "").trim() || (SITE_ORIGIN ? `${SITE_ORIGIN}/api` : "")).replace(/\/+$/, "")
 
 // 本站静态路由的第一段（构建时扫描 src/app 生成，见 next.config.ts 的 env.APP_STATIC_ROUTE_SEGMENTS）
 const STATIC_SEGMENTS = new Set(

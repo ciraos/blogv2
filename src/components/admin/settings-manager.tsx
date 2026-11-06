@@ -46,6 +46,7 @@ import {
     type SettingsGroup,
     type SettingsListField,
     type SettingsSection,
+    UNVERIFIABLE_SETTINGS_KEYS,
 } from "@/lib/admin-settings";
 import { AiSettingsPanel } from "@/components/admin/ai-settings-panel";
 import { PaymentSettingsPanel } from "@/components/admin/payment-settings-panel";
@@ -54,6 +55,7 @@ import { TestEmailButton } from "@/components/admin/test-email-button";
 import { TokenColorEditor } from "@/components/admin/token-color-editor";
 import { updateAdminSettingsApi, uploadAdminImageApi } from "@/lib/api";
 import { broadcastSiteConfigUpdate } from "@/lib/site-config-broadcast";
+import { UnverifiableHint } from "@/components/admin/unverifiable-hint";
 import { uploadFileToFileManager } from "@/lib/admin-file-upload";
 import type { SiteConfig } from "@/types/site-config";
 import { cn, resolveAssetUrl, toSameOriginMediaUrl } from "@/lib/utils";
@@ -206,7 +208,7 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
             return;
         }
 
-        const payload = buildSettingsPayload(dirtyFields, draft);
+        const payload = buildSettingsPayload(dirtyFields, draft, config, ALL_SETTINGS_FIELDS);
         setSaving(true);
         try {
             await updateAdminSettingsApi(payload);
@@ -221,7 +223,7 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
         } finally {
             setSaving(false);
         }
-    }, [dirtyFields, draft, router]);
+    }, [dirtyFields, draft, router, config]);
 
     const handleReset = useCallback(() => {
         setDraft(baseline);
@@ -594,6 +596,9 @@ function SettingsGroupCard({
                                 key={field.key}
                                 className={cn(
                                     field.wide ||
+                                        // 开关类字段一律占满整行：塞进半宽格子会变成一只孤零零的开关，
+                                        // 和旁边的输入框对不齐（用户反馈「尊重系统的减少动态效果」位置别扭）
+                                        field.type === "boolean" ||
                                         field.type === "list" ||
                                         field.type === "stringlist" ||
                                         field.type === "tokens" ||
@@ -650,6 +655,7 @@ function FieldControl({
         // （hint 太长时截断成省略号，鼠标悬停看全文）
         <span className="mb-1.5 flex items-center gap-x-1.5 text-xs font-medium text-muted-foreground">
             <span className="shrink-0 whitespace-nowrap">{field.label}</span>
+            {UNVERIFIABLE_SETTINGS_KEYS.has(field.key) && <UnverifiableHint />}
             {Array.isArray(value) && value.length > 0 && (
                 <span className="shrink-0 font-normal text-muted-foreground/60">（{value.length} 条）</span>
             )}
@@ -664,18 +670,25 @@ function FieldControl({
 
     if (field.type === "boolean") {
         return (
-            <label className="flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm">
+            // 开关占整行：文字在左、勾选框在右，说明文字挂在标签下方 —— 整行读起来像一条设置项，
+            // 而不是一个孤立的复选框（半宽格子里原来就是这样，和相邻输入框对不齐）。
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-sm">
+                <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5">
+                        <span className="truncate">{field.label}</span>
+                        {UNVERIFIABLE_SETTINGS_KEYS.has(field.key) && <UnverifiableHint />}
+                    </span>
+                    {field.hint && (
+                        <span className="mt-0.5 block truncate text-xs text-muted-foreground" title={field.hint}>
+                            {field.hint}
+                        </span>
+                    )}
+                </span>
                 <Checkbox
                     checked={value === true}
                     onCheckedChange={(checked) => onChange(checked === true)}
                     aria-label={field.label}
                 />
-                <span className="shrink-0 whitespace-nowrap">{field.label}</span>
-                {field.hint && (
-                    <span className="ml-auto min-w-0 truncate text-right text-xs text-muted-foreground" title={field.hint}>
-                        {field.hint}
-                    </span>
-                )}
             </label>
         );
     }

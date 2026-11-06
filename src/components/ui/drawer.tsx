@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
@@ -52,9 +52,9 @@ function DrawerContent({
                 <DrawerPrimitive.Popup
                     data-slot="drawer-content"
                     className={cn(
-                        "pointer-events-auto fixed flex flex-col bg-background text-foreground shadow-lg outline-none transition-transform duration-300 ease-out",
+                        "pointer-events-auto fixed flex flex-col bg-background text-foreground shadow-sm outline-none transition-transform duration-300 ease-out",
                         // 默认：底部（swipeDirection="down"）
-                        "inset-x-0 bottom-0 max-h-[90dvh] w-full rounded-t-2xl border-t",
+                        "inset-x-0 bottom-0 max-h-[90dvh] w-full rounded-t-lg border-t",
                         // 顶部
                         "data-[swipe-direction=up]:top-0 data-[swipe-direction=up]:bottom-auto data-[swipe-direction=up]:rounded-b-2xl data-[swipe-direction=up]:rounded-t-none data-[swipe-direction=up]:border-b data-[swipe-direction=up]:border-t-0",
                         // 左侧

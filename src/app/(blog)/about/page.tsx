@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 
 import { AboutEquipmentMini, AboutSiteMap, AboutStatsGrid, AboutTimeline, type TimelineItem } from "@/components/(blog)/about-sections";
 import { AboutNowBar } from "@/components/(blog)/about-now-bar";
@@ -149,7 +149,7 @@ export default async function About() {
     ];
 
     return (
-        <div className="space-y-8">
+        <div className="mx-auto w-full space-y-8">
             {/* ===== 作者头像框（头像 + 两侧技能标签） ===== */}
             {enable.author_box && (
                 <div className="flex items-center justify-center">

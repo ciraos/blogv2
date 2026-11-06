@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 
 import { AlbumExplorer, type AlbumPageConfig } from "@/components/(blog)/album-explorer";
 import { PostComments } from "@/components/(blog)/post-comments";
@@ -85,8 +85,10 @@ export default async function AlbumPage() {
     const author = enableComment ? await getCommentAuthor() : null;
 
     return (
-        <AlbumExplorer albums={albums} categories={categories} config={pageConfig} footer={footer}>
-            {enableComment ? <PostComments targetPath={targetPath} comments={comments} author={author} /> : null}
-        </AlbumExplorer>
+        <div className="mx-auto w-full">
+            <AlbumExplorer albums={albums} categories={categories} config={pageConfig} footer={footer}>
+                {enableComment ? <PostComments targetPath={targetPath} comments={comments} author={author} /> : null}
+            </AlbumExplorer>
+        </div>
     );
 }

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { cookies } from "next/headers";
 
 import { NotificationsContent } from "@/components/(blog)/notifications-content";
@@ -15,5 +15,9 @@ export async function generateMetadata(): Promise<Metadata> {
  */
 export default async function Notifications() {
     const isLoggedIn = !!(await cookies()).get("token")?.value;
-    return <NotificationsContent isLoggedIn={isLoggedIn} />;
+    return (
+        <div className="mx-auto w-full">
+            <NotificationsContent isLoggedIn={isLoggedIn} />
+        </div>
+    );
 }

@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 
 import { Icon } from "@/components/ui/icon";
 import { resolveAssetUrl } from "@/lib/utils";
@@ -36,7 +36,7 @@ export function FooterSocialBar({ left = [], right = [], centerImg }: FooterSoci
     const avatar = resolveAssetUrl(centerImg);
 
     return (
-        <div className="mb-8">
+        <div className="mb-8 pt-12">
             <div className="flex flex-wrap items-center justify-center gap-6">
                 {/* 左：社交图标 */}
                 <div className="flex items-center gap-1">

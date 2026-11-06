@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PagedArticleList } from "@/components/(blog)/paged-article-list";
@@ -67,7 +67,7 @@ export default async function Archives({ searchParams }: { searchParams: Promise
         return (
             <PageWithSidebar>
                 <div className="w-full space-y-8">
-                    <h1 className="text-2xl font-bold tracking-tight">归档</h1>
+                    <h1 className="editorial-serif text-3xl font-bold tracking-tight">归档</h1>
                     {years.length === 0 ? (
                         <EmptyState icon={Archive} title="暂无归档" description="有文章之后这里会按年份列出全部归档。" />
                     ) : (
@@ -75,8 +75,8 @@ export default async function Archives({ searchParams }: { searchParams: Promise
                             {years.map((group) => (
                                 <section key={group.year}>
                                     {/* 年份节点 */}
-                                    <h2 className="flex items-center gap-2.5 text-lg font-semibold">
-                                        <span className="size-2.5 shrink-0 rounded-full bg-primary" aria-hidden="true" />
+                                    <h2 className="editorial-serif flex items-center gap-2.5 text-xl font-bold">
+                                        <span className="h-3 w-px shrink-0 bg-primary" aria-hidden="true" />
                                         {group.year} 年
                                     </h2>
 
@@ -85,7 +85,7 @@ export default async function Archives({ searchParams }: { searchParams: Promise
                                         {group.months.map((m) => (
                                             <div key={m.month}>
                                                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                                                    <span className="size-2 shrink-0 rounded-full border-2 border-primary bg-background" aria-hidden="true" />
+                                                    <span className="w-2 shrink-0 text-center text-primary" aria-hidden="true">·</span>
                                                     {m.month} 月（{m.articles.length} 篇）
                                                 </div>
                                                 <ul className="mt-2 space-y-2">
@@ -96,7 +96,7 @@ export default async function Archives({ searchParams }: { searchParams: Promise
                                                             </span>
                                                             <Link
                                                                 href={`/posts/${article.id}`}
-                                                                className="truncate text-sm transition-colors hover:text-primary hover:underline"
+                                                                className="editorial-serif truncate text-[15px] transition-colors hover:text-primary hover:underline"
                                                             >
                                                                 {article.title}
                                                             </Link>
@@ -132,7 +132,7 @@ export default async function Archives({ searchParams }: { searchParams: Promise
         <PageWithSidebar>
             <div className="w-full space-y-4">
                 <div className="flex items-baseline justify-between gap-4">
-                    <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+                    <h1 className="editorial-serif text-3xl font-bold tracking-tight">{title}</h1>
                     <Link href="/archives" className="shrink-0 text-sm text-muted-foreground hover:underline">
                         ← 全部归档
                     </Link>

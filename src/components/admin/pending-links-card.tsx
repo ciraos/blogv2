@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /* =============================================================================
  * 仪表盘「待审友链」卡：原来的「待审评论」卡位换成「**申请中**的友链申请」。
@@ -184,7 +184,7 @@ function PendingLinkRow({ link }: { link: PendingLink }) {
  * 按申请先后倒序，卡内滚动；卡头右侧保留进入「友链管理」页的入口。
  * 只读：这里没有任何通过 / 拒绝按钮（审核仍只在友链管理页做）。
  */
-export function PendingLinksCard() {
+export function PendingLinksCard({ embedded = false }: { embedded?: boolean } = {}) {
     const [links, setLinks] = useState<PendingLink[]>([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -214,7 +214,8 @@ export function PendingLinksCard() {
     if (loading) return <Skeleton />;
 
     return (
-        <section className={cardCls}>
+        // embedded：并进「动态」那张大卡时，自己不再画外框（由外层统一描边），只保留卡头 + 列表
+        <section className={embedded ? "flex min-h-0 flex-col" : cardCls}>
             <div className="mb-3 flex items-center gap-2">
                 <span className={iconBadgeCls}>
                     <Handshake className="size-3.5" />

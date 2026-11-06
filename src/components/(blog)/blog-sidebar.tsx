@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { headers } from "next/headers";
 import {
     ArrowRight,
@@ -35,7 +35,7 @@ function AuthorCard({ config }: { config: SiteConfig }) {
     const avatar = resolveAssetUrl(config.USER_AVATAR);
 
     return (
-        <div className="overflow-hidden rounded-xl bg-linear-to-br from-primary/90 to-primary shadow-sm">
+        <div className="editorial-accent overflow-hidden rounded-xl bg-linear-to-br from-primary/90 to-primary shadow-sm">
             <div className="p-5 text-primary-foreground">
                 {/* 顶部问候语：默认「欢迎光临」，点击循环显示技能词 */}
                 {author?.skills && author.skills.length > 0 ? (
@@ -547,7 +547,7 @@ export async function BlogSidebar({ config }: { config?: SiteConfig }) {
     return (
         <CollapsibleAside>
             {/* self-stretch：aside 撑满正文高度 → sticky 的包含块足够长，长文章 TOC 全程固定；不限高：侧边栏内容完整展示，不内部滚动 */}
-            <div className="top-20 space-y-4">
+            <div className="editorial-sidebar top-20 space-y-6">
                 {/* 作者卡 = 侧边栏第一张卡（也是最高的一张）：小屏整块隐藏，把首屏让给正文/文章列表，
                     其余卡片照常显示；lg 起（右侧固定栏）恢复显示。
                     为什么包一层而不是给 AuthorCard 根节点加 hidden：这张卡是纯装饰性大卡，

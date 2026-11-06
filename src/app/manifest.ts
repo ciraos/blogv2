@@ -1,8 +1,7 @@
-import type { MetadataRoute } from "next";
+﻿import type { MetadataRoute } from "next";
 
+import { API_URL } from "@/lib/api";
 import { SiteConfigResponse } from "@/types/site-config";
-
-const api_url = process.env.NEXT_PUBLIC_API_URL;
 const site_url = process.env.NEXT_PUBLIC_SITE_URL ?? "";
 
 /** 站点静态图标（后端返回相对路径时拼站点前缀） */
@@ -20,7 +19,9 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     let icons: MetadataRoute.Manifest["icons"] = [];
 
     try {
-        const res = await fetch(`${api_url}/public/site-config`);
+        // 用 lib/api 的 API_URL：它会在没配 NEXT_PUBLIC_API_URL 时回退成 SITE_URL + /api，
+        // 直接读 process.env 会在「只配 SITE_URL」的部署里拼出 undefined/public/...
+        const res = await fetch(`${API_URL}/public/site-config`, { cache: "no-store" });
         const data: SiteConfigResponse = await res.json();
         const cfg = data.data;
         appName = cfg.APP_NAME || appName;

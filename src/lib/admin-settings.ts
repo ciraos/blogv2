@@ -2572,6 +2572,49 @@ export const REMOTE_ONLY_SETTINGS_KEYS: string[] = Array.from(
     new Set(REMOTE_ONLY_SETTINGS_FIELDS.map((field) => field.key))
 );
 
+/**
+ * 「无法从外部验证」的设置键。
+ *
+ * 两类：
+ *   1. 私密项 —— 父段在公开配置里，但子键不下发（密钥、提示词、向量库、语音参数…）；
+ *   2. PRO 后台专有键 —— 读取需要管理员登录态（AI 写作 / AI 摘要），公开 site-config 里没有。
+ *
+ * 设置页会在这些字段的标签右侧加一个 ⚠，点开说明为什么“保存成功也可能没生效”。
+ */
+export const UNVERIFIABLE_SETTINGS_KEYS = new Set<string>([
+    "ai_podcast.provider",
+    "ai_podcast.speaker1",
+    "ai_podcast.speaker2",
+    "ai_podcast.use_head_music",
+    "ai_podcast.use_tail_music",
+    "ai_podcast.audio_format",
+    "ai_podcast.sample_rate",
+    "ai_podcast.speech_rate",
+    "ai_assistant.embedding_provider",
+    "ai_assistant.embedding_api_key",
+    "ai_assistant.embedding_model",
+    "ai_assistant.vector_store",
+    "ai_assistant.system_prompt",
+    "ai_assistant.user_prompt",
+    "ai_assistant.no_context_prompt",
+    "oauth.qq.display_name",
+    "oauth.wechat.display_name",
+    "oauth.rainbow.display_name",
+    "comment.nickname_forbidden_words",
+    "ai_summary_provider",
+    "ai_summary_api_key",
+    "ai_summary_api_url",
+    "ai_summary_model",
+    "ai_summary_system_prompt",
+    "ai_writing_provider",
+    "ai_writing_api_key",
+    "ai_writing_api_url",
+    "ai_writing_model",
+    "ai_writing_max_tokens",
+    "ai_writing_temperature",
+    "ai_writing_system_prompt",
+]);
+
 /** 后端对敏感项的回显占位（只写不回显）；空串 = 未配置 */
 export function isSecretMask(value: unknown): boolean {
     return typeof value === "string" && /^\*+$/.test(value.trim());
@@ -2668,13 +2711,93 @@ export function isFieldDirty(field: SettingsField, draft: Record<string, Setting
     return JSON.stringify(current) !== JSON.stringify(baseline[field.key]);
 }
 
+/**
+ * 后端把哪些「一张 JSON 存整段」的键当成单个设置项。
+ *
+ * page.one_image.config 就是一个整段 JSON（{ home, archives, categories, tags }），后端没有
+ * `page.one_image.config.home.enable` 这种子键。所以表单里按点号展开的子字段，保存时必须
+ * 合并回这一整段再提交，否则后端只会收到一堆它不认识的孤立键 —— 表面上提示「已保存」，
+ * 实际公开配置一点没变（首页关了大图却还在，就是这个原因）。
+ */
+const JSON_BLOB_KEYS = [
+    "page.one_image.config",
+    "HOME_TOP",
+    "CREATIVITY",
+    "album.waterfall.column_count",
+    "about.page.about_site_tips",
+    "about.page.buff",
+    "about.page.careers",
+    "about.page.comic",
+    "about.page.game",
+    "about.page.like",
+    "about.page.map",
+    "about.page.maxim",
+    "about.page.music",
+    "about.page.personalities",
+    "about.page.self_info",
+    "about.page.skills_tips",
+] as const;
+
+/** 把 "a.b.c" 写进对象（不存在就逐层补） */
+function setDeepPath(target: Record<string, unknown>, path: string, value: unknown): void {
+    const parts = path.split(".");
+    let node: Record<string, unknown> = target;
+    for (const part of parts.slice(0, -1)) {
+        const next = node[part];
+        if (!next || typeof next !== "object" || Array.isArray(next)) node[part] = {};
+        node = node[part] as Record<string, unknown>;
+    }
+    node[parts[parts.length - 1]] = value;
+}
+
+/** 表单值 → 后端 JSON 里的原始类型（布尔仍是布尔，数字仍是数字） */
+function toJsonValue(field: SettingsField, value: SettingsFormValue): unknown {
+    if (field.type === "boolean") return Boolean(value);
+    if (field.type === "number") {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : 0;
+    }
+    return String(value ?? "");
+}
+
 /** 按官方口径构造保存载荷：布尔 → "true"/"false"；列表/令牌 → JSON 字符串；json 原样提交（本身就是 JSON 文本）；其余原样 */
 export function buildSettingsPayload(
     fields: SettingsField[],
-    draft: Record<string, SettingsFormValue>
+    draft: Record<string, SettingsFormValue>,
+    config?: unknown,
+    /**
+     * 全部字段（含未改动的）。整段 JSON 键合并时要用它补齐同一段里的其它字段，
+     * 否则公开配置里没有这段（例如后台专有键）时会写出半截 JSON 把原数据冲掉。
+     */
+    allFields: SettingsField[] = fields
 ): Record<string, string> {
     const payload: Record<string, string> = {};
+
+    // 「JSON 整段」的键：把脏字段（以及同段的其它字段）合并进原对象后整体提交
+    const touchedBlobs = new Map<string, SettingsField[]>();
     for (const field of fields) {
+        const blob = JSON_BLOB_KEYS.find((key) => field.key.startsWith(`${key}.`));
+        if (!blob) continue;
+        const list = touchedBlobs.get(blob) ?? [];
+        list.push(field);
+        touchedBlobs.set(blob, list);
+    }
+    for (const [blob, dirtyBlobFields] of touchedBlobs) {
+        const existing = readConfigPath(config, blob);
+        const hasExisting = Boolean(existing && typeof existing === "object" && !Array.isArray(existing));
+        const merged: Record<string, unknown> = hasExisting
+            ? (JSON.parse(JSON.stringify(existing)) as Record<string, unknown>)
+            : {};
+        // 原有对象在 → 只覆盖脏字段；原有对象缺失 → 用全部字段铺满，避免只写半截
+        const source = hasExisting ? dirtyBlobFields : allFields.filter((f) => f.key.startsWith(`${blob}.`));
+        for (const field of source) {
+            setDeepPath(merged, field.key.slice(blob.length + 1), toJsonValue(field, draft[field.key]));
+        }
+        payload[blob] = JSON.stringify(merged);
+    }
+
+    for (const field of fields) {
+        if (JSON_BLOB_KEYS.some((key) => field.key.startsWith(`${key}.`))) continue;
         const value = draft[field.key];
         if (field.type === "boolean") payload[field.key] = value ? "true" : "false";
         else if (field.type === "list" || field.type === "stringlist") payload[field.key] = JSON.stringify(value ?? []);

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PagedArticleList } from "@/components/(blog)/paged-article-list";
@@ -38,7 +38,7 @@ export default async function Categories({ searchParams }: { searchParams: Promi
             <PageWithSidebar>
                 <div className="w-full space-y-4">
                     <div className="flex items-baseline justify-between gap-4">
-                        <h1 className="text-2xl font-bold tracking-tight">分类：{name}</h1>
+                        <h1 className="editorial-serif text-3xl font-bold tracking-tight">分类：{name}</h1>
                         <Link href="/categories" className="shrink-0 text-sm text-muted-foreground hover:underline">
                             ← 全部分类
                         </Link>
@@ -62,18 +62,18 @@ export default async function Categories({ searchParams }: { searchParams: Promi
 
     return (
         <div className="w-full space-y-6">
-            <h1 className="text-2xl font-bold tracking-tight">全部分类</h1>
+            <h1 className="editorial-serif text-3xl font-bold tracking-tight">全部分类</h1>
             {categories.length === 0 ? (
                 <EmptyState icon={FolderOpen} title="暂无分类" description="给文章设置分类后，这里会自动汇总。" />
             ) : (
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-x-6 gap-y-2">
                     {categories.map((category) => (
                         <Link
                             key={category.id}
                             href={`/categories?name=${encodeURIComponent(category.name)}`}
-                            className="group rounded-lg border px-4 py-2 transition-colors hover:border-primary"
+                            className="group inline-flex items-baseline gap-2 border-b border-transparent pb-0.5 transition-colors hover:border-primary"
                         >
-                            <span className="text-sm font-medium group-hover:text-primary">{category.name}</span>
+                            <span className="editorial-serif text-[15px] font-medium group-hover:text-primary">{category.name}</span>
                             <span className="ml-2 text-xs text-muted-foreground">{category.count} 篇</span>
                         </Link>
                     ))}

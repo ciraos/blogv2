@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import Link from "next/link"
@@ -56,13 +56,14 @@ const HOVER_CLS =
 
 /* 当前页主菜单项：实心主题色高亮（跟随 --primary 主题色） */
 const ACTIVE_CLS =
-  "bg-primary text-primary-foreground font-medium hover:bg-primary/90 hover:text-primary-foreground"
+  // 当前页：不再是整块实心主色，改成「左侧 2px 主题色竖线 + 浅底 + 主题色文字」（和前台栏目标记同一套语言）
+  "relative bg-primary/10 text-primary font-medium hover:bg-primary/15 before:absolute before:inset-y-1.5 before:left-0 before:w-[2px] before:rounded-full before:bg-primary"
 
 /* 当前页子菜单项：浅色主题填充高亮（跟随主题色） */
-const SUB_ACTIVE_CLS = "bg-primary/10 text-primary font-medium"
+const SUB_ACTIVE_CLS = "text-primary font-medium"
 
 /* 所在分组（子项命中当前页）的主菜单：浅灰 + 加粗 */
-const PARENT_ACTIVE_CLS = "bg-sidebar-accent font-medium"
+const PARENT_ACTIVE_CLS = "bg-sidebar-accent/70 font-medium"
 
 /**
  * 找出当前 pathname 对应的导航项 url。

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { HomeMasthead } from "@/components/(blog)/home-masthead";
 import { PagedArticleList } from "@/components/(blog)/paged-article-list";
 import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
@@ -28,8 +29,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
     return (
         <PageWithSidebar>
             <div className="w-full space-y-12">
-                {/* 首页顶部区（HOME_TOP：标题/副标题/站点文字/分类入口/主题 banner）按用户要求不再在首页展示。
-                    配置键 HOME_TOP.* 仍保留在设置页；组件 home-top.tsx 保留但暂无引用，日后想恢复挂载一行即可。 */}
+                {/* 首页刊头：大号站名 + 期号 + 日期 + 导语（编辑部风的 A 步）。
+                    只在第一页显示，翻页时不重复占版面。 */}
+                {page === 1 && (
+                    <HomeMasthead
+                        name={config?.APP_NAME ?? "葱苓小筑"}
+                        tagline={config?.SUB_TITLE || config?.SITE_DESCRIPTION}
+                        total={total}
+                    />
+                )}
+
                 <PagedArticleList
                     articles={list}
                     total={total}

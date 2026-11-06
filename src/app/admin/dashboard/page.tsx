@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { CommentFeed } from "@/components/admin/comment-feed";
@@ -12,8 +12,8 @@ import { generateBlogMetadata } from "@/lib/seo";
 // 区块标题：左侧主题色竖条 + 标题 + 向右延伸的分隔线（紧凑密度：标题 text-base）
 function SectionTitle({ children }: { children: React.ReactNode }) {
     return (
-        <h2 className="mb-3 flex items-center gap-2.5 text-base font-semibold tracking-tight">
-            <span className="h-4 w-1 rounded-full bg-primary" aria-hidden="true" />
+        <h2 className="editorial-serif mb-3 flex items-center gap-2.5 text-lg font-semibold tracking-tight">
+            <span className="h-3.5 w-px bg-primary" aria-hidden="true" />
             {children}
             <span className="h-px flex-1 bg-border" aria-hidden="true" />
         </h2>
@@ -44,7 +44,7 @@ export default async function Dashboard() {
     return (
         <>
             <div className="flex flex-col">
-                <h1 className="text-2xl font-bold tracking-tight">仪表盘</h1>
+                <h1 className="editorial-serif text-3xl font-bold tracking-tight">仪表盘</h1>
                 <p className="ml-0 mt-1 text-sm text-muted-foreground content-end">
                     欢迎回来，{user.nickname || user.username}
                 </p>

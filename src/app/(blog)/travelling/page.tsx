@@ -29,7 +29,7 @@ export default async function Travelling() {
                 <Shuffle className="size-7" />
             </div>
             <div className="space-y-1.5">
-                <h1 className="text-xl font-bold tracking-tight">随机友链获取失败</h1>
+                <h1 className="editorial-serif text-2xl font-bold tracking-tight">随机友链获取失败</h1>
                 <p className="text-sm text-muted-foreground">暂时无法跳转到宝藏博主，请稍后再试。</p>
             </div>
             <div className="flex flex-wrap justify-center gap-3">

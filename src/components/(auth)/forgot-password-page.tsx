@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -79,7 +79,7 @@ export function ForgotPasswordPage() {
     return (
         <form onSubmit={handleSubmit} className="w-full">
             <FieldSet>
-                <div className="text-center">
+                <div>
                     <h1 className="text-xl font-semibold tracking-tight">找回密码</h1>
                     <p className="mt-2 text-sm text-muted-foreground">填写注册时用的邮箱，我们会发一封重置邮件</p>
                 </div>

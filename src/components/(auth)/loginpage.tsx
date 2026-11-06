@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "nextjs-toploader/app";
@@ -11,6 +11,7 @@ import {
     FieldLabel,
     FieldSet,
 } from "@/components/ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -20,6 +21,8 @@ export function LoginPage({ registered = false }: { registered?: boolean }) {
     const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    // 「记住我」：勾选 → cookie 持久 7 天；不勾 → 会话 cookie（关浏览器即退出）
+    const [remember, setRemember] = useState(true);
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
@@ -36,7 +39,7 @@ export function LoginPage({ registered = false }: { registered?: boolean }) {
         setLoading(true);
         try {
             // 登录走本应用同源路由 /api/auth/login（服务端转发 + 写入 httpOnly cookie）
-            await loginApi(email.trim(), password);
+            await loginApi(email.trim(), password, remember);
             router.replace("/admin/dashboard");
         } catch (err) {
             if (err instanceof ApiError) {
@@ -52,7 +55,7 @@ export function LoginPage({ registered = false }: { registered?: boolean }) {
     return (
         <form onSubmit={handleSubmit} className="w-full">
             <FieldSet>
-                <div className="text-center">
+                <div>
                     <h1 className="text-xl font-semibold tracking-tight">登录</h1>
                     <p className="mt-2 text-sm text-muted-foreground">欢迎回来，请登录你的账号</p>
                 </div>
@@ -109,6 +112,16 @@ export function LoginPage({ registered = false }: { registered?: boolean }) {
                         </div>
                     </Field>
                 </FieldGroup>
+
+                {/* 记住我：勾选 → cookie 持久 7 天；不勾 → 会话 cookie（关浏览器即退出） */}
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground select-none">
+                    <Checkbox
+                        checked={remember}
+                        onCheckedChange={(checked) => setRemember(checked === true)}
+                        aria-label="记住我"
+                    />
+                    记住我
+                </label>
 
                 {error && <p className="text-sm text-destructive">{error}</p>}
 

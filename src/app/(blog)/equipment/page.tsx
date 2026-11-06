@@ -41,7 +41,7 @@ export default async function Equipment() {
     return (
         <PageWithSidebar>
             <div className="w-full space-y-6">
-                <header>{banner ?? <h1 className="text-2xl font-bold tracking-tight">我的装备</h1>}</header>
+                <header>{banner ?? <h1 className="editorial-serif text-3xl font-bold tracking-tight">我的装备</h1>}</header>
 
                 <EquipmentList groups={equipment?.list} />
 

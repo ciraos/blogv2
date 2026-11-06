@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { FlinkBanner } from "@/components/(blog)/flink-banner";
 import { LinkApplyConditions } from "@/components/(blog)/link-apply-conditions";
 import { LinkCustomHtml } from "@/components/(blog)/link-custom-html";
@@ -13,6 +13,13 @@ import { generateBlogMetadata } from "@/lib/seo";
 import { EmptyState } from "@/components/(blog)/empty-state";
 import { Link2 } from "lucide-react";
 
+/**
+ * 友链页顶部横幅开关（默认关闭）。
+ * 与其它布尔开关一致：只有 1 / true / yes / on 算开启，不设 / 0 / false 都算关闭。
+ */
+const LINK_BANNER_ENABLED = ["1", "true", "yes", "on"].includes(
+    (process.env.NEXT_PUBLIC_LINK_BANNER_ENABLE ?? "").trim().toLowerCase()
+);
 // 友链来自远端实时数据，不做构建期静态预渲染
 export const dynamic = "force-dynamic";
 
@@ -136,9 +143,17 @@ export default async function Link() {
     }
 
     return (
-        <div className="linksetcion w-full space-y-4">
-            {/* 顶部 Banner：与数百名博主无限进步 + 随机访问/申请友链 + logo 波浪墙 */}
-            <FlinkBanner links={allLinks} />
+        <div className="linksetcion mx-auto w-full space-y-4">
+            {/* 顶部 Banner（友链 logo 滚动墙）：显隐与文案都由环境变量控制，默认关闭。
+                · NEXT_PUBLIC_LINK_BANNER_ENABLE=1 才渲染（1/true/yes/on 为开启）
+                · 文案可用 NEXT_PUBLIC_LINK_BANNER_LABEL / NEXT_PUBLIC_LINK_BANNER_TITLE 覆盖 */}
+            {LINK_BANNER_ENABLED && (
+                <FlinkBanner
+                    links={allLinks}
+                    label={process.env.NEXT_PUBLIC_LINK_BANNER_LABEL?.trim() || undefined}
+                    title={process.env.NEXT_PUBLIC_LINK_BANNER_TITLE?.trim() || undefined}
+                />
+            )}
 
             {/* 友链鱼塘：随机一篇友链朋友圈文章（首屏趣味前缀在服务端抽签，避免水合文本不一致） */}
             <LinkPond initial={randomPost} initialPrefix={pickFishLine()} />

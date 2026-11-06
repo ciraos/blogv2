@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+﻿import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import {
     PAGER_ACTIVE_CLS,
@@ -41,12 +41,10 @@ function NavLink({ href, disabled, children }: { href?: string; disabled: boolea
  * 与后台的 PaginationControls 共用 src/lib/pagination.ts 的分页算法与样式，保证前后台一致。
  */
 export function NumberedPagination({ page, totalPages, makePageHref }: NumberedPaginationProps) {
-    if (totalPages <= 1) return null;
-
     const current = Math.min(Math.max(1, page), totalPages);
 
     return (
-        <nav aria-label="分页" className="flex flex-wrap items-center justify-center gap-2">
+        <nav aria-label="分页" className="editorial-pager flex flex-wrap items-center justify-center gap-2">
             <div className={PAGER_BLOCK_CLS}>
                 <NavArrow
                     href={current > 1 ? makePageHref(current - 1) : undefined}

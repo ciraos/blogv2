@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -72,7 +72,7 @@ export function ResetPasswordPage({ publicUserId, sign }: { publicUserId: string
     return (
         <form onSubmit={handleSubmit} className="w-full">
             <FieldSet>
-                <div className="text-center">
+                <div>
                     <h1 className="text-xl font-semibold tracking-tight">设置新密码</h1>
                     <p className="mt-2 text-sm text-muted-foreground">重置链接有时效，提交后会立即生效</p>
                 </div>

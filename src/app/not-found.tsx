@@ -6,13 +6,14 @@ import { BackButton } from "@/components/back-button";
 import { getSiteConfigs } from "@/lib/site-config";
 import { resolveAssetUrl } from "@/lib/utils";
 import { SiteConfigResponse } from "@/types/site-config";
+import { API_URL } from "@/lib/api";
 
 const site_url = process.env.NEXT_PUBLIC_SITE_URL;
-const api_url = process.env.NEXT_PUBLIC_API_URL;
+
 
 export async function generateMetadata(): Promise<Metadata> {
     try {
-        const a = await fetch(`${api_url}/public/site-config`);
+        const a = await fetch(`${API_URL}/public/site-config`);
         const data: SiteConfigResponse = await a.json();
         // apple-touch-icon：动态引用后端 logo（PNG 优先），无本地静态文件
         const appleIcon = site_url + (data.data.LOGO_URL_192x192 || data.data.LOGO_URL || data.data.ICON_URL);

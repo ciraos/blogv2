@@ -29,7 +29,7 @@ export default async function RandomPost() {
                 <Shuffle className="size-7" />
             </div>
             <div className="space-y-1.5">
-                <h1 className="text-xl font-bold tracking-tight">暂时没有文章可逛</h1>
+                <h1 className="editorial-serif text-2xl font-bold tracking-tight">暂时没有文章可逛</h1>
                 <p className="text-sm text-muted-foreground">等博主发布文章后再来随便逛逛吧。</p>
             </div>
             <div className="flex flex-wrap justify-center gap-3">
