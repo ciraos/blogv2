@@ -126,7 +126,7 @@ function NotificationList({
 }
 
 /**
- * 消息通知（对齐官方 anheyu-app-frontend 的 (frontend)/notifications）：
+ * 消息通知：
  * 左侧分类（未读消息 / 文章评论 / 购买通知 / 会员服务 / 系统通知，带未读角标）+ 右侧列表，
  * 点条目即标记已读并进入详情（有 link 时显示「查看详情 →」）；支持「全部标为已读」。
  * 数据：GET /pro/notifications（page_size=100, unread_only=false），未读数由列表本地聚合。

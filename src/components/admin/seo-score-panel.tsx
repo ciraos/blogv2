@@ -2,7 +2,7 @@
 import { AlertTriangle, Check, X } from "lucide-react";
 
 /**
- * 文章 SEO 自检面板（对齐参照项目 anheyu-app-frontend 的 SeoScorePanel 思路）。
+ * 文章 SEO 自检面板。
  *
  * 纯前端静态评估：不发请求、不污染数据，只是把「发布前值得检查的几项」摆出来。
  * 规则刻意宽松（都是能自己掌握的东西：标题长度、正文长度、摘要、关键词、链接、封面、分类标签）。

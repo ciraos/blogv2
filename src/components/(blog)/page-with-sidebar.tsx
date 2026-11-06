@@ -3,7 +3,7 @@ import { getSiteConfigs } from "@/lib/site-config";
 import type { SiteConfig } from "@/types/site-config";
 
 /**
- * 带右侧边栏的页面容器（对齐官方 anheyu-app-frontend 的做法：
+ * 带右侧边栏的页面容器（约定：
  * 侧边栏由「页面」决定是否渲染，而不是全局布局统一挂）。
  *
  * 用法：需要侧边栏的页面把内容包起来 ——

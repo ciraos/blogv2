@@ -38,7 +38,7 @@ function toDisplayText(lines: string[]): string {
  * 文章顶部的「摘要」卡片。
  *
  * 为什么不直接塞进正文 HTML：摘要是**元数据**，跟正文一起滚走就没人看了；
- * 单独一张卡放在标题之下、正文之前（官方 anheyu-app-frontend 的 articleLead 就是这块），
+ * 单独一张卡放在标题之下、正文之前，
  * 让读者先判断"这篇是不是我要的"，再决定要不要往下读。
  *
  * 渲染口径：**纯文本**（`whitespace-pre-line` 保留换行），不按 Markdown 渲染。

@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * 消息通知（对齐官方 anheyu-app-frontend 的 (frontend)/notifications）：
+ * 消息通知：
  * 登录态由服务端 cookie 判断后传给客户端组件；未登录时只渲染「请先登录」空态、不发请求。
  */
 export default async function Notifications() {

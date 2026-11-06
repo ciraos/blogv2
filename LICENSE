@@ -1,13 +1,9 @@
 # blog-app Frontend
 
-> 许可证/声明：本仓库是 anheyu 生态的**第三方前端**（Next.js + React）。
+> 许可证/声明：本仓库是 anheyu 生态的**第三方前端**（Next.js + React），
+> 接口契约对接 [anzhiyu-c/anheyu-app](https://github.com/anzhiyu-c/anheyu-app)（GPL-3.0）。
 >
-> - 接口契约对接 [anzhiyu-c/anheyu-app](https://github.com/anzhiyu-c/anheyu-app)（GPL-3.0）；
-> - 页面结构、组件拆分与交互按官方前端 **anheyu-app-frontend**（Next.js + React）对齐；
-> - 更上游的 [anzhiyu-c/hexo-theme-anzhiyu](https://github.com/anzhiyu-c/hexo-theme-anzhiyu) 是
->   anheyu-app 的原始设计来源（Hexo 主题），仅作 GPL 溯源。
->
-> 上游 anheyu-app 与 hexo-theme-anzhiyu 均为 GPL-3.0。作为衍生作品，本仓库以 **GNU GPL v3.0**
+> 上游 anheyu-app 为 GPL-3.0。作为衍生作品，本仓库以 **GNU GPL v3.0**
 > （或由自由软件基金会发布的任何后续版本）授权分发，遵循 GPL 的 copyleft 条款。
 > 资源文件（`public/iconfont/` 的 AnZhiYu 图标库、Music 唱片等媒体）属各自授权，不随本代码自动获得再分发权。
 

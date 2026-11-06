@@ -1,8 +1,7 @@
 /**
  * 站点外观换肤：依据后端 APPEARANCE_SKIN / APPEARANCE_TOKENS 生成主题 CSS 变量。
  *
- * 皮肤数据与令牌口径对齐 anheyu 官方前端
- * （anheyu-app-frontend/src/lib/theme/appearance-presets.ts + appearance-types.ts）：
+ * 皮肤数据与令牌口径：
  *   - 内置皮肤 id 即后端 APPEARANCE_SKIN 取值，共 8 套；
  *   - 每套皮肤「浅色 / 深色」两套令牌分别生效；
  *   - APPEARANCE_TOKENS 可在皮肤基础上按 { light: {...}, dark: {...} } 局部覆盖。

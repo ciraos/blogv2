@@ -1376,7 +1376,6 @@ export function toggleAdminCommentPinApi(id: string, pinned: boolean): Promise<u
 
 // ===================== 用户中心（/user/*，需登录） =====================
 //
-// 官方对应实现：anheyu-app-frontend 的 src/lib/api/user-center.ts。
 // 后端不开放 CORS，全部经同源代理 /api/user/* 转发（浏览器带 httpOnly cookie 里的 token）。
 
 /** 通知设置（后端 SimpleUserNotificationSettings） */
@@ -1468,7 +1467,6 @@ export function getMySupportTicketsApi(): Promise<unknown> {
 
 // ===================== 消息通知（/pro/notifications，需登录） =====================
 //
-// 官方对应实现：anheyu-app-frontend 的 (frontend)/notifications（客户端调 /api/pro/notifications）。
 // 后端不开放 CORS，这里经同源代理 /api/pro/notifications* 转发。
 
 /** 通知类型（官方分类：文章评论 / 购买通知 / 会员服务 / 工单 / 系统通知） */

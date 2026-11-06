@@ -9,7 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /**
  * /admin/post-management/[id]/edit 编辑文章（与 new 共用 ArticleForm，仅 mode 不同）。
- * 路由形状对齐参照项目 anheyu-app-frontend（new 与 [id]/edit、[id]/history 同一套）。
+ * 路由形状：new 与 [id]/edit、[id]/history 同一套。
  * 外层 fixed inset-0 flex flex-col overflow-hidden：给里面的 .admin-page 确定高度，
  * 让编辑器占满整页且卡片内部滚动（不只是 fixed，否则内容会溢出被裁）。
  */

@@ -29,7 +29,7 @@ function formatJoinDate(iso?: string): string {
 }
 
 /**
- * 用户中心（对齐官方 anheyu-app-frontend 的 (frontend)/user-center）：
+ * 用户中心：
  * 服务端读 httpOnly token 取用户信息后传给客户端组件；未登录 / token 失效时传 null，
  * 由客户端渲染「请先登录」空态（与官方一致）。
  */

@@ -10,7 +10,7 @@ import { clearAutoThemeManagement } from "@/lib/scheduled-theme";
 /**
  * 登录 / 注册 / 激活页共用的品牌卡片外壳（由 (auth)/layout.tsx 包住各页内容）。
  *
- * 参照项目 anheyu-app-frontend 的 components/auth/LoginForm.tsx 是这套结构：
+ * 登录卡的结构：
  * 一张 max-w-400 的卡片 + 顶部横向 Logo（链回首页）+ 右上角主题切换；
  * 站点名 / 日夜双 Logo 都取自 site-config（LOGO_HORIZONTAL_DAY / LOGO_HORIZONTAL_NIGHT）。
  *

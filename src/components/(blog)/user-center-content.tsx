@@ -32,7 +32,7 @@ export interface UserCenterUser {
 }
 
 /**
- * 用户中心（对齐官方 anheyu-app-frontend 的 UserCenterContent）：
+ * 用户中心：
  * 资料卡（可点头像上传）+ 操作卡（编辑资料 / 修改密码 / 通知设置 / 退出登录）。
  * 与官方的差异：用户信息来自服务端 props（本应用没有 zustand auth store），
  * 保存后调用 router.refresh() 重新取服务端数据（官方是整页 reload）。

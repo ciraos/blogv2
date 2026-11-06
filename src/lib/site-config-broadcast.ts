@@ -1,7 +1,7 @@
 // 站点配置变更的「同源跨标签页广播」。
 //
 // 场景：后台「系统设置」保存后，希望同一个浏览器里已经打开的前台标签页立刻用上新配置
-// （不用用户手动按刷新）。官方前端（anheyu-app-frontend）的做法就是这一套：
+// （不用用户手动按刷新）。做法：
 //   保存方 broadcastSiteConfigUpdate(改动键) → 写 localStorage + BroadcastChannel；
 //   每个前台标签页 subscribeSiteConfigUpdates 收到后，按改动键决定
 //   「自己整页刷新」还是「只重取一次站点配置」。

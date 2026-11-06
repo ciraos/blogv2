@@ -9,8 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /**
  * /admin/post-management/new 新建文章（与 edit/[id] 共用 ArticleForm，仅 mode 不同）。
- * 外层用 fixed inset-0 铺满整个视口（对齐参照项目 anheyu-app-frontend 的
- * admin/post-management/new 做法）——这样编辑区占满整页，也不需要去改后台导航栏的收起行为。
+ * 外层用 fixed inset-0 铺满整个视口 —— 这样编辑区占满整页，也不需要去改后台导航栏的收起行为。
  */
 export default function NewArticlePage() {
     return (

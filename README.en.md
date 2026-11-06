@@ -176,7 +176,7 @@ The image is based on `node:20-alpine`, uses a multi-stage build, runs as a non-
 
 ## 📄 License
 
-This project follows the official Anheyu frontend **anheyu-app-frontend** (Next.js + React) for page structure, component layout and interactions, and talks to the [anzhiyu-c/anheyu-app](https://github.com/anzhiyu-c/anheyu-app) backend over HTTP; both are licensed under **GPL-3.0**. The older [anzhiyu-c/hexo-theme-anzhiyu](https://github.com/anzhiyu-c/hexo-theme-anzhiyu) is the original design source that anheyu-app was rewritten from. As a derivative work, this repository is released under the **GNU GPL v3.0** (or any compatible later version). See [LICENSE](./LICENSE).
+This project talks to the [anzhiyu-c/anheyu-app](https://github.com/anzhiyu-c/anheyu-app) backend over HTTP, licensed under **GPL-3.0**. As a derivative work, this repository is released under the **GNU GPL v3.0** (or any compatible later version). See [LICENSE](./LICENSE).
 
 - Any modification and redistribution must follow GPL-3.0 copyleft terms (keep the copyright notice, provide the source, and never relicense under a more permissive license).
 - Assets (the AnZHiYu icon font in `public/iconfont/`, the vinyl music images, etc.) carry their own licensing terms and are not automatically redistributable along with the code; please attribute them in a NOTICE or README.
