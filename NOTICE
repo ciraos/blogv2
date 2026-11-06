@@ -10,7 +10,9 @@ blog-app · 第三方组件与许可声明
 本仓库以 GNU GPL v3.0（或由自由软件基金会发布的任何后续版本）授权分发，
 完整许可文本见仓库根目录 `LICENSE`。
 
-原因是：本项目是下列 GPL-3.0 上游项目的移植 / 重写作品。
+原因是：本项目的直接参照是 anheyu 生态的官方前端 anheyu-app-frontend（Next.js + React），
+后端接口对接 anheyu-app；更上游的 Hexo 主题只作为 GPL 溯源的原始设计来源。
+**本项目不基于 Hexo，也不包含 Hexo 主题的代码。**
 
 ------------------------------------------------------------------
 二、上游项目（GPL-3.0）
@@ -21,10 +23,15 @@ blog-app · 第三方组件与许可声明
    用途：接口契约、配置键定义、界面文案与交互行为参考；
         本仓库通过 HTTP 调用其后端接口（含 PRO 模块的公开接口）。
 
-2. hexo-theme-anzhiyu（原始主题，Hexo）
+2. anheyu-app-frontend（官方前端，Next.js + React）
+   用途：本仓库的**直接参照**——页面结构、组件拆分、交互行为按它逐项对齐；
+        仅在本地保留一份只读快照用于对照（在 .gitignore 中，不进版本库）。
+
+3. hexo-theme-anzhiyu（上游设计来源，Hexo 主题）
    仓库：https://github.com/anzhiyu-c/hexo-theme-anzhiyu
    许可：GNU GPL v3.0
-   用途：页面结构、样式与交互的参考实现。
+   用途：仅作 GPL 溯源 —— anheyu-app 由该 Hexo 主题重写而来；
+        本项目不基于 Hexo，也不包含 Hexo 主题的代码。
 
 注意：本仓库**不包含**上述项目的源码副本（开发用的本地 vendor 目录在 .gitignore 中）。
 另外，anheyu PRO 后端是闭源商业产品，本仓库不含其任何代码，只通过 HTTP 与其接口互操作。
