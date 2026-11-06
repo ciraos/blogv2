@@ -5,7 +5,7 @@
 > - 接口契约对接 [anzhiyu-c/anheyu-app](https://github.com/anzhiyu-c/anheyu-app)（GPL-3.0）；
 > - 页面结构、组件拆分与交互按官方前端 **anheyu-app-frontend**（Next.js + React）对齐；
 > - 更上游的 [anzhiyu-c/hexo-theme-anzhiyu](https://github.com/anzhiyu-c/hexo-theme-anzhiyu) 是
->   anheyu-app 的原始设计来源（Hexo 主题），仅作 GPL 溯源；**本项目不基于 Hexo，也不包含 Hexo 主题代码**。
+>   anheyu-app 的原始设计来源（Hexo 主题），仅作 GPL 溯源。
 >
 > 上游 anheyu-app 与 hexo-theme-anzhiyu 均为 GPL-3.0。作为衍生作品，本仓库以 **GNU GPL v3.0**
 > （或由自由软件基金会发布的任何后续版本）授权分发，遵循 GPL 的 copyleft 条款。

@@ -178,7 +178,7 @@ docker run -d -p 3126:3126 --name blog-app blog-app
 
 > **本项目是 anheyu-app 的第三方前端，与 anheyu 官方无隶属关系，也不属于官方发行版。**
 
-本项目的参照实现是 anheyu 生态的官方前端 **anheyu-app-frontend**（Next.js + React）：页面结构、组件拆分与交互都按它对齐，后端接口对接 [anzhiyu-c/anheyu-app](https://github.com/anzhiyu-c/anheyu-app)，两者均为 **GPL-3.0** 许可。更上游的 [anzhiyu-c/hexo-theme-anzhiyu](https://github.com/anzhiyu-c/hexo-theme-anzhiyu) 是 anheyu-app 的原始设计来源，**本项目不基于 Hexo，也不包含 Hexo 主题代码**。本仓库作为衍生作品，以 **GNU GPL v3.0**（或兼容的后续版本）发布，详见 [LICENSE](./LICENSE)。
+本项目的参照实现是 anheyu 生态的官方前端 **anheyu-app-frontend**（Next.js + React）：页面结构、组件拆分与交互都按它对齐，后端接口对接 [anzhiyu-c/anheyu-app](https://github.com/anzhiyu-c/anheyu-app)，两者均为 **GPL-3.0** 许可。更上游的 [anzhiyu-c/hexo-theme-anzhiyu](https://github.com/anzhiyu-c/hexo-theme-anzhiyu) 是 anheyu-app 的原始设计来源。本仓库作为衍生作品，以 **GNU GPL v3.0**（或兼容的后续版本）发布，详见 [LICENSE](./LICENSE)。
 
 - 修改与再分发须遵循 GPL-3.0 的 copyleft 条款（保留版权声明、提供源码、不得改成更宽松许可）。
 - 第三方组件、字体（站酷快乐体 OFL-1.1）与媒体素材的授权说明见 [NOTICE](./NOTICE)；`public/iconfont/` 的 AnZHiYu 图标库、音乐唱片等素材来源各自有授权，不随代码自动获得再分发权。

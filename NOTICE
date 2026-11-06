@@ -29,8 +29,7 @@ blog-app · 第三方组件与许可声明
 3. hexo-theme-anzhiyu（上游设计来源，Hexo 主题）
    仓库：https://github.com/anzhiyu-c/hexo-theme-anzhiyu
    许可：GNU GPL v3.0
-   用途：仅作 GPL 溯源 —— anheyu-app 由该 Hexo 主题重写而来；
-        本项目不基于 Hexo，也不包含 Hexo 主题的代码。
+   用途：仅作 GPL 溯源 —— anheyu-app 由该 Hexo 主题重写而来。
 
 注意：本仓库**不包含**上述项目的源码副本（开发用的本地 vendor 目录在 .gitignore 中）。
 另外，anheyu PRO 后端是闭源商业产品，本仓库不含其任何代码，只通过 HTTP 与其接口互操作。
