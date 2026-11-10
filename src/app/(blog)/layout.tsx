@@ -159,7 +159,7 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
 
                 {/* 页面容器：只负责居中 / 最大宽度 / 内边距。
                   右侧边栏改由「页面」按需渲染（对齐官方做法，见 components/(blog)/page-with-sidebar.tsx） */}
-                <div className="main w-full max-w-300 mx-auto mt-10 px-4 sm:px-0 flex-1">
+                <div className="main w-full max-w-[960px] mx-auto mt-10 px-4 sm:px-0 flex-1">
                   {/* 头像配置下发：评论区 / 评论列表据此拼 Gravatar（GRAVATAR_URL + DEFAULT_GRAVATAR_TYPE），
                     用 layout 已经取到的 site-config，客户端不必再请求一次，也不会先渲染错头像再替换 */}
                   <GravatarProvider value={{ url: config?.GRAVATAR_URL, defaultType: config?.DEFAULT_GRAVATAR_TYPE }}>

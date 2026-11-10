@@ -14,9 +14,8 @@ const SHOW_SIDEBAR = false;
 
 export async function PageWithSidebar({ children }: { children: React.ReactNode }) {
     if (!SHOW_SIDEBAR) {
-        // 无侧栏：正文仍按 1200px 居中（.main 的宽度），这里只负责纵向排布
-        // 阅读宽度：无侧栏时不再铺满 1200，收到 960 居中，行长更舒服（大屏上也不会一行近百字）
-        return <div className="mx-auto flex w-full max-w-300 flex-1 flex-col">{children}</div>;
+        // 无侧栏：宽度由外层 .main 决定（960px），这里只负责纵向排布
+        return <div className="mx-auto flex w-full flex-1 flex-col">{children}</div>;
     }
 
     // 走 lib/site-config 里被 React `cache()` 包住的实现：同一次渲染内 layout / 页面 / 侧边栏
