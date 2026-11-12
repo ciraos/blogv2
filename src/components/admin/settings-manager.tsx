@@ -339,10 +339,12 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
                                     onClick={() => goToSection(section.id)}
                                     aria-current={active ? "page" : undefined}
                                     className={cn(
-                                        "group flex w-full items-center gap-2.5 rounded-full px-3 py-[7px] text-[13px] transition-all duration-150",
+                                        // 当前项和侧边栏同一套：左侧 2px 主题色竖线 + 浅底，不再是一个圆角胶囊
+                                        "group relative flex w-full items-center gap-2.5 rounded-md px-3 py-[7px] text-[13px] transition-colors duration-150",
+                                        "before:absolute before:inset-y-1 before:left-0 before:w-[2px] before:rounded-full",
                                         active
-                                            ? "bg-primary/10 font-medium text-primary"
-                                            : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                                            ? "bg-primary/10 font-medium text-primary before:bg-primary"
+                                            : "text-muted-foreground before:bg-transparent hover:bg-muted/60 hover:text-foreground"
                                     )}
                                 >
                                     <SectionIcon
@@ -373,7 +375,7 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="搜索设置…"
                 aria-label="搜索设置"
-                className="h-9 rounded-full border-border/50 bg-muted/40 pl-8 text-[13px] shadow-none"
+                className="h-9 rounded-md border-border/50 bg-muted/40 pl-8 text-[13px] shadow-none"
             />
             {search.trim() !== "" && (
                 <div className="absolute inset-x-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm dark:shadow-lg">
@@ -456,9 +458,9 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
                                 )}
                             </div>
                             <Button
-                                variant="secondary"
+                                variant="outline"
                                 size="sm"
-                                className="mt-1 h-8 shrink-0 rounded-lg px-3 text-xs font-medium"
+                                className="mt-1 h-8 shrink-0 px-3 text-xs font-medium"
                                 disabled={sectionDirtyCount === 0}
                                 title="撤销当前分区的未保存更改"
                                 onClick={handleResetCurrent}
@@ -477,6 +479,9 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
                                     draft={draft}
                                     baseline={baseline}
                                     onChange={setValue}
+                                    /* 分组名和分区名同名时（大多是第一个分组）不再重复一遍：
+                                       页面标题已经写了「基本信息」，卡片头再来一次只是占版面。 */
+                                    hideTitle={group.label === activeSection.label}
                                 />
                             ))}
                         </div>
@@ -500,7 +505,7 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
             {dirtyFields.length > 0 && (
                 <div
                     role="status"
-                    className="fixed bottom-6 right-6 z-50 flex items-center gap-4 rounded-full border border-border/60 bg-background/90 px-5 py-3 shadow-sm backdrop-blur-lg max-md:bottom-4 max-md:left-4 max-md:right-4 max-md:gap-3 max-md:rounded-xl max-md:px-4 max-sm:bottom-3 max-sm:left-3 max-sm:right-3"
+                    className="fixed bottom-6 right-6 z-50 flex items-center gap-4 rounded-lg border border-border/60 bg-background/90 px-5 py-3 shadow-sm backdrop-blur-lg max-md:bottom-4 max-md:left-4 max-md:right-4 max-md:gap-3 max-md:px-4 max-sm:bottom-3 max-sm:left-3 max-sm:right-3"
                 >
                     <span className="whitespace-nowrap text-sm text-muted-foreground">
                         有未保存的更改
@@ -551,11 +556,14 @@ function SettingsGroupCard({
     draft,
     baseline,
     onChange,
+    hideTitle = false,
 }: {
     group: SettingsGroup;
     draft: Draft;
     baseline: Draft;
     onChange: (key: string, value: SettingsFormValue) => void;
+    /** 分组名与分区名相同：卡片头不再重复标题，只留折叠箭头与项数 */
+    hideTitle?: boolean;
 }) {
     const dirtyCount = group.fields.filter((field) => isFieldDirty(field, draft, baseline)).length;
     const [open, setOpen] = useState(true);
@@ -572,7 +580,7 @@ function SettingsGroupCard({
                     <ChevronRight
                         className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")}
                     />
-                    <h3 className="truncate text-[14px] font-semibold tracking-tight text-foreground/85">{group.label}</h3>
+                    <h3 className={cn("truncate text-[13px] font-medium tracking-tight text-foreground/80", hideTitle && "sr-only")}>{group.label}</h3>
                     <span className="shrink-0 text-[11px] text-muted-foreground/70">{group.fields.length} 项</span>
                 </button>
                 {dirtyCount > 0 && (

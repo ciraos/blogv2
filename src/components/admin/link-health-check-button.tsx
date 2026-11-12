@@ -115,8 +115,13 @@ export function LinkHealthCheckButton() {
 
     return (
         <>
+            {/* 维护类动作，跟旁边三个按钮同一层：细线面 + 常规字色。
+                原来是实心紫按钮，一个「健康检查」比「新建友链」还抢眼 ——
+                颜色应该留给主操作，维护动作靠图标（心跳）就认得出。 */}
             <Button
-                className="bg-purple-600 text-white hover:bg-purple-600/90"
+                variant="outline"
+                size="sm"
+                className="h-8 shrink-0"
                 onClick={() => setConfirmOpen(true)}
                 disabled={running}
                 aria-label={running ? "检查中" : "健康检查"}

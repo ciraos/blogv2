@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { CommentFeed } from "@/components/admin/comment-feed";
@@ -9,12 +9,14 @@ import { ApiError, getUserInfoApi } from "@/lib/api";
 import type { LoginUserInfo } from "@/types/auth";
 import { generateBlogMetadata } from "@/lib/seo";
 
-// 区块标题：左侧主题色竖条 + 标题 + 向右延伸的分隔线（紧凑密度：标题 text-base）
-function SectionTitle({ children }: { children: React.ReactNode }) {
+// 区块标题：衬线标题 + 一条向右延伸的发丝线。
+// 这里刻意不再带主题色竖条：一屏出现三次的彩色竖条只是「装饰性的标题」，把强调色花在了
+// chrome（每个区块的头部）上，真正该被强调的数据反而被它抢了注意力。
+function SectionTitle({ children, hint }: { children: React.ReactNode; hint?: string }) {
     return (
-        <h2 className="editorial-serif mb-3 flex items-center gap-2.5 text-lg font-semibold tracking-tight">
-            <span className="h-3.5 w-px bg-primary" aria-hidden="true" />
+        <h2 className="editorial-serif mb-3 flex items-center gap-3 text-[15px] font-semibold">
             {children}
+            {hint && <span className="font-mono text-[11px] font-normal text-muted-foreground">{hint}</span>}
             <span className="h-px flex-1 bg-border" aria-hidden="true" />
         </h2>
     );
@@ -43,9 +45,11 @@ export default async function Dashboard() {
 
     return (
         <>
-            <div className="flex flex-col">
-                <h1 className="editorial-serif text-3xl font-bold tracking-tight">仪表盘</h1>
-                <p className="ml-0 mt-1 text-sm text-muted-foreground content-end">
+            {/* 页头：标题与「欢迎回来」同一基线，名字用等宽小字靠右 —— 后台每天开着，
+                问候语不该和页面标题一样大。 */}
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <h1 className="editorial-serif text-[26px] leading-none font-bold tracking-tight">仪表盘</h1>
+                <p className="font-mono text-[11px] text-muted-foreground">
                     欢迎回来，{user.nickname || user.username}
                 </p>
             </div>
@@ -54,7 +58,7 @@ export default async function Dashboard() {
                 这里刻意不用 CSS 多列（columns-*）承载主区块：多列是「列优先」填充，
                 会把排在前面的「最新评论」甩到左下方，阅读顺序错乱。
                 各区块**内部**的独立小卡才用 Grid 错落铺开（见 CommentFeed / StatisticsSummary） */}
-            <div className="flex flex-col gap-3">
+            <div className="mt-4 flex flex-col gap-5">
                 {/* 动态（最新评论 + 待审友链）：放在「快速操作」上方。
                     右侧原来是「待审评论」卡，按需求换成「待审友链」卡（列出全部申请中的友链）。 */}
                 <section>

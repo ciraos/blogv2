@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState } from "react"
 import Link from "next/link"
@@ -31,20 +31,14 @@ export interface NavMainItem {
   items?: { title: string; url: string; pro?: boolean }[]
 }
 
-/** 子菜单 PRO 徽章（右侧，primary 浅底 + sparkles 图标） */
+/** 子菜单 PRO 标记：等宽小字 + 发丝边，跟正文一样平。
+ *  原来是「紫→品红渐变底 + 白色星芒图标 + 阴影」，那正是 slop 的定义：
+ *  用渐变和发光告诉人「这个功能很高级」。后台是天天开着的工具，
+ *  一个词 + 一条边就够表达「这条要 PRO 版」。
+ *  星芒（Sparkles）尤其不能留 —— 它就是「AI 感」最明显的那个符号。 */
 function ProBadge() {
   return (
-    <span className="ml-auto flex h-3.5 shrink-0 items-center gap-0.5 rounded bg-gradient-to-r from-violet-600 to-fuchsia-600 px-1.5 text-[10px] font-bold leading-none text-white shadow-sm">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-        role="img"
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        className="size-2.5! shrink-0"
-      >
-        <path d="M14 4.438A2.437 2.437 0 0 0 16.438 2h1.125A2.437 2.437 0 0 0 20 4.438v1.125A2.437 2.437 0 0 0 17.563 8h-1.125A2.437 2.437 0 0 0 14 5.563zM1 11a6 6 0 0 0 6-6h2a6 6 0 0 0 6 6v2a6 6 0 0 0-6 6H7a6 6 0 0 0-6-6zm3.876 1A8.04 8.04 0 0 1 8 15.124A8.04 8.04 0 0 1 11.124 12A8.04 8.04 0 0 1 8 8.876A8.04 8.04 0 0 1 4.876 12m12.374 2A3.25 3.25 0 0 1 14 17.25v1.5A3.25 3.25 0 0 1 17.25 22h1.5A3.25 3.25 0 0 1 22 18.75v-1.5A3.25 3.25 0 0 1 18.75 14z" />
-      </svg>
+    <span className="ml-auto shrink-0 border border-border px-1 font-mono text-[9px] leading-[14px] tracking-wide text-muted-foreground">
       PRO
     </span>
   )
@@ -124,7 +118,7 @@ export function NavMain({ items }: { items: NavMainItem[] }) {
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
-        <SidebarMenu className="gap-1.5">
+        <SidebarMenu className="gap-1">
           {items.map((item) => {
             const hasChildren = Boolean(item.items && item.items.length > 0)
 
@@ -137,7 +131,7 @@ export function NavMain({ items }: { items: NavMainItem[] }) {
                       <SidebarMenuButton
                         aria-label={item.title}
                         className={cn(
-                          "min-h-10 w-full px-2.5 transition-colors group-data-[collapsible=icon]:justify-center",
+                          "min-h-9 w-full px-2.5 transition-colors group-data-[collapsible=icon]:justify-center",
                           groupActive(item) && PARENT_ACTIVE_CLS,
                           HOVER_CLS
                         )}
@@ -175,7 +169,7 @@ export function NavMain({ items }: { items: NavMainItem[] }) {
                   tooltip={item.title}
                   onClick={() => setOpenKey((prev) => (prev === item.title ? null : item.title))}
                   className={cn(
-                    "min-h-10 w-full px-2.5 transition-colors group-data-[collapsible=icon]:justify-center",
+                    "min-h-9 w-full px-2.5 transition-colors group-data-[collapsible=icon]:justify-center",
                     groupActive(item) && PARENT_ACTIVE_CLS,
                     HOVER_CLS
                   )}
@@ -199,7 +193,7 @@ export function NavMain({ items }: { items: NavMainItem[] }) {
                           <SidebarMenuSubButton
                             asChild
                             className={cn(
-                              "min-h-9 transition-colors",
+                              "min-h-8 transition-colors",
                               active ? SUB_ACTIVE_CLS : HOVER_CLS
                             )}
                           >

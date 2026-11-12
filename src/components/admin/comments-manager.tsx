@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -12,8 +12,6 @@ import {
     Pencil,
     Pin,
     RefreshCw,
-    RotateCcw,
-    Search,
     Trash2,
     Upload,
 } from "lucide-react";
@@ -22,6 +20,8 @@ import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/confirm-provider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { AdminFilterBar } from "@/components/admin/filter-bar";
+import { AdminEmptyState } from "@/components/admin/empty-state";
 import { PaginationControls } from "@/components/pagination-controls";
 import { ACTION_TONE } from "@/lib/action-tones";
 import {
@@ -104,11 +104,11 @@ interface Filters {
 
 const EMPTY_FILTERS: Filters = { nickname: "", email: "", content: "", target_path: "", status: "all" };
 
-/** 状态徽章（1=已发布 2=待审核） */
+/** 状态 → 中文 + 色点（与文章/友链列表同一套：圆点 + 文字，不做浅底同色字的胶囊） */
 function statusBadge(status?: number) {
-    if (status === 1) return { label: "已发布", cls: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400" };
-    if (status === 2) return { label: "待审核", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-400" };
-    return { label: "未知", cls: "bg-muted text-muted-foreground" };
+    if (status === 1) return { label: "已发布", dot: "bg-emerald-500" };
+    if (status === 2) return { label: "待审核", dot: "bg-amber-500" };
+    return { label: "未知", dot: "bg-muted-foreground" };
 }
 
 /** 日期（YYYY-MM-DD） */
@@ -237,10 +237,9 @@ function CommentRow({
                     {comment.target_path || "—"}
                 </div>
             </div>
-            <div className="w-16 shrink-0 text-center">
-                <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
-                    {badge.label}
-                </span>
+            <div className="flex w-16 shrink-0 items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                <span className={`size-1.5 shrink-0 rounded-full ${badge.dot}`} aria-hidden />
+                {badge.label}
             </div>
             <div className="w-24 min-w-0 text-xs text-muted-foreground">
                 <div className="truncate" title={comment.ip_address}>
@@ -393,8 +392,8 @@ export function CommentsManager() {
 
     const reload = () => setRefreshKey((k) => k + 1);
 
-    const submitFilters = (e: React.FormEvent) => {
-        e.preventDefault();
+    const submitFilters = (e?: React.FormEvent) => {
+        e?.preventDefault();
         setPage(1);
         setApplied(filters);
     };
@@ -605,37 +604,43 @@ export function CommentsManager() {
     return (
         // admin-card：吃掉剩余高度，表格区域（admin-scroll）在卡片内部滚动
         <div className="admin-card">
-            {/* ===== 筛选栏（移动端两列换行，桌面端单行；固定在卡片顶部，不随表格滚动） ===== */}
-            <form
+            {/* ===== 筛选栏：统一工具条（搜索 / 字段 / 状态 / 查询·重置 / 右侧操作） ===== */}
+            <AdminFilterBar
                 onSubmit={submitFilters}
-                className="flex shrink-0 flex-col gap-2 border-b bg-muted/40 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:items-center"
+                search={{
+                    value: filters.nickname,
+                    onChange: (v) => setFilters({ ...filters, nickname: v }),
+                    placeholder: "昵称",
+                    ariaLabel: "按昵称筛选",
+                }}
+                onReset={resetFilters}
+                summary={
+                    <>
+                        共 <span className="font-medium text-foreground">{total}</span> 条评论
+                        {totalWithChildren > total && <>（含回复 {totalWithChildren} 条）</>}
+                    </>
+                }
             >
-                <Input
-                    value={filters.nickname}
-                    onChange={(e) => setFilters({ ...filters, nickname: e.target.value })}
-                    placeholder="昵称"
-                    className="h-7 w-full text-xs sm:w-[calc(50%-0.25rem)] xl:w-28"
-                />
                 <Input
                     value={filters.email}
                     onChange={(e) => setFilters({ ...filters, email: e.target.value })}
                     placeholder="邮箱"
-                    className="h-7 w-full text-xs sm:w-[calc(50%-0.25rem)] xl:w-40"
+                    className="h-8 w-full text-sm sm:w-36"
                 />
                 <Input
                     value={filters.content}
                     onChange={(e) => setFilters({ ...filters, content: e.target.value })}
                     placeholder="评论内容"
-                    className="h-7 w-full text-xs sm:w-[calc(50%-0.25rem)] xl:w-40"
+                    className="h-8 w-full text-sm sm:w-40"
                 />
                 <Input
                     value={filters.target_path}
                     onChange={(e) => setFilters({ ...filters, target_path: e.target.value })}
                     placeholder="目标路径 /post/xxx"
-                    className="h-7 w-full text-xs sm:w-[calc(50%-0.25rem)] xl:w-40"
+                    className="h-8 w-full text-sm sm:w-40"
                 />
                 <Select value={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })}>
-                    <SelectTrigger className="h-7 w-full text-xs sm:w-max">
+                    <SelectTrigger className="h-8 w-full shrink-0 text-sm sm:w-28">
                         <SelectValue placeholder="全部状态" />
                     </SelectTrigger>
                     <SelectContent>
@@ -646,19 +651,7 @@ export function CommentsManager() {
                         ))}
                     </SelectContent>
                 </Select>
-                <Button type="submit" size="sm" className="h-7 shrink-0 px-2 text-xs">
-                    <Search className="size-3.5" />
-                    <span className="hidden sm:inline">查询</span>
-                </Button>
-                <Button type="button" variant="outline" size="sm" className="h-7 shrink-0 px-2 text-xs" onClick={resetFilters}>
-                    <RotateCcw className="size-3.5" />
-                    <span className="hidden sm:inline">重置</span>
-                </Button>
-                <span className="ml-1 text-xs text-muted-foreground">
-                    共 <span className="font-medium text-foreground">{total}</span> 条评论
-                    {totalWithChildren > total && <>（含回复 {totalWithChildren} 条）</>}
-                </span>
-                <div className="ml-auto flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                <div className="col-span-2 order-last flex flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
                     <Button
                         variant="outline"
                         size="sm"
@@ -707,7 +700,7 @@ export function CommentsManager() {
                         <span className="hidden sm:inline">刷新</span>
                     </Button>
                 </div>
-            </form>
+            </AdminFilterBar>
 
             {/* 列表滚动区：只有这块纵向 / 横向滚动（表头吸顶），筛选栏与分页都固定在卡片上 */}
             <div className="admin-scroll">
@@ -732,7 +725,12 @@ export function CommentsManager() {
                 {loading ? (
                     <div className="py-12 text-center text-sm text-muted-foreground">加载中…</div>
                 ) : list.length === 0 ? (
-                    <div className="py-12 text-center text-sm text-muted-foreground">暂无评论</div>
+                    <AdminEmptyState
+                        kind="comments"
+                        filtered={Boolean(
+                            filters.nickname || filters.email || filters.content || filters.target_path || filters.status
+                        )}
+                    />
                 ) : (
                     <div className="xl:min-w-[980px]">
                         {list.map((comment) => (

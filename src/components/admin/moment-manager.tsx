@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -8,14 +8,13 @@ import {
     Loader2,
     Pencil,
     RefreshCw,
-    RotateCcw,
-    Rss,
-    Search,
     Trash2,
     X,
     Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AdminFilterBar, filterSelectTrigger } from "@/components/admin/filter-bar";
+import { AdminEmptyState } from "@/components/admin/empty-state";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -322,47 +321,26 @@ export function MomentManager() {
                     )}
                 </div>
 
-                {/* ===== 工具栏 ===== */}
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                        <div className="relative w-full sm:w-auto">
-                            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                value={keywordInput}
-                                onChange={(e) => setKeywordInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") submitFilters();
-                                }}
-                                placeholder="搜索标题 / 摘要…"
-                                className="h-9 w-full pl-8 text-xs sm:w-56"
-                            />
-                        </div>
+                {/* ===== 工具栏（统一工具条） ===== */}
+                <AdminFilterBar
+                    search={{
+                        value: keywordInput,
+                        onChange: setKeywordInput,
+                        placeholder: "搜索标题 / 摘要…",
+                        ariaLabel: "搜索动态",
+                    }}
+                    onSubmit={submitFilters}
+                    onReset={resetFilters}
+                    resetDisabled={!hasFilter}
+                >
                         <Input
                             value={linkIdInput}
                             onChange={(e) => setLinkIdInput(e.target.value.replace(/[^\d]/g, ""))}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") submitFilters();
-                            }}
                             inputMode="numeric"
                             placeholder="友链 ID"
                             aria-label="按友链 ID 筛选"
-                            className="h-9 w-full text-xs tabular-nums sm:w-24"
+                            className="h-8 w-full text-sm tabular-nums sm:w-24"
                         />
-                        {/* 查询没有图标，窄屏保留文字，否则会变成空按钮 */}
-                        <Button variant="outline" size="sm" className="h-9 shrink-0 rounded-xl text-xs" onClick={submitFilters}>
-                            查询
-                        </Button>
-                        {hasFilter && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-9 shrink-0 rounded-xl text-xs"
-                                onClick={resetFilters}
-                            >
-                                <RotateCcw className="size-3.5" />
-                                <span className="hidden sm:inline">重置</span>
-                            </Button>
-                        )}
                         <Select
                             value={sortBy}
                             onValueChange={(v) => {
@@ -370,7 +348,7 @@ export function MomentManager() {
                                 setPage(1);
                             }}
                         >
-                            <SelectTrigger className="h-9 w-full rounded-xl text-xs sm:w-32" aria-label="排序字段">
+                            <SelectTrigger className={filterSelectTrigger("sm:w-28")} aria-label="排序字段">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -388,7 +366,7 @@ export function MomentManager() {
                                 setPage(1);
                             }}
                         >
-                            <SelectTrigger className="h-9 w-full rounded-xl text-xs sm:w-24" aria-label="排序方向">
+                            <SelectTrigger className={filterSelectTrigger("sm:w-24")} aria-label="排序方向">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -404,18 +382,16 @@ export function MomentManager() {
                             size="icon-sm"
                             aria-label="刷新"
                             title="刷新列表"
-                            className="size-9 shrink-0 rounded-xl"
+                            className="size-8 shrink-0"
                             disabled={loading}
                             onClick={() => void load()}
                         >
                             <RefreshCw className={cn("size-4", loading && "animate-spin")} />
                         </Button>
-                    </div>
-
-                    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                    <div className="col-span-2 order-last flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
                         <Button
                             size="sm"
-                            className="h-9 shrink-0 rounded-xl text-xs"
+                            className="h-8 shrink-0 text-sm"
                             disabled={busy !== ""}
                             onClick={() => void handleTriggerFetch()}
                         >
@@ -425,7 +401,7 @@ export function MomentManager() {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-9 shrink-0 rounded-xl text-xs"
+                            className="h-8 shrink-0 text-sm"
                             disabled={busy !== ""}
                             onClick={() => void handleClearCache()}
                         >
@@ -433,8 +409,7 @@ export function MomentManager() {
                             <span className="hidden sm:inline">清理缓存</span>
                         </Button>
                     </div>
-                </div>
-
+                </AdminFilterBar>
                 {/* ===== 批量操作条 ===== */}
                 {someSelected && (
                     <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-xs">
@@ -484,13 +459,16 @@ export function MomentManager() {
                         </Button>
                     </div>
                 ) : moments.length === 0 ? (
-                    <div className="flex min-h-64 flex-col items-center justify-center gap-1 text-sm text-muted-foreground">
-                        <Rss className="size-8 opacity-40" />
-                        <span>{hasFilter ? "没有匹配的朋友圈数据" : "暂无朋友圈数据"}</span>
-                        <span className="text-xs opacity-70">
-                            {hasFilter ? "试试调整筛选条件" : "触发 RSS 抓取后将在这里显示聚合文章"}
-                        </span>
-                    </div>
+                    <AdminEmptyState
+                        kind="articles"
+                        filtered={hasFilter}
+                        title={hasFilter ? undefined : "还没有聚合数据"}
+                        description={
+                            hasFilter
+                                ? undefined
+                                : "点右上角「抓取」拉一次 RSS，聚合文章就会出现在这里"
+                        }
+                    />
                 ) : (
                     <>
                         <div

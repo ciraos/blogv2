@@ -39,13 +39,15 @@ import {
     Plus,
     PlusCircle,
     RefreshCw,
-    RotateCcw,
     Search,
     Trash2,
     X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { StatStrip } from "@/components/admin/stat-strip";
+import { AdminFilterBar } from "@/components/admin/filter-bar";
+import { AdminEmptyState } from "@/components/admin/empty-state";
 import { useConfirm } from "@/components/confirm-provider";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
@@ -372,71 +374,32 @@ export function DocSeriesManager() {
     return (
         // admin-card：吃掉剩余高度，列表区域（admin-scroll）在卡片内部滚动，不再顶高整页
         <div className="admin-card">
-            {/* 统计磁贴：固定在卡片顶部（shrink-0），不随列表滚动 */}
-            <div className="grid shrink-0 grid-cols-2 gap-2 border-b p-3 md:grid-cols-4">
-                {STAT_TILES.map((tile) => (
-                    <div key={tile.key} className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2">
-                        <span
-                            className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${tile.chip}`}
-                        >
-                            <tile.icon className="size-4" />
-                        </span>
-                        <div className="min-w-0">
-                            <p className="truncate text-xs text-muted-foreground">{tile.label}</p>
-                            <p
-                                className={`text-lg font-semibold tabular-nums ${statsReady ? "text-foreground" : "text-muted-foreground"}`}
-                            >
-                                {statsReady ? stats[tile.key] : PLACEHOLDER}
-                            </p>
-                        </div>
-                    </div>
-                ))}
-            </div>
+            {/* 统计：读数条（共用 StatStrip），原来每个数字外套一层描边卡片 + 彩色图标块 */}
+            <StatStrip
+                items={STAT_TILES.map((tile) => ({
+                    label: tile.label,
+                    value: statsReady ? stats[tile.key] : PLACEHOLDER,
+                }))}
+            />
 
-            {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动。
-                左：关键词 + 重置；右：新增系列 / 刷新 */}
-            <div className="flex shrink-0 flex-col gap-2 border-b bg-muted/40 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:items-center">
-                <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                    <div className="relative w-full sm:w-56">
-                        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            value={keyword}
-                            onChange={(e) => setKeyword(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") submitSearch();
-                            }}
-                            placeholder="搜索系列名称 / 简介"
-                            className="h-8 w-full pl-8 pr-8 text-xs sm:w-56"
-                            aria-label="搜索文档系列"
-                        />
-                        {keyword && (
-                            <button
-                                type="button"
-                                onClick={clearKeyword}
-                                aria-label="清空搜索"
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-                            >
-                                <X size={14} />
-                            </button>
-                        )}
-                    </div>
-
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 shrink-0"
-                        onClick={clearKeyword}
-                    >
-                        <RotateCcw className="size-3.5" />
-                        <span className="hidden sm:inline">重置</span>
-                    </Button>
-
-                    <span className="text-xs text-muted-foreground">
+            {/* 工具栏：统一工具条，固定在卡片顶部（shrink-0），不随下方列表滚动 */}
+            <AdminFilterBar
+                search={{
+                    value: keyword,
+                    onChange: setKeyword,
+                    placeholder: "搜索系列名称 / 简介",
+                    ariaLabel: "搜索文档系列",
+                    onSubmit: submitSearch,
+                }}
+                onReset={clearKeyword}
+                resetDisabled={!keyword}
+                summary={
+                    <>
                         共 <span className="font-medium text-foreground">{total}</span> 个系列
-                    </span>
-                </div>
-
-                <div className="flex w-full items-center gap-2 sm:w-auto">
+                    </>
+                }
+            >
+                <div className="col-span-2 order-last flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
                     <Button
                         size="sm"
                         className="h-8 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
@@ -457,7 +420,7 @@ export function DocSeriesManager() {
                         <span className="hidden sm:inline">刷新</span>
                     </Button>
                 </div>
-            </div>
+            </AdminFilterBar>
 
             {/* 列表：卡片内唯一滚动区（表头吸顶），工具栏与分页都不动。
                 加载 / 空 / 错误三态都渲染在这个 admin-scroll 里，外壳保持不变 */}
@@ -491,41 +454,40 @@ export function DocSeriesManager() {
                     </div>
                 ) : list.length === 0 ? (
                     // 空态：区分「筛选没匹配」与「确实没数据」
-                    <div className="flex min-h-64 flex-col items-center justify-center gap-2 px-4 py-8 text-center">
-                        <span className="flex size-12 items-center justify-center rounded-full border bg-muted/60">
-                            <BookMarked className="size-5 text-muted-foreground/60" />
-                        </span>
-                        <p className="text-sm font-medium text-foreground">
-                            {appliedKeyword ? "没有匹配的文档系列" : "暂无文档系列"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                            {appliedKeyword
+                    <AdminEmptyState
+                        kind="articles"
+                        filtered={Boolean(appliedKeyword)}
+                        title={appliedKeyword ? undefined : "还没有文档系列"}
+                        description={
+                            appliedKeyword
                                 ? `没有找到包含「${appliedKeyword}」的系列，换个关键词试试`
-                                : "接口还没有返回任何系列，直接新建一个即可"}
-                        </p>
-                        {appliedKeyword ? (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="mt-1 h-8 rounded-lg text-xs"
-                                onClick={clearKeyword}
-                            >
-                                <X className="size-3.5" />
-                                清空筛选
-                            </Button>
-                        ) : (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="mt-1 h-8 rounded-lg text-xs"
-                                disabled={busy}
-                                onClick={openCreate}
-                            >
-                                <Plus className="size-3.5" />
-                                新增系列
-                            </Button>
-                        )}
-                    </div>
+                                : "把同一主题的文档归到一个系列里，前台会按系列成组展示"
+                        }
+                        action={
+                            appliedKeyword ? (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 text-xs"
+                                    onClick={clearKeyword}
+                                >
+                                    <X className="size-3.5" />
+                                    清空筛选
+                                </Button>
+                            ) : (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 text-xs"
+                                    disabled={busy}
+                                    onClick={openCreate}
+                                >
+                                    <Plus className="size-3.5" />
+                                    新增系列
+                                </Button>
+                            )
+                        }
+                    />
                 ) : (
                     list.map((item) => (
                         <DocSeriesRow

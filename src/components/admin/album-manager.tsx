@@ -4,14 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Download,
     FileUp,
-    FolderTree,
-    ImagePlus,
-    Images,
     Loader2,
     Pencil,
     Plus,
     RefreshCw,
-    Search,
     Trash2,
     Upload,
     X,
@@ -25,6 +21,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PaginationControls } from "@/components/pagination-controls";
+import { AdminTabBar } from "@/components/admin/admin-tabs";
+import { AdminFilterBar } from "@/components/admin/filter-bar";
+import { AdminEmptyState } from "@/components/admin/empty-state";
 import {
     ALBUM_SORT_OPTIONS,
     batchDeleteAdminAlbumsApi,
@@ -202,98 +201,60 @@ export function AlbumManager() {
     return (
         // admin-card：吃掉剩余高度；Tab/工具固定在卡片顶部，内容在 admin-scroll 内部滚动
         <div className="admin-card">
-            {/* ===== 顶部：Tab + 工具（固定在卡片顶部，不随内容滚动） ===== */}
-            <div className="flex shrink-0 flex-col gap-2 border-b p-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                <div className="flex items-center overflow-hidden rounded-xl border bg-card shadow-sm">
-                    <button
-                        type="button"
-                        onClick={() => setTab("images")}
-                        className={cn(
-                            "flex h-9 items-center gap-1.5 px-3 text-xs transition-colors",
-                            tab === "images" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-primary"
-                        )}
-                    >
-                        <Images className="size-3.5" />
-                        图片
-                    </button>
-                    <span className="h-5 w-px bg-border" />
-                    <button
-                        type="button"
-                        onClick={() => setTab("categories")}
-                        className={cn(
-                            "flex h-9 items-center gap-1.5 px-3 text-xs transition-colors",
-                            tab === "categories" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-primary"
-                        )}
-                    >
-                        <FolderTree className="size-3.5" />
-                        分类
-                    </button>
-                </div>
-
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                    {tab === "images" ? (
+            {/* ===== 页签单独一行，筛选另起一行 ===== */}
+            <AdminTabBar
+                tabs={[
+                    { key: "images", label: "图片" },
+                    { key: "categories", label: "分类" },
+                ]}
+                value={tab}
+                onChange={(key) => setTab(key)}
+            />
+            <AdminFilterBar
+                search={
+                    tab === "images"
+                        ? {
+                              value: tagInput,
+                              onChange: setTagInput,
+                              placeholder: "按标签筛选…",
+                              ariaLabel: "按标签筛选",
+                              onSubmit: () => {
+                                  setPage(1);
+                                  setTag(tagInput.trim());
+                              },
+                          }
+                        : undefined
+                }
+                onReset={
+                    tab === "images"
+                        ? () => {
+                              setTagInput("");
+                              setTag("");
+                              setCategoryId("all");
+                              setPage(1);
+                          }
+                        : undefined
+                }
+                resetDisabled={tab === "images" ? !tagInput && !tag && categoryId === "all" : true}
+                summary={tab === "categories" ? <>共 {categories.length} 个分类</> : undefined}
+                actions={
+                    tab === "images" ? (
                         <>
-                            <div className="relative w-full sm:w-auto">
-                                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                                <Input
-                                    value={tagInput}
-                                    onChange={(e) => setTagInput(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            setPage(1);
-                                            setTag(tagInput.trim());
-                                        }
-                                    }}
-                                    placeholder="按标签筛选…"
-                                    className="h-9 w-full pl-8 text-xs sm:w-36"
-                                />
-                            </div>
-                            <Select
-                                value={categoryId}
-                                onValueChange={(v) => {
-                                    setCategoryId(v);
-                                    setPage(1);
-                                }}
-                            >
-                                <SelectTrigger className="h-9 w-full rounded-xl text-xs sm:w-36">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">全部分类</SelectItem>
-                                    {categories.map((c) => (
-                                        <SelectItem key={c.id} value={String(c.id)}>
-                                            {c.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <Select value={sort} onValueChange={setSort}>
-                                <SelectTrigger className="h-9 w-full rounded-xl text-xs sm:w-32">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {ALBUM_SORT_OPTIONS.map((o) => (
-                                        <SelectItem key={o.value} value={o.value}>
-                                            {o.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
                             <Button
                                 variant="outline"
                                 size="icon-sm"
                                 aria-label="刷新"
                                 title="刷新"
-                                className="size-9 shrink-0 rounded-xl"
+                                className="size-8 shrink-0"
                                 disabled={loading}
                                 onClick={reload}
                             >
-                                <RefreshCw className={cn("size-4", loading && "animate-spin")} />
+                                <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
                             </Button>
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-9 shrink-0 rounded-xl text-xs text-destructive hover:text-destructive"
+                                className="h-8 shrink-0 text-sm text-destructive hover:text-destructive"
                                 disabled={busy || selected.length === 0}
                                 onClick={removeSelected}
                             >
@@ -302,14 +263,14 @@ export function AlbumManager() {
                                     删除{selected.length > 0 ? `（${selected.length}）` : ""}
                                 </span>
                             </Button>
-                            <Button size="sm" className="h-9 shrink-0 rounded-xl text-xs" onClick={() => setImportOpen(true)}>
+                            <Button size="sm" className="h-8 shrink-0 text-sm" onClick={() => setImportOpen(true)}>
                                 <Upload className="size-3.5" />
                                 <span className="hidden sm:inline">批量导入</span>
                             </Button>
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-9 shrink-0 rounded-xl text-xs"
+                                className="h-8 shrink-0 text-sm"
                                 onClick={() => setFileImportOpen(true)}
                             >
                                 <FileUp className="size-3.5" />
@@ -318,7 +279,7 @@ export function AlbumManager() {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-9 shrink-0 rounded-xl text-xs"
+                                className="h-8 shrink-0 text-sm"
                                 onClick={() => setExportOpen(true)}
                             >
                                 <Download className="size-3.5" />
@@ -329,25 +290,60 @@ export function AlbumManager() {
                         </>
                     ) : (
                         <>
-                            <span className="text-xs text-muted-foreground">共 {categories.length} 个分类</span>
                             <Button
                                 variant="outline"
                                 size="icon-sm"
                                 aria-label="刷新分类"
                                 title="刷新"
-                                className="size-9 shrink-0 rounded-xl"
+                                className="size-8 shrink-0"
                                 onClick={() => void loadCategories()}
                             >
-                                <RefreshCw className="size-4" />
+                                <RefreshCw className="size-3.5" />
                             </Button>
-                            <Button size="sm" className="h-9 shrink-0 rounded-xl text-xs" onClick={() => setCategoryDialog("new")}>
+                            <Button size="sm" className="h-8 shrink-0 text-sm" onClick={() => setCategoryDialog("new")}>
                                 <Plus className="size-3.5" />
                                 <span className="hidden sm:inline">新建分类</span>
                             </Button>
                         </>
-                    )}
-                </div>
-            </div>
+                    )
+                }
+            >
+                {tab === "images" && (
+                    <>
+                        <Select
+                            value={categoryId}
+                            onValueChange={(v) => {
+                                setCategoryId(v);
+                                setPage(1);
+                            }}
+                        >
+                            <SelectTrigger className="h-8 w-full shrink-0 text-sm sm:w-32" aria-label="按分类筛选">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">全部分类</SelectItem>
+                                {categories.map((c) => (
+                                    <SelectItem key={c.id} value={String(c.id)}>
+                                        {c.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Select value={sort} onValueChange={setSort}>
+                            <SelectTrigger className="h-8 w-full shrink-0 text-sm sm:w-32" aria-label="排序">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {ALBUM_SORT_OPTIONS.map((o) => (
+                                    <SelectItem key={o.value} value={o.value}>
+                                        {o.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </>
+                )}
+            </AdminFilterBar>
 
             {/* ===== 图片 Tab ===== */}
             {tab === "images" && (
@@ -367,14 +363,22 @@ export function AlbumManager() {
                                 </Button>
                             </div>
                         ) : albums.length === 0 ? (
-                            <div className="flex min-h-64 flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
-                                <ImagePlus className="size-8 opacity-40" />
-                                {categoryId !== "all" || tag ? "没有匹配的图片" : "相册里还没有图片"}
-                                <Button size="sm" className="mt-1 h-8 rounded-lg text-xs" onClick={() => setImportOpen(true)}>
-                                    <Upload className="size-3.5" />
-                                    按 URL 批量导入
-                                </Button>
-                            </div>
+                            <AdminEmptyState
+                                kind="media"
+                                filtered={categoryId !== "all" || Boolean(tag)}
+                                title={categoryId !== "all" || tag ? undefined : "相册里还没有图片"}
+                                description={
+                                    categoryId !== "all" || tag
+                                        ? undefined
+                                        : "上传图片或按 URL 批量导入，图片会按分类和标签整理"
+                                }
+                                action={
+                                    <Button size="sm" className="h-8 text-xs" onClick={() => setImportOpen(true)}>
+                                        <Upload className="size-3.5" />
+                                        按 URL 批量导入
+                                    </Button>
+                                }
+                            />
                         ) : (
                             <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
                                 {albums.map((album) => {
@@ -499,7 +503,11 @@ export function AlbumManager() {
                     </div>
                     <div className="min-w-[560px]">
                         {categories.length === 0 ? (
-                            <p className="px-4 py-12 text-center text-sm text-muted-foreground">还没有相册分类</p>
+                            <AdminEmptyState
+                                kind="generic"
+                                title="还没有相册分类"
+                                description="分类只是给图片分组用的标签，先建一个「风景」「日常」之类的即可"
+                            />
                         ) : (
                             categories.map((c) => (
                                 <div

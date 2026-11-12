@@ -204,7 +204,9 @@ export function MarkdownEditor({
                 name: "ai-writing",
                 keyCommand: "ai-writing",
                 buttonProps: { "aria-label": "AI 写作", title: "AI 写作" },
-                icon: <WandSparkles className="size-4 text-primary" />,
+                // 工具条是「一排同色的工具」，只有它原来带主题色 —— 强调色留给主操作（发布），
+                // 这里靠 tooltip 和图标本身辨认就够了。
+                icon: <WandSparkles className="size-4" />,
                 execute: () => setAiOpen(true),
             },
             mdCommands.divider,

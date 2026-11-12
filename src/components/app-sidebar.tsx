@@ -147,9 +147,10 @@ export function AppSidebar({
             ) : (
                 <CommandIcon className="size-5! shrink-0" />
             )}
-            <span className="truncate text-base font-semibold">{config?.APP_NAME}</span>
+            {/* 站名走前台的衬线刊头字，后台与前台是同一个产品，不该在两处换字体 */}
+            <span className="editorial-serif truncate text-[15px] leading-none font-semibold">{config?.APP_NAME}</span>
             {/* 前端版本号（package.json → 构建时注入，与后端版本无关）。纯灰小字，不加底色 */}
-            <span className="shrink-0 text-[10px] font-normal tabular-nums text-muted-foreground">
+            <span className="shrink-0 font-mono text-[10px] font-normal tabular-nums text-muted-foreground/80">
               {APP_VERSION_LABEL}
             </span>
           </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
@@ -12,16 +12,19 @@ import {
     Loader2,
     RefreshCw,
     RotateCcw,
-    Search,
     ShoppingCart,
     Trash2,
     TriangleAlert,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { StatStrip } from "@/components/admin/stat-strip";
+import { AdminFilterBar } from "@/components/admin/filter-bar";
+import { AdminEmptyState } from "@/components/admin/empty-state";
 import { useConfirm } from "@/components/confirm-provider";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
+import { StatusDot } from "@/components/admin/status-dot";
 import {
     Select,
     SelectContent,
@@ -410,39 +413,37 @@ export function OrdersManager() {
     return (
         // admin-card：吃掉剩余高度，列表区域（admin-scroll）在卡片内部滚动，不再顶高整页
         <div className="admin-card">
-            {/* 统计磁贴：固定在卡片顶部（shrink-0），不随列表滚动。
-                只有「订单总数」有真数据（列表 total），其余三项没有接口 → 「—」 */}
-            <div className="grid shrink-0 grid-cols-2 gap-2 border-b p-3 md:grid-cols-4">
-                {STAT_TILES.map((tile) => (
-                    <div key={tile.key} className="rounded-lg border bg-muted/40 px-3 py-2">
-                        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <tile.icon className="size-3.5 text-muted-foreground/70" />
-                            {tile.label}
-                        </p>
-                        <p
-                            className={`mt-0.5 text-lg font-semibold tabular-nums ${tile.tone}`}
-                            title={tile.key === "total" ? "来自订单列表响应的 total" : "后端没有订单统计接口"}
-                        >
-                            {tile.key === "total" ? (loading ? "—" : total) : "—"}
-                        </p>
-                    </div>
-                ))}
-            </div>
+            {/* 统计：读数条（共用 StatStrip）。
+                只有「订单总数」有真数据（列表 total），其余三项后端没有接口 → 显示「—」 */}
+            <StatStrip
+                items={STAT_TILES.map((tile) => ({
+                    label: tile.label,
+                    value:
+                        tile.key === "total" ? (loading ? "—" : total) : "—",
+                }))}
+            />
 
-            {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动。
-                筛选条件与列表列共用同一套响应式规则：<640px 竖排成卡片，≥640px 表格式布局 */}
-            <div className="flex shrink-0 flex-col gap-2 border-b p-3 sm:flex-row sm:flex-wrap sm:items-center">
-                {/* 左：筛选条件 + 查询 / 重置（窄屏竖排、每项占满一行；≥sm 恢复横排） */}
-                <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                    {/* order_no */}
-                    <Input
-                        value={draft.orderNo}
-                        onChange={(e) => setDraft((prev) => ({ ...prev, orderNo: e.target.value }))}
-                        onKeyDown={handleEnter}
-                        placeholder="订单号"
-                        aria-label="按订单号筛选"
-                        className="h-8 w-full text-sm sm:w-36"
-                    />
+            {/* 工具栏：统一工具条，固定在卡片顶部（shrink-0），不随下方列表滚动 */}
+            <AdminFilterBar
+                search={{
+                    value: draft.orderNo,
+                    onChange: (v) => setDraft((prev) => ({ ...prev, orderNo: v })),
+                    placeholder: "订单号",
+                    ariaLabel: "按订单号筛选",
+                }}
+                onSubmit={runQuery}
+                onReset={resetFilters}
+                resetDisabled={
+                    !draft.orderNo &&
+                    !draft.tradeNo &&
+                    !draft.userEmail &&
+                    !draft.status &&
+                    !draft.provider &&
+                    !draft.orderType &&
+                    !draft.startDate &&
+                    !draft.endDate
+                }
+            >
                     {/* trade_no */}
                     <Input
                         value={draft.tradeNo}
@@ -525,18 +526,8 @@ export function OrdersManager() {
                         />
                     </div>
 
-                    <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={runQuery}>
-                        <Search size={14} />
-                        <span className="hidden sm:inline">查询</span>
-                    </Button>
-                    <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={resetFilters}>
-                        <RotateCcw size={14} />
-                        <span className="hidden sm:inline">重置</span>
-                    </Button>
-                </div>
-
                 {/* 右：刷新（真重拉）/ 导出（前端 CSV —— 后端没有导出接口） */}
-                <div className="flex w-full items-center gap-2 sm:w-auto">
+                <div className="col-span-2 order-last flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
                     <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={retry} disabled={loading}>
                         <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
                         <span className="hidden sm:inline">刷新</span>
@@ -546,7 +537,7 @@ export function OrdersManager() {
                         <span className="hidden sm:inline">导出本页</span>
                     </Button>
                 </div>
-            </div>
+            </AdminFilterBar>
 
             {/* 列表：卡片内唯一滚动区（表头吸顶），统计磁贴 / 工具栏 / 分页都不动。
                 三种状态都渲染在这一个 .admin-scroll 里，外壳结构保持不变。 */}
@@ -590,26 +581,18 @@ export function OrdersManager() {
                     </div>
                 ) : orders.length === 0 ? (
                     // 空态：区分「有筛选但没匹配」与「确实没数据」
-                    <div className="flex flex-col items-center justify-center gap-2 px-4 py-8 text-center">
-                        <div className="flex size-11 items-center justify-center rounded-full border bg-muted/40">
-                            <ShoppingCart className="size-5 text-muted-foreground/70" />
-                        </div>
-                        {hasAnyFilter(applied) ? (
-                            <>
-                                <p className="text-sm font-medium text-foreground">没有匹配的订单</p>
-                                <p className="text-xs text-muted-foreground">当前筛选条件下没有结果，试试放宽条件或重置</p>
-                                <Button variant="outline" size="sm" className="mt-1 h-8" onClick={resetFilters}>
+                    <AdminEmptyState
+                        kind="orders"
+                        filtered={hasAnyFilter(applied)}
+                        action={
+                            hasAnyFilter(applied) ? (
+                                <Button variant="outline" size="sm" className="h-8" onClick={resetFilters}>
                                     <RotateCcw size={14} />
                                     重置筛选
                                 </Button>
-                            </>
-                        ) : (
-                            <>
-                                <p className="text-sm font-medium text-foreground">暂无订单</p>
-                                <p className="text-xs text-muted-foreground">还没有订单数据</p>
-                            </>
-                        )}
-                    </div>
+                            ) : undefined
+                        }
+                    />
                 ) : (
                     orders.map((order) => {
                         const badge = statusBadge(order.payment_status);
@@ -649,9 +632,7 @@ export function OrdersManager() {
                                 </div>
                                 {/* payment_status */}
                                 <div className="sm:text-center">
-                                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
-                                        {badge.label}
-                                    </span>
+                                    <StatusDot cls={badge.cls}>{badge.label}</StatusDot>
                                 </div>
                                 {/* pay_time（可能为空：未支付） */}
                                 <div className="text-xs tabular-nums text-muted-foreground">
@@ -724,11 +705,9 @@ export function OrdersManager() {
                                     <h3 className="truncate font-mono text-base font-semibold">
                                         {detail.order_no || `订单 #${detail.id}`}
                                     </h3>
-                                    <span
-                                        className={`inline-block shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${statusBadge(detail.payment_status).cls}`}
-                                    >
+                                    <StatusDot cls={statusBadge(detail.payment_status).cls} className="shrink-0">
                                         {statusBadge(detail.payment_status).label}
-                                    </span>
+                                    </StatusDot>
                                     <span className="inline-block shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                                         {orderTypeLabel(detail.order_type)}
                                     </span>

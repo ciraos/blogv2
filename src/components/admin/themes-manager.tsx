@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
@@ -12,7 +12,6 @@ import {
     Package,
     Palette,
     RefreshCw,
-    Search,
     Settings,
     Sparkles,
     Star,
@@ -22,9 +21,13 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { StatStrip } from "@/components/admin/stat-strip";
+import { AdminTabBar } from "@/components/admin/admin-tabs";
+import { AdminFilterBar } from "@/components/admin/filter-bar";
+import { AdminEmptyState } from "@/components/admin/empty-state";
 import { useConfirm } from "@/components/confirm-provider";
-import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
+import { StatusDot } from "@/components/admin/status-dot";
 import { ThemeConfigDialog } from "@/components/admin/theme-config-dialog";
 import { ThemeUploadDialog } from "@/components/admin/theme-upload-dialog";
 import { cn, resolveAssetUrl } from "@/lib/utils";
@@ -556,104 +559,79 @@ export function ThemesManager() {
     return (
         <div className="admin-card">
             {/* 统计磁贴：固定在卡片顶部（shrink-0），不随内容滚动 */}
-            <div className="grid shrink-0 grid-cols-2 gap-2 border-b p-3 md:grid-cols-4">
-                {tiles.map((t) => (
-                    <div key={t.label} className="flex items-start justify-between gap-2 rounded-lg border bg-muted/40 px-3 py-2">
-                        <div>
-                            <p className="text-xs text-muted-foreground">{t.label}</p>
-                            <p className="text-lg font-semibold tabular-nums">{t.value}</p>
-                        </div>
-                        <t.icon className="size-4 shrink-0 text-muted-foreground/60" />
-                    </div>
-                ))}
-            </div>
+            <StatStrip items={tiles} />
 
-            {/* Tab + 工具：固定在卡片顶部（shrink-0），不随网格滚动 */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2.5">
-                <div className="flex items-center overflow-hidden rounded-xl border bg-card shadow-sm">
-                    {(
-                        [
-                            { key: "installed", label: "已安装", icon: Package },
-                            { key: "market", label: "主题市场", icon: Palette },
-                        ] as const
-                    ).map((t, i) => (
-                        <span key={t.key} className="flex items-center">
-                            {i > 0 && <span className="h-5 w-px bg-border" />}
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setTab(t.key);
-                                    setPage(1);
-                                }}
-                                className={cn(
-                                    "flex h-9 items-center gap-1.5 px-3 text-xs transition-colors",
-                                    tab === t.key
-                                        ? "bg-primary/10 text-primary"
-                                        : "text-muted-foreground hover:text-primary"
-                                )}
-                            >
-                                <t.icon className="size-3.5" />
-                                {t.label}
-                            </button>
-                        </span>
-                    ))}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
+            {/* 页签单独一行，筛选另起一行：都固定在卡片顶部（shrink-0），不随网格滚动 */}
+            <AdminTabBar
+                tabs={[
+                    { key: "installed", label: "已安装" },
+                    { key: "market", label: "主题市场" },
+                ]}
+                value={tab}
+                onChange={(key) => {
+                    setTab(key);
+                    setPage(1);
+                }}
+            />
+            <AdminFilterBar
+                search={{
+                    value: keyword,
+                    onChange: (v) => {
+                        setKeyword(v);
+                        setPage(1);
+                    },
+                    placeholder: "搜索主题名称 / 作者…",
+                    ariaLabel: "搜索主题",
+                }}
+                onReset={() => {
+                    setKeyword("");
+                    setPage(1);
+                }}
+                resetDisabled={!keyword}
+                summary={
+                    <>
                         共 <span className="font-medium text-foreground">{total}</span> 个
                         {tab === "installed" ? "已安装主题" : "市场主题"}
-                    </span>
-                    <div className="relative">
-                        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            value={keyword}
-                            onChange={(e) => {
-                                setKeyword(e.target.value);
-                                setPage(1);
-                            }}
-                            placeholder="搜索主题名称 / 作者…"
-                            className="h-7 w-44 pl-8 text-xs sm:w-56"
-                        />
-                    </div>
-                    {/* 上传主题压缩包：先校验再上传安装（见 theme-upload-dialog.tsx） */}
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => setUploadOpen(true)}
-                    >
-                        <Upload className="size-3.5" />
-                        上传主题
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        disabled={loading}
-                        onClick={() => reload()}
-                    >
-                        {loading ? (
-                            <Loader2 className="size-3.5 animate-spin" />
-                        ) : (
-                            <RefreshCw className="size-3.5" />
-                        )}
-                        刷新
-                    </Button>
-                </div>
-            </div>
+                    </>
+                }
+                actions={
+                    <>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 shrink-0 text-sm"
+                            onClick={() => setUploadOpen(true)}
+                        >
+                            <Upload className="size-3.5" />
+                            上传主题
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 shrink-0 text-sm"
+                            disabled={loading}
+                            onClick={() => reload()}
+                        >
+                            {loading ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                                <RefreshCw className="size-3.5" />
+                            )}
+                            刷新
+                        </Button>
+                    </>
+                }
+            />
 
             {/* 内容：卡片内唯一滚动区（网格上方的窄条吸顶），Tab 与分页都不动 */}
             <div className="admin-scroll">
-                <div className="admin-sticky-head flex items-center justify-between gap-2 border-b px-4 py-2.5 text-xs text-muted-foreground">
-                    <span>
-                        {tab === "installed" ? "已安装主题" : "主题市场"}
-                        {loading && (
-                            <span className="ml-2 text-muted-foreground/70">加载中…</span>
-                        )}
-                    </span>
-                    {hasFilter && <span>匹配 {list.length} 个</span>}
-                </div>
+                {/* 页签已经说明了这一屏是什么，这里只在搜索/加载时出现，避免标题重复 */}
+                {(hasFilter || loading) && (
+                    <div className="admin-sticky-head flex items-center justify-between gap-2 border-b px-4 py-2 text-xs text-muted-foreground">
+                        <span>{loading ? "加载中…" : "筛选结果"}</span>
+                        {hasFilter && <span>匹配 {list.length} 个</span>}
+                    </div>
+                )}
 
                 {loading ? (
                     <ThemeCardSkeletons />
@@ -672,27 +650,17 @@ export function ThemesManager() {
                         </Button>
                     </div>
                 ) : list.length === 0 ? (
-                    hasFilter ? (
-                        // 搜索没匹配（数据已经拿到了）
-                        <div className="flex flex-col items-center justify-center gap-1.5 py-12 text-sm text-muted-foreground">
-                            <Search className="size-5 opacity-60" />
-                            <span>没有匹配的主题</span>
-                            <span className="text-xs text-muted-foreground/70">
-                                共 {source.length} 个主题，换个关键词试试
-                            </span>
-                        </div>
-                    ) : (
-                        // 确实没有数据（接口成功返回空 list）
-                        <div className="flex flex-col items-center justify-center gap-1.5 py-12 text-sm text-muted-foreground">
-                            <Palette className="size-5 opacity-60" />
-                            <span>{tab === "installed" ? "暂无已安装主题" : "主题市场暂无数据"}</span>
-                            <span className="text-xs text-muted-foreground/70">
-                                {tab === "installed"
-                                    ? "可点右上角「上传主题」安装本地 ZIP 主题包"
-                                    : "/public/theme/market 返回空列表"}
-                            </span>
-                        </div>
-                    )
+                    <AdminEmptyState
+                        kind={hasFilter ? "search" : "generic"}
+                        title={hasFilter ? undefined : tab === "installed" ? "还没有装主题" : "主题市场是空的"}
+                        description={
+                            hasFilter
+                                ? `共 ${source.length} 个主题，换个关键词试试`
+                                : tab === "installed"
+                                  ? "点右上角「上传主题」装一个本地 ZIP，或去主题市场挑一个"
+                                  : "/public/theme/market 返回空列表，检查远端是否已录入主题"
+                        }
+                    />
                 ) : (
                     // 移动端(<640px)：grid-cols-1 卡片竖排；≥640px 起按屏宽铺开。
                     // 窄屏也保持 min-w：整张表横向滚动，列不会被压扁。
@@ -751,11 +719,9 @@ export function ThemesManager() {
                                                     {theme.author ? `by ${theme.author}` : "—"}
                                                 </div>
                                             </div>
-                                            <span
-                                                className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}
-                                            >
+                                            <StatusDot cls={badge.cls} className="shrink-0">
                                                 {badge.label}
-                                            </span>
+                                            </StatusDot>
                                         </div>
 
                                         <p className="line-clamp-2 min-h-8 text-xs leading-relaxed text-muted-foreground">

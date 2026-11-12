@@ -267,6 +267,11 @@ function SwitchRow({
  * （已声明进载荷，见 src/lib/api.ts），所以选中后会出现「定时发布」卡收集时间，
  * 提交前的校验在 save() 里（缺时间 / 时间不是将来 → 直接拦下，不发给后端）。
  */
+/** 选中态统一用一种强调色（主题色）—— 原来四个状态各占一个色相（绿/琥珀/天蓝/灰），
+ *  一进编辑页右栏就有三种颜色在说话，可这四个按钮其实是同一个枚举的四个值。
+ *  语义由文字（发布/草稿/定时/归档）承担，颜色只负责「现在选中的是哪个」。 */
+const STATUS_ACTIVE_CLS = "border-primary/50 bg-primary/10 text-primary";
+
 const STATUS_OPTIONS: {
     key: string;
     value: Status | null;
@@ -279,28 +284,28 @@ const STATUS_OPTIONS: {
         key: "published",
         value: "PUBLISHED",
         label: "发布",
-        activeCls: "border-emerald-500/60 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+        activeCls: STATUS_ACTIVE_CLS,
         title: "把状态设为「已发布」（真正提交还是走顶栏的「发布」按钮）",
     },
     {
         key: "draft",
         value: "DRAFT",
         label: "草稿",
-        activeCls: "border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+        activeCls: STATUS_ACTIVE_CLS,
         title: "把状态设为「草稿」（真正提交还是走顶栏的「存草稿」按钮）",
     },
     {
         key: "scheduled",
         value: "SCHEDULED",
         label: "定时",
-        activeCls: "border-sky-500/60 bg-sky-500/10 text-sky-600 dark:text-sky-400",
+        activeCls: STATUS_ACTIVE_CLS,
         title: "定时发布：在下方「定时发布」卡里选好将来的时间，再到顶栏点「定时发布」提交",
     },
     {
         key: "archived",
         value: "ARCHIVED",
         label: "归档",
-        activeCls: "border-border bg-muted text-foreground",
+        activeCls: STATUS_ACTIVE_CLS,
         title: "把状态设为「已归档」",
     },
 ];

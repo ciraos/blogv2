@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { StatusDot } from "@/components/admin/status-dot";
 import { useConfirm } from "@/components/confirm-provider";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -57,7 +58,7 @@ function Badge({ children, tone }: { children: React.ReactNode; tone: "ok" | "mu
             : tone === "warn"
               ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-400"
               : "bg-muted text-muted-foreground";
-    return <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${cls}`}>{children}</span>;
+    return <StatusDot cls={cls}>{children}</StatusDot>;
 }
 
 /** 渠道英文 code → 中文展示名（后端 code 未知时原样显示，不编造含义） */
@@ -216,23 +217,23 @@ export function NotificationsManager() {
             <section className={`${cardCls} lg:col-span-2`}>
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <h3 className="flex items-center gap-2 text-sm font-semibold">
-                        <span className="flex size-6 items-center justify-center rounded-md bg-primary/10 text-primary">
-                            <BellRing className="size-3.5" />
-                        </span>
+                        <BellRing className="size-4 text-muted-foreground" />
                         通知类型
                     </h3>
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">
                             共 <span className="font-medium text-foreground tabular-nums">{types.length}</span> 种
                         </span>
-                        <button
+                        <Button
                             type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2 text-xs"
                             onClick={() => void load()}
-                            className="inline-flex h-8 items-center gap-1 rounded-lg border border-border bg-background px-2 text-xs transition-colors hover:bg-muted dark:border-input dark:bg-input/30"
                         >
                             <RefreshCw className="size-3.5" />
                             刷新
-                        </button>
+                        </Button>
                     </div>
                 </div>
 

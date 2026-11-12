@@ -1,11 +1,13 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { BadgeCheck, Ban, KeyRound, Pencil, Plus, RotateCcw, Search, Trash2, Users } from "lucide-react";
+import { BadgeCheck, Ban, KeyRound, Pencil, Plus, Trash2, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AdminFilterBar } from "@/components/admin/filter-bar";
+import { AdminEmptyState } from "@/components/admin/empty-state";
 import { PaginationControls } from "@/components/pagination-controls";
 import {
     Select,
@@ -15,6 +17,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { StatusDot } from "@/components/admin/status-dot";
 import { createAdminUserApi } from "@/lib/api";
 import { resolveAssetUrl, cn } from "@/lib/utils";
 import { ACTION_TONE } from "@/lib/action-tones";
@@ -67,11 +70,7 @@ function StatusBadge({ status }: { status: number }) {
         3: { text: "已封禁", cls: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400" },
     };
     const m = map[status] ?? { text: String(status), cls: "bg-muted text-muted-foreground" };
-    return (
-        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${m.cls}`}>
-            {m.text}
-        </span>
-    );
+    return <StatusDot cls={m.cls}>{m.text}</StatusDot>;
 }
 
 /** 轻量弹窗（admin 没有 dialog 组件） */
@@ -302,26 +301,24 @@ export function UserManagement() {
     return (
         // admin-card：吃掉剩余高度，表格区域（admin-scroll）在卡片内部滚动
         <div className="admin-card">
-            {/* ===== 工具栏：搜索 + 状态下拉 + 用户组下拉 + 新增/重置（固定在卡片顶部，不随表格滚动） ===== */}
-            <div className="flex shrink-0 flex-col gap-2 border-b p-3 sm:flex-row sm:flex-wrap sm:items-center">
-                <div className="relative w-full sm:w-auto">
-                    <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                        className="w-full pl-8 sm:w-56"
-                        placeholder="搜索用户名 / 昵称 / 邮箱"
-                        value={query.keyword}
-                        onChange={(e) => setQuery((q) => ({ ...q, keyword: e.target.value }))}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") applyFilters({ ...query, page: 1 });
-                        }}
-                    />
-                </div>
+            {/* ===== 工具栏：搜索 + 状态下拉 + 用户组下拉 + 新增（统一工具条，固定在卡片顶部） ===== */}
+            <AdminFilterBar
+                search={{
+                    value: query.keyword,
+                    onChange: (v) => setQuery((q) => ({ ...q, keyword: v })),
+                    placeholder: "搜索用户名 / 昵称 / 邮箱",
+                    ariaLabel: "搜索用户",
+                    onSubmit: () => applyFilters({ ...query, page: 1 }),
+                }}
+                onReset={() => applyFilters(INITIAL_QUERY)}
+                resetDisabled={!query.keyword && !query.status && !query.groupID}
+            >
 
                 <Select
                     value={query.status}
                     onValueChange={(v) => applyFilters({ ...query, status: v, page: 1 })}
                 >
-                    <SelectTrigger className="w-full sm:w-32">
+                    <SelectTrigger className="h-8 w-full shrink-0 text-sm sm:w-32">
                         <SelectValue placeholder="状态" />
                     </SelectTrigger>
                     <SelectContent>
@@ -337,7 +334,7 @@ export function UserManagement() {
                     value={query.groupID}
                     onValueChange={(v) => applyFilters({ ...query, groupID: v, page: 1 })}
                 >
-                    <SelectTrigger className="w-full sm:w-44">
+                    <SelectTrigger className="h-8 w-full shrink-0 text-sm sm:w-44">
                         <SelectValue placeholder="用户组" />
                     </SelectTrigger>
                     <SelectContent>
@@ -350,17 +347,13 @@ export function UserManagement() {
                     </SelectContent>
                 </Select>
 
-                <div className="ml-auto flex w-full items-center gap-2 sm:w-auto">
-                    <Button className="shrink-0" onClick={() => { setForm(EMPTY_FORM); setCreateOpen(true); }}>
+                <div className="col-span-2 order-last flex flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+                    <Button className="h-8 shrink-0" onClick={() => { setForm(EMPTY_FORM); setCreateOpen(true); }}>
                         <Plus className="size-4" />
                         <span className="hidden sm:inline">新增用户</span>
                     </Button>
-                    <Button variant="outline" className="shrink-0" onClick={() => applyFilters(INITIAL_QUERY)}>
-                        <RotateCcw className="size-4" />
-                        <span className="hidden sm:inline">重置</span>
-                    </Button>
                 </div>
-            </div>
+            </AdminFilterBar>
 
             {/* ===== 用户列表：<640px 单列堆叠卡片，≥640px 表格式栅格；只有这块滚动（表头吸顶） ===== */}
             <div className="admin-scroll">
@@ -384,7 +377,7 @@ export function UserManagement() {
                     {loading ? (
                         <div className="py-10 text-center text-sm text-muted-foreground">加载中…</div>
                     ) : !data || data.users.length === 0 ? (
-                        <div className="py-10 text-center text-sm text-muted-foreground">暂无用户</div>
+                        <AdminEmptyState kind="users" filtered={Boolean(query.keyword || query.status || query.groupID)} />
                     ) : (
                         data.users.map((user) => (
                             <div

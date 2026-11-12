@@ -1,4 +1,5 @@
-"use client";
+﻿"use client";
+import { AdminEmptyState } from "@/components/admin/empty-state";
 
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
@@ -9,15 +10,15 @@ import {
     MessagesSquare,
     RefreshCw,
     Reply,
-    RotateCcw,
-    Search,
     Ticket,
     Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { StatStrip } from "@/components/admin/stat-strip";
+import { AdminFilterBar } from "@/components/admin/filter-bar";
+import { StatusDot } from "@/components/admin/status-dot";
 import { useConfirm } from "@/components/confirm-provider";
-import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
 import {
     Select,
@@ -401,39 +402,37 @@ export function SupportsManager() {
     return (
         // admin-card：吃掉剩余高度，列表区域（admin-scroll）在卡片内部滚动，不再顶高整页
         <div className="admin-card">
-            {/* 统计磁贴：口径照 TicketStatsResponse（pending / processing / closed / total），
-                接口失败时显示 0 并置灰（不阻塞列表）。固定在卡片顶部，不随列表滚动 */}
-            <div className="grid shrink-0 grid-cols-2 gap-2 border-b p-3 md:grid-cols-4">
-                {STAT_TILES.map((tile) => (
-                    <div key={tile.key} className="rounded-lg border bg-muted/40 px-3 py-2">
-                        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <span className={`size-1.5 rounded-full ${tile.dot}`} aria-hidden />
-                            {tile.label}
-                        </p>
-                        <p className={cn("mt-0.5 text-lg font-semibold tabular-nums", statsOk ? tile.cls : "text-muted-foreground/50")}>
-                            {stats[tile.key]}
-                        </p>
-                    </div>
-                ))}
-            </div>
+            {/* 统计：读数条（共用 StatStrip）。
+                口径照 TicketStatsResponse（pending / processing / closed / total），
+                接口失败时显示 0；原来的每个数字各带一个彩色小圆点，现在统一为等宽数字 */}
+            <StatStrip
+                items={STAT_TILES.map((tile) => ({
+                    label: tile.label,
+                    value: (
+                        <span className={statsOk ? undefined : "text-muted-foreground/50"}>{stats[tile.key]}</span>
+                    ),
+                }))}
+            />
 
-            {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动 */}
-            <div className="flex shrink-0 flex-col gap-2 border-b bg-muted/40 px-4 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                    <div className="relative w-full sm:w-56">
-                        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            value={keyword}
-                            onChange={(e) => {
-                                setKeyword(e.target.value);
-                                setPage(1);
-                            }}
-                            placeholder="搜索工单号 / 主题 / 用户邮箱"
-                            className="h-8 w-full pl-8 text-xs sm:w-56"
-                            aria-label="搜索工单"
-                        />
-                    </div>
-
+            {/* 工具栏：统一工具条，固定在卡片顶部（shrink-0），不随下方列表滚动 */}
+            <AdminFilterBar
+                search={{
+                    value: keyword,
+                    onChange: (v) => {
+                        setKeyword(v);
+                        setPage(1);
+                    },
+                    placeholder: "搜索工单号 / 主题 / 用户邮箱",
+                    ariaLabel: "搜索工单",
+                }}
+                onReset={resetFilters}
+                resetDisabled={!keyword && !statusFilter && !typeFilter}
+                summary={
+                    <>
+                        共 <span className="font-medium text-foreground">{total}</span> 条工单
+                    </>
+                }
+            >
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         状态
                         <Select
@@ -481,17 +480,7 @@ export function SupportsManager() {
                         </Select>
                     </div>
 
-                    <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={resetFilters}>
-                        <RotateCcw className="size-3.5" />
-                        <span className="hidden sm:inline">重置</span>
-                    </Button>
-
-                    <span className="text-xs text-muted-foreground">
-                        共 <span className="font-medium text-foreground">{total}</span> 条工单
-                    </span>
-                </div>
-
-                <div className="flex w-full items-center gap-2 sm:w-auto">
+                <div className="col-span-2 order-last flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
                     <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={handleExport}>
                         <Download className="size-3.5" />
                         <span className="hidden sm:inline">导出本页</span>
@@ -501,7 +490,7 @@ export function SupportsManager() {
                         <span className="hidden sm:inline">刷新</span>
                     </Button>
                 </div>
-            </div>
+            </AdminFilterBar>
 
             {/* 列表：卡片内唯一滚动区（表头吸顶），工具栏与分页都不动 */}
             <div className="admin-scroll">
@@ -522,17 +511,16 @@ export function SupportsManager() {
                 {loading ? (
                     <div className="py-8 text-center text-sm text-muted-foreground">加载中…</div>
                 ) : tickets.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center gap-2 px-4 py-8 text-center">
-                        <span className="flex size-11 items-center justify-center rounded-full border bg-muted/60 text-muted-foreground">
-                            <Ticket className="size-5" />
-                        </span>
-                        <p className="text-sm font-medium text-foreground">
-                            {statusFilter || typeFilter || keyword ? "没有匹配的工单" : "暂无工单"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                            {statusFilter || typeFilter || keyword ? "换个筛选条件试试" : "用户提交售后工单后会出现在这里"}
-                        </p>
-                    </div>
+                    <AdminEmptyState
+                        kind="comments"
+                        filtered={Boolean(statusFilter || typeFilter || keyword)}
+                        title={statusFilter || typeFilter || keyword ? undefined : "还没有工单"}
+                        description={
+                            statusFilter || typeFilter || keyword
+                                ? undefined
+                                : "用户在售后入口提交工单后会出现在这里，可以先在这里回一条"
+                        }
+                    />
                 ) : (
                     tickets.map((item) => {
                         const badge = statusBadge(item.status);
@@ -656,11 +644,7 @@ export function SupportsManager() {
                             <div className="min-w-0">
                                 <div className="flex items-center gap-2">
                                     <h3 className="truncate text-base font-semibold">{detail.subject || "工单会话"}</h3>
-                                    <span
-                                        className={`inline-block shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${statusBadge(detail.status).cls}`}
-                                    >
-                                        {statusBadge(detail.status).label}
-                                    </span>
+                                    <StatusDot cls={statusBadge(detail.status).cls}>{statusBadge(detail.status).label}</StatusDot>
                                 </div>
                                 <p className="mt-1 font-mono text-xs text-muted-foreground">
                                     工单号 {detail.ticket_no || "—"}

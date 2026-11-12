@@ -1,19 +1,9 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import {
     ArrowDownRight,
     ArrowUpRight,
-    CalendarDays,
-    CalendarRange,
-    Compass,
-    Cpu,
-    Eye,
-    Flame,
-    Globe,
-    MonitorSmartphone,
     Minus,
-    TrendingUp,
-    Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { DateRangeStats, StatisticsSummary, URLStatistics, VisitorAnalytics } from "@/types/statistics";
@@ -30,7 +20,7 @@ interface RankItem {
  * **高度由内容决定**（不设固定高度、不做卡内滚动）——「一目了然」看全排行。
  * 卡片在普通 CSS Grid 里按行铺排（左→右、上→下），单元格不会互相重叠。
  */
-const cardCls = "flex flex-col rounded-lg border bg-card p-4 transition-colors hover:border-primary/40";
+const cardCls = "flex flex-col rounded-lg border bg-card p-4 transition-colors hover:border-foreground/15";
 
 /** 统计卡片容器：CSS 多列瀑布流（columns-*）——卡片高度由内容决定，列内紧密排列、
  *  **绝不会重叠**，也不会有「行内最高的卡把其它卡顶出空洞」的空隙。
@@ -65,14 +55,11 @@ function toRank(items: { [k: string]: unknown }[] | null | undefined, nameKey: s
         .sort((a, b) => b.count - a.count);
 }
 
-/** 分组标题：小图标徽章 + 标题 */
-function GroupTitle({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
-    return (
-        <h3 className="editorial-serif mb-4 flex items-center gap-2 text-[15px] font-semibold">
-            <span className="text-primary/60">{icon}</span>
-            {children}
-        </h3>
-    );
+/** 分组标题：只留文字。
+ *  原来标题前挂了一个主题色小图标（指南针/手机/地球/火焰…），四五个卡片各挂一个，
+ *  没有一个在解释数据 —— 卡片标题本身已经说明了内容，图标只是把强调色又洒了一遍。 */
+function GroupTitle({ children }: { children: React.ReactNode }) {
+    return <h3 className="editorial-serif mb-4 text-[15px] font-semibold">{children}</h3>;
 }
 
 /** 单个排行卡片（bare：嵌入分组卡内时去边框与内边距；title 可省，由外层卡片标题承担） */
@@ -112,12 +99,6 @@ function RankList({ title, items, bare = false }: { title?: string; items: RankI
     );
 }
 
-/** 终端三组各自的图标（拆成独立卡片后，每组一张卡） */
-const SECTION_ICON: Record<string, React.ReactNode> = {
-    浏览器: <Compass className="size-3.5" />,
-    设备: <MonitorSmartphone className="size-3.5" />,
-    操作系统: <Cpu className="size-3.5" />,
-};
 
 /** 来源占比饼图（纯 SVG 环图，无图表库）：前 5 名 + 其他。
  *  颜色按序号取 globals.css 的图表令牌（var(--chart-N)），「其他」固定中性灰 ——
@@ -180,21 +161,28 @@ function formatDate(raw: string, mode: "daily" | "weekly" | "monthly"): string {
     return s.slice(0, 10);
 }
 
-/** 趋势卡片：最近几天/周/月的柱状图（渐变柱 + 合计/峰值）。
- *  柱图容器固定 `h-32`：柱子的高度是百分比，父容器必须有确定高度才解析得出来。 */
-function TrendCard({ data, mode }: { data: DateRangeStats[] | null | undefined; mode: "daily" | "weekly" | "monthly" }) {
+/** 趋势卡片：最近几天/周/月的柱状图（实色柱 + 合计/峰值）。
+ *  柱图容器固定 `h-36`：柱子的高度是百分比，父容器必须有确定高度才解析得出来。
+ *  `wide` 给「每日」这张用：它是这一屏的主图，要明显比右侧的排行卡更宽，
+ *  否则六张等宽卡并排，谁也读不出哪张是重点。 */
+function TrendCard({
+    data,
+    mode,
+    wide = false,
+}: {
+    data: DateRangeStats[] | null | undefined;
+    mode: "daily" | "weekly" | "monthly";
+    wide?: boolean;
+}) {
     const title = mode === "daily" ? "每日" : mode === "weekly" ? "每周" : "每月";
     const list = (data ?? []).slice(-10);
     const max = Math.max(1, ...list.map((d) => d.views));
     const total = list.reduce((sum, d) => sum + d.views, 0);
     const peak = list.reduce((best, d) => (d.views > best.views ? d : best), list[0] ?? { views: 0 } as DateRangeStats);
     return (
-        <div className={cardCls}>
+        <div className={`${cardCls} ${wide ? "sm:col-span-2 xl:col-span-2" : ""}`}>
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
-                <h3 className="editorial-serif flex items-center gap-2 text-[15px] font-semibold">
-                    <span className="text-primary/60">
-                        <TrendingUp className="size-3.5" />
-                    </span>
+                <h3 className="editorial-serif text-[15px] font-semibold">
                     趋势 · {title}
                 </h3>
                 {list.length > 0 && (
@@ -210,18 +198,21 @@ function TrendCard({ data, mode }: { data: DateRangeStats[] | null | undefined; 
                 // h-32：柱图**必须有确定高度**，柱子的百分比高度才解析得出来
                 // （之前为了填满网格单元格改成 flex-1，父容器高度变成由卡片反推 → 柱子被压扁，
                 //   极端情况下父高为 0 时柱子会塌掉，这就是「柱子不见了」的回归原因）
-                <div className="flex h-32 items-end gap-1">
+                <div className="flex h-36 items-end gap-1">
                     {list.map((d, i) => (
                         <div key={i} className="group flex h-full min-w-0 flex-1 flex-col items-center gap-1.5">
                             <div className="flex w-full flex-1 items-end">
+                                {/* 实色柱：原来是从 primary/30 到 primary 的竖向渐变 —— 这就是「紫渐变」的同款手法，
+                                    只是换成了主题色。一个色、一根柱子，读起来才是数据。
+                                    10 根柱子时 6% 的圆角就够，不必给到 rounded-md。 */}
                                 <div
-                                    className="w-full rounded-t-md bg-linear-to-t from-primary/30 to-primary transition-colors group-hover:from-primary/55 group-hover:to-primary"
+                                    className="w-full rounded-t-sm bg-primary/75 transition-colors group-hover:bg-primary"
                                     style={{ height: `${Math.max(6, (d.views / max) * 100)}%` }}
                                     title={`${d.date}：访问 ${d.views} / 人数 ${d.visitors}`}
                                 />
                             </div>
                             {/* 10 根柱子挤在 280px 里，标签必然放不下：隔一根显示一个，字号压到 9px */}
-                            <span className="w-full truncate text-center text-[9px] leading-none text-muted-foreground/80">
+                            <span className="w-full truncate text-center font-mono text-[9px] leading-none tabular-nums text-muted-foreground/80">
                                 {i % 2 === 0 ? formatDate(d.date, mode) : ""}
                             </span>
                         </div>
@@ -232,17 +223,22 @@ function TrendCard({ data, mode }: { data: DateRangeStats[] | null | undefined; 
     );
 }
 
-/** 基础统计卡片：图标徽章 + 大数字 + 与昨日对比的胶囊标签（上涨红、下跌绿） */
-function StatChip({
+/** 基础统计单元格：一行读数条里的一格。
+ *
+ *  三处刻意的减法：
+ *  · 去掉右上角方块图标 —— 四张卡里四个图标只是填空，没有一个在解释数字；
+ *  · 去掉 10px 的大写字距标签（中文没有大小写，宽字距只把小字撑散、更难读）；
+ *  · 「较昨日」只在真有昨日数据时出现。本月/本年没有对比基数，
+ *    原来照样写「较昨日 —」，等于在说谎。
+ */
+function StatCell({
     label,
     value,
     yesterday,
-    icon,
 }: {
     label: string;
     value: number;
     yesterday?: number | null;
-    icon: React.ReactNode;
 }) {
     // 涨跌百分比：(今日 - 昨日) / 昨日 * 100，昨日为 0 时无法计算
     let pct: number | null = null;
@@ -250,31 +246,26 @@ function StatChip({
         pct = Math.round(((value - yesterday) / yesterday) * 100);
     }
     const tone = pct === null || pct === 0 ? "flat" : pct > 0 ? "up" : "down";
-    // 涨跌只保留文字颜色（原来还有一层 pill 底色，和「较昨日」三个字挤在一起）
     const deltaTextCls =
         tone === "up" ? "text-red-600 dark:text-red-400" : tone === "down" ? "text-green-600 dark:text-green-400" : "text-muted-foreground";
     const DeltaIcon = tone === "up" ? ArrowUpRight : tone === "down" ? ArrowDownRight : Minus;
+    const hasDelta = yesterday !== undefined && yesterday !== null;
 
     return (
-        // 编辑部风：标签小字大写 → 衬线大数字 → 一行小字涨跌。
-        // 原来右上角还有一团主题色柔光 + 方块图标徽章 + 圆角胶囊涨跌标签，三样一起把卡片挤得很闹。
-        <div className={cardCls}>
-            <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase">{label}</span>
-                <span className="shrink-0 text-primary/50">{icon}</span>
-            </div>
-            <div className="mt-2 flex items-baseline gap-2">
-                <span className="editorial-serif text-[30px] leading-none font-semibold tabular-nums">{value ?? 0}</span>
-                {pct === null ? (
-                    <span className="text-[11px] text-muted-foreground/60">—</span>
-                ) : (
+        <div className="bg-card px-4 py-4">
+            <p className="text-[11px] text-muted-foreground">{label}</p>
+            <div className="mt-1.5 flex items-baseline gap-2">
+                <span className="editorial-serif text-[30px] leading-none font-semibold tabular-nums">
+                    {(value ?? 0).toLocaleString("en-US")}
+                </span>
+                {hasDelta && (
                     <span className={`inline-flex items-center gap-0.5 text-[11px] font-medium tabular-nums ${deltaTextCls}`}>
-                        <DeltaIcon className="size-3" />
-                        {tone === "flat" ? "持平" : `${Math.abs(pct)}%`}
+                        {tone === "flat" ? null : <DeltaIcon className="size-3" />}
+                        {tone === "flat" ? "持平" : `${Math.abs(pct ?? 0)}%`}
                     </span>
                 )}
             </div>
-            <span className="mt-1 text-[10px] tracking-wide text-muted-foreground/60">较昨日</span>
+            <p className="mt-1 text-[10px] text-muted-foreground/70">{hasDelta ? "较昨日" : "累计"}</p>
         </div>
     );
 }
@@ -421,13 +412,14 @@ export function StatisticsSummary() {
 
     return (
         <div>
-            {/* 基础统计（今日人数/访问，与昨日对比涨跌）：4 张等高磁贴，行内不留空 */}
+            {/* 基础统计：四个数字排成一条「读数条」，格子之间是真发丝缝（容器铺底色 + 1px gap），
+                比四张各自带描边的卡片安静，也省掉了四个边框的重复。 */}
             {basic && (
-                <div className="mb-3 grid grid-cols-1 auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <StatChip label="今日人数" value={basic.today_visitors} yesterday={basic.yesterday_visitors} icon={<Users className="size-4" />} />
-                    <StatChip label="今日访问" value={basic.today_views} yesterday={basic.yesterday_views} icon={<Eye className="size-4" />} />
-                    <StatChip label="本月访问" value={basic.month_views} icon={<CalendarDays className="size-4" />} />
-                    <StatChip label="本年访问" value={basic.year_views} icon={<CalendarRange className="size-4" />} />
+                <div className="mb-3 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border/60 bg-border/60 lg:grid-cols-4">
+                    <StatCell label="今日人数" value={basic.today_visitors} yesterday={basic.yesterday_visitors} />
+                    <StatCell label="今日访问" value={basic.today_views} yesterday={basic.yesterday_views} />
+                    <StatCell label="本月访问" value={basic.month_views} />
+                    <StatCell label="本年访问" value={basic.year_views} />
                 </div>
             )}
 
@@ -437,20 +429,18 @@ export function StatisticsSummary() {
                 访问日志卡不在这里：它是仪表盘最后一块整宽卡片（见 visitor-logs-card.tsx 顶部约定） */}
             <div className={cardGridCls}>
                 {visibleTrends.map((t) => (
-                    <TrendCard key={t.mode} data={t.data} mode={t.mode} />
+                    <TrendCard key={t.mode} data={t.data} mode={t.mode} wide={t.mode === "daily"} />
                 ))}
 
                 {visibleDeviceSections.map((section) => (
                     <section key={section.title} className={`${cardCls} min-w-0`}>
-                        <GroupTitle icon={SECTION_ICON[section.title] ?? <MonitorSmartphone className="size-3.5" />}>
-                            {section.title}
-                        </GroupTitle>
+                        <GroupTitle>{section.title}</GroupTitle>
                         <RankList bare items={section.items} />
                     </section>
                 ))}
                     {visibleGeoSections.length > 0 && (
                         <section className={`${cardCls} min-w-0`}>
-                            <GroupTitle icon={<Globe className="size-3.5" />}>访客画像 · 地域与来源</GroupTitle>
+                            <GroupTitle>访客画像 · 地域与来源</GroupTitle>
                             {/* 左边占比饼图，右边排名前五的来源网站（颜色深浅与饼图分段一一对应） */}
                             {refererItems.length > 0 ? (
                                 /* 有宽度就「左饼图 + 右排名」并排；卡片窄到放不下 180px 的列表时自动换行堆叠，
@@ -517,7 +507,7 @@ export function StatisticsSummary() {
 
                     {hotPages.length > 0 && (
                         <section className={`${cardCls} min-w-0`}>
-                            <GroupTitle icon={<Flame className="size-3.5" />}>热门页面 TOP</GroupTitle>
+                            <GroupTitle>热门页面 TOP</GroupTitle>
                             {/* 与排行卡同一套行样式：等宽序号 + 名称 + 计数 + 一条彩色占比线（不画灰轨道） */}
                             <div className="space-y-2.5">
                                 {hotPages.map((item, i) => {

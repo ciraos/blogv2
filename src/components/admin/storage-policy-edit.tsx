@@ -149,7 +149,7 @@ function FieldGroupBlock({
 }) {
     return (
         <section className="space-y-3">
-            <h3 className="border-b border-border/60 pb-2 text-sm font-medium text-primary">{title}</h3>
+            <h3 className="border-b border-border/60 pb-2 text-[13px] font-medium text-foreground/80">{title}</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {fields.map((field) => {
                     const fieldSource = field.source ?? source;
@@ -406,7 +406,7 @@ export function StoragePolicyEditPage({ policyId }: { policyId: string }) {
 
                         {/* 基本信息（官方：策略名称 / 策略标志 / 存储类型） */}
                         <section className="space-y-3">
-                            <h3 className="border-b border-border/60 pb-2 text-sm font-medium text-primary">基本信息</h3>
+                            <h3 className="border-b border-border/60 pb-2 text-[13px] font-medium text-foreground/80">基本信息</h3>
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div className="space-y-1.5">
                                     <Label className="text-xs font-medium text-muted-foreground">策略名称</Label>
@@ -445,7 +445,7 @@ export function StoragePolicyEditPage({ policyId }: { policyId: string }) {
                                     <Label className="text-xs font-medium text-muted-foreground">存储类型</Label>
                                     <Input value={TYPE_OPTIONS.find((t) => t.value === values.type)?.label ?? values.type} readOnly disabled className="h-8 text-sm" />
                                     <p className="text-xs text-muted-foreground/80">
-                                        类型由后端在创建时确定，官方前端同样把该字段设为 disabled（storage/[id]/page.tsx:239-253）
+                                        类型由后端在创建时确定，创建后不可更改；要换类型请新建策略
                                     </p>
                                 </div>
                             </div>
@@ -469,7 +469,7 @@ export function StoragePolicyEditPage({ policyId }: { policyId: string }) {
 
                         {/* 存储与上传（官方：文件大小限制 / 上传分片大小 / OSS 图片处理样式） */}
                         <section className="space-y-3">
-                            <h3 className="border-b border-border/60 pb-2 text-sm font-medium text-primary">存储与上传</h3>
+                            <h3 className="border-b border-border/60 pb-2 text-[13px] font-medium text-foreground/80">存储与上传</h3>
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div className="space-y-1.5">
                                     <Label className="text-xs font-medium text-muted-foreground">文件大小限制（MB）</Label>

@@ -1,22 +1,23 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import {
-    Crown,
     Eye,
-    Layers,
     Pencil,
     Plus,
     Power,
     RefreshCw,
-    Search,
     Trash2,
-    Users,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { StatStrip } from "@/components/admin/stat-strip";
+import { AdminTabBar } from "@/components/admin/admin-tabs";
+import { AdminFilterBar } from "@/components/admin/filter-bar";
+import { AdminEmptyState } from "@/components/admin/empty-state";
+import { StatusDot } from "@/components/admin/status-dot";
 import { useConfirm } from "@/components/confirm-provider";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
@@ -28,7 +29,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { ACTION_TONE } from "@/lib/action-tones";
-import { cn } from "@/lib/utils";
 import {
     createAdminMembershipPlanApi,
     deleteAdminMembershipPlanApi,
@@ -407,156 +407,125 @@ export function MembershipsManager() {
         // admin-card：吃掉剩余高度，列表在卡片内部滚动，不顶高整页
         <div className="admin-card">
             {/* ===== 统计磁贴：固定在卡片顶部（shrink-0），不随列表滚动 ===== */}
-            <div className="grid shrink-0 grid-cols-2 gap-2 border-b p-3 md:grid-cols-4">
-                <div className="rounded-lg border bg-muted/40 px-3 py-2">
-                    <p className="text-xs text-muted-foreground">套餐总数</p>
-                    <p className="text-lg font-semibold tabular-nums text-muted-foreground/80">{plans.length}</p>
-                </div>
-                <div className="rounded-lg border bg-muted/40 px-3 py-2">
-                    <p className="text-xs text-muted-foreground">启用中套餐</p>
-                    <p className="text-lg font-semibold tabular-nums text-green-600 dark:text-green-400">
-                        {enabledPlanCount}
-                    </p>
-                </div>
-                <div className="rounded-lg border bg-muted/40 px-3 py-2">
-                    <p className="text-xs text-muted-foreground">会员总数</p>
-                    <p className="text-lg font-semibold tabular-nums text-primary">{membersTotal}</p>
-                </div>
-                <div className="rounded-lg border bg-muted/40 px-3 py-2">
-                    <p className="text-xs text-muted-foreground">当前页会员</p>
-                    <p className="text-lg font-semibold tabular-nums text-orange-600 dark:text-orange-400">
-                        {members.length}
-                    </p>
-                </div>
-            </div>
+            <StatStrip
+                items={[
+                { label: "套餐总数", value: <>{plans.length}</> },
+                { label: "启用中套餐", value: <>{enabledPlanCount}</> },
+                { label: "会员总数", value: <>{membersTotal}</> },
+                { label: "当前页会员", value: <>{members.length}</> },
+                ]}
+            />
 
-            {/* ===== Tab + 工具（固定在卡片顶部，不随内容滚动） ===== */}
-            <div className="flex shrink-0 flex-col gap-2 border-b p-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                <div className="flex items-center overflow-hidden rounded-xl border bg-card shadow-sm">
-                    <button
-                        type="button"
-                        onClick={() => setTab("plans")}
-                        className={cn(
-                            "flex h-8 items-center gap-1.5 px-3 text-xs transition-colors",
-                            tab === "plans" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-primary"
-                        )}
-                    >
-                        <Crown className="size-3.5" />
-                        会员方案
-                    </button>
-                    <span className="h-5 w-px bg-border" />
-                    <button
-                        type="button"
-                        onClick={() => setTab("members")}
-                        className={cn(
-                            "flex h-8 items-center gap-1.5 px-3 text-xs transition-colors",
-                            tab === "members" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-primary"
-                        )}
-                    >
-                        <Users className="size-3.5" />
-                        会员列表
-                    </button>
-                </div>
-
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                    {tab === "plans" ? (
-                        <>
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                状态
-                                <Select
-                                    value={planStatus}
-                                    onValueChange={(v) => {
-                                        setPlanStatus(v);
-                                        setPlanPage(1);
-                                    }}
-                                >
-                                    <SelectTrigger className="h-8 w-full min-w-0 rounded-xl text-xs sm:w-24">
-                                        <SelectValue placeholder="全部" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">全部</SelectItem>
-                                        {PLAN_STATUS_OPTIONS.map((o) => (
-                                            <SelectItem key={o.value} value={o.value}>
-                                                {o.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="relative w-full sm:w-auto">
-                                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                                <Input
-                                    value={planKeyword}
-                                    onChange={(e) => {
-                                        setPlanKeyword(e.target.value);
-                                        setPlanPage(1);
-                                    }}
-                                    placeholder="搜索方案名称…"
-                                    className="h-8 w-full rounded-xl pl-8 text-xs sm:w-40"
-                                />
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                aria-label="刷新"
-                                title="刷新"
-                                className="shrink-0 rounded-xl"
-                                onClick={() => setRefreshKey((k) => k + 1)}
-                            >
-                                <RefreshCw className="size-4" />
-                            </Button>
-                            <Button size="sm" className="h-8 shrink-0 rounded-xl text-xs" onClick={openCreate}>
+            {/* ===== 页签单独一行，筛选另起一行（都固定在卡片顶部，不随内容滚动） ===== */}
+            <AdminTabBar
+                tabs={[
+                    { key: "plans", label: "会员方案" },
+                    { key: "members", label: "会员列表" },
+                ]}
+                value={tab}
+                onChange={(key) => setTab(key)}
+            />
+            <AdminFilterBar
+                search={
+                    tab === "plans"
+                        ? {
+                              value: planKeyword,
+                              onChange: (v) => {
+                                  setPlanKeyword(v);
+                                  setPlanPage(1);
+                              },
+                              placeholder: "搜索方案名称…",
+                              ariaLabel: "搜索会员方案",
+                          }
+                        : {
+                              value: memberKeyword,
+                              onChange: (v) => {
+                                  setMemberKeyword(v);
+                                  setMemberPage(1);
+                              },
+                              placeholder: "按用户 ID / 方案名过滤本页…",
+                              ariaLabel: "过滤会员",
+                          }
+                }
+                onReset={() => {
+                    if (tab === "plans") {
+                        setPlanStatus("all");
+                        setPlanKeyword("");
+                        setPlanPage(1);
+                    } else {
+                        setMemberStatus("all");
+                        setMemberKeyword("");
+                        setMemberPage(1);
+                    }
+                }}
+                resetDisabled={
+                    tab === "plans"
+                        ? planStatus === "all" && !planKeyword
+                        : memberStatus === "all" && !memberKeyword
+                }
+                actions={
+                    <>
+                        <Button
+                            variant="outline"
+                            size="icon-sm"
+                            aria-label="刷新"
+                            title="刷新"
+                            className="size-8 shrink-0"
+                            onClick={() => setRefreshKey((k) => k + 1)}
+                        >
+                            <RefreshCw className="size-3.5" />
+                        </Button>
+                        {tab === "plans" && (
+                            <Button size="sm" className="h-8 shrink-0 text-sm" onClick={openCreate}>
                                 <Plus className="size-3.5" />
                                 <span className="hidden sm:inline">新增方案</span>
                             </Button>
-                        </>
-                    ) : (
-                        <>
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                状态
-                                <Select
-                                    value={memberStatus}
-                                    onValueChange={(v) => {
-                                        setMemberStatus(v);
-                                        setMemberPage(1);
-                                    }}
-                                >
-                                    <SelectTrigger className="h-8 w-full min-w-0 rounded-xl text-xs sm:w-24">
-                                        <SelectValue placeholder="全部" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">全部</SelectItem>
-                                        {MEMBER_STATUS_OPTIONS.map((o) => (
-                                            <SelectItem key={o.value} value={o.value}>
-                                                {o.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="relative w-full sm:w-auto">
-                                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                                <Input
-                                    value={memberKeyword}
-                                    onChange={(e) => setMemberKeyword(e.target.value)}
-                                    placeholder="按用户 ID / 方案名过滤本页…"
-                                    className="h-8 w-full rounded-xl pl-8 text-xs sm:w-52"
-                                />
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                aria-label="刷新"
-                                title="刷新"
-                                className="shrink-0 rounded-xl"
-                                onClick={() => setRefreshKey((k) => k + 1)}
-                            >
-                                <RefreshCw className="size-4" />
-                            </Button>
-                        </>
-                    )}
-                </div>
-            </div>
+                        )}
+                    </>
+                }
+            >
+                {tab === "plans" ? (
+                    <Select
+                        value={planStatus}
+                        onValueChange={(v) => {
+                            setPlanStatus(v);
+                            setPlanPage(1);
+                        }}
+                    >
+                        <SelectTrigger className="h-8 w-full shrink-0 text-sm sm:w-28" aria-label="方案状态">
+                            <SelectValue placeholder="全部" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">全部</SelectItem>
+                            {PLAN_STATUS_OPTIONS.map((o) => (
+                                <SelectItem key={o.value} value={o.value}>
+                                    {o.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                ) : (
+                    <Select
+                        value={memberStatus}
+                        onValueChange={(v) => {
+                            setMemberStatus(v);
+                            setMemberPage(1);
+                        }}
+                    >
+                        <SelectTrigger className="h-8 w-full shrink-0 text-sm sm:w-28" aria-label="会员状态">
+                            <SelectValue placeholder="全部" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">全部</SelectItem>
+                            {MEMBER_STATUS_OPTIONS.map((o) => (
+                                <SelectItem key={o.value} value={o.value}>
+                                    {o.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
+            </AdminFilterBar>
 
             {/* ===== Tab ①：会员方案 ===== */}
             {tab === "plans" && (
@@ -577,14 +546,16 @@ export function MembershipsManager() {
                         {plansLoading ? (
                             <div className="py-8 text-center text-sm text-muted-foreground">加载中…</div>
                         ) : pagedPlans.length === 0 ? (
-                            <div className="flex min-h-56 flex-col items-center justify-center gap-1.5 px-4 py-8 text-sm text-muted-foreground">
-                                <Layers className="size-8 opacity-40" />
-                                <span>
-                                    {planStatus !== "all" || planKeyword
-                                        ? "没有匹配的会员方案"
-                                        : "暂无会员方案，点击「新增方案」创建第一条"}
-                                </span>
-                            </div>
+                            <AdminEmptyState
+                                kind="orders"
+                                filtered={planStatus !== "all" || Boolean(planKeyword)}
+                                title={planStatus !== "all" || planKeyword ? undefined : "还没有会员方案"}
+                                description={
+                                    planStatus !== "all" || planKeyword
+                                        ? undefined
+                                        : "建一个档位（月付 / 年付 / 永久），前台会员页就有东西可选"
+                                }
+                            />
                         ) : (
                             pagedPlans.map((plan) => {
                                 const badge = planStatusBadge(plan.status);
@@ -615,11 +586,7 @@ export function MembershipsManager() {
                                             {plan.duration_days ?? 0} 天
                                         </div>
                                         <div className="sm:text-center">
-                                            <span
-                                                className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}
-                                            >
-                                                {badge.label}
-                                            </span>
+                                            <StatusDot cls={badge.cls}>{badge.label}</StatusDot>
                                         </div>
                                         <div className="text-xs tabular-nums text-muted-foreground sm:text-center">
                                             {plan.sort_order ?? 0}
@@ -697,12 +664,10 @@ export function MembershipsManager() {
                         {membersLoading ? (
                             <div className="py-8 text-center text-sm text-muted-foreground">加载中…</div>
                         ) : visibleMembers.length === 0 ? (
-                            <div className="flex min-h-56 flex-col items-center justify-center gap-1.5 px-4 py-8 text-sm text-muted-foreground">
-                                <Users className="size-8 opacity-40" />
-                                <span>
-                                    {memberStatus !== "all" || memberKeyword ? "没有匹配的会员" : "暂无会员数据"}
-                                </span>
-                            </div>
+                            <AdminEmptyState
+                                kind="users"
+                                filtered={memberStatus !== "all" || Boolean(memberKeyword)}
+                            />
                         ) : (
                             visibleMembers.map((member, index) => {
                                 const memberTag = memberBadge(member.is_member);
@@ -721,11 +686,7 @@ export function MembershipsManager() {
                                             {member.plan_name || planNameById.get(String(member.plan_id)) || "—"}
                                         </div>
                                         <div className="sm:text-center">
-                                            <span
-                                                className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${memberTag.cls}`}
-                                            >
-                                                {memberTag.label}
-                                            </span>
+                                            <StatusDot cls={memberTag.cls}>{memberTag.label}</StatusDot>
                                         </div>
                                         <div className="text-xs text-muted-foreground">
                                             {formatDateTime(member.start_time)}
@@ -734,11 +695,7 @@ export function MembershipsManager() {
                                             {formatDateTime(member.expire_time)}
                                         </div>
                                         <div className="sm:text-center">
-                                            <span
-                                                className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${expiredTag.cls}`}
-                                            >
-                                                {expiredTag.label}
-                                            </span>
+                                            <StatusDot cls={expiredTag.cls}>{expiredTag.label}</StatusDot>
                                         </div>
                                         <div className="flex items-center gap-1 sm:justify-end">
                                             <Button
@@ -918,21 +875,13 @@ export function MembershipsManager() {
                             <Meta
                                 label="是否会员"
                                 value={
-                                    <span
-                                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${memberBadge(detail.is_member).cls}`}
-                                    >
-                                        {memberBadge(detail.is_member).label}
-                                    </span>
+                                    <StatusDot cls={memberBadge(detail.is_member).cls}>{memberBadge(detail.is_member).label}</StatusDot>
                                 }
                             />
                             <Meta
                                 label="状态"
                                 value={
-                                    <span
-                                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${expiredBadge(detail.is_expired).cls}`}
-                                    >
-                                        {expiredBadge(detail.is_expired).label}
-                                    </span>
+                                    <StatusDot cls={expiredBadge(detail.is_expired).cls}>{expiredBadge(detail.is_expired).label}</StatusDot>
                                 }
                             />
                             <Meta label="开始时间" value={formatDateTime(detail.start_time)} />

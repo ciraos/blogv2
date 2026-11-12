@@ -1,4 +1,4 @@
-﻿/* 全站字体「站酷快乐体」（ZCOOL KuaiLe，OFL 免费商用）—— 已自托管：
+/* 全站字体「站酷快乐体」（ZCOOL KuaiLe，OFL 免费商用）—— 已自托管：
    public/fonts/zcool-kuaile/ 下是 93 个 unicode-range 分片（合计约 1MB），
    src/app/zcool-kuaile.css 是本地的 @font-face 表（由 scripts/mirror-zcool-kuaile.mjs 生成，
    跑 `pnpm fonts:mirror` 可重新镜像），不再依赖 Google Fonts。
@@ -4274,10 +4274,11 @@ body:has(.one-image-hero) #CIRAOS .main {
   z-index: 1;
   height: 2.25rem;
   background: var(--card);
+  /* 表头只是「列名」，不是标题：11px + 常规字重就够。
+     这里原来还有 letter-spacing 0.06em 和 text-transform: uppercase ——
+     中文没有大小写，uppercase 是空转，宽字距只会让表头比数据更像重点。 */
   font-size: 0.6875rem;
   font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--muted-foreground);
 }
 
@@ -4366,4 +4367,17 @@ body:has(.one-image-hero) #CIRAOS .main {
 /* 输入框右侧的「显示密码」按钮跟着底线一起收进来 */
 #CIRAOS .auth-panel input:not([type="checkbox"]):not([type="radio"]) ~ button {
   right: 0;
+}
+
+/* ===================== 弹窗与抽屉：圆角与内边距统一 =====================
+ * 各页手写的弹窗圆角 / 内边距不一致（rounded-xl 与 rounded-lg 混用、p-5 与 p-6 混用），
+ * 同一屏里会看到两种「面板」。这里只统一面板档的圆角（16px），不改任何布局与交互。
+ * 选择器按 shadcn 的 data-slot 挂，前台与后台都受益，但不碰按钮/输入框这类控件圆角。 */
+:is(
+  [data-slot="dialog-content"],
+  [data-slot="alert-dialog-content"],
+  [data-slot="sheet-content"],
+  [data-slot="drawer-content"]
+) {
+  border-radius: 16px;
 }

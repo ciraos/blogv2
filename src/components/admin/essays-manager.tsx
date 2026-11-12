@@ -23,6 +23,9 @@ import { useConfirm } from "@/components/confirm-provider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/pagination-controls";
+import { StatusDot } from "@/components/admin/status-dot";
+import { AdminFilterBar } from "@/components/admin/filter-bar";
+import { AdminEmptyState } from "@/components/admin/empty-state";
 import { ACTION_TONE } from "@/lib/action-tones";
 import {
     Select,
@@ -533,10 +536,16 @@ export function EssaysManager() {
     return (
         // admin-card：吃掉剩余高度，列表区域（admin-scroll）在卡片内部滚动，不再顶高整页
         <div className="admin-card">
-            {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动。
-                工具栏 / 表头 / 数据行共用同一套响应式规则：<640px 竖排成卡片（不撑宽），≥640px 表格式布局 */}
-            <div className="flex shrink-0 flex-col gap-2 border-b bg-muted/40 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-                <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+            {/* 工具栏：统一工具条，固定在卡片顶部（shrink-0），不随下方列表滚动 */}
+            <AdminFilterBar
+                onReset={() => setStatusFilter("")}
+                resetDisabled={!statusFilter}
+                summary={
+                    <>
+                        共 <span className="font-medium text-foreground">{total}</span> 条说说
+                    </>
+                }
+            >
                     {/* 状态筛选 */}
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         状态
@@ -557,11 +566,7 @@ export function EssaysManager() {
                             </SelectContent>
                         </Select>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                        共 <span className="font-medium text-foreground">{total}</span> 条说说
-                    </span>
-                </div>
-                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                <div className="col-span-2 order-last flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
                     {selected.size > 0 && (
                         <Button
                             variant="outline"
@@ -623,7 +628,7 @@ export function EssaysManager() {
                         <span className="hidden sm:inline">刷新</span>
                     </Button>
                 </div>
-            </div>
+            </AdminFilterBar>
 
             {/* 列表：卡片内唯一滚动区（表头吸顶），工具栏与分页都不动 */}
             <div className="admin-scroll">
@@ -644,7 +649,7 @@ export function EssaysManager() {
                 {loading ? (
                     <div className="py-12 text-center text-sm text-muted-foreground">加载中…</div>
                 ) : list.length === 0 ? (
-                    <div className="py-12 text-center text-sm text-muted-foreground">暂无说说</div>
+                    <AdminEmptyState kind="comments" filtered={Boolean(statusFilter)} />
                 ) : (
                     list.map((essay) => {
                         const badge = statusBadge(essay.status);
@@ -678,9 +683,7 @@ export function EssaysManager() {
                                     )}
                                 </div>
                                 <div className="sm:text-center">
-                                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
-                                        {badge.label}
-                                    </span>
+                                    <StatusDot cls={badge.cls}>{badge.label}</StatusDot>
                                 </div>
                                 <div className="text-xs text-muted-foreground">
                                     <div className="truncate font-medium">{essay.address || "—"}</div>

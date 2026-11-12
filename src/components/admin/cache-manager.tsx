@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -8,7 +8,6 @@ import {
     FileText,
     HardDrive,
     Image as ImageIcon,
-    Layers,
     RefreshCw,
     ScanSearch,
     Server,
@@ -18,6 +17,8 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { StatusDot } from "@/components/admin/status-dot";
+import { AdminFilterBar } from "@/components/admin/filter-bar";
 import { getCacheStatusApi, manageCacheApi, revalidateCacheApi } from "@/lib/api-cache";
 import type { CachePurgeType, CacheStatus, CacheStatusDetail } from "@/lib/api-cache";
 import { ACTION_TONE } from "@/lib/action-tones";
@@ -184,9 +185,7 @@ function StatusCard({
                         {hint && <p className="truncate text-xs text-muted-foreground/70">{hint}</p>}
                     </div>
                 </div>
-                <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
-                    {badge.label}
-                </span>
+                <StatusDot cls={badge.cls}>{badge.label}</StatusDot>
             </div>
             {rows.length > 0 && (
                 <div className="space-y-1.5 border-t pt-2">
@@ -376,29 +375,32 @@ export function CacheManager() {
 
     return (
         <div className="admin-card">
-            {/* ===== 标题条 + 刷新：固定在卡片顶部（shrink-0），不随内容滚动 ===== */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-2">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Layers className="size-3.5" />
-                    <span>缓存状态</span>
-                    {fetchedAt && <span className="text-muted-foreground/70">更新于 {formatClock(fetchedAt)}</span>}
-                    {status?.runtime_settings && status.runtime_settings.length > 0 && (
-                        <span className="text-muted-foreground/70">
-                            运行时设置：{status.runtime_settings.join("、")}
-                        </span>
-                    )}
-                </div>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-2 text-xs"
-                    disabled={loading || !!busy}
-                    onClick={retry}
-                >
-                    <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
-                    刷新
-                </Button>
-            </div>
+            {/* ===== 标题条 + 刷新（统一动作行，固定在卡片顶部） ===== */}
+            <AdminFilterBar
+                summary={
+                    <>
+                        缓存状态
+                        {fetchedAt && <span className="ml-2 text-muted-foreground/70">更新于 {formatClock(fetchedAt)}</span>}
+                        {status?.runtime_settings && status.runtime_settings.length > 0 && (
+                            <span className="ml-2 text-muted-foreground/70">
+                                运行时设置：{status.runtime_settings.join("、")}
+                            </span>
+                        )}
+                    </>
+                }
+                actions={
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-2 text-xs"
+                        disabled={loading || !!busy}
+                        onClick={retry}
+                    >
+                        <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
+                        刷新
+                    </Button>
+                }
+            />
 
             {/* ===== 内容区：卡片内唯一滚动区，加载 / 错误 / 状态+操作三态都在这里 ===== */}
             <div className="admin-scroll">
@@ -449,7 +451,7 @@ export function CacheManager() {
 
                         {/* ---- 操作区 ---- */}
                         <section className="rounded-xl border">
-                            <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-4 py-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2">
                                 <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                                     <Server className="size-4 text-muted-foreground" />
                                     操作

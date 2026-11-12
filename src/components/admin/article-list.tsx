@@ -1,22 +1,21 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import {
-    AlignJustify,
     Check,
     Eye,
-    FileText,
     FolderTree,
     FolderOutputIcon,
     Pencil,
     Plus,
-    RotateCcw,
     Trash2,
     Upload,
     X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AdminFilterBar } from "@/components/admin/filter-bar";
+import { AdminEmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/confirm-provider";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -67,10 +66,10 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_CLASS: Record<string, string> = {
-    PUBLISHED: "bg-emerald-500/15 text-emerald-600",
-    DRAFT: "bg-amber-500/15 text-amber-600",
-    ARCHIVED: "bg-slate-500/15 text-slate-500",
-    SCHEDULED: "bg-sky-500/15 text-sky-600",
+    PUBLISHED: "bg-emerald-500",
+    DRAFT: "bg-amber-500",
+    ARCHIVED: "bg-slate-400",
+    SCHEDULED: "bg-sky-500",
 };
 
 // 状态筛选选项（「定时发布」后端枚举值待确认，暂用 SCHEDULED）
@@ -376,34 +375,21 @@ export function ArticleList() {
         // admin-card：吃掉剩余高度，表格区域（admin-scroll）在卡片内部滚动，不再顶高整页
         <div className="admin-card">
             {/* 工具栏：搜索 + 四个筛选下拉 + 重置 + 右侧按钮（固定在卡片顶部，不随表格滚动） */}
-            <div className="flex shrink-0 flex-col gap-2 border-b p-3 sm:flex-row sm:flex-wrap sm:items-center">
-                {/* 左：搜索 + 筛选 + 重置（窄屏竖排、每项占满一行；≥sm 恢复横排） */}
-                <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                    <div className="relative w-full sm:w-48">
-                        <Input
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                    setPage(1);
-                                    setKeyword(input.trim());
-                                }
-                            }}
-                            placeholder="搜索文章标题、内容"
-                            className="h-8 pr-8 text-sm"
-                            aria-label="搜索文章"
-                        />
-                        {input && (
-                            <button
-                                type="button"
-                                onClick={() => setInput("")}
-                                aria-label="清空搜索"
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-                            >
-                                <X size={14} />
-                            </button>
-                        )}
-                    </div>
+            <AdminFilterBar
+                search={{
+                    value: input,
+                    onChange: setInput,
+                    placeholder: "搜索文章标题、内容",
+                    ariaLabel: "搜索文章",
+                    onSubmit: () => {
+                        setPage(1);
+                        setKeyword(input.trim());
+                    },
+                }}
+                onReset={resetFilters}
+                resetDisabled={!status && !review && !category && !tag}
+                summary={`共 ${total} 篇`}
+            >
 
                     {/* 文章状态 */}
                     <Select value={status} onValueChange={setStatus}>
@@ -481,20 +467,14 @@ export function ArticleList() {
                         </SelectContent>
                     </Select>
 
-                    {/* 重置筛选：窄屏只留图标，≥sm 才显示文字 */}
-                    <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={resetFilters}>
-                        <RotateCcw size={14} />
-                        <span className="hidden sm:inline">重置</span>
-                    </Button>
-                </div>
-
                 {/* 右：批量删除 / 分类标签 / 新增 / 导入 / 导出（窄屏只留图标） */}
-                <div className="flex flex-wrap items-center gap-2">
-                    {/* 批量删除：勾选后才可用，二次确认后按 100 篇分片调用远端 DELETE /articles/batch */}
+                <div className="col-span-2 order-last flex flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+                    {/* 批量删除：勾选后才可用，二次确认后按 100 篇分片调用远端 DELETE /articles/batch。
+                        没有勾选时保持中性灰 —— 一个常驻的红字按钮在没事的时候也在喊。 */}
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 shrink-0 text-destructive hover:text-destructive"
+                        className={`h-8 shrink-0 ${selected.length > 0 ? "text-destructive hover:text-destructive" : "text-muted-foreground"}`}
                         disabled={selected.length === 0 || batchBusy}
                         onClick={() => void handleBatchDelete()}
                     >
@@ -535,7 +515,7 @@ export function ArticleList() {
                         </span>
                     </Button>
                 </div>
-            </div>
+            </AdminFilterBar>
 
             {/* 列表：移动端(<640px)每个单元格竖排成卡片，≥640px 表格式 grid 并可横向滚动。
                 admin-scroll：只有这块纵向滚动（表头吸顶），卡片与工具栏都不动 */}
@@ -558,9 +538,20 @@ export function ArticleList() {
                 {loading && list.length === 0 ? (
                     <div className="px-4 py-10 text-center text-muted-foreground">加载中…</div>
                 ) : list.length === 0 ? (
-                    <div className="px-4 py-10 text-center text-muted-foreground">
-                        {keyword || status || review || category || tag ? "无结果" : "暂无文章"}
-                    </div>
+                    <AdminEmptyState
+                        kind="articles"
+                        filtered={Boolean(keyword || status || review || category || tag)}
+                        action={
+                            keyword || status || review || category || tag ? undefined : (
+                                <Button variant="outline" size="sm" asChild>
+                                    <Link href="/admin/post-management/new">
+                                        <Plus size={14} />
+                                        写第一篇
+                                    </Link>
+                                </Button>
+                            )
+                        }
+                    />
                 ) : (
                     list.map((article) => (
                         <div
@@ -576,7 +567,6 @@ export function ArticleList() {
                                 />
                             </div>
                             <div className="flex items-start gap-2">
-                                <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground/60" />
                                 <div className="min-w-0">
                                     <div className="line-clamp-1 font-medium">{article.title}</div>
                                     {/* 分类 / 标签：标题正下方、图标下方，从左到右 */}
@@ -594,22 +584,19 @@ export function ArticleList() {
                                     </div>
                                 </div>
                             </div>
-                            <div>
+                            {/* 状态：一个小圆点 + 文字。原来是「浅色底 + 同色字」的胶囊，
+                                一列下来就是一排彩色标签；状态是元信息，不是奖章。 */}
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                 <span
-                                    className={`inline-block rounded-md px-2 py-0.5 text-xs ${STATUS_CLASS[article.status] || "bg-muted text-muted-foreground"}`}
-                                >
-                                    {STATUS_LABEL[article.status] || article.status}
-                                </span>
+                                    className={`size-1.5 shrink-0 rounded-full ${STATUS_CLASS[article.status] || "bg-muted-foreground"}`}
+                                    aria-hidden
+                                />
+                                {STATUS_LABEL[article.status] || article.status}
                             </div>
-                            <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                    <AlignJustify size={12} className="text-muted-foreground/60" />
-                                    {article.word_count || 0} 字
-                                </span>
-                                <span className="flex items-center gap-1">
-                                    <Eye size={12} className="text-muted-foreground/60" />
-                                    {article.view_count || 0}
-                                </span>
+                            {/* 统计：两个数上下排，等宽对齐、千分位，去掉两个只在解释「这一行是数字」的图标 */}
+                            <div className="flex flex-col gap-0.5 text-xs tabular-nums text-muted-foreground">
+                                <span>{(article.word_count || 0).toLocaleString("en-US")} 字</span>
+                                <span>{(article.view_count || 0).toLocaleString("en-US")} 阅读</span>
                             </div>
                             <div className="text-xs text-muted-foreground">{formatDate(article.created_at)}</div>
                             {/* 操作列：窄屏只留图标（列宽 120px，见 rowGrid 的说明），≥sm 带文字 */}
@@ -662,7 +649,7 @@ export function ArticleList() {
             {/* 分页：固定在卡片底部，不随表格滚动 */}
             <div className="flex shrink-0 items-center justify-between border-t p-3">
                 <div className="gap-2">
-                    <span className="rounded-sm p-1 text-xs text-muted-foreground bg-muted">共 {total} 篇</span>
+                    <span className="p-1 font-mono text-xs tabular-nums text-muted-foreground">共 {total} 篇</span>
                     {selected.length > 0 && (
                         <span className="ml-2 text-xs text-muted-foreground">已勾选 {selected.length} 篇</span>
                     )}

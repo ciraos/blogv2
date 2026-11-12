@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /**
  * 商品管理：统计磁贴 + 工具栏（关键词 / 状态筛选）+ 表格外壳 + 分页 + 三个弹窗。
@@ -33,21 +33,19 @@ import {
     Layers,
     Loader2,
     Package,
-    PackageOpen,
     Pencil,
     Plus,
     RefreshCw,
     RotateCcw,
-    Search,
-    Store,
     ToggleLeft,
     Trash2,
-    TrendingUp,
-    Wallet,
-    X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { StatStrip } from "@/components/admin/stat-strip";
+import { AdminFilterBar } from "@/components/admin/filter-bar";
+import { AdminEmptyState } from "@/components/admin/empty-state";
+import { StatusDot } from "@/components/admin/status-dot";
 import { useConfirm } from "@/components/confirm-provider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -229,20 +227,14 @@ function ProductRow({ item, busy, onEdit, onVariants, onStock, onToggleStatus, o
                 <span className="font-medium text-foreground">¥{yuan(item.total_revenue)}</span>
             </div>
             <div className="sm:text-center">
-                <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
-                    {badge.label}
-                </span>
+                <StatusDot cls={badge.cls}>{badge.label}</StatusDot>
             </div>
             <div className="sm:text-center">
-                <span
-                    className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                <StatusDot cls={
                         item.show_on_homepage
                             ? "bg-sky-500/15 text-sky-600 dark:text-sky-400"
                             : "bg-muted text-muted-foreground"
-                    }`}
-                >
-                    {item.show_on_homepage ? "是" : "否"}
-                </span>
+                    }>{item.show_on_homepage ? "是" : "否"}</StatusDot>
             </div>
             <div className="text-xs text-muted-foreground">{formatDateTime(item.created_at)}</div>
             {/* 操作列：编辑 / 规格 / 卡密库存 / 上下架 / 删除 */}
@@ -1245,17 +1237,13 @@ function StockDialog({ product, onClose }: { product: ProductListItem; onClose: 
                                     <span className="min-w-0 flex-1 truncate font-mono text-foreground">
                                         {item.content || "—"}
                                     </span>
-                                    <span
-                                        className={`shrink-0 rounded-full px-2 py-0.5 font-medium ${
+                                    <StatusDot cls={
                                             item.status === StockStatus.Available
                                                 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                                                 : item.status === StockStatus.Used
                                                   ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                                                   : "bg-muted text-muted-foreground"
-                                        }`}
-                                    >
-                                        {stockStatusLabel(item.status)}
-                                    </span>
+                                        }>{stockStatusLabel(item.status)}</StatusDot>
                                     <span className="hidden shrink-0 tabular-nums text-muted-foreground sm:block">
                                         {formatDateTime(item.created_at)}
                                     </span>
@@ -1461,83 +1449,39 @@ export function ProductsManager() {
         // admin-card：吃掉剩余高度，列表区域（admin-scroll）在卡片内部滚动，不再顶高整页
         <div className="admin-card">
             {/* 统计磁贴：固定在卡片顶部（shrink-0），不随列表滚动 */}
-            <div className="grid shrink-0 grid-cols-2 gap-2 border-b p-3 md:grid-cols-4">
-                <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <Package className="size-4" />
-                    </span>
-                    <div className="min-w-0">
-                        <p className="truncate text-xs text-muted-foreground">商品总数</p>
-                        <p className="text-lg font-semibold tabular-nums">{loading ? "—" : total}</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                        <Store className="size-4" />
-                    </span>
-                    <div className="min-w-0">
-                        <p className="truncate text-xs text-muted-foreground">已上架（本页）</p>
-                        <p className="text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-                            {loading ? "—" : publishedCount}
-                        </p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400">
-                        <TrendingUp className="size-4" />
-                    </span>
-                    <div className="min-w-0">
-                        <p className="truncate text-xs text-muted-foreground">总销量（本页）</p>
-                        <p className="text-lg font-semibold tabular-nums text-violet-600 dark:text-violet-400">
-                            {loading ? "—" : salesSum}
-                        </p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                        <Wallet className="size-4" />
-                    </span>
-                    <div className="min-w-0">
-                        <p className="truncate text-xs text-muted-foreground">总收入（本页）</p>
-                        <p className="text-lg font-semibold tabular-nums text-amber-600 dark:text-amber-400">
-                            {loading ? "—" : `¥${yuan(revenueSum)}`}
-                        </p>
-                    </div>
-                </div>
-            </div>
+            <StatStrip
+                items={[
+                { label: "商品总数", value: <>{loading ? "—" : total}</> },
+                { label: "已上架（本页）", value: <>{loading ? "—" : publishedCount}</> },
+                { label: "总销量（本页）", value: <>{loading ? "—" : salesSum}</> },
+                { label: "总收入（本页）", value: <>{loading ? "—" : `¥${yuan(revenueSum)}`}</> },
+                ]}
+            />
 
-            {/* 工具栏：固定在卡片顶部（shrink-0），不随下方表格滚动。
-                左：搜索 + 状态筛选 + 重置；右：新增商品 / 刷新（卡密库存入口在每行操作列里） */}
-            <div className="flex shrink-0 flex-col gap-2 border-b p-3 sm:flex-row sm:flex-wrap sm:items-center">
-                <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                    <div className="relative w-full sm:w-56">
-                        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={(e) => {
-                                // 回车才真正按 keyword 查询（输入过程不打扰）
-                                if (e.key === "Enter") applyKeyword();
-                            }}
-                            placeholder="搜索商品标题（回车）"
-                            className="h-8 pl-8 pr-8 text-sm"
-                            aria-label="搜索商品"
-                        />
-                        {input && (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setInput("");
-                                    setKeyword("");
-                                    setPage(1);
-                                }}
-                                aria-label="清空搜索"
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-                            >
-                                <X size={14} />
-                            </button>
-                        )}
-                    </div>
+            {/* 工具栏：统一工具条，固定在卡片顶部（shrink-0），不随下方表格滚动 */}
+            <AdminFilterBar
+                search={{
+                    value: input,
+                    onChange: (v) => {
+                        setInput(v);
+                        // 清空搜索框 = 同时清掉已生效的关键词
+                        if (!v) {
+                            setKeyword("");
+                            setPage(1);
+                        }
+                    },
+                    placeholder: "搜索商品标题（回车）",
+                    ariaLabel: "搜索商品",
+                }}
+                onSubmit={applyKeyword}
+                onReset={resetFilters}
+                resetDisabled={!hasFilter}
+                summary={
+                    <>
+                        共 <span className="font-medium tabular-nums text-foreground">{total}</span> 件商品
+                    </>
+                }
+            >
 
                     {/* 状态筛选：切换即查询（回到第 1 页） */}
                     <Select
@@ -1560,23 +1504,7 @@ export function ProductsManager() {
                         </SelectContent>
                     </Select>
 
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 shrink-0"
-                        onClick={resetFilters}
-                        disabled={!hasFilter}
-                    >
-                        <RotateCcw size={14} />
-                        <span className="hidden sm:inline">重置</span>
-                    </Button>
-
-                    <span className="text-xs text-muted-foreground">
-                        共 <span className="font-medium tabular-nums text-foreground">{total}</span> 件商品
-                    </span>
-                </div>
-
-                <div className="flex w-full items-center gap-2 sm:w-auto">
+                <div className="col-span-2 order-last flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
                     <Button size="sm" className="h-8 shrink-0" onClick={openCreate}>
                         <Plus size={14} />
                         <span className="hidden sm:inline">新增商品</span>
@@ -1592,7 +1520,7 @@ export function ProductsManager() {
                         <span className="hidden sm:inline">刷新</span>
                     </Button>
                 </div>
-            </div>
+            </AdminFilterBar>
 
             {/* 列表：卡片内唯一滚动区（表头吸顶），工具栏与分页都不动 */}
             <div className="admin-scroll">
@@ -1639,33 +1567,32 @@ export function ProductsManager() {
                     </div>
                 ) : list.length === 0 ? (
                     // 空态：「有筛选没匹配」与「确实没数据」区分文案
-                    <div className="flex flex-col items-center justify-center gap-2 px-4 py-8 text-center">
-                        <span className="flex size-12 items-center justify-center rounded-full bg-muted">
-                            <PackageOpen className="size-6 text-muted-foreground/60" />
-                        </span>
-                        <p className="text-sm font-medium text-foreground">
-                            {hasFilter ? "没有匹配的商品" : "暂无商品"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                            {hasFilter ? "试试调整关键词或状态筛选" : "还没有商品数据，点「新增商品」创建第一个"}
-                        </p>
-                        {hasFilter ? (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="mt-1 h-8 text-xs"
-                                onClick={resetFilters}
-                            >
-                                <RotateCcw className="size-3.5" />
-                                重置筛选
-                            </Button>
-                        ) : (
-                            <Button size="sm" className="mt-1 h-8 text-xs" onClick={openCreate}>
-                                <Plus className="size-3.5" />
-                                新增商品
-                            </Button>
-                        )}
-                    </div>
+                    <AdminEmptyState
+                        kind="orders"
+                        filtered={hasFilter}
+                        title={hasFilter ? undefined : "还没有商品"}
+                        description={
+                            hasFilter ? undefined : "商品可以卖会员、赞助档位或卡密，先建一个试试"
+                        }
+                        action={
+                            hasFilter ? (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 text-xs"
+                                    onClick={resetFilters}
+                                >
+                                    <RotateCcw className="size-3.5" />
+                                    重置筛选
+                                </Button>
+                            ) : (
+                                <Button size="sm" className="h-8 text-xs" onClick={openCreate}>
+                                    <Plus className="size-3.5" />
+                                    新增商品
+                                </Button>
+                            )
+                        }
+                    />
                 ) : (
                     // 切页/刷新时保留旧列表（轻微降透明度表示正在更新）
                     <div className={loading ? "opacity-60 transition-opacity" : "transition-opacity"}>

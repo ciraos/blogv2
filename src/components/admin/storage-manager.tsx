@@ -1,10 +1,16 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Cloud, HardDrive, Loader2, Pencil, Plus, RefreshCw, Search, Server, Star, Trash2, TriangleAlert, X } from "lucide-react";
+import {
+    Cloud, HardDrive, Loader2, Pencil, Plus, RefreshCw, Server, Star, Trash2, TriangleAlert, X
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { StatusDot } from "@/components/admin/status-dot";
+import { StatStrip } from "@/components/admin/stat-strip";
+import { AdminFilterBar } from "@/components/admin/filter-bar";
+import { AdminEmptyState } from "@/components/admin/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PaginationControls } from "@/components/pagination-controls";
@@ -761,22 +767,32 @@ export function StorageManager() {
 
     return (
         <div className="admin-card">
-            {/* 统计磁贴：固定在卡片顶部（shrink-0），不随列表滚动 */}
-            <div className="grid shrink-0 grid-cols-2 gap-2 border-b p-3 md:grid-cols-4">
-                {tiles.map((t) => (
-                    <div key={t.label} className="flex items-start justify-between gap-2 rounded-lg border bg-muted/40 px-3 py-2">
-                        <div>
-                            <p className="text-xs text-muted-foreground">{t.label}</p>
-                            <p className="text-lg font-semibold tabular-nums">{t.value}</p>
-                        </div>
-                        <t.icon className="size-4 shrink-0 text-muted-foreground/60" />
-                    </div>
-                ))}
-            </div>
+            {/* 统计：四项读数排成一条（共用 StatStrip），格子之间是发丝线 */}
+            <StatStrip items={tiles} />
 
-            {/* 工具栏：固定在卡片顶部（shrink-0），不随下方列表滚动 */}
-            <div className="flex shrink-0 flex-col gap-2 border-b bg-muted/40 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-                <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+            {/* 工具栏：统一工具条，固定在卡片顶部（shrink-0），不随下方列表滚动 */}
+            <AdminFilterBar
+                search={{
+                    value: keyword,
+                    onChange: (v) => {
+                        setKeyword(v);
+                        setPage(1);
+                    },
+                    placeholder: "搜索策略名称 / 域名…",
+                    ariaLabel: "搜索存储策略",
+                }}
+                onReset={() => {
+                    setKeyword("");
+                    setTypeFilter("all");
+                    setPage(1);
+                }}
+                resetDisabled={!keyword && typeFilter === "all"}
+                summary={
+                    <>
+                        共 <span className="font-medium text-foreground">{filtered.length}</span> 个存储策略
+                    </>
+                }
+            >
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         类型
                         <Select
@@ -786,7 +802,7 @@ export function StorageManager() {
                                 setPage(1);
                             }}
                         >
-                            <SelectTrigger className="h-7 w-full min-w-0 text-xs sm:w-max">
+                            <SelectTrigger className="h-8 w-full min-w-0 text-sm sm:w-max">
                                 <SelectValue placeholder="全部" />
                             </SelectTrigger>
                             <SelectContent>
@@ -799,27 +815,11 @@ export function StorageManager() {
                             </SelectContent>
                         </Select>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                        共 <span className="font-medium text-foreground">{filtered.length}</span> 个存储策略
-                    </span>
-                </div>
-                <div className="flex flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-                    <div className="relative w-full sm:w-auto">
-                        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            value={keyword}
-                            onChange={(e) => {
-                                setKeyword(e.target.value);
-                                setPage(1);
-                            }}
-                            placeholder="搜索策略名称 / 域名…"
-                            className="h-7 w-full pl-8 text-xs sm:w-56"
-                        />
-                    </div>
+                <div className="col-span-2 order-last flex flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 shrink-0 px-2 text-xs"
+                        className="h-8 shrink-0 px-2.5 text-sm"
                         onClick={retry}
                         disabled={loading}
                         title="重新拉取存储策略列表"
@@ -829,14 +829,14 @@ export function StorageManager() {
                     </Button>
                     <Button
                         size="sm"
-                        className="h-7 shrink-0 bg-primary px-2 text-xs text-primary-foreground hover:bg-primary/90"
+                        className="h-8 shrink-0 px-2.5 text-sm"
                         onClick={() => setPickingType(true)}
                     >
                         <Plus className="size-3.5" />
                         <span className="hidden sm:inline">新建策略</span>
                     </Button>
                 </div>
-            </div>
+            </AdminFilterBar>
 
             {/* 列表：卡片内唯一滚动区（表头吸顶），工具栏与分页都不动。
                 加载 / 空 / 错误三态都渲染在这个 admin-scroll 里，外壳保持不变 */}
@@ -891,13 +891,14 @@ export function StorageManager() {
                     </div>
                 ) : pageRows.length === 0 ? (
                     // 空态：区分「筛选没匹配」与「确实没数据」
-                    <div className="flex min-h-64 flex-col items-center justify-center gap-1.5 px-4 py-12 text-sm text-muted-foreground">
-                        <Server className="size-5 opacity-60" />
-                        <span>{hasFilter ? "没有匹配的存储策略" : "暂无存储策略"}</span>
-                        <span className="text-xs text-muted-foreground/70">
-                            {hasFilter ? "换个类型或关键词试试" : "远端返回的列表为空"}
-                        </span>
-                    </div>
+                    <AdminEmptyState
+                        kind="media"
+                        filtered={hasFilter}
+                        title={hasFilter ? undefined : "还没有存储策略"}
+                        description={
+                            hasFilter ? undefined : "新建一个策略，图片和附件才有地方存；也可以先只填本地存储"
+                        }
+                    />
                 ) : (
                     pageRows.map((item, index) => (
                         <PolicyRow
@@ -1005,18 +1006,22 @@ function PolicyRow({
             <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                     <span className="truncate font-medium text-foreground">{item.name || "—"}</span>
+                    {/* 「这个策略是某用途的默认」用一个小星标表示就够了：
+                        用途列（用户头像默认 / 评论图片默认…）已经把这句话写全，
+                        再贴一块琥珀色文字标签，同一行里同一件事说了两遍。 */}
                     {item.flag && (
-                        <span className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-px text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                            {flagLabel(item.flag)}
+                        <span title={flagLabel(item.flag)} className="inline-flex">
+                            <Star
+                                className="size-3 shrink-0 fill-muted-foreground/40 text-muted-foreground/60"
+                                aria-label={flagLabel(item.flag)}
+                            />
                         </span>
                     )}
                 </div>
                 {item.base_path && <div className="truncate text-xs text-muted-foreground">{item.base_path}</div>}
             </div>
             <div>
-                <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${typeBadgeCls(item.type)}`}>
-                    {typeLabel(item.type)}
-                </span>
+                <StatusDot cls={typeBadgeCls(item.type)}>{typeLabel(item.type)}</StatusDot>
             </div>
             <div className="min-w-0 truncate text-xs text-muted-foreground">
                 {domainOf(item)}
@@ -1027,16 +1032,12 @@ function PolicyRow({
             <div className="text-xs text-muted-foreground">
                 {flagLabel(item.flag)}
             </div>
-            <div className="sm:text-center">
-                {item.is_private ? (
-                    <span className="inline-block rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400">
-                        私有
-                    </span>
-                ) : (
-                    <span className="inline-block rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                        公开
-                    </span>
-                )}
+            <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                <span
+                    className={`size-1.5 shrink-0 rounded-full ${item.is_private ? "bg-red-500" : "bg-muted-foreground"}`}
+                    aria-hidden
+                />
+                {item.is_private ? "私有" : "公开"}
             </div>
             <div className="text-xs tabular-nums text-muted-foreground">{formatDateTime(item.created_at)}</div>
             <div className="flex items-center gap-1 sm:justify-end">

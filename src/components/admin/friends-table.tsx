@@ -74,19 +74,16 @@ const ROW_GRID = "grid-cols-[28px_minmax(0,1fr)_160px_112px_80px_136px]";
  */
 const STICKY_ACTION_BASE = "sticky right-0 border-l border-border/60 pl-2";
 
-/** 状态 → 中文 + 色块（背景淡色 + 同色系文字） */
+/** 状态 → 中文 + 一个色点（不再用浅底同色字的胶囊：一列下来就是一排彩色标签，
+ *  状态是元信息，不是奖章）。另外补上 INVALID 的中文——原来它落到兜底分支，
+ *  界面上直接印出英文 "INVALID"。 */
 function statusBadge(status: string) {
     const s = (status || "").toUpperCase();
-    if (s === "APPROVED" || s === "已通过") {
-        return { label: "已通过", cls: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400" };
-    }
-    if (s === "PENDING" || s === "待审核") {
-        return { label: "待审核", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-400" };
-    }
-    if (s === "REJECTED" || s === "已拒绝") {
-        return { label: "已拒绝", cls: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400" };
-    }
-    return { label: status || "已失效", cls: "bg-muted text-muted-foreground" };
+    if (s === "APPROVED" || s === "已通过") return { label: "已通过", dot: "bg-emerald-500" };
+    if (s === "PENDING" || s === "待审核") return { label: "待审核", dot: "bg-amber-500" };
+    if (s === "REJECTED" || s === "已拒绝") return { label: "已拒绝", dot: "bg-red-500" };
+    if (s === "INVALID" || s === "已失效") return { label: "已失效", dot: "bg-muted-foreground" };
+    return { label: status || "未知", dot: "bg-muted-foreground" };
 }
 
 /** 友链头像（同友链界面）：有 logo 显示 logo，加载失败/占位/缺失时兜底为网站名称首字母 */
@@ -527,10 +524,9 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                                         )}
                                     </div>
                                     {/* 状态 */}
-                                    <div className="text-center">
-                                        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
-                                            {badge.label}
-                                        </span>
+                                    <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                                        <span className={`size-1.5 shrink-0 rounded-full ${badge.dot}`} aria-hidden />
+                                        {badge.label}
                                     </div>
                                     {/* 操作（固定列） */}
                                     <div className={cn("flex items-center justify-end gap-1 bg-card", STICKY_ACTION_BASE)}>

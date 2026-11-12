@@ -1,14 +1,15 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "nextjs-toploader/app";
-import { ExternalLink, FileText, Loader2, Pencil, Plus, RefreshCw, Search, Sparkles, Trash2 } from "lucide-react";
+import { ExternalLink, Loader2, Pencil, Plus, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/confirm-provider";
-import { Input } from "@/components/ui/input";
+import { AdminFilterBar, filterSelectTrigger } from "@/components/admin/filter-bar";
+import { AdminEmptyState } from "@/components/admin/empty-state";
 import { PaginationControls } from "@/components/pagination-controls";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { deleteAdminPageApi, getAdminPagesApi, initializeAdminPagesApi } from "@/lib/api";
@@ -125,76 +126,75 @@ export function PageManager() {
     return (
         // admin-card：吃掉剩余高度；工具栏 / 分页固定，表格在 admin-scroll 内部滚动
         <div className="admin-card">
-            {/* ===== 工具栏（固定在卡片顶部，不随表格滚动） ===== */}
-            <div className="flex shrink-0 flex-col gap-2 border-b p-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                    <div className="relative w-full sm:w-auto">
-                        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            value={searchInput}
-                            onChange={(e) => setSearchInput(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") submitSearch();
-                            }}
-                            placeholder="搜索标题 / 路径…"
-                            className="h-9 w-full pl-8 text-xs sm:w-64"
-                        />
-                    </div>
-                    {/* 查询按钮没有图标，窄屏也不藏文字，否则会变成空按钮 */}
-                    <Button variant="outline" size="sm" className="h-9 shrink-0 rounded-xl text-xs" onClick={submitSearch}>
-                        查询
-                    </Button>
-                    <Select
-                        value={publishFilter}
-                        onValueChange={(v) => {
-                            setPublishFilter(v as PublishFilter);
-                            setPage(1);
-                        }}
-                    >
-                        <SelectTrigger className="h-9 w-full rounded-xl text-xs sm:w-32">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">全部状态</SelectItem>
-                            <SelectItem value="published">已发布</SelectItem>
-                            <SelectItem value="draft">未发布</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Button
-                        variant="outline"
-                        size="icon-sm"
-                        aria-label="刷新"
-                        title="刷新"
-                        className="size-9 shrink-0 rounded-xl"
-                        disabled={loading}
-                        onClick={() => void load()}
-                    >
-                        <RefreshCw className={cn("size-4", loading && "animate-spin")} />
-                    </Button>
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-9 shrink-0 rounded-xl text-xs"
-                        disabled={busy}
-                        onClick={() => void handleInitialize()}
-                    >
-                        <Sparkles className="size-3.5" />
-                        <span className="hidden sm:inline">初始化默认页面</span>
-                    </Button>
-                    <Button
-                        size="sm"
-                        className="h-9 shrink-0 rounded-xl text-xs"
-                        disabled={busy}
-                        onClick={() => router.push("/admin/page-management/new")}
-                    >
-                        <Plus className="size-3.5" />
-                        <span className="hidden sm:inline">新建页面</span>
-                    </Button>
-                </div>
-            </div>
+            {/* ===== 工具栏（统一工具条，固定在卡片顶部，不随表格滚动） ===== */}
+            <AdminFilterBar
+                search={{
+                    value: searchInput,
+                    onChange: setSearchInput,
+                    placeholder: "搜索标题 / 路径…",
+                    ariaLabel: "搜索页面",
+                }}
+                onSubmit={submitSearch}
+                onReset={() => {
+                    setSearchInput("");
+                    setSearch("");
+                    setPublishFilter("all");
+                    setPage(1);
+                }}
+                resetDisabled={!searchInput && !search && publishFilter === "all"}
+                summary={`共 ${total} 个页面`}
+                actions={
+                    <>
+                        <Button
+                            variant="outline"
+                            size="icon-sm"
+                            aria-label="刷新"
+                            title="刷新"
+                            className="size-8 shrink-0"
+                            disabled={loading}
+                            onClick={() => void load()}
+                        >
+                            <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 shrink-0 text-sm"
+                            disabled={busy}
+                            onClick={() => void handleInitialize()}
+                        >
+                            <Sparkles className="size-3.5" />
+                            <span className="hidden sm:inline">初始化默认页面</span>
+                        </Button>
+                        <Button
+                            size="sm"
+                            className="h-8 shrink-0 text-sm"
+                            disabled={busy}
+                            onClick={() => router.push("/admin/page-management/new")}
+                        >
+                            <Plus className="size-3.5" />
+                            <span className="hidden sm:inline">新建页面</span>
+                        </Button>
+                    </>
+                }
+            >
+                <Select
+                    value={publishFilter}
+                    onValueChange={(v) => {
+                        setPublishFilter(v as PublishFilter);
+                        setPage(1);
+                    }}
+                >
+                    <SelectTrigger className={filterSelectTrigger("sm:w-28")}>
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">全部状态</SelectItem>
+                        <SelectItem value="published">已发布</SelectItem>
+                        <SelectItem value="draft">未发布</SelectItem>
+                    </SelectContent>
+                </Select>
+            </AdminFilterBar>
 
             {/* ===== 列表（唯一的滚动区：状态提示与表格都在 admin-scroll 内） ===== */}
             {loading ? (
@@ -210,9 +210,17 @@ export function PageManager() {
                     </Button>
                 </div>
             ) : pages.length === 0 ? (
-                <div className="admin-scroll flex min-h-64 flex-col items-center justify-center gap-1 text-sm text-muted-foreground">
-                    <FileText className="size-8 opacity-40" />
-                    {search || publishFilter !== "all" ? "没有匹配的页面" : "还没有自定义页面"}
+                <div className="admin-scroll">
+                    <AdminEmptyState
+                        kind="media"
+                        filtered={Boolean(search) || publishFilter !== "all"}
+                        title={search || publishFilter !== "all" ? undefined : "还没有自定义页面"}
+                        description={
+                            search || publishFilter !== "all"
+                                ? undefined
+                                : "关于、友链、留言板这类单页都在这里建，能直接用 Markdown 写"
+                        }
+                    />
                 </div>
             ) : (
                 <div className="admin-scroll">
