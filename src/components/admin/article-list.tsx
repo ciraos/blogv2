@@ -371,6 +371,58 @@ export function ArticleList() {
     // 876px → 840px：只跟着操作列收窄 36px，标题列（minmax(0,1fr)）的最小宽度保持不变
     const rowMinW = "min-w-[840px]";
 
+    // 工具栏右侧的操作按钮（窄屏只留图标）：作为 actions 传给 AdminFilterBar，
+    // 桌面端靠右、移动端落在筛选条件之后，顺序才和视觉预期一致
+    const toolbarActions = (
+                <div className="flex flex-wrap items-center gap-2">
+                {/* 批量删除：勾选后才可用，二次确认后按 100 篇分片调用远端 DELETE /articles/batch。
+                    没有勾选时保持中性灰 —— 一个常驻的红字按钮在没事的时候也在喊。 */}
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className={`h-8 shrink-0 ${selected.length > 0 ? "text-destructive hover:text-destructive" : "text-muted-foreground"}`}
+                    disabled={selected.length === 0 || batchBusy}
+                    onClick={() => void handleBatchDelete()}
+                >
+                    <Trash2 size={14} />
+                    <span className="hidden sm:inline">
+                        {batchBusy ? "删除中…" : `批量删除${selected.length > 0 ? `（${selected.length}）` : ""}`}
+                    </span>
+                </Button>
+                {/* 分类 / 标签管理：POST|PUT|DELETE /api/admin/article-{categories,tags} */}
+                <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={() => setTaxonomyOpen(true)}>
+                    <FolderTree size={14} />
+                    <span className="hidden sm:inline">分类标签</span>
+                </Button>
+                {/* 新建文章 → /admin/post-management/new */}
+                <Button size="sm" className="h-8 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90" asChild>
+                    <Link href="/admin/post-management/new">
+                        <Plus size={14} />
+                        <span className="hidden sm:inline">新增文章</span>
+                    </Link>
+                </Button>
+                {/* 导入：弹窗内选文件 + 二次确认；导入会批量写文章表 */}
+                <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={() => setImportOpen(true)}>
+                    <Upload size={14} />
+                    <span className="hidden sm:inline">导入</span>
+                </Button>
+                {/* 导出：勾选了就导出勾选的，没勾选就导出当前筛选下的全部（zip 文件流） */}
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 shrink-0"
+                    disabled={exportBusy}
+                    title={selected.length > 0 ? `导出已勾选的 ${selected.length} 篇` : "导出当前筛选下的全部文章"}
+                    onClick={() => void handleExport()}
+                >
+                    <FolderOutputIcon size={14} />
+                    <span className="hidden sm:inline">
+                        {exportBusy ? "导出中…" : "导出"}
+                    </span>
+                </Button>
+            </div>
+    );
+
     return (
         // admin-card：吃掉剩余高度，表格区域（admin-scroll）在卡片内部滚动，不再顶高整页
         <div className="admin-card">
@@ -389,6 +441,7 @@ export function ArticleList() {
                 onReset={resetFilters}
                 resetDisabled={!status && !review && !category && !tag}
                 summary={`共 ${total} 篇`}
+                actions={toolbarActions}
             >
 
                     {/* 文章状态 */}
@@ -467,54 +520,6 @@ export function ArticleList() {
                         </SelectContent>
                     </Select>
 
-                {/* 右：批量删除 / 分类标签 / 新增 / 导入 / 导出（窄屏只留图标） */}
-                <div className="col-span-2 order-last flex flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
-                    {/* 批量删除：勾选后才可用，二次确认后按 100 篇分片调用远端 DELETE /articles/batch。
-                        没有勾选时保持中性灰 —— 一个常驻的红字按钮在没事的时候也在喊。 */}
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className={`h-8 shrink-0 ${selected.length > 0 ? "text-destructive hover:text-destructive" : "text-muted-foreground"}`}
-                        disabled={selected.length === 0 || batchBusy}
-                        onClick={() => void handleBatchDelete()}
-                    >
-                        <Trash2 size={14} />
-                        <span className="hidden sm:inline">
-                            {batchBusy ? "删除中…" : `批量删除${selected.length > 0 ? `（${selected.length}）` : ""}`}
-                        </span>
-                    </Button>
-                    {/* 分类 / 标签管理：POST|PUT|DELETE /api/admin/article-{categories,tags} */}
-                    <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={() => setTaxonomyOpen(true)}>
-                        <FolderTree size={14} />
-                        <span className="hidden sm:inline">分类标签</span>
-                    </Button>
-                    {/* 新建文章 → /admin/post-management/new */}
-                    <Button size="sm" className="h-8 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90" asChild>
-                        <Link href="/admin/post-management/new">
-                            <Plus size={14} />
-                            <span className="hidden sm:inline">新增文章</span>
-                        </Link>
-                    </Button>
-                    {/* 导入：弹窗内选文件 + 二次确认；导入会批量写文章表 */}
-                    <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={() => setImportOpen(true)}>
-                        <Upload size={14} />
-                        <span className="hidden sm:inline">导入</span>
-                    </Button>
-                    {/* 导出：勾选了就导出勾选的，没勾选就导出当前筛选下的全部（zip 文件流） */}
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 shrink-0"
-                        disabled={exportBusy}
-                        title={selected.length > 0 ? `导出已勾选的 ${selected.length} 篇` : "导出当前筛选下的全部文章"}
-                        onClick={() => void handleExport()}
-                    >
-                        <FolderOutputIcon size={14} />
-                        <span className="hidden sm:inline">
-                            {exportBusy ? "导出中…" : "导出"}
-                        </span>
-                    </Button>
-                </div>
             </AdminFilterBar>
 
             {/* 列表：移动端(<640px)每个单元格竖排成卡片，≥640px 表格式 grid 并可横向滚动。

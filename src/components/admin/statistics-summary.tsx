@@ -8,6 +8,7 @@ import {
 import { toast } from "sonner";
 import type { DateRangeStats, StatisticsSummary, URLStatistics, VisitorAnalytics } from "@/types/statistics";
 import { CHART_OTHER_COLOR, sliceColor } from "@/lib/chart-colors";
+import { VisitorLogsCard } from "@/components/admin/visitor-logs-card";
 
 interface RankItem {
     name: string;
@@ -26,7 +27,7 @@ const cardCls = "flex flex-col rounded-lg border bg-card p-4 transition-colors h
  *  **绝不会重叠**，也不会有「行内最高的卡把其它卡顶出空洞」的空隙。
  *  代价：阅读顺序是**列优先**（先填满第一列再填第二列），不是行优先。
  *  卡片 `break-inside-avoid` + `mb-3` 保证不被拆列、列内间距 12px（与 gap-3 一致）。 */
-const cardGridCls = "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3";
+const cardGridCls = "grid grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-3";
 
 /** 排行项名可能是 URL 编码的页面路径（/tags/Qexo%E5%90%8E…），显示前解码，读起来才像人话 */
 function displayName(name: string): string {
@@ -290,7 +291,7 @@ function Skeleton() {
 
 
 /** 杂项：统计概览（基础统计 + 访客分析排行 + 热门页面 + 趋势）。
- *  访问日志卡不在这里 —— 它是仪表盘最后一块卡片（宽度贴合内容，见 visitor-logs-card.tsx），由 dashboard 页面单独渲染。 */
+ *  访问日志卡由本组件渲染（见文件末尾），排在「热门页面 TOP」右侧。 */
 export function StatisticsSummary() {
     const [data, setData] = useState<StatisticsSummary | null>(null);
     // 三张趋势图单独拉取（summary 只返回 daily，weekly/monthly 需 GET /statistics/trend）
@@ -426,18 +427,26 @@ export function StatisticsSummary() {
             {/* 卡片瀑布流：CSS 多列（columns-1 / sm:2 / xl:3）+ 子项 break-inside-avoid ——
                 卡片高度完全由内容决定、列内紧密排列、**绝不重叠**，也没有行内空洞。
                 唯一间距来源是子项 mb-3（12px）。阅读顺序为**列优先**（先填满第一列）。
-                访问日志卡不在这里：它是仪表盘最后一块整宽卡片（见 visitor-logs-card.tsx 顶部约定） */}
+                访问日志卡在最末（跨 2 列，位于热门页面右侧） */}
             <div className={cardGridCls}>
                 {visibleTrends.map((t) => (
                     <TrendCard key={t.mode} data={t.data} mode={t.mode} wide={t.mode === "daily"} />
                 ))}
 
-                {visibleDeviceSections.map((section) => (
-                    <section key={section.title} className={`${cardCls} min-w-0`}>
-                        <GroupTitle>{section.title}</GroupTitle>
-                        <RankList bare items={section.items} />
-                    </section>
-                ))}
+                {visibleDeviceSections.map((section) => {
+                    // 「浏览器」在第一行（和趋势图并排），不参与拉伸；
+                    // 「设备 / 操作系统」与右侧「访客画像」同行，拉到和画像一样高
+                    const stretch = section.title === "设备" || section.title === "操作系统";
+                    return (
+                        <section
+                            key={section.title}
+                            className={`${cardCls} min-w-0 ${stretch ? "self-stretch" : ""}`}
+                        >
+                            <GroupTitle>{section.title}</GroupTitle>
+                            <RankList bare items={section.items} />
+                        </section>
+                    );
+                })}
                     {visibleGeoSections.length > 0 && (
                         <section className={`${cardCls} min-w-0`}>
                             <GroupTitle>访客画像 · 地域与来源</GroupTitle>
@@ -545,6 +554,12 @@ export function StatisticsSummary() {
                             </div>
                         </section>
                     )}
+
+                    {/* 访问日志：原来在仪表盘最后单独占一整宽行，现在并进统计网格，
+                        放在「热门页面 TOP」右侧（跨 2 列），同一屏就能对照「热门页面」和「访问日志」。 */}
+                    <div className="min-w-0 self-stretch sm:col-span-2 xl:col-span-2">
+                        <VisitorLogsCard />
+                    </div>
 
             </div>
 

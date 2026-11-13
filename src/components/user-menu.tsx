@@ -22,8 +22,9 @@ import type { UserPanelConfig } from "@/types/site-config";
 interface UserMenuProps {
     /** 是否已登录（由服务端读取 httpOnly cookie 传入） */
     isLoggedIn: boolean;
-    /** 页面下滑状态：true 时触发器胶囊变半透明毛玻璃（与 Header 联动） */
+    /** @deprecated 触发器已不再随滚动变形；保留字段只为兼容 Header 的透传 */
     scrolled?: boolean;
+
     /** 用户面板开关（来自 site-config userpanel，登录态菜单项按开关显示） */
     userpanel?: UserPanelConfig;
     /** 已登录用户的头像 URL（服务端传入；登录态下改显示昵称首字） */
@@ -46,7 +47,7 @@ interface MenuItem {
 }
 
 /** 导航栏最右侧的用户菜单 */
-export function UserMenu({ isLoggedIn, scrolled = false, userpanel, userName, isAdmin = false, overlay = false }: UserMenuProps) {
+export function UserMenu({ isLoggedIn, userpanel, userName, isAdmin = false, overlay = false }: UserMenuProps) {
     /** 登出：清 cookie 后原地刷新，不跳转登录页 */
     async function handleLogout() {
         try {
@@ -104,33 +105,38 @@ export function UserMenu({ isLoggedIn, scrolled = false, userpanel, userName, is
 
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger
-                asChild
-                className={`transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] will-change-transform ${overlay
-                    ? "scale-100 bg-transparent shadow-none [text-shadow:0_1px_3px_rgba(0,0,0,0.45)] [&_button]:bg-black/40 [&_button]:text-white"
-                    : scrolled
-                        ? "scale-[0.94] bg-card/60 shadow-sm backdrop-blur-md"
-                        : "scale-100 bg-card shadow-md hover:shadow-xl"
-                    }`}
-            >
+            {/* 触发器与左侧搜索按钮同款：无底色、无阴影、无缩放，方角 6px，hover 才出浅底。
+                原来是一个 bg-card + shadow-md 的悬浮圆胶囊 + 弹性缩放动画，和扁平导航完全两套语言。 */}
+            <DropdownMenuTrigger asChild>
                 {isLoggedIn ? (
-                    /* 已登录：小号圆形徽标显示昵称首字（不放大头像）；overlay（首页顶部）下用深底白字保证可读 */
+                    /* 已登录：首字做成描边小圆牌（monogram），不填色 */
                     <button
-                        className={`inline-flex size-11 shrink-0 items-center justify-center rounded-full text-base font-medium transition-colors ${
-                            overlay ? "bg-black/40 text-white" : "text-foreground"
+                        className={`inline-flex size-11 shrink-0 items-center justify-center rounded-md transition-colors ${
+                            overlay
+                                ? "text-white hover:bg-white/10"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
                         }`}
                         aria-label="用户菜单"
                     >
-                        {(userName || "用").charAt(0)}
+                        <span
+                            className={`flex size-7 items-center justify-center rounded-full border text-xs font-medium ${
+                                overlay ? "border-white/50" : "border-border"
+                            }`}
+                        >
+                            {(userName || "用").charAt(0)}
+                        </span>
                     </button>
                 ) : (
-                    /* 未登录：默认用户图标（44px 与搜索/汉堡按钮对齐；圆角与左侧搜索按钮一致 —— 用户反馈
-                       原先的 rounded-lg 是"圆角方框"，和圆的搜索按钮不是一套形状） */
+                    /* 未登录：和搜索同款的线性图标按钮 */
                     <button
-                        className="inline-flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        className={`inline-flex size-11 items-center justify-center rounded-md transition-colors ${
+                            overlay
+                                ? "text-white hover:bg-white/10"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
                         aria-label="用户菜单"
                     >
-                        <User className="size-6" />
+                        <User className="size-5" />
                     </button>
                 )}
             </DropdownMenuTrigger>

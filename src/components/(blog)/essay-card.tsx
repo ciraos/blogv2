@@ -33,6 +33,45 @@ function formatRelative(iso: string, now: number): string {
     return `${Math.floor(month / 12)}年前`;
 }
 
+/**
+ * 说说的卡片底色：五种低饱和纸色，按 id 稳定取一种（不是随机 —— 同一条说说刷新前后颜色一致）。
+ * 深浅色各一份：浅色用 50 号浅底，深色用同色系 6% 透明度，避免在暗背景上炸眼。
+ */
+const ESSAY_TONES = [
+    {
+        bg: "bg-amber-100/80 dark:bg-amber-400/[0.06]",
+        shadow: "shadow-[0_4px_14px_-6px_rgba(180,120,20,0.30)]",
+        shadowHover: "hover:shadow-[0_10px_24px_-8px_rgba(180,120,20,0.38)]",
+    },
+    {
+        bg: "bg-teal-100/80 dark:bg-teal-400/[0.06]",
+        shadow: "shadow-[0_4px_14px_-6px_rgba(15,130,120,0.28)]",
+        shadowHover: "hover:shadow-[0_10px_24px_-8px_rgba(15,130,120,0.36)]",
+    },
+    {
+        bg: "bg-rose-100/80 dark:bg-rose-400/[0.06]",
+        shadow: "shadow-[0_4px_14px_-6px_rgba(190,70,95,0.26)]",
+        shadowHover: "hover:shadow-[0_10px_24px_-8px_rgba(190,70,95,0.34)]",
+    },
+    {
+        bg: "bg-violet-100/80 dark:bg-violet-400/[0.06]",
+        shadow: "shadow-[0_4px_14px_-6px_rgba(110,90,190,0.26)]",
+        shadowHover: "hover:shadow-[0_10px_24px_-8px_rgba(110,90,190,0.34)]",
+    },
+    {
+        bg: "bg-emerald-100/80 dark:bg-emerald-400/[0.06]",
+        shadow: "shadow-[0_4px_14px_-6px_rgba(25,140,100,0.26)]",
+        shadowHover: "hover:shadow-[0_10px_24px_-8px_rgba(25,140,100,0.34)]",
+    },
+] as const;
+
+function toneFor(id: string | number) {
+    const key = String(id);
+    let hash = 0;
+    for (let i = 0; i < key.length; i += 1) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+    return ESSAY_TONES[hash % ESSAY_TONES.length];
+}
+
 interface EssayCardProps {
     essay: Essay;
     onImageClick: (index: number) => void;
@@ -42,6 +81,7 @@ interface EssayCardProps {
 
 /** 即刻 / 说说卡片（对齐线上格式：文字 + 方形缩略图 + 虚线 + 底部信息条） */
 export function EssayCard({ essay, onImageClick, onComment }: EssayCardProps) {
+    const tone = toneFor(essay.id);
     const images = (essay.image ?? [])
         .map((url) => resolveAssetUrl(url))
         .filter((url): url is string => url !== null);
@@ -60,7 +100,9 @@ export function EssayCard({ essay, onImageClick, onComment }: EssayCardProps) {
     const timeText = now === null ? formatAbsolute(essay.created_at) : formatRelative(essay.created_at, now);
 
     return (
-        <article className="border-b border-border/60 pb-4">
+                <article
+            className={`group/essay rounded-lg border border-border/50 p-4 transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 ${tone.bg} ${tone.shadow} ${tone.shadowHover}`}
+        >
             {/* 说说内容：轻量 Markdown（换行原样保留，另支持 **粗体** *斜体* ~~删除线~~ `代码` [链接](url) ![图片](url)） */}
             <EssayContent
                 content={essay.content}

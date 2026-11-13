@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { CommentFeed } from "@/components/admin/comment-feed";
 import { QuickActions } from "@/components/admin/quick-actions";
 import { StatisticsSummary } from "@/components/admin/statistics-summary";
-import { VisitorLogsCard } from "@/components/admin/visitor-logs-card";
 import { ApiError, getUserInfoApi } from "@/lib/api";
 import type { LoginUserInfo } from "@/types/auth";
 import { generateBlogMetadata } from "@/lib/seo";
@@ -78,10 +77,6 @@ export default async function Dashboard() {
                     <StatisticsSummary />
                 </section>
 
-                {/* 访问日志：**整宽卡片**，排在统计之后（卡内自带图标 + 小标题 + 日期工具条 + 前 10 条）。
-                    ⚠️ 位置约定：以后新增的仪表盘卡片**一律追加在这张「访问日志」卡片下方**，
-                    不要插到它上面，保证后续加卡片的位置一致。 */}
-                <VisitorLogsCard />
             </div>
         </>
     );

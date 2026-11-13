@@ -37,7 +37,7 @@ export default async function AuthLayout({ children }: Readonly<{ children: Reac
             <head>
                 <style dangerouslySetInnerHTML={{ __html: appearance.css }} />
             </head>
-            <body>
+            <body className="bg-background text-foreground">
                 <ThemeProvider
                     attribute="class"
                     defaultTheme={schedule.initial}

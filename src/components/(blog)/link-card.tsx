@@ -6,17 +6,19 @@ import type { FriendLink } from "@/types/links";
 import { resolveAssetUrl } from "@/lib/utils";
 
 import { LinkAvatar } from "@/components/(blog)/link-avatar";
+import { LINK_AVATAR_FALLBACK } from "@/lib/link-avatar-fallback";
 
-function initials(name: string): string {
-    return name.trim().charAt(0) || "友";
-}
-
-/** 首字圆形头像兜底 */
-function InitialsAvatar({ name }: { name: string }) {
+/** 头像加载失败 / 缺失时的兜底图（全站统一的 404 头像） */
+function FallbackAvatar() {
     return (
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-semibold text-primary-foreground">
-            {initials(name)}
-        </div>
+        // eslint-disable-next-line @next/next/no-img-element -- CDN 托管，浏览器直连
+        <img
+            src={LINK_AVATAR_FALLBACK}
+            alt=""
+            aria-hidden="true"
+            loading="lazy"
+            className="size-12 shrink-0 rounded-full border bg-muted object-cover"
+        />
     );
 }
 
@@ -44,7 +46,7 @@ export function LinkCard({ link }: { link: FriendLink }) {
             {logo && !avatarFailed && !isPlaceholderLogo ? (
                 <LinkAvatar src={logo} alt={link.name} onError={() => setAvatarFailed(true)} />
             ) : (
-                <InitialsAvatar name={link.name} />
+                <FallbackAvatar />
             )}
 
             <div className="min-w-0">

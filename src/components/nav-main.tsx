@@ -104,11 +104,12 @@ export function NavMain({ items }: { items: NavMainItem[] }) {
   if (prevPathname !== pathname) {
     setPrevPathname(pathname)
     const nextActive = matchActiveUrl(items, pathname)
+    // 新页面所在的分组标题；跳到的是一级页面（仪表盘/概览这类没有子项的路由）时为 null
     const activeTitle =
       items.find((item) => item.items?.some((sub) => sub.url === nextActive))?.title ?? null
-    if (activeTitle) {
-      setOpenKey((prev) => (prev === activeTitle ? prev : activeTitle))
-    }
+    // 一律对齐到「当前页面所在分组」：有就展开它，没有（点进一级页面）就把所有分组收起，
+    // 不再让上次展开的分组赖在侧边栏上
+    setOpenKey((prev) => (prev === activeTitle ? prev : activeTitle))
   }
 
   const groupActive = (item: NavMainItem) =>

@@ -1,3 +1,5 @@
+import { resolveAssetUrl } from "@/lib/utils";
+
 /**
  * 文章列表展示用的两个小工具：日期格式与摘要纯文本化。
  *
@@ -26,4 +28,31 @@ export function toPlainSummary(text?: string | null): string {
         .replace(/(\*\*|__|~~|`)/g, "")
         .replace(/\s+/g, " ")
         .trim();
+}
+
+/**
+ * 内置默认封面（public/default-cover.png，编辑部风的纸面 + 站名）。
+ *
+ * 取值优先级：文章封面 → 文章顶图 → 站点设置的默认封面（post.default.cover）→ 这张内置图。
+ * 也就是说**任何一篇文章都会有封面**，不会再出现「有的行有图、有的行没有」的参差。
+ */
+export const DEFAULT_POST_COVER = "/default-cover.png";
+
+/**
+ * 解析一篇文章最终使用的封面地址（**已解析过域名**，调用方不要再套 resolveAssetUrl）。
+ *
+ * 注意内置默认封面是本站 public 下的文件，不能走 resolveAssetUrl ——
+ * 那个函数会给相对路径拼上「后端站点域名」，而这张图只存在于 Next 自己的 /public。
+ */
+export function resolvePostCover(
+    article: { cover_url?: string | null; top_img_url?: string | null },
+    siteDefaultCover?: string | null
+): string {
+    const own = article.cover_url || article.top_img_url;
+    if (own) return resolveAssetUrl(own) ?? DEFAULT_POST_COVER;
+
+    const siteDefault = resolveAssetUrl(siteDefaultCover);
+    if (siteDefault) return siteDefault;
+
+    return DEFAULT_POST_COVER;
 }

@@ -2,8 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 import type { PostItem } from "@/types/articles";
-import { formatPostDate, toPlainSummary } from "@/lib/post-display";
-import { resolveAssetUrl } from "@/lib/utils";
+import { formatPostDate, toPlainSummary, resolvePostCover } from "@/lib/post-display";
 
 /** 只接受看起来像颜色值的字符串，其余（空值/脏数据）回退默认样式 */
 function normalizePrimaryColor(color?: string | null): string | null {
@@ -32,7 +31,8 @@ interface ArticleCardProps {
  */
 export function ArticleCard({ article, defaultCover, enablePrimaryColorTag = false }: ArticleCardProps) {
     // 封面优先级：文章封面 > 站点默认封面
-    const cover = resolveAssetUrl(article.cover_url || article.top_img_url) || defaultCover || null;
+    // 文章没封面 → 站点默认封面 → 内置默认封面，任何一篇文章都有图
+    const cover = resolvePostCover(article, defaultCover);
     const summary = toPlainSummary(article.summaries?.[0]);
     const primaryColor = enablePrimaryColorTag ? normalizePrimaryColor(article.primary_color) : null;
     // 分类和标签常常同名（`ANHEYU-APP` / `#ANHEYU-APP`），同一行里说两遍等于噪音

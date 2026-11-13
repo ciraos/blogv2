@@ -42,6 +42,7 @@ import {
     updateAdminLinkApi,
 } from "@/lib/api";
 import { cn, resolveAssetUrl } from "@/lib/utils";
+import { LINK_AVATAR_FALLBACK } from "@/lib/link-avatar-fallback";
 import { ACTION_TONE } from "@/lib/action-tones";
 import type { FriendLink, LinkCategory, LinkTag } from "@/types/links";
 
@@ -95,9 +96,14 @@ function LinkAvatarCell({ link }: { link: FriendLink }) {
 
     if (!logo || failed || isPlaceholderLogo) {
         return (
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                {link.name?.slice(0, 1) || "?"}
-            </div>
+            // eslint-disable-next-line @next/next/no-img-element -- CDN 兜底图，浏览器直连
+            <img
+                src={LINK_AVATAR_FALLBACK}
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                className="size-8 shrink-0 rounded-full border bg-muted object-cover"
+            />
         );
     }
     return (

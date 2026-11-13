@@ -2,8 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import type { PostItem } from "@/types/articles";
-import { formatPostDate, toPlainSummary } from "@/lib/post-display";
-import { resolveAssetUrl } from "@/lib/utils";
+import { formatPostDate, resolvePostCover, toPlainSummary } from "@/lib/post-display";
 
 interface HomeLeadStoryProps {
     article: PostItem;
@@ -21,7 +20,7 @@ interface HomeLeadStoryProps {
  * 没有封面时不摆空槽：文字通栏，靠字号和双线撑起版面。
  */
 export function HomeLeadStory({ article, defaultCover }: HomeLeadStoryProps) {
-    const cover = resolveAssetUrl(article.cover_url || article.top_img_url) || defaultCover || null;
+    const cover = resolvePostCover(article, defaultCover);
     const summary = toPlainSummary(article.summaries?.[0]);
     // 分类和标签常常同名（`ANHEYU-APP` / `#ANHEYU-APP`），同一行里说两遍等于噪音
     const categoryNames = new Set(article.post_categories.map((c) => c.name.trim().toLowerCase()));

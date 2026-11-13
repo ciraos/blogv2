@@ -16,6 +16,7 @@ import { patchArticleContent } from "@/lib/article-shortcodes";
 import { getCommentAuthor } from "@/lib/comment-author";
 import { renderCopyrightHtml, type ArticleCopyCopyrightConfig } from "@/lib/post-copyright";
 import { requireSiteConfigs } from "@/lib/site-config";
+import { resolvePostCover } from "@/lib/post-display";
 import { splitKeywords } from "@/lib/seo";
 import { articleSchema, breadcrumbSchema } from "@/lib/structured-data";
 import { resolveAssetUrl } from "@/lib/utils";
@@ -94,7 +95,11 @@ export default async function Post({ params }: PostPageProps) {
         throw err;
     }
 
-    const cover = resolveAssetUrl(article.cover_url || article.top_img_url);
+    // 封面：文章封面 → 文章顶图 → 站点默认封面(post.default.cover) → 内置 default-cover.png
+    // requireSiteConfigs 用 React cache 去重，这里再调一次不会多发请求
+    const coverConfig = await requireSiteConfigs().catch(() => null);
+    const cover = resolvePostCover(article, coverConfig?.post?.default?.cover);
+
     const prev = article.prev_article;
     const next = article.next_article;
     /** 转载文章走转载模板/转载追加文案（官方口径：is_reprint === true） */
