@@ -45,6 +45,7 @@ import {
     uninstallThemeApi,
 } from "@/lib/api-themes-write";
 import {
+    getSsrThemeStatusApi,
     getSsrThemesApi,
     installSsrThemeApi,
     startSsrThemeApi,
@@ -636,6 +637,28 @@ export function ThemesManager() {
         return () => clearTimeout(timer);
     }, [tab, loadSsr]);
 
+    /**
+     * 启动 SSR 主题。
+     *
+     * 后端默认端口是 3000，而 3000 经常被前台容器占用 —— 子进程 EADDRINUSE 直接退出，
+     * 但接口仍回「启动成功」。所以这里：换个端口 -> 等 2 秒看 status -> 没起来就再换一个。
+     */
+    const startSsrWithFallback = async (name: string): Promise<{ ok: boolean; port?: number }> => {
+        const PORTS = [3100, 3101, 3102];
+        for (const port of PORTS) {
+            await startSsrThemeApi(name, port);
+            // 给 Next standalone 一点启动时间，再看状态
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            try {
+                const status = await getSsrThemeStatusApi(name);
+                if (status.status === "running") return { ok: true, port: status.port ?? port };
+            } catch {
+                // 状态查不到就继续试下一个端口
+            }
+        }
+        return { ok: false };
+    };
+
     /** 启动 / 停止 / 卸载：卸载需二次确认 */
     const handleSsrAction = async (theme: SsrTheme, action: "start" | "stop" | "uninstall") => {
         if (action === "uninstall") {
@@ -648,12 +671,19 @@ export function ThemesManager() {
         }
         setSsrPending({ name: theme.name, action });
         try {
-            if (action === "start") await startSsrThemeApi(theme.name);
-            else if (action === "stop") await stopSsrThemeApi(theme.name);
+            if (action === "start") {
+                const result = await startSsrWithFallback(theme.name);
+                if (!result.ok) {
+                    toast.error("启动失败：3100–3102 端口都被占用，或 node 进程起不来（看主题目录里的 ssr.log）");
+                    return;
+                }
+                toast.success(`「${theme.name}」已启动（端口 ${result.port}）`);
+                await loadSsr();
+                return;
+            }
+            if (action === "stop") await stopSsrThemeApi(theme.name);
             else await uninstallSsrThemeApi(theme.name);
-            toast.success(
-                action === "start" ? `「${theme.name}」已启动` : action === "stop" ? `「${theme.name}」已停止` : `「${theme.name}」已卸载`
-            );
+            toast.success(action === "stop" ? `「${theme.name}」已停止` : `「${theme.name}」已卸载`);
             await loadSsr();
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "操作失败");

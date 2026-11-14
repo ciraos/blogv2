@@ -51,9 +51,17 @@ export function installSsrThemeApi(input: {
     });
 }
 
-/** POST /api/admin/ssr-theme/{name}/start */
-export function startSsrThemeApi(name: string): Promise<unknown> {
-    return request(`/api/admin/ssr-theme/${encodeURIComponent(name)}/start`, { method: "POST" });
+/**
+ * POST /api/admin/ssr-theme/{name}/start
+ *
+ * 为什么要能指定端口：后端在 port=0 时**固定用 3000**，而 3000 常被前台容器占着，
+ * 子进程会 EADDRINUSE 退出（接口却已回成功）。传一个空闲端口可绕开。
+ */
+export function startSsrThemeApi(name: string, port?: number): Promise<unknown> {
+    return request(`/api/admin/ssr-theme/${encodeURIComponent(name)}/start`, {
+        method: "POST",
+        ...(port ? { body: JSON.stringify({ port }) } : {}),
+    });
 }
 
 /** POST /api/admin/ssr-theme/{name}/stop */
