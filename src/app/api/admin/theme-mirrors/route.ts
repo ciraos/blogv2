@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     results.sort((a, b) => {
         const rank = (r: MirrorProbeResult) => (!r.ok ? 2 : r.slow ? 1 : 0);
         if (rank(a) !== rank(b)) return rank(a) - rank(b);
-        if (a.ok && b.ok) return a.etaSeconds - b.etaSeconds;
+        if (a.ok && b.ok) return (a.etaSeconds ?? 0) - (b.etaSeconds ?? 0);
         return a.elapsed - b.elapsed;
     });
 
