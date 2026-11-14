@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     AI_EMBEDDING_MODEL_OPTIONS,
+    AI_PROVIDER_API_URLS,
+    AI_PROVIDER_MODEL_EXAMPLES,
     AI_PROVIDER_MODEL_OPTIONS,
     isFieldDirty,
     isSecretMask,
@@ -22,6 +24,25 @@ const MODEL_SOURCES: Record<string, { providerKey: string; options: Record<strin
     ai_summary_model: { providerKey: "ai_summary_provider", options: AI_PROVIDER_MODEL_OPTIONS },
     ai_writing_model: { providerKey: "ai_writing_provider", options: AI_PROVIDER_MODEL_OPTIONS },
     "ai_assistant.embedding_model": { providerKey: "ai_assistant.embedding_provider", options: AI_EMBEDDING_MODEL_OPTIONS },
+};
+
+/**
+ * 「这个模块算不算单独配置过」以 **API Key** 为准：
+ *   · 没填 key = 没单独配置 → 沿用全局配置，卡片里给出提示；
+ *   · 填了 key = 已单独配置（provider / model / api_url 都是围绕这把 key 的可选项）。
+ * 之所以不再看 provider/model：key 才是「我为这个模块单独付账」的证据，
+ * 只选了服务商却没给 key，实际跑起来仍然要靠全局。
+ */
+const MODULE_CONNECTION_KEYS: Record<string, string[]> = {
+    summary: ["ai_summary_api_key"],
+    writing: ["ai_writing_api_key"],
+    assistant: ["ai_assistant.embedding_api_key"],
+};
+
+/** 摘要 / 写作两个模块的「提供商 → 地址 / 模型」联动键 */
+const MODULE_PROVIDER_KEYS: Record<string, { provider: string; apiUrl: string; model: string }> = {
+    ai_summary_provider: { provider: "ai_summary_provider", apiUrl: "ai_summary_api_url", model: "ai_summary_model" },
+    ai_writing_provider: { provider: "ai_writing_provider", apiUrl: "ai_writing_api_url", model: "ai_writing_model" },
 };
 
 /** 各模块的字段（开关单独渲染在标题下方，与官方同款结构） */
@@ -106,20 +127,20 @@ function ProBadge() {
     );
 }
 
-/** 蓝色说明条：该模块字段全空时提示「未单独配置」 */
+/** 主题色说明条：该模块未单独配置（没填 API Key）时提示「将使用全局配置」 */
 function NotConfiguredNote({ children }: { children: React.ReactNode }) {
     return (
-        <div className="flex items-start gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-700 dark:text-sky-300">
+        <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
             <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
             <span>{children}</span>
         </div>
     );
 }
 
-/** 橙黄色说明条：开关关闭但检测到管理员填过的配置 */
+/** 主题色说明条：开关关闭但检测到管理员填过的配置 */
 function HistoryKeptNote({ children }: { children: React.ReactNode }) {
     return (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+        <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
             <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
             <span>{children}</span>
         </div>
@@ -157,6 +178,16 @@ function PromptAdvice({
 }
 
 /** 敏感项输入框：掩码回显 + 眼睛切换；未改动不会进保存载荷（判定见 admin-settings.isFieldDirty） */
+/**
+ * 密钥输入框。
+ *
+ * 显示规则：
+ *   · 没配过 / 正在输入 → 密码框，右侧眼睛切换明文；
+ *   · 已配置（后端只回显掩码）→ 收起态显示 `sk-*****`，点输入框或眼睛即可清空重填。
+ *
+ * 说明：后端对密钥**只回显掩码**（`********`），已保存的 key 前端无法还原明文，
+ * 眼睛能揭晓的只限「本次会话里刚输入的内容」。
+ */
 function SecretInput({
     id,
     value,
@@ -169,7 +200,43 @@ function SecretInput({
     onChange: (next: string) => void;
 }) {
     const [visible, setVisible] = useState(false);
+    /** 已保存掩码的状态下，用户点了输入框准备重新输入 */
+    const [editing, setEditing] = useState(false);
     const masked = isSecretMask(value);
+    const showStored = masked && !editing;
+
+    if (showStored) {
+        const startEditing = () => {
+            setEditing(true);
+            onChange("");
+        };
+        return (
+            <div className="relative">
+                <Input
+                    id={id}
+                    readOnly
+                    value="sk-*****"
+                    aria-label="已配置的密钥（已隐藏）"
+                    title="已配置。点击可清空并重新填写"
+                    onFocus={startEditing}
+                    onClick={startEditing}
+                    className="h-8 cursor-text pr-20 font-mono text-sm text-muted-foreground"
+                />
+                <div className="absolute inset-y-0 right-1 flex items-center gap-1">
+                    <span className="rounded bg-muted px-1 py-0.5 text-[10px] text-muted-foreground">已配置</span>
+                    <button
+                        type="button"
+                        aria-label="重新填写密钥"
+                        title="重新填写密钥"
+                        onClick={startEditing}
+                        className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                        <Eye className="size-3.5" />
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="relative">
@@ -178,23 +245,16 @@ function SecretInput({
                 type={visible ? "text" : "password"}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                placeholder={placeholder ?? "未配置"}
+                placeholder={placeholder ?? "sk-..."}
                 autoComplete="new-password"
-                className="h-8 pr-20 text-sm"
+                className="h-8 pr-9 font-mono text-sm"
             />
-            <div className="absolute inset-y-0 right-1 flex items-center gap-1">
-                {masked && (
-                    <span
-                        className="rounded bg-muted px-1 py-0.5 text-[10px] text-muted-foreground"
-                        title="后端只回显掩码，不会明文回显"
-                    >
-                        已配置
-                    </span>
-                )}
+            <div className="absolute inset-y-0 right-1 flex items-center">
                 <button
                     type="button"
                     onClick={() => setVisible((v) => !v)}
                     aria-label={visible ? "隐藏内容" : "显示内容"}
+                    title={visible ? "隐藏" : "显示"}
                     className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                     {visible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
@@ -203,6 +263,7 @@ function SecretInput({
         </div>
     );
 }
+
 
 /** 开关（本站没有 ui/switch，这里用令牌描一个；比复选框更贴官方那把开关） */
 function Switch({ checked, label, onChange }: { checked: boolean; label: string; onChange: (next: boolean) => void }) {
@@ -236,12 +297,10 @@ function Switch({ checked, label, onChange }: { checked: boolean; label: string;
  * 字段本身仍登记在 src/lib/admin-settings.ts 的 schema 里 —— 基线、改动判定、保存载荷
  * 全部复用设置页既有机制（草稿 → 底部保存条），这里只负责画。
  *
- * 诚实边界：
- *  - 用户截图里的「AI Profile（默认 Profile 下拉 + 添加 Profile）」在本后端版本没有对应键：
- *    快照 setting-keys.ts 与 setting-descriptors.ts:901-975 里搜不到任何 profile 键或接口，
- *    只有每个模块自带的 provider/api_key/api_url/model（legacy 单配置）。
- *    所以不画「+ 添加 Profile」这种按了没反应的控件，只给说明。
- *  - 同理没有「全局 AI」键，所以不提供全局填写框（写了后端也不认），只按模块展示当前值。
+ * 全局配置区：
+ *  - 版式与官方一致（默认 Profile + 添加 Profile + 全局 provider/api_key/url/model）。
+ *  - 后端没有这些全局键（官方快照里只有各模块自己的 provider/api_key/api_url/model），
+ *    写了会被静默丢弃，所以**整块控件置灰不可改**，只作为「未单独配置时沿用全局」的视觉说明位。
  */
 export function AiSettingsPanel({
     fields,
@@ -271,6 +330,26 @@ export function AiSettingsPanel({
         (MODULE_FIELD_KEYS[module] ?? [])
             .map((key) => byKey.get(key))
             .filter((field): field is SettingsField => Boolean(field));
+
+    /**
+     * 切换提供商时的联动（对齐用户预期：换服务商，地址与模型跟着换）：
+     * · API 地址：**直接**预填新服务商的默认地址（预填后仍可手改）；
+     * · 模型：清空，输入框只留「例如 xxx」的示例占位 —— 各家模型名互不通用，
+     *   把旧服务商的模型名留在框里只会让人以为还能用。
+     *   若当前模型恰好也是新服务商的候选模型，则保留。
+     */
+    const handleProviderChange = (fieldKey: string, nextProvider: string) => {
+        onChange(fieldKey, nextProvider);
+        const map = MODULE_PROVIDER_KEYS[fieldKey];
+        if (!map) return;
+
+        const nextUrl = AI_PROVIDER_API_URLS[nextProvider] ?? "";
+        if (nextUrl) onChange(map.apiUrl, nextUrl);
+
+        const currentModel = text(map.model).trim();
+        const stillValid = (AI_PROVIDER_MODEL_OPTIONS[nextProvider] ?? []).some((o) => o.value === currentModel);
+        if (!stillValid) onChange(map.model, "");
+    };
 
     /** 单个字段的控件（按 aiControl / type 分派） */
     const renderControl = (field: SettingsField) => {
@@ -315,20 +394,34 @@ export function AiSettingsPanel({
         }
 
         if (field.aiControl === "model") {
-            // Radix Select 不允许自由文本，所以模型用 input + datalist：可选可输入
+            // 摘要 / 写的模型：普通输入框 + 「例如 xxx」占位，随提供商变化；
+            // 助手（向量化）模型仍保留候选列表，那是有限枚举。
             const source = MODEL_SOURCES[field.key];
             const providerValue = source ? text(source.providerKey) : "";
+            const example = AI_PROVIDER_MODEL_EXAMPLES[providerValue] ?? "";
+            const isEmbedding = field.key === "ai_assistant.embedding_model";
+
+            if (!isEmbedding) {
+                return (
+                    <Input
+                        id={controlId}
+                        value={value}
+                        onChange={(e) => set(e.target.value)}
+                        placeholder={example ? `例如 ${example}` : "例如 gpt-4o-mini"}
+                        className="h-8 text-sm"
+                    />
+                );
+            }
+
             const options = (source && providerValue ? source.options[providerValue] : undefined) ?? [];
-            const disabled = !providerValue;
             return (
                 <div>
                     <Input
                         id={controlId}
                         list={`ai-${field.key.replace(/\./g, "-")}-models`}
                         value={value}
-                        disabled={disabled}
                         onChange={(e) => set(e.target.value)}
-                        placeholder={disabled ? "请先选择提供商" : field.placeholder ?? "从列表选择或直接输入模型名"}
+                        placeholder={providerValue ? "从列表选择或直接输入模型名" : "请先选择向量化服务商"}
                         className="h-8 text-sm"
                     />
                     <datalist id={`ai-${field.key.replace(/\./g, "-")}-models`}>
@@ -338,7 +431,6 @@ export function AiSettingsPanel({
                             </option>
                         ))}
                     </datalist>
-                    {disabled && <p className="mt-1 text-[11px] text-muted-foreground">请先选择提供商，然后可从列表选择或直接输入自定义模型名称</p>}
                 </div>
             );
         }
@@ -346,8 +438,9 @@ export function AiSettingsPanel({
         if (field.aiControl === "select") {
             const current = value.trim();
             const options = field.options ?? [];
+            const linkable = Boolean(MODULE_PROVIDER_KEYS[field.key]);
             return (
-                <Select value={current || undefined} onValueChange={set}>
+                <Select value={current || undefined} onValueChange={linkable ? (next) => handleProviderChange(field.key, next) : set}>
                     <SelectTrigger id={controlId} className="h-8 w-full">
                         <SelectValue placeholder={field.placeholder ?? "请选择"} />
                     </SelectTrigger>
@@ -442,7 +535,7 @@ export function AiSettingsPanel({
         </label>
     );
 
-    const card = "rounded-xl border bg-card p-4 shadow-sm";
+    const card = "soft-surface p-4";
     const podcastSwitch = byKey.get("ai_podcast.enable");
     const assistantSwitch = byKey.get("ai_assistant.enable");
     const podcastOn = draft["ai_podcast.enable"] === true;
@@ -450,52 +543,46 @@ export function AiSettingsPanel({
 
     return (
         <div className="space-y-4">
-            {/* ---------- 全局说明（本后端版本没有全局键 / Profile 键，按事实说明） ---------- */}
+            {/* ---------- 全局配置（版式对齐官方；后端未提供全局键，控件置灰） ---------- */}
             <div className={card}>
-                <div className="flex items-center gap-2 text-sm font-semibold">
+                <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
                     AI 全局配置
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">说明</span>
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">未开放</span>
                 </div>
                 <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                    各功能模块未单独配置时，后端会按自身默认值处理（官方默认提供商为 glm）。
+                    未单独配置的模块沿用这里的默认值。
                 </p>
-                <div className="mt-3 flex items-start gap-2 rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-                    <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                    <div className="space-y-1">
-                        <div>
-                            <span className="font-medium text-foreground/80">本后端版本没有「全局 AI 键」，也没有多套 AI Profile：</span>
-                            官方快照（setting-keys.ts / setting-descriptors.ts:901-975）里只有每个模块自带的
-                            provider / api_key / api_url / model，搜不到任何 profile 键或 profile 接口。
-                        </div>
-                        <div>
-                            所以这里不提供「默认 Profile」下拉与「+ 添加 Profile」按钮，也不提供全局填写框 ——
-                            写了后端不认识的键只会静默丢失；按模块分别配置即可。
-                        </div>
+
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">默认 Profile</Label>
+                        <Select disabled>
+                            <SelectTrigger className="h-8 w-full" disabled>
+                                <SelectValue placeholder="默认" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="default">默认</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
-                </div>
-                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="flex items-end">
+                        <button
+                            type="button"
+                            disabled
+                            className="h-8 w-max cursor-not-allowed rounded-md border px-2.5 text-xs text-muted-foreground/70"
+                        >
+                            + 添加 Profile
+                        </button>
+                    </div>
                     {[
-                        { label: "AI 摘要", provider: text("ai_summary_provider"), model: text("ai_summary_model") },
-                        { label: "AI 写作", provider: text("ai_writing_provider"), model: text("ai_writing_model") },
-                        { label: "AI 播客", provider: text("ai_podcast.provider"), model: "" },
-                        {
-                            label: "AI 助手",
-                            provider: text("ai_assistant.embedding_provider"),
-                            model: text("ai_assistant.embedding_model"),
-                        },
-                    ].map((row) => (
-                        <div key={row.label} className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs">
-                            <span className="shrink-0 text-muted-foreground">{row.label}</span>
-                            <span className="min-w-0 truncate text-right">
-                                {row.provider || row.model ? (
-                                    <>
-                                        {row.provider || "未选提供商"}
-                                        {row.model ? ` · ${row.model}` : ""}
-                                    </>
-                                ) : (
-                                    <span className="text-muted-foreground">未单独配置 → 走后端默认</span>
-                                )}
-                            </span>
+                        { label: "提供商", placeholder: "例如 openai / glm" },
+                        { label: "API Key", placeholder: "仅在官方 AiProfile 里生效" },
+                        { label: "API 地址", placeholder: "https://…" },
+                        { label: "默认模型", placeholder: "例如 gpt-4o-mini" },
+                    ].map((item) => (
+                        <div key={item.label} className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">{item.label}</Label>
+                            <Input disabled placeholder={item.placeholder} className="h-8 text-sm" />
                         </div>
                     ))}
                 </div>
@@ -510,7 +597,7 @@ export function AiSettingsPanel({
                 <p className="mt-1 text-xs text-muted-foreground">
                     用于文章摘要生成。建议先确认模型可访问，再逐步调整 Prompt，避免一次改动过大导致效果不可控。
                 </p>
-                {allEmpty(MODULE_FIELD_KEYS.summary) && (
+                {allEmpty(MODULE_CONNECTION_KEYS.summary) && (
                     <div className="mt-3">
                         <NotConfiguredNote>
                             未单独配置，将使用全局 AI 配置；填写下方字段可为本模块单独指定提供商与密钥。
@@ -539,7 +626,7 @@ export function AiSettingsPanel({
                 <p className="mt-1 text-xs text-muted-foreground">
                     用于生成文章初稿。建议优先设置模型与温度，再通过 System Prompt 固定结构和风格。
                 </p>
-                {allEmpty(MODULE_FIELD_KEYS.writing) && (
+                {allEmpty(MODULE_CONNECTION_KEYS.writing) && (
                     <div className="mt-3">
                         <NotConfiguredNote>
                             未单独配置，将使用全局 AI 配置；填写下方字段可为本模块单独指定提供商与密钥。

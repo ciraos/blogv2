@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -19,6 +19,8 @@ import {
 
 import { UserMenu } from "@/components/user-menu";
 import { SearchDialog } from "@/components/(blog)/search-dialog";
+import { HeaderClock } from "@/components/(blog)/header-clock";
+import { HeaderTravelling } from "@/components/(blog)/header-travelling";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import type { OneImagePayload } from "@/components/(blog)/one-image-hero";
@@ -56,6 +58,10 @@ interface HeaderProps {
     siteCreatedAt?: string;
     /** 页面大图配置（page.one_image 载荷）：当前页启用时 Header 透明悬浮大图上 */
     oneImage?: OneImagePayload;
+    /** 页头时钟（header.nav.clock）：开启后在搜索按钮左侧显示 HH:MM */
+    showClock?: boolean;
+    /** 开往 travelling 入口（header.nav.travelling）：仅首页桌面端显示 */
+    showTravelling?: boolean;
 }
 
 /** 站点建站天数（按最新文章日期估算，与侧边栏一致） */
@@ -75,7 +81,7 @@ function opensInNewTab(isExternal: boolean | undefined, path: string): boolean {
     return !!isExternal || NEW_TAB_PATHS.has(path.replace(/\/+$/, ""));
 }
 
-export default function Header({ menu = [], appName = "博客", isLoggedIn = false, userpanel, userAvatar, userName, isAdmin = false, mobileTags = [], siteinfo, siteCreatedAt, oneImage }: HeaderProps) {
+export default function Header({ menu = [], appName = "博客", isLoggedIn = false, userpanel, userAvatar, userName, isAdmin = false, mobileTags = [], siteinfo, siteCreatedAt, oneImage, showClock = false, showTravelling = false }: HeaderProps) {
     // 桌面端下拉：hover 展开，一次只开一个
     const [openGroup, setOpenGroup] = useState<string | null>(null);
     // 关闭宽限期：鼠标穿过触发器与面板之间的间隙时不误关
@@ -200,6 +206,12 @@ export default function Header({ menu = [], appName = "博客", isLoggedIn = fal
                     {/* 搜索 + 移动端汉堡：共用同一个白色胶囊背景（滚动时一起收缩）。
                         桌面端汉堡隐藏、搜索保留；两个按钮无缝拼接，中间接缝不设圆角 */}
                     <div className="flex items-center gap-0.5">
+                        {/* 开往 travelling 入口：仅首页 + 桌面端（原主题口径） */}
+                        {showTravelling && pathname === "/" && <HeaderTravelling />}
+
+                        {/* 页头时钟（header.nav.clock）：搜索按钮左侧，只在 ≥sm 显示 */}
+                        {showClock && <HeaderClock />}
+
                         {/* 站内搜索：点击放大镜弹出搜索对话框 */}
                         <SearchDialog />
 

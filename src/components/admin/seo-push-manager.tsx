@@ -196,7 +196,7 @@ export function SeoPushManager() {
             </div>
 
             {/* ---- 配置区（只读） ---- */}
-            <section className="rounded-xl border bg-card shadow-sm">
+            <section className="soft-surface">
                 <SectionTitle icon={KeyRound} title="百度推送配置（只读）" hint="seo.baidu.* · 官方 setting-keys.ts:312-314，标记为 Pro" />
                 <div className="divide-y">
                     {SEO_KEYS.map((item) => {
@@ -240,7 +240,7 @@ export function SeoPushManager() {
             </section>
 
             {/* ---- 本地体检 ---- */}
-            <section className="rounded-xl border bg-card shadow-sm">
+            <section className="soft-surface">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-4 py-2">
                     <div className="flex items-center gap-2">
                         <ShieldCheck className="size-4 text-muted-foreground" />
@@ -416,7 +416,7 @@ export function SeoPushManager() {
             </section>
 
             {/* ---- 站长平台入口 ---- */}
-            <section className="rounded-xl border bg-card shadow-sm">
+            <section className="soft-surface">
                 <SectionTitle
                     icon={ExternalLink}
                     title="站长平台入口"

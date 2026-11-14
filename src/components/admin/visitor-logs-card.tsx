@@ -54,7 +54,7 @@ const DIMENSION: { field: "url_path" | "city"; label: string; emptyLabel: string
  *   - 只动这一张卡自己的宽度，**不改父容器**（仪表盘那个砌体列里其它卡片仍是各自的宽度）；
  *   - `break-inside-avoid`：仪表盘主区块是 CSS 多列砌体，这张卡绝不能被列边界切成两半。
  */
-const cardCls = "h-full w-full max-w-full rounded-lg border bg-card p-4";
+const cardCls = "h-full w-full max-w-full soft-surface p-4";
 
 /** 卡头图标徽章（与统计卡 GroupTitle 同款） */
 const iconBadgeCls = "flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary";

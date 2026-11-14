@@ -56,7 +56,7 @@ type PendingLink = FriendLink & {
 };
 
 /** 卡片外壳：与「最新评论」卡同一套令牌；min-h 让两卡在 items-stretch 下视觉等高 */
-const cardCls = "flex min-h-[248px] flex-col rounded-xl border bg-card p-4 shadow-sm";
+const cardCls = "flex min-h-[248px] flex-col soft-surface p-4";
 
 /** 卡内容区：撑满剩余高度、封顶 288px（约 4~5 行），超出的在卡内滚动而不是把整块仪表盘拉长 */
 const cardBodyCls = "min-h-0 max-h-[288px] flex-1 overflow-y-auto";
@@ -132,7 +132,7 @@ async function fetchAllPendingLinks(): Promise<{ list: PendingLink[]; total: num
 
 /** 加载骨架：与卡片同高同宽，避免先塌后撑的跳动 */
 function Skeleton() {
-    return <div className="h-[248px] animate-pulse rounded-xl border bg-card" aria-busy="true" aria-label="待审友链加载中" />;
+    return <div className="h-[248px] animate-pulse soft-surface" aria-busy="true" aria-label="待审友链加载中" />;
 }
 
 /** 单条申请：站点名 +（修改申请）标签 + 待审 + 域名 + 一行简介/修改原因 */

@@ -205,7 +205,7 @@ export function ArticleImportDialog({
         <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange}>
             <DialogPrimitive.Portal>
                 <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
-                <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 max-h-[86vh] w-[min(94vw,36rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border bg-card p-5 shadow-2xl data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
+                <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 max-h-[86vh] w-[min(94vw,36rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto soft-surface p-5 shadow-2xl data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
                     <DialogPrimitive.Title className="text-base font-semibold">导入文章</DialogPrimitive.Title>
                     <DialogPrimitive.Description className="mt-1 text-xs text-muted-foreground">
                         上传本系统导出的 <code>.json</code>，或含 <code>articles.json</code> 的 <code>.zip</code>。

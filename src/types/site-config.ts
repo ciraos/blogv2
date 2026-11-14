@@ -122,10 +122,6 @@ export interface SiteConfig {
     article: ArticleConfig;
     captcha: CaptchaConfig;
     comment: CommentConfig;
-    /** 社区问答（PRO 模块；本站后台那个页面还是「开发中」占位） */
-    community_qa: {
-        enable: boolean;
-    };
     equipment: EquipmentConfig;
     essay: EssayConfig;
     footer: FooterConfig;

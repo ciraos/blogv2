@@ -29,13 +29,17 @@ export function StatStrip({ items, className }: { items: StatItem[]; className?:
                 <div
                     key={item.label}
                     className={cn(
-                        "px-4 py-3",
+                        // 移动端压薄：px-3 py-2、数字降到 text-sm，四条读数从 ~120px 压到 ~80px，
+                        // 把高度让给下面的列表（≥md 恢复原来的舒展排版）
+                        "px-3 py-2 md:px-4 md:py-3",
                         index % 2 === 1 && "border-l border-border/60",
                         index >= 2 && "border-t border-border/60 md:border-t-0 md:border-l"
                     )}
                 >
                     <p className="text-[11px] text-muted-foreground">{item.label}</p>
-                    <p className="mt-1 font-mono text-lg leading-none font-semibold tabular-nums">{item.value}</p>
+                    <p className="mt-0.5 font-mono text-sm leading-none font-semibold tabular-nums md:mt-1 md:text-lg">
+                        {item.value}
+                    </p>
                 </div>
             ))}
         </div>

@@ -733,7 +733,7 @@ export function MembershipsManager() {
             {(editingPlan || createOpen) && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={closeDialog}>
                     <div
-                        className="w-full max-w-xl rounded-xl border bg-card p-4 shadow-xl"
+                        className="w-full max-w-xl soft-surface p-4 shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
                         <div className="mb-3 flex items-center justify-between">
@@ -850,7 +850,7 @@ export function MembershipsManager() {
             {detail && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={() => setDetail(null)}>
                     <div
-                        className="w-full max-w-lg rounded-xl border bg-card p-4 shadow-xl"
+                        className="w-full max-w-lg soft-surface p-4 shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
                         <div className="mb-3 flex items-center justify-between">

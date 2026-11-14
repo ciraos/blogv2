@@ -335,7 +335,7 @@ export function ThemeConfigDialog({ themeName, onClose, onSaved }: ThemeConfigDi
         >
             <DialogPrimitive.Portal>
                 <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
-                <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[86vh] w-[min(94vw,44rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border bg-card shadow-2xl data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
+                <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[86vh] w-[min(94vw,44rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden soft-surface shadow-2xl data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
                     <div className="flex shrink-0 items-start gap-2 border-b px-5 py-3.5">
                         <Settings2 className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                         <div className="min-w-0">

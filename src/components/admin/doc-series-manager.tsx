@@ -608,7 +608,7 @@ function DocSeriesFormDialog({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
             <div
-                className="flex max-h-[88vh] w-full max-w-xl flex-col rounded-xl border bg-card p-4 shadow-xl"
+                className="flex max-h-[88vh] w-full max-w-xl flex-col soft-surface p-4 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <div className="mb-3 flex items-center justify-between gap-2">
@@ -806,7 +806,7 @@ function DocSeriesArticlesDialog({ series, onClose }: { series: DocSeries; onClo
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
             <div
-                className="flex max-h-[88vh] w-full max-w-3xl flex-col rounded-xl border bg-card p-4 shadow-xl"
+                className="flex max-h-[88vh] w-full max-w-3xl flex-col soft-surface p-4 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <div className="mb-1 flex items-center justify-between gap-2">

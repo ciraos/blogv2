@@ -610,7 +610,7 @@ export function DonationsManager() {
                     onMouseDown={closeDialog}
                 >
                     <div
-                        className="w-full max-w-xl rounded-xl border bg-card p-5 shadow-xl"
+                        className="w-full max-w-xl soft-surface p-5 shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
                         <div className="mb-4 flex items-center justify-between">
@@ -725,7 +725,7 @@ export function DonationsManager() {
                     }}
                 >
                     <div
-                        className="w-full max-w-xl rounded-xl border bg-card p-4 shadow-xl"
+                        className="w-full max-w-xl soft-surface p-4 shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
                         <div className="mb-3 flex items-center justify-between">

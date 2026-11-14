@@ -31,8 +31,6 @@ const STATIC_ENTRIES: StaticEntry[] = [
     { path: "/equipment", changeFrequency: "monthly", priority: 0.4 },
     { path: "/travelling", changeFrequency: "monthly", priority: 0.4 },
     { path: "/air-conditioner", changeFrequency: "monthly", priority: 0.4 },
-    // 社区问答：官方 sitemap 里也有这一条；只有列表页进静态表，逐条问题页由后端的动态部分覆盖（若有）
-    { path: "/questions", changeFrequency: "weekly", priority: 0.5 },
     { path: "/privacy", changeFrequency: "yearly", priority: 0.2 },
     { path: "/copyright", changeFrequency: "yearly", priority: 0.2 },
     { path: "/cookies", changeFrequency: "yearly", priority: 0.2 },
@@ -59,7 +57,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const siteUrl = await resolveSiteUrl();
     // 社区版没有 PRO 模块接口，这些页面会 404 —— 不要写进站点地图
     const isPro = (await getBackendEdition()) === "pro";
-    const proOnlyPaths = new Set(["/essay", "/fcircle", "/questions"]);
+    const proOnlyPaths = new Set(["/essay", "/fcircle"]);
 
     const entries: MetadataRoute.Sitemap = STATIC_ENTRIES.filter(
         (entry) => isPro || !proOnlyPaths.has(entry.path)

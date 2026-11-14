@@ -908,7 +908,7 @@ function ArticleTaxonomyDialog({
         <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange}>
             <DialogPrimitive.Portal>
                 <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
-                <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 max-h-[86vh] w-[min(94vw,46rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border bg-card p-5 shadow-2xl data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
+                <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 max-h-[86vh] w-[min(94vw,46rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto soft-surface p-5 shadow-2xl data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
                     <DialogPrimitive.Title className="text-base font-semibold">分类 / 标签管理</DialogPrimitive.Title>
                     <DialogPrimitive.Description className="mt-1 text-xs text-muted-foreground">
                         只改名称；分类的「系列 / 排序」与标签别名不在这里维护。删除仍被文章引用的分类或标签可能失败（后端会返回原因）。

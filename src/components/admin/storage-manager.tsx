@@ -155,7 +155,7 @@ function Modal({
             aria-label={title}
         >
             <div
-                className={`flex max-h-[86vh] w-full flex-col rounded-xl border bg-card p-5 shadow-xl ${wide ? "max-w-2xl" : "max-w-xl"}`}
+                className={`flex max-h-[86vh] w-full flex-col soft-surface p-5 shadow-xl ${wide ? "max-w-2xl" : "max-w-xl"}`}
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <div className="mb-3 flex items-start justify-between gap-3">
@@ -554,7 +554,7 @@ function TypePickerDialog({
                         key={o.value}
                         type="button"
                         onClick={() => onPick(o.value)}
-                        className="flex items-center gap-2.5 rounded-lg border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                        className="flex items-center gap-2.5 soft-surface px-3 py-2.5 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
                     >
                         {o.value === "local" ? (
                             <HardDrive className="size-4 shrink-0 text-muted-foreground" />
@@ -815,7 +815,7 @@ export function StorageManager() {
                             </SelectContent>
                         </Select>
                     </div>
-                <div className="col-span-2 order-last flex flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="col-span-2 order-last flex flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
                     <Button
                         variant="outline"
                         size="sm"

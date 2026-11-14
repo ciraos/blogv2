@@ -362,11 +362,9 @@ body {
   min-height: 0;
   overflow: hidden;
   background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  box-shadow:
-    0 1px 2px oklch(0 0 0 / 4%),
-    0 10px 30px -22px oklch(0 0 0 / 22%);
+  border: 0;
+  border-radius: var(--surface-r);
+  box-shadow: var(--shadow-surface), var(--hairline);
 }
 
 .admin-scroll {
@@ -4238,8 +4236,8 @@ body:has(.one-image-hero) #CIRAOS .main {
  * 前台已经收成细线 + 6px 圆角的编辑部风，后台原来是大圆角 + 大片投影，两边像两个产品。
  * 这里只动观感（圆角 / 阴影 / 表头底色），不改任何布局与交互。 */
 .admin-card {
-  border-radius: var(--radius);
-  box-shadow: 0 1px 2px oklch(0 0 0 / 3%);
+  border-radius: var(--surface-r);
+  box-shadow: var(--shadow-surface), var(--hairline);
 }
 
 /* 列表页表头：滚动时保持不透明，避免内容从表头底下透出来 */
@@ -4319,7 +4317,7 @@ body:has(.one-image-hero) #CIRAOS .main {
 
 /* 卡片彻底去阴影，只留一圈描边（更像纸张而不是浮层） */
 .admin-card {
-  box-shadow: none;
+  box-shadow: var(--shadow-surface), var(--hairline);
 }
 
 /* 输入框与下拉：圆角跟随全局，高度对齐 36px */
@@ -4380,4 +4378,174 @@ body:has(.one-image-hero) #CIRAOS .main {
   [data-slot="drawer-content"]
 ) {
   border-radius: 16px;
+}
+
+/* ===================== 设计规范层（2026-11） =====================
+ * 1) 数字等宽：全局 tabular-nums，正文例外（正文里的数字保持比例字形更耐读）
+ * 2) 同心圆角：外层 --surface-r，内层 = 外层 − 内边距
+ * 3) 100ms 依次淡入：[data-stagger] 的子元素按顺序入场
+ * 4) 标题均衡换行：text-wrap: balance
+ * 5) 多层柔和阴影替代硬边框：.soft-surface
+ * 目标：干净、留白充足、阴影轻而不糊。
+ */
+:root {
+    /* 外层卡面半径；内层元素用 calc(var(--surface-r) - 内边距) 保证同心 */
+    --surface-r: 14px;
+    --surface-pad: 12px;
+
+    /* 三层柔和阴影：贴边微影 + 中景扩散 + 远景晕散，全部低透明度 */
+    --shadow-surface:
+        0 1px 1px color-mix(in oklab, var(--foreground) 4%, transparent),
+        0 3px 10px -4px color-mix(in oklab, var(--foreground) 7%, transparent),
+        0 18px 40px -28px color-mix(in oklab, var(--foreground) 22%, transparent);
+    --shadow-surface-hover:
+        0 1px 2px color-mix(in oklab, var(--foreground) 5%, transparent),
+        0 6px 18px -6px color-mix(in oklab, var(--foreground) 10%, transparent),
+        0 28px 56px -34px color-mix(in oklab, var(--foreground) 26%, transparent);
+
+    /* 用阴影画出的「1px 发丝边」：比真 border 更柔和，且不参与盒模型 */
+    --hairline: inset 0 0 0 1px color-mix(in oklab, var(--foreground) 7%, transparent);
+}
+
+.dark {
+    --shadow-surface:
+        0 1px 0 color-mix(in oklab, white 6%, transparent) inset,
+        0 2px 8px -2px oklch(0 0 0 / 45%),
+        0 22px 48px -30px oklch(0 0 0 / 70%);
+    --shadow-surface-hover:
+        0 1px 0 color-mix(in oklab, white 8%, transparent) inset,
+        0 6px 20px -4px oklch(0 0 0 / 55%),
+        0 30px 64px -34px oklch(0 0 0 / 75%);
+    --hairline: inset 0 0 0 1px color-mix(in oklab, white 9%, transparent);
+}
+
+body {
+    /* 1) 数字等宽，进度/计数变化时不再左右抖 */
+    font-variant-numeric: tabular-nums;
+}
+
+/* 正文例外：比例数字更自然 */
+.article-body,
+.article-body * {
+    font-variant-numeric: normal;
+}
+
+/* 4) 标题均衡换行，避免末行只剩孤字 */
+h1,
+h2,
+h3,
+h4,
+h5 {
+    text-wrap: balance;
+}
+
+/* 段落用 pretty：避免行末孤字，但不会把整段拉成等长 */
+p {
+    text-wrap: pretty;
+}
+
+@layer components {
+    /* 5) 卡面：无硬边框，只用分层柔和阴影 + 发丝内描边 */
+    .soft-surface {
+        background-color: var(--card);
+        border: 0;
+        border-radius: var(--surface-r);
+        box-shadow: var(--shadow-surface), var(--hairline);
+    }
+
+    /* 可交互卡面：悬停时阴影加深一档，不位移 */
+    .soft-surface-hover {
+        transition: box-shadow 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+    .soft-surface-hover:hover {
+        box-shadow: var(--shadow-surface-hover), var(--hairline);
+    }
+
+    /* 2) 内层块：半径 = 外层 − 内边距，视觉上与外层同心 */
+    .soft-inset {
+        border: 0;
+        border-radius: calc(var(--surface-r) - var(--surface-pad));
+        background-color: color-mix(in oklab, var(--muted) 55%, transparent);
+        box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--foreground) 5%, transparent);
+    }
+}
+
+/* 3) 依次淡入：容器加 data-stagger，子元素按 100ms 步进入场 */
+@keyframes surface-rise {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+[data-stagger] > * {
+    animation: surface-rise 480ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+[data-stagger] > *:nth-child(1) { animation-delay: 0ms; }
+[data-stagger] > *:nth-child(2) { animation-delay: 100ms; }
+[data-stagger] > *:nth-child(3) { animation-delay: 200ms; }
+[data-stagger] > *:nth-child(4) { animation-delay: 300ms; }
+[data-stagger] > *:nth-child(5) { animation-delay: 400ms; }
+[data-stagger] > *:nth-child(6) { animation-delay: 500ms; }
+[data-stagger] > *:nth-child(7) { animation-delay: 600ms; }
+[data-stagger] > *:nth-child(8) { animation-delay: 700ms; }
+[data-stagger] > *:nth-child(9) { animation-delay: 800ms; }
+[data-stagger] > *:nth-child(10) { animation-delay: 900ms; }
+[data-stagger] > *:nth-child(n + 11) { animation-delay: 1000ms; }
+
+
+/* 3b) 只淡入、不改 transform 的变体：给用 transform 定位的元素（瀑布流卡片）用，
+   否则动画的 transform 会覆盖内联定位，卡片全叠到左上角 */
+@keyframes surface-fade {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+[data-stagger-fade] > * {
+    animation: surface-fade 420ms ease-out both;
+}
+
+[data-stagger-fade] > *:nth-child(1) { animation-delay: 0ms; }
+[data-stagger-fade] > *:nth-child(2) { animation-delay: 100ms; }
+[data-stagger-fade] > *:nth-child(3) { animation-delay: 200ms; }
+[data-stagger-fade] > *:nth-child(4) { animation-delay: 300ms; }
+[data-stagger-fade] > *:nth-child(5) { animation-delay: 400ms; }
+[data-stagger-fade] > *:nth-child(6) { animation-delay: 500ms; }
+[data-stagger-fade] > *:nth-child(n + 7) { animation-delay: 600ms; }
+
+@media (prefers-reduced-motion: reduce) {
+    [data-stagger-fade] > * {
+        animation: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-stagger] > * {
+        animation: none;
+    }
+}
+
+/* ===================== 后台移动端：压缩页头与工具栏 =====================
+ * 390px 宽度下，页头说明 + 筛选条经常吃掉 350~510px，列表只剩半屏。
+ * 这里只动「占高」不动功能：说明最多两行、页头间距收紧。 */
+@media (max-width: 639px) {
+    .dsh-main .admin-page-head p {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+    }
+
+    .dsh-main .admin-page-head {
+        gap: 0.5rem;
+    }
 }

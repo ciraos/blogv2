@@ -329,7 +329,7 @@ export function PaymentSettingsPanel() {
                     <section
                         key={def.slug}
                         className={cn(
-                            "rounded-xl border bg-card",
+                            "soft-surface",
                             open ? "border-border/80" : "border-border/50",
                             !supported && "opacity-60"
                         )}

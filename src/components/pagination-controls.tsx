@@ -56,25 +56,31 @@ export function PaginationControls({
                         <ChevronLeft className="size-3.5" />
                     </button>
 
-                    {items.map((item, index) =>
-                        item === "ellipsis" ? (
-                            <span key={`ellipsis-${index}`} aria-hidden className={PAGER_ELLIPSIS_CLS}>
-                                ···
-                            </span>
-                        ) : (
-                            <button
-                                key={item}
-                                type="button"
-                                aria-label={`第 ${item} 页`}
-                                aria-current={item === current ? "page" : undefined}
-                                className={cn(PAGER_ITEM_CLS, item === current ? PAGER_ACTIVE_CLS : PAGER_IDLE_CLS)}
-                                disabled={disabled}
-                                onClick={() => onPageChange(item)}
-                            >
-                                {item}
-                            </button>
-                        )
-                    )}
+                    {/* 移动端：一整排页码太占宽，只留「当前 / 总数」；≥sm 再展开数字 */}
+                    <span className="px-1 text-xs tabular-nums text-muted-foreground sm:hidden">
+                        {current} / {total}
+                    </span>
+                    <span className="hidden items-center sm:inline-flex">
+                        {items.map((item, index) =>
+                            item === "ellipsis" ? (
+                                <span key={`ellipsis-${index}`} aria-hidden className={PAGER_ELLIPSIS_CLS}>
+                                    ···
+                                </span>
+                            ) : (
+                                <button
+                                    key={item}
+                                    type="button"
+                                    aria-label={`第 ${item} 页`}
+                                    aria-current={item === current ? "page" : undefined}
+                                    className={cn(PAGER_ITEM_CLS, item === current ? PAGER_ACTIVE_CLS : PAGER_IDLE_CLS)}
+                                    disabled={disabled}
+                                    onClick={() => onPageChange(item)}
+                                >
+                                    {item}
+                                </button>
+                            )
+                        )}
+                    </span>
 
                     <button
                         type="button"

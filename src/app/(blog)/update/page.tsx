@@ -58,7 +58,7 @@ export default async function Update() {
         backendItems.length > 0 ? (
             <ChangelogTimeline entries={backendItems} />
         ) : (
-            <div className="rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">
+            <div className="soft-surface p-10 text-center text-sm text-muted-foreground">
                 <p>暂时无法获取后端更新日志。</p>
                 <a
                     href={GITHUB_RELEASES_URL}
@@ -76,7 +76,7 @@ export default async function Update() {
         frontendItems.length > 0 ? (
             <ChangelogTimeline entries={frontendItems} />
         ) : (
-            <div className="rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">
+            <div className="soft-surface p-10 text-center text-sm text-muted-foreground">
                 暂无前端发版记录。
             </div>
         );

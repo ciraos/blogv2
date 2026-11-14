@@ -696,7 +696,7 @@ export function OrdersManager() {
                     onMouseDown={() => setDetail(null)}
                 >
                     <div
-                        className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-xl border bg-card p-4 shadow-sm"
+                        className="flex max-h-[85vh] w-full max-w-2xl flex-col soft-surface p-4"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
                         <div className="mb-3 flex items-start justify-between gap-3">

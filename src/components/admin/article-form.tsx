@@ -190,7 +190,7 @@ function SettingCard({
 }) {
     const [open, setOpen] = useState(true);
     return (
-        <section className="rounded-lg border bg-card">
+        <section className="soft-surface">
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
@@ -1127,7 +1127,7 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                                     // 不再是「只有 .article-body 类名、没有增强」的静态预览。
                                     // 外层容器对齐前台文章卡片（posts/[id]/page.tsx:262）：同样的 rounded-xl / border-border/60 / bg-card /
                                     // shadow-sm + p-5 md:p-8 内边距；封面按现在的做法置顶满宽，正文超出时在这个容器里滚（不把整页拉长）。
-                                    <div className="min-h-[420px] flex-1 overflow-auto rounded-xl border border-border/60 bg-card shadow-sm">
+                                    <div className="min-h-[420px] flex-1 overflow-auto soft-surface">
                                         {coverUrl && (
                                             // eslint-disable-next-line @next/next/no-img-element
                                             <img src={coverUrl} alt="" className="h-40 w-full object-cover" />

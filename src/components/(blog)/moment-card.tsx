@@ -41,7 +41,7 @@ export function MomentCard({
     const setQuote = useCommentQuote(commentTargetPath);
 
     return (
-        <div className="flex h-full flex-col rounded-lg border bg-card p-3.5 shadow-sm transition-shadow hover:shadow-md">
+        <div className="flex h-full flex-col soft-surface p-3.5 transition-shadow hover:shadow-md">
             <a
                 href={moment.post_url}
                 target="_blank"

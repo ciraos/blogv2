@@ -964,7 +964,7 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                                         <div
                                             role="dialog"
                                             aria-label="表情选择器"
-                                            className="absolute bottom-full left-0 z-50 mb-2 w-[min(19rem,calc(100vw-3rem))] overflow-hidden rounded-lg border bg-card shadow-lg"
+                                            className="absolute bottom-full left-0 z-50 mb-2 w-[min(19rem,calc(100vw-3rem))] overflow-hidden soft-surface shadow-lg"
                                         >
                                             {emojiLoading ? (
                                                 <div className="flex h-32 items-center justify-center text-xs text-muted-foreground">
@@ -1082,7 +1082,7 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                                     value={nickname}
                                     readOnly={anonActive}
                                     onChange={(event) => setNickname(event.target.value)}
-                                    className="h-9 w-full min-w-0 flex-1 rounded-lg border bg-card px-3 text-sm outline-none transition-colors focus:border-primary read-only:cursor-not-allowed read-only:opacity-70 sm:flex-none"
+                                    className="h-9 w-full min-w-0 flex-1 soft-surface px-3 text-sm outline-none transition-colors focus:border-primary read-only:cursor-not-allowed read-only:opacity-70 sm:flex-none"
                                 />
                             </label>
                             <label className="flex items-center gap-2 sm:block">
@@ -1094,7 +1094,7 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                                     value={email}
                                     readOnly={anonActive}
                                     onChange={(event) => setEmail(event.target.value)}
-                                    className="h-9 w-full min-w-0 flex-1 rounded-lg border bg-card px-3 text-sm outline-none transition-colors focus:border-primary read-only:cursor-not-allowed read-only:opacity-70 sm:flex-none"
+                                    className="h-9 w-full min-w-0 flex-1 soft-surface px-3 text-sm outline-none transition-colors focus:border-primary read-only:cursor-not-allowed read-only:opacity-70 sm:flex-none"
                                 />
                             </label>
                             <label className="flex items-center gap-2 sm:block">
@@ -1105,7 +1105,7 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                                     placeholder="选填"
                                     value={website}
                                     onChange={(event) => setWebsite(event.target.value)}
-                                    className="h-9 w-full min-w-0 flex-1 rounded-lg border bg-card px-3 text-sm outline-none transition-colors focus:border-primary sm:flex-none"
+                                    className="h-9 w-full min-w-0 flex-1 soft-surface px-3 text-sm outline-none transition-colors focus:border-primary sm:flex-none"
                                 />
                             </label>
                         </div>
@@ -1177,7 +1177,7 @@ export function PostComments({ targetPath, comments = [], author = null }: PostC
                     <div
                         role="dialog"
                         aria-modal="true"
-                        className="w-full max-w-sm rounded-xl border bg-card p-5 shadow-lg"
+                        className="w-full max-w-sm soft-surface p-5 shadow-lg"
                         onClick={(event) => event.stopPropagation()}
                     >
                         <div className="flex items-center justify-between">

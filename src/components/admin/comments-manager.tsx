@@ -790,7 +790,7 @@ export function CommentsManager() {
                     onMouseDown={() => setEditing(null)}
                 >
                     <div
-                        className="w-full max-w-xl rounded-xl border bg-card p-5 shadow-xl"
+                        className="w-full max-w-xl soft-surface p-5 shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
                         <div className="mb-4 flex items-center justify-between">
@@ -875,7 +875,7 @@ export function CommentsManager() {
                     }}
                 >
                     <div
-                        className="w-full max-w-xl rounded-xl border bg-card p-5 shadow-xl"
+                        className="w-full max-w-xl soft-surface p-5 shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
                         <div className="mb-4 flex items-center justify-between">

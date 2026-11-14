@@ -89,7 +89,7 @@ function Modal({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
             <div
-                className="w-full max-w-md rounded-xl border bg-card p-5 shadow-xl"
+                className="w-full max-w-md soft-surface p-5 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <div className="mb-4 flex items-center justify-between">

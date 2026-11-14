@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import "../globals.css";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ConfirmProvider } from "@/components/confirm-provider";
-import { SidebarTriggerFallback } from "@/components/sidebar-trigger-fallback";
+import { SidebarTriggerFallback } from "@/components/sidebar-trigger-fallback"
+import { SidebarMobileAutoClose } from "@/components/sidebar-mobile-autoclose";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -85,6 +86,8 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
                       <ConfirmProvider>
                         {/* 整页锁 100dvh 且不滚动：滚动交给内容区（以及列表页内部的表格区域） */}
                         <SidebarProvider className="h-dvh overflow-hidden">
+                        {/* 移动端：路由变化后自动收起侧边栏抽屉 */}
+                        <SidebarMobileAutoClose />
                             <AppSidebar user={navUser} config={config} isPro={isPro} />
                             <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-2 overflow-y-auto px-5 py-1.5">
                                 <SidebarTriggerFallback />

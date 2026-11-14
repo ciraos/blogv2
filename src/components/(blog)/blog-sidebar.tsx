@@ -118,7 +118,7 @@ function AnnouncementCard({ appName }: { appName?: string }) {
     const siteName = appName?.trim() || "本站";
 
     return (
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="soft-surface p-5">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
                 <MegaphoneIcon className="size-4 text-primary" aria-hidden />
                 公告
@@ -236,7 +236,7 @@ function CustomSidebarCard({ blocks }: { blocks: CustomSidebarBlock[] }) {
     return (
         <>
             {blocks.map((block, index) => (
-                <div key={`${block.title}-${index}`} className="rounded-xl border bg-card p-5 shadow-sm">
+                <div key={`${block.title}-${index}`} className="soft-surface p-5">
                     {block.title && <h3 className="text-sm font-semibold">{block.title}</h3>}
                     <div
                         className={`text-sm leading-relaxed text-foreground/90 ${block.title ? "mt-3" : ""}`}
@@ -263,7 +263,7 @@ async function TagsCard({ highlight }: { highlight?: string[] }) {
     const highlighted = new Set((highlight ?? []).map((name) => name.trim()).filter(Boolean));
 
     return (
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="soft-surface p-5">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
                 <TagIcon className="size-4 text-primary" />
                 标签
@@ -310,7 +310,7 @@ async function RecentPostsCard({ count }: { count?: number }) {
     };
 
     return (
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="soft-surface p-5">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
                 <Clock className="size-4 text-primary" />
                 最近文章
@@ -348,7 +348,7 @@ async function ArchivesCard({ displayMonths = 6 }: { displayMonths?: number }) {
     const formatMonth = (year: number, month: number) => `${year} 年 ${month} 月`;
 
     return (
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="soft-surface p-5">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
                 <CalendarDays className="size-4 text-primary" />
                 归档
@@ -399,7 +399,7 @@ async function RecentCommentsCard({ limit = 5, gravatar }: { limit?: number; gra
     };
 
     return (
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="soft-surface p-5">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
                 <MessageSquare className="size-4 text-primary" />
                 最近评论
@@ -472,7 +472,7 @@ function SiteInfoCard({
     const days = daysSince(createdAt);
 
     return (
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="soft-surface p-5">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
                 <FileText className="size-4 text-primary" />
                 网站信息

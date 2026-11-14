@@ -110,7 +110,7 @@ export function SeoScorePanel(props: SeoInput) {
     const passCount = checks.filter((c) => c.level === "pass").length;
 
     return (
-        <section className="rounded-xl border bg-card/60 p-3">
+        <section className="soft-surface/60 p-3">
             <div className="mb-2.5 flex items-center justify-between gap-2">
                 <h3 className="text-xs font-semibold tracking-wide text-muted-foreground">发布前自检</h3>
                 <span className={`text-xs font-semibold tabular-nums ${tone.text}`}>

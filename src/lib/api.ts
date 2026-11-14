@@ -1132,6 +1132,17 @@ export function getPublicSiteConfigApi(): Promise<SiteConfig> {
     });
 }
 
+/**
+ * 站点配置 · 不走缓存版本（**只给后台系统设置页用**）。
+ *
+ * 为什么需要：公开配置走 Next 数据缓存（revalidate 60 + tag），后台保存成功后虽然会
+ * revalidateTag，但刷新瞬间仍可能读到旧值 —— 表现就是「刚保存的文案一刷新又变回去了」。
+ * 设置页本来就是低频、鉴权后的页面，直接实时读后端最省心。
+ */
+export function getPublicSiteConfigFreshApi(): Promise<SiteConfig> {
+    return request<SiteConfig>("/public/site-config", { method: "GET" });
+}
+
 // ===================== 站点统计 =====================
 
 export interface BasicStats {

@@ -45,7 +45,7 @@ function CommentRow({ comment, gravatar }: { comment: RecentComment; gravatar?: 
     const avatar = resolveCommentAvatar(comment, gravatar);
 
     return (
-        <div className="rounded-lg border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
+        <div className="soft-surface p-4 transition-shadow hover:shadow-md">
             {/* 头部：头像 + 昵称 + 时间 */}
             <div className="flex items-center gap-2.5">
                 {/* 地址永远有值（无邮箱时由 d= 生成兜底头像）；加载失败退化首字头像 */}

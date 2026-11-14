@@ -163,7 +163,7 @@ function ThemeCardSkeletons() {
     return (
         <div className="grid grid-cols-1 gap-3 p-3 sm:min-w-[620px] sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex flex-col overflow-hidden rounded-xl border bg-card shadow-sm">
+                <div key={i} className="flex flex-col overflow-hidden soft-surface">
                     <div className="aspect-16/10 w-full animate-pulse bg-muted" />
                     <div className="flex flex-1 flex-col gap-2 p-3">
                         <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
@@ -214,7 +214,7 @@ function ThemeDetailDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
             <DialogPrimitive.Portal>
                 <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
-                <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[86vh] w-[min(94vw,42rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border bg-card shadow-2xl data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
+                <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[86vh] w-[min(94vw,42rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden soft-surface shadow-2xl data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
                     <div className="flex shrink-0 items-start gap-2 border-b px-5 py-3.5">
                         <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                         <div className="min-w-0 flex-1">
@@ -675,7 +675,7 @@ export function ThemesManager() {
                             return (
                                 <div
                                     key={theme.id ?? `${theme.name}-${index}`}
-                                    className="group flex flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md"
+                                    className="group flex flex-col overflow-hidden soft-surface transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md"
                                 >
                                     {/* 预览图：previewUrl 为空时用主题色渐变占位 */}
                                     <div className="relative flex aspect-16/10 w-full items-center justify-center overflow-hidden bg-gradient-to-br from-primary/15 via-muted to-muted">

@@ -48,7 +48,7 @@ import {
  * ========================================================================== */
 
 /** 卡片外壳：与统计卡片同一套令牌（紧凑密度：内边距 p-4） */
-const cardCls = "rounded-xl border bg-card p-4 shadow-sm";
+const cardCls = "soft-surface p-4";
 
 /** 小徽章（与评论管理页的状态徽章同一套配色） */
 function Badge({ children, tone }: { children: React.ReactNode; tone: "ok" | "muted" | "warn" }) {
@@ -96,8 +96,8 @@ function categoryLabel(code: string): string {
 function Skeleton() {
     return (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3" aria-busy="true" aria-label="通知配置加载中">
-            <div className="h-[236px] animate-pulse rounded-xl border bg-card lg:col-span-2" />
-            <div className="h-[236px] animate-pulse rounded-xl border bg-card" />
+            <div className="h-[236px] animate-pulse soft-surface lg:col-span-2" />
+            <div className="h-[236px] animate-pulse soft-surface" />
         </div>
     );
 }

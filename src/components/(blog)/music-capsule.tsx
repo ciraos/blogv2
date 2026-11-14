@@ -18,11 +18,13 @@ import {
 } from "lucide-react";
 
 import { findLyricIndex, parseLrc } from "@/lib/lyrics";
+import { toast } from "sonner";
+
 import { cn } from "@/lib/utils";
 import type { LyricLine, PlayMode } from "@/types/music";
 
 /**
- * 左下角迷你音乐播放器。
+ * 左下角音乐胶囊。
  *
  * 歌单与音乐馆一致：GET /api/public/music/playlist（后端读后台设置里的 music.player.playlist_id，
  * 配了 music.player.custom_playlist 时优先用自定义歌单）。
@@ -65,7 +67,8 @@ function ensureHttps(url: string): string {
     return url.startsWith("http://") ? url.replace("http://", "https://") : url;
 }
 
-export function MiniMusicPlayer({ embedded = false }: { embedded?: boolean }) {
+export function MusicCapsule({ embedded = false }: { embedded?: boolean }) {
+    const rootRef = useRef<HTMLDivElement | null>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const lyricsBoxRef = useRef<HTMLDivElement | null>(null);
 
@@ -134,12 +137,12 @@ export function MiniMusicPlayer({ embedded = false }: { embedded?: boolean }) {
         }
     }, [volume, muted]);
 
-    // 当前曲目/播放状态广播给页面（关于页的「此刻在听」监听 mini-player:state）。
+    // 当前曲目/播放状态广播给页面（关于页的「此刻在听」监听 music-capsule:state）。
     // 用自定义事件而不是全局 store：只有真正在用的页面才需要，零额外依赖。
     useEffect(() => {
         if (!currentSong) return;
         window.dispatchEvent(
-            new CustomEvent("mini-player:state", {
+            new CustomEvent("music-capsule:state", {
                 detail: { name: currentSong.name, artist: currentSong.artist, playing },
             })
         );
@@ -155,63 +158,102 @@ export function MiniMusicPlayer({ embedded = false }: { embedded?: boolean }) {
         box.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
     }, [activeLyric]);
 
-    /** 播放第 i 首：优先用歌单自带 url，否则按 neteaseId 现取音源；歌词同一次请求里带回 */
-    const playAt = useCallback(
-        async (i: number) => {
-            const song = songs[i];
-            const audio = audioRef.current;
-            if (!song || !audio) return;
+    // 展开态：点击面板以外的任何地方自动收起（与站内其它悬浮面板一致）
+    useEffect(() => {
+        if (!expanded) return;
+        const onPointerDown = (e: PointerEvent) => {
+            const target = e.target as Node | null;
+            if (target && rootRef.current?.contains(target)) return;
+            setExpanded(false);
+            setListOpen(false);
+        };
+        document.addEventListener("pointerdown", onPointerDown);
+        return () => document.removeEventListener("pointerdown", onPointerDown);
+    }, [expanded]);
 
-            setIndex(i);
+    /**
+     * 播放第 start 首：优先用歌单自带 url，否则按 neteaseId 现取音源；歌词同一次请求里带回。
+     *
+     * 网易云对部分版权曲目会返回空 audioUrl（实测 276 首里有相当一部分是空串），
+     * 以前遇到就直接 return，用户点播放毫无反应。这里改成**顺序向后找第一首能播的**，
+     * 最多绕一整圈；全都没有才提示。用循环而不是递归调用自己 —— React Compiler
+     * 不允许 useCallback 里引用自身。
+     */
+    const playAt = useCallback(
+        async (start: number) => {
+            const audio = audioRef.current;
+            if (!audio || songs.length === 0) return;
+
             setLoading(true);
             setError("");
-            try {
-                window.localStorage.setItem(INDEX_KEY, String(i));
-            } catch {
-                // 忽略
-            }
+            setPlaying(false);
 
-            try {
+            // 依次尝试：start → 末尾 → 回绕到开头 → start-1
+            for (let step = 0; step < songs.length; step += 1) {
+                const i = (start + step) % songs.length;
+                const song = songs[i];
+                if (!song) continue;
+
+                setIndex(i);
+                try {
+                    window.localStorage.setItem(INDEX_KEY, String(i));
+                } catch {
+                    // 忽略
+                }
+
                 let url = song.url?.trim() ?? "";
                 let lyricsText = "";
 
-                if (!url && song.neteaseId) {
-                    const res = await fetch("/api/public/music/song-resources", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ neteaseId: song.neteaseId }),
-                    });
-                    const json = (await res.json().catch(() => null)) as {
-                        data?: { audioUrl?: string; lyricsText?: string } | null;
-                        message?: string;
-                    } | null;
-                    url = json?.data?.audioUrl?.trim() ?? "";
-                    lyricsText = json?.data?.lyricsText ?? "";
-                    if (!url) setError(json?.message || "这首取不到音源");
-                } else if (song.lrc?.trim()) {
-                    // 自定义歌单：lrc 既可能是内联歌词，也可能是 .lrc 链接
-                    const lrc = song.lrc.trim();
-                    if (/^https?:\/\//i.test(lrc)) {
-                        lyricsText = await fetch(lrc)
-                            .then((r) => (r.ok ? r.text() : ""))
-                            .catch(() => "");
-                    } else {
-                        lyricsText = lrc;
+                try {
+                    if (!url && song.neteaseId) {
+                        const res = await fetch("/api/public/music/song-resources", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ neteaseId: song.neteaseId }),
+                        });
+                        const json = (await res.json().catch(() => null)) as {
+                            data?: { audioUrl?: string; lyricsText?: string } | null;
+                            message?: string;
+                        } | null;
+                        url = json?.data?.audioUrl?.trim() ?? "";
+                        lyricsText = json?.data?.lyricsText ?? "";
+                    } else if (song.lrc?.trim()) {
+                        // 自定义歌单：lrc 既可能是内联歌词，也可能是 .lrc 链接
+                        const lrc = song.lrc.trim();
+                        if (/^https?:\/\//i.test(lrc)) {
+                            lyricsText = await fetch(lrc)
+                                .then((r) => (r.ok ? r.text() : ""))
+                                .catch(() => "");
+                        } else {
+                            lyricsText = lrc;
+                        }
                     }
+
+                    // 没有音源：换下一首继续找，不在这里报错
+                    if (!url) continue;
+
+                    setLyrics(parseLrc(lyricsText));
+                    audio.src = ensureHttps(url);
+                    await audio.play();
+                    setPlaying(true);
+                    setLoading(false);
+                    return;
+                } catch (err) {
+                    // 音源拿到了但浏览器解不了（版权占位流等）：继续找下一首
+                    if (err instanceof DOMException && err.name === "NotSupportedError") continue;
+                    // 其它错误（例如自动播放被拦）如实提示，不再瞎跳
+                    setError("播放失败，换一首试试");
+                    toast.error("播放失败，换一首试试");
+                    setPlaying(false);
+                    setLoading(false);
+                    return;
                 }
-
-                setLyrics(parseLrc(lyricsText));
-
-                if (!url) return;
-                audio.src = ensureHttps(url);
-                await audio.play();
-                setPlaying(true);
-            } catch {
-                setError("播放失败，换一首试试");
-                setPlaying(false);
-            } finally {
-                setLoading(false);
             }
+
+            // 绕了一圈都没找到可播的
+            setError("这些歌暂时都没有可用音源");
+            toast.error("暂时取不到可用音源，换一首或稍后再试");
+            setLoading(false);
         },
         [songs]
     );
@@ -292,7 +334,8 @@ export function MiniMusicPlayer({ embedded = false }: { embedded?: boolean }) {
                     ? "flex flex-col items-start gap-2"
                     : "fixed bottom-5 left-5 z-40 flex flex-col items-start gap-2"
             }
-            data-mini-music-player=""
+            ref={rootRef}
+            data-music-capsule-root=""
         >
             <audio
                 ref={audioRef}
@@ -310,7 +353,7 @@ export function MiniMusicPlayer({ embedded = false }: { embedded?: boolean }) {
 
             {/* 展开面板 */}
             {expanded && (
-                <div className="w-[min(20rem,calc(100vw-2.5rem))] overflow-hidden rounded-2xl border bg-card/95 shadow-lg backdrop-blur-md">
+                <div className="w-[min(20rem,calc(100vw-2.5rem))] overflow-hidden soft-surface/95 shadow-lg backdrop-blur-md">
                     <div className="flex items-start gap-3 p-3">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -499,45 +542,52 @@ export function MiniMusicPlayer({ embedded = false }: { embedded?: boolean }) {
                 </div>
             )}
 
-            {/* 收起态：一颗唱片 + 歌名 */}
+            {/* 收起态 = 音乐胶囊（对齐官方 MusicCapsule）：
+                整颗 40px 高、20px 圆角；点胶囊本体展开面板，点右侧图标只切播放/暂停。 */}
             {!expanded && (
-                <button
-                    type="button"
+                <div
+                    role="button"
+                    tabIndex={0}
+                    data-music-capsule=""
+                    title={currentSong ? `${currentSong.name} - ${currentSong.artist}` : "打开音乐胶囊"}
+                    aria-label="打开音乐胶囊"
+                    aria-expanded={false}
                     onClick={() => setExpanded(true)}
-                    title={currentSong ? `${currentSong.name} - ${currentSong.artist}` : "打开音乐播放器"}
-                    aria-label="打开音乐播放器"
-                    className="flex items-center gap-2 rounded-full border bg-card/90 py-1 pr-3 pl-1 shadow-md backdrop-blur-md transition-colors hover:bg-card"
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setExpanded(true);
+                        }
+                    }}
+                    className="flex h-10 max-w-[240px] cursor-pointer items-center gap-2 rounded-[20px] border bg-card/90 pr-1.5 pl-1 shadow-md backdrop-blur-md transition-colors hover:bg-card"
                 >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                         src={currentSong?.pic || "/file.svg"}
                         alt=""
                         className={cn(
-                            "size-9 rounded-full border object-cover",
+                            "size-8 shrink-0 rounded-full border object-cover",
                             playing ? "animate-[spin_8s_linear_infinite]" : ""
                         )}
                     />
-                    <span className="max-w-[9rem] truncate text-xs text-foreground/80">{currentSong?.name || "音乐"}</span>
-                    <span
-                        role="button"
-                        tabIndex={0}
+                    <span className="min-w-0 max-w-[120px] truncate text-xs text-foreground/80">
+                        {currentSong?.name || "音乐胶囊"}
+                    </span>
+                    {/* 控件区：data-music-controls 让「点胶囊展开」放过这里的点击（同官方做法） */}
+                    <button
+                        type="button"
+                        data-music-controls=""
                         aria-label={playing ? "暂停" : "播放"}
-                        className="flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                        title={playing ? "暂停" : "播放"}
+                        className="ml-auto flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105"
                         onClick={(e) => {
                             e.stopPropagation();
                             togglePlay();
                         }}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                togglePlay();
-                            }
-                        }}
                     >
                         {loading ? <Loader2 className="size-3.5 animate-spin" /> : playing ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
-                    </span>
-                </button>
+                    </button>
+                </div>
             )}
         </div>
     );

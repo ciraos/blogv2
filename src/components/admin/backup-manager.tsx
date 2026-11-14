@@ -127,7 +127,7 @@ function ConfirmDialog({
             onMouseDown={busy ? undefined : onCancel}
         >
             <div
-                className="w-full max-w-md rounded-xl border bg-card p-4 shadow-xl"
+                className="w-full max-w-md soft-surface p-4 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <h3 className="text-base font-semibold">{title}</h3>

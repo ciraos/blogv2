@@ -35,7 +35,7 @@ export function QuickActions() {
                 <Link
                     key={action.href}
                     href={action.href}
-                    className="group flex flex-col items-center justify-center gap-1.5 rounded-lg border bg-card px-2 py-3.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+                    className="group flex flex-col items-center justify-center gap-1.5 soft-surface px-2 py-3.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
                 >
                     <action.icon className="size-4" />
                     <span className="text-xs font-medium">{action.label}</span>

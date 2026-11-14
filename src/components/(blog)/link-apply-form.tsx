@@ -201,7 +201,7 @@ export function LinkApplyForm({ onSubmitted, placeholders }: LinkApplyFormProps)
     }
 
     return (
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="soft-surface p-5">
             {/* 标题 */}
             <h3 className="text-lg font-semibold">友链申请</h3>
 

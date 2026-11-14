@@ -35,10 +35,10 @@ const RECENT_LIMIT = 6;
 const RECENT_SHOWN = 3;
 
 /**
- * 卡片外壳：与统计区卡片完全一致的令牌（`rounded-xl border bg-card p-4 shadow-sm`，
+ * 卡片外壳：与统计区卡片完全一致的令牌（`soft-surface p-4`，
  * 深色模式由 bg-card 自身随主题切换），不额外发明一套底色；`flex flex-col` 便于卡内滚动。
  */
-const cardCls = "flex flex-col rounded-xl border bg-card p-4 shadow-sm";
+const cardCls = "flex flex-col soft-surface p-4";
 
 /** 卡内容区：撑满剩余高度、超出卡内滚动（不裁掉任何一条） */
 const cardBodyCls = "min-h-0 flex-1 overflow-y-auto";
@@ -148,7 +148,7 @@ function CommentRow({ comment }: { comment: AdminComment }) {
 function Skeleton() {
     return (
         <div
-            className="grid grid-cols-1 gap-0 divide-y divide-border/60 rounded-lg border bg-card lg:grid-cols-[minmax(0,1fr)_20rem] lg:divide-x lg:divide-y-0"
+            className="grid grid-cols-1 gap-0 divide-y divide-border/60 soft-surface lg:grid-cols-[minmax(0,1fr)_20rem] lg:divide-x lg:divide-y-0"
             aria-busy="true"
             aria-label="动态加载中"
         >

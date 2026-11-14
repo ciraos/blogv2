@@ -7,7 +7,7 @@ import { Headphones, Music2, PencilLine, Sprout } from "lucide-react";
  * 关于页「此刻」状态条。
  *
  * 左侧「此刻在听」实时跟随左下角的迷你播放器：播放器每次切歌/播放/暂停都会派发
- * `mini-player:state` 事件（见 mini-music-player.tsx），这里监听即可，不重复拉歌单。
+ * `music-capsule:state` 事件（见 music-capsule.tsx），这里监听即可，不重复拉歌单。
  * 其余三项是构建期由服务端算好的静态数字。
  */
 export interface MiniPlayerState {
@@ -34,8 +34,8 @@ export function AboutNowBar({
             const detail = (e as CustomEvent<MiniPlayerState>).detail;
             if (detail?.name) setNow(detail);
         };
-        window.addEventListener("mini-player:state", onState);
-        return () => window.removeEventListener("mini-player:state", onState);
+        window.addEventListener("music-capsule:state", onState);
+        return () => window.removeEventListener("music-capsule:state", onState);
     }, []);
 
     const chips = [

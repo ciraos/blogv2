@@ -121,6 +121,11 @@ export interface SettingsField {
      * 判据见 isFieldDirty：基线是掩码而草稿为空/未动时不算改动，避免把掩码写回后端。
      */
     sensitive?: boolean;
+    /**
+     * 只读占位：控件照常显示（让管理员知道有这一项），但不可修改、也不进入保存。
+     * 用于后端尚未提供对应能力、或该键暂不对外开放的场景。
+     */
+    disabled?: boolean;
 }
 
 export interface SettingsGroup {
@@ -157,6 +162,29 @@ const GRAVATAR_TYPES = [
     { value: "retro", label: "retro（像素 8bit）" },
     { value: "robohash", label: "robohash（机器人）" },
     { value: "blank", label: "blank（透明）" },
+];
+
+/**
+ * Gravatar 镜像选项（2026-11 本机实测，只收能连通的）。
+ *
+ * 值统一写「根地址」：前端 lib/avatar.ts 的 normalizeGravatarBase 会自动去掉
+ * 末尾的 / 与 /avatar，再拼成 `${base}/avatar/{hash}`。
+ *
+ * 实测耗时（同一台机器、同一时段，仅供参考）：
+ *   cn.cravatar.com 194ms · cravatar.com 408ms · cdn.sep.cc 1968ms
+ *   dn-qiniu-avatar.qbox.me 1992ms · gravatar.zeruns.tech 2599ms · cravatar.cn 2319ms(301)
+ *   weavatar.com 5412ms（能用但偏慢）
+ * 连不上、故未收录：官方 gravatar.com / secure.gravatar.com、gravatar.loli.net、
+ * sdn.geekzu.org、cdn.v2ex.com。
+ */
+const GRAVATAR_MIRRORS = [
+    { value: "https://cn.cravatar.com", label: "Cravatar 国内节点（最快）" },
+    { value: "https://cravatar.com", label: "Cravatar 主站" },
+    { value: "https://cravatar.cn", label: "Cravatar 旧域名（会 301 到 cn 节点）" },
+    { value: "https://cdn.sep.cc/avatar", label: "sep 源（国内云 CDN）" },
+    { value: "https://dn-qiniu-avatar.qbox.me/avatar", label: "七牛源（长缓存）" },
+    { value: "https://gravatar.zeruns.tech/avatar", label: "zeruns 源" },
+    { value: "https://weavatar.com/avatar", label: "WeAvatar（支持微信/QQ，较慢）" },
 ];
 
 /** 8 套内置皮肤（id 与后端 APPEARANCE_SKIN 取值一致） */
@@ -340,6 +368,29 @@ export const AI_PROVIDER_OPTIONS: { value: string; label: string }[] = [
     { value: "doubao", label: "豆包" },
 ];
 
+/**
+ * 各服务商的默认 API 地址：切换提供商时用它预填「API 地址」，
+ * 避免用户自己去翻各家文档（官方前端也是这么做的）。
+ */
+export const AI_PROVIDER_API_URLS: Record<string, string> = {
+    glm: "https://open.bigmodel.cn/api/paas/v4",
+    openai: "https://api.openai.com/v1",
+    qwen: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    claude: "https://api.anthropic.com/v1",
+    deepseek: "https://api.deepseek.com/v1",
+    doubao: "https://ark.cn-beijing.volces.com/api/v3",
+};
+
+/** 各服务商的示例模型名：只作为输入框的 placeholder 提示，不给下拉（允许任意自定义模型） */
+export const AI_PROVIDER_MODEL_EXAMPLES: Record<string, string> = {
+    glm: "glm-4-flash",
+    openai: "gpt-4o-mini",
+    qwen: "qwen-plus",
+    claude: "claude-3-5-sonnet-latest",
+    deepseek: "deepseek-chat",
+    doubao: "doubao-seed-1-6-251015",
+};
+
 /** 各服务商常用模型（官方同款；只是候选，输入框允许直接写自定义模型名） */
 export const AI_PROVIDER_MODEL_OPTIONS: Record<string, { value: string; label: string }[]> = {
     glm: [
@@ -468,7 +519,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                     { key: "frontDesk.siteOwner.name", label: "站长名称", type: "text" },
                     { key: "frontDesk.siteOwner.email", label: "站长邮箱", type: "text" },
                     { key: "USER_AVATAR", label: "站长头像", type: "image", placeholder: "图片地址" },
-                    { key: "GRAVATAR_URL", label: "Gravatar 镜像", type: "text", placeholder: "https://cravatar.cn/avatar/" },
+                    { key: "GRAVATAR_URL", label: "Gravatar 镜像", type: "select", options: GRAVATAR_MIRRORS },
                     { key: "DEFAULT_GRAVATAR_TYPE", label: "默认头像风格", type: "select", options: GRAVATAR_TYPES },
                 ],
             },
@@ -665,7 +716,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                 label: "页头附加项",
                 fields: [
                     { key: "header.nav.clock", label: "显示时钟", type: "boolean" },
-                    { key: "header.nav.travelling", label: "显示旅行足迹", type: "boolean" },
+                    { key: "header.nav.travelling", label: "显示开往 travelling", type: "boolean" },
                     { key: "header.nav.menu", label: "附加菜单", type: "json", hint: "类型为 unknown[]", placeholder: "[]" },
                 ],
             },
@@ -1050,10 +1101,10 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                 id: "post-reading",
                 label: "阅读增强",
                 fields: [
-                    { key: "post.reading_mode", label: "沉浸式阅读模式", type: "boolean", hint: "本站前台未实现，开启无效果" },
-                    { key: "post.smooth_scroll", label: "平滑滚动", type: "boolean", hint: "本站前台未实现，开启无效果" },
-                    { key: "post.chinese_conversion", label: "中文简繁转换", type: "boolean", hint: "本站前台未实现，开启无效果" },
-                    { key: "post.comment_dialog", label: "评论弹窗模式", type: "boolean", hint: "本站前台未实现，开启无效果" },
+                    { key: "post.reading_mode", label: "沉浸式阅读模式", type: "boolean" },
+                    { key: "post.smooth_scroll", label: "平滑滚动", type: "boolean" },
+                    { key: "post.chinese_conversion", label: "中文简繁转换", type: "boolean" },
+                    { key: "post.comment_dialog", label: "评论弹窗模式", type: "boolean" },
                 ],
             },
             {
@@ -1061,9 +1112,9 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                 label: "文章订阅与过期",
                 fields: [
                     { key: "post.subscribe.enable", label: "启用文章订阅功能", type: "boolean" },
-                    { key: "post.subscribe.button_text", label: "订阅按钮文案", type: "text", hint: "本站前台未读取该键" },
-                    { key: "post.subscribe.dialog_title", label: "订阅弹窗标题", type: "text", hint: "本站前台未读取该键" },
-                    { key: "post.subscribe.dialog_desc", label: "订阅弹窗说明", type: "textarea", wide: true, hint: "本站前台未读取该键" },
+                    { key: "post.subscribe.button_text", label: "订阅按钮文案", type: "text" },
+                    { key: "post.subscribe.dialog_title", label: "订阅弹窗标题", type: "text" },
+                    { key: "post.subscribe.dialog_desc", label: "订阅弹窗说明", type: "textarea", wide: true },
                     {
                         key: "post.expiration_time",
                         label: "文章过期时间（天）",
@@ -1162,7 +1213,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                     { key: "comment.login_required", label: "登录后才能评论", type: "boolean" },
                     { key: "comment.allow_image_upload", label: "允许评论传图", type: "boolean", hint: "关闭后评论框不显示传图按钮；图片存进名为 comment_image 的存储策略（默认落在 data/storage/comment_image，可在「存储策略」里改）" },
                     { key: "comment.barrage_enable", label: "弹幕模式", type: "boolean" },
-                    { key: "comment.random_praise", label: "随机精选评论", type: "boolean", hint: "本站前台未读取该键" },
+                    { key: "comment.random_praise", label: "随机精选评论", type: "boolean" },
                 ],
             },
             {
@@ -1374,7 +1425,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                 label: "文章多作者",
                 fields: [
                     { key: "article.multi_author.enable", label: "启用文章多作者", type: "boolean" },
-                    { key: "article.multi_author.need_review", label: "多作者需要审核", type: "boolean", hint: "本站前台未读取该键" },
+                    { key: "article.multi_author.need_review", label: "多作者需要审核", type: "boolean" },
                 ],
             },
         ],
@@ -1611,7 +1662,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
             "embedding",
             "向量",
         ],
-        desc: "AI 摘要 / 写作 / 播客 / 助手与检索增强（PRO）。凭据类字段只写不回显；未单独配置的模块沿用后端默认。",
+        desc: "AI 摘要 / 写作 / 播客 / 助手与检索增强（PRO）。凭据类字段只写不回显；未单独配置的模块沿用全局配置。",
         groups: [
             {
                 // 整块交给 src/components/admin/ai-settings-panel.tsx 渲染（官方 AI 设置面板的分模块布局）。
@@ -1652,7 +1703,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                         type: "ai",
                         aiModule: "summary",
                         aiControl: "model",
-                        hint: "可从列表选择，也可直接输入自定义模型名称",
+                        hint: "按服务商填写；切换服务商后会自动清空并给出示例",
                     },
                     {
                         key: "ai_summary_system_prompt",
@@ -1696,7 +1747,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                         type: "ai",
                         aiModule: "writing",
                         aiControl: "model",
-                        hint: "可从列表选择，也可直接输入自定义模型名称",
+                        hint: "按服务商填写；切换服务商后会自动清空并给出示例",
                     },
                     {
                         key: "ai_writing_max_tokens",
@@ -1959,23 +2010,27 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
         label: "其它开关",
         group: "高级功能",
         icon: SlidersHorizontal,
-        keywords: ["其它", "开关", "音乐播放器", "music", "社区问答", "烟花", "fireworks", "community_qa"],
-        desc: "零散的功能开关与文案：音乐播放器、社区问答、节庆烟花入口及其按钮/祝福文案。",
+        keywords: ["其它", "开关", "音乐胶囊", "播放器", "music", "烟花", "fireworks"],
+        desc: "零散的功能开关与文案：音乐胶囊、节庆烟花入口及其按钮/祝福文案。",
         groups: [
             {
                 id: "misc",
                 label: "其它",
                 fields: [
-                    { key: "music.player.enable", label: "启用音乐播放器功能", type: "boolean" },
-                    { key: "community_qa.enable", label: "启用社区问答", type: "boolean", hint: "本站前台未读取该键" },
-                    { key: "fireworks.enable", label: "启用节庆烟花入口", type: "boolean", hint: "本站前台未读取该键" },
-                    { key: "DISABLE_RIGHT_MENU", label: "隐藏右侧悬浮菜单", type: "boolean", hint: "本站前台用的是自己的悬浮按钮组，未读取该键" },
+                    { key: "music.player.enable", label: "启用音乐胶囊", type: "boolean" },
+                    {
+                        key: "community_qa.enable",
+                        label: "启用社区问答",
+                        type: "boolean",
+                        disabled: true,
+                    },
                 ],
             },
             {
-                id: "fireworks-text",
-                label: "节庆烟花文案",
+                id: "fireworks",
+                label: "节庆烟花",
                 fields: [
+                    { key: "fireworks.enable", label: "启用节庆烟花入口", type: "boolean" },
                     { key: "fireworks.button_text", label: "按钮文案", type: "text", placeholder: "节日快乐" },
                     { key: "fireworks.message", label: "祝福文案", type: "textarea", wide: true },
                 ],
@@ -2264,7 +2319,6 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                             { value: "grid", label: "网格" },
                             { value: "waterfall", label: "瀑布流" },
                         ],
-                        hint: "本站相册页目前固定用瀑布流，未读取该键",
                     },
                     { key: "album.about_link", label: "「关于」跳转", type: "text", placeholder: "留空用站点信息里的关于页链接" },
                     { key: "album.enable_comment", label: "显示评论区", type: "boolean" },
@@ -2284,9 +2338,9 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                 id: "album-misc",
                 label: "图片参数与接口",
                 fields: [
-                    { key: "album.default_big_param", label: "默认大图参数", type: "text", hint: "本站前台未读取该键" },
-                    { key: "album.default_thumb_param", label: "默认缩略图参数", type: "text", hint: "本站前台未读取该键" },
-                    { key: "album.api_url", label: "相册接口地址", type: "text", hint: "留空用站点接口；本站前台未读取该键" },
+                    { key: "album.default_big_param", label: "默认大图参数", type: "text" },
+                    { key: "album.default_thumb_param", label: "默认缩略图参数", type: "text" },
+                    { key: "album.api_url", label: "相册接口地址", type: "text", hint: "留空用站点接口" },
                 ],
             },
         ],
@@ -2429,7 +2483,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
         group: "页面显示",
         icon: Music,
         keywords: ["音乐", "music", "唱片", "vinyl", "音源", "meting", "播放器", "歌单", "歌词"],
-        desc: "音乐馆页面：唱片机 5 层图的图片地址、音源解析服务；播放器歌单那组本站前台未读取。",
+        desc: "音乐馆页面：唱片机 5 层图的图片地址、音源解析服务。",
         groups: [
             {
                 id: "vinyl",
@@ -2471,13 +2525,11 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                         key: "music.player.custom_playlist",
                         label: "自定义歌单",
                         type: "text",
-                        hint: "后端没有读取这个键（Go 侧只有定义、无使用点），本站前台也不读，填了不生效",
                     },
                     {
                         key: "music.capsule.custom_playlist",
                         label: "胶囊自定义歌单",
                         type: "text",
-                        hint: "同上：后端未接、本站未读，填了不生效",
                     },
                 ],
             },
@@ -2651,6 +2703,15 @@ function parseJson(value: unknown): unknown {
 }
 
 /** 把配置里的原始值归一成表单值 */
+/** 地址型下拉字段：把历史值规范成与选项一致的形式（去尾斜杠、去 /avatar） */
+function normalizeSelectUrl(field: SettingsField, value: string): string {
+    if (field.key !== "GRAVATAR_URL") return value;
+    return value
+        .trim()
+        .replace(/\/+$/, "")
+        .replace(/\/avatar$/i, "");
+}
+
 export function toFormValue(field: SettingsField, raw: unknown): SettingsFormValue {
     if (field.type === "boolean") {
         if (typeof raw === "boolean") return raw;
@@ -2686,7 +2747,7 @@ export function toFormValue(field: SettingsField, raw: unknown): SettingsFormVal
         return parsed as AppearanceTokenBranches;
     }
     if (raw === undefined || raw === null) return "";
-    return String(raw);
+    return normalizeSelectUrl(field, String(raw));
 }
 
 /** 构造表单基线（key → 表单值） */
@@ -2700,6 +2761,8 @@ export function buildSettingsBaseline(config: unknown): Record<string, SettingsF
 
 /** 判断某个字段是否有改动 */
 export function isFieldDirty(field: SettingsField, draft: Record<string, SettingsFormValue>, baseline: Record<string, SettingsFormValue>): boolean {
+    // 只读占位项永远不算改动：既不点亮「未保存」，也不会被写回后端
+    if (field.disabled) return false;
     const current = draft[field.key];
     // 敏感项特例：基线是后端回显的掩码（********）时，
     //   - 草稿还是掩码 → 没改（相等，下面照常判）

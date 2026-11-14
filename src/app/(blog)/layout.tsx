@@ -10,7 +10,8 @@ import Header from "@/components/header";
 import { ConfirmProvider } from "@/components/confirm-provider";
 import { FloatingActions } from "@/components/(blog)/floating-actions";
 import { AiPodcastButton } from "@/components/(blog)/ai-podcast-button";
-import { MiniMusicPlayer } from "@/components/(blog)/mini-music-player";
+import { MusicCapsule } from "@/components/(blog)/music-capsule";
+import { Fireworks } from "@/components/(blog)/fireworks";
 import { AiAssistantLauncher } from "@/components/(blog)/ai-assistant-launcher";
 import { AuthExpiredNotifier } from "@/components/(blog)/auth-expired-notifier";
 import { FooterBadges } from "@/components/(blog)/footer-badges";
@@ -22,6 +23,7 @@ import { FooterSocialBar } from "@/components/(blog)/footer-social-bar";
 import { GravatarProvider } from "@/components/(blog)/gravatar-provider";
 import { LiveRefresher } from "@/components/(blog)/live-refresher";
 import { OneImageHero } from "@/components/(blog)/one-image-hero";
+import { ExternalLinkInterceptor } from "@/components/(blog)/external-link-interceptor";
 import { ScrollToTop } from "@/components/(blog)/scroll-to-top";
 import { SidebarCollapseProvider } from "@/components/(blog)/sidebar-collapse-provider";
 // import Aside from "@/components/aside";
@@ -148,6 +150,9 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
             <SidebarCollapseProvider defaultCollapsedPaths={SIDEBAR_DEFAULT_COLLAPSED_PATHS}>
               {/* flex 列布局 + min-h-dvh：内容不足一屏时 footer 吸附在视口底部 */}
               <div id="CIRAOS" className="flex min-h-dvh flex-col">
+                {/* 外链提示页拦截器：站点设置 ENABLE_EXTERNAL_LINK_WARNING 开启时才装 */}
+                <ExternalLinkInterceptor enabled={config?.ENABLE_EXTERNAL_LINK_WARNING === true} />
+
                 <Header {...header} />
 
                 {/* 站点公告条（SITE_ANNOUNCEMENT）：导航正下方的通栏条，位于首屏大图/正文之前 */}
@@ -248,8 +253,14 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
                   chatSuggestions={config?.ai_assistant?.chat_suggestions}
                   searchSuggestions={config?.ai_assistant?.search_suggestions}
                 />
-                {/* 迷你音乐播放器：歌单来自后端 /public/music/playlist（后台 music.player.*） */}
-                <MiniMusicPlayer embedded />
+                {/* 节庆烟花：后台 fireworks.enable / button_text / message（放在播放器上面） */}
+                <Fireworks
+                  enabled={config?.fireworks?.enable}
+                  buttonText={config?.fireworks?.button_text}
+                  message={config?.fireworks?.message}
+                />
+                {/* 音乐胶囊：歌单来自后端 /public/music/playlist（后台 music.player.*） */}
+                <MusicCapsule embedded />
               </div>
 
             </SidebarCollapseProvider>

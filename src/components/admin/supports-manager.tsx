@@ -637,7 +637,7 @@ export function SupportsManager() {
                     onMouseDown={() => setDetail(null)}
                 >
                     <div
-                        className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-xl border bg-card p-4 shadow-xl"
+                        className="flex max-h-[85vh] w-full max-w-2xl flex-col soft-surface p-4 shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
                         <div className="mb-3 flex items-start justify-between gap-3">
@@ -687,7 +687,7 @@ export function SupportsManager() {
                                     return (
                                         <div
                                             key={m.id}
-                                            className={`mb-2 rounded-lg border bg-card px-3 py-2 text-xs last:mb-0 ${
+                                            className={`mb-2 soft-surface px-3 py-2 text-xs last:mb-0 ${
                                                 m.sender_type === "ADMIN" ? "ml-6" : "mr-6"
                                             }`}
                                         >

@@ -138,7 +138,7 @@ export function LinkHealthCheckButton() {
                     onMouseDown={() => setConfirmOpen(false)}
                 >
                     <div
-                        className="w-full max-w-sm rounded-xl border bg-card p-5 shadow-xl"
+                        className="w-full max-w-sm soft-surface p-5 shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
                         <div className="mb-4 text-base font-semibold">健康检查确认</div>

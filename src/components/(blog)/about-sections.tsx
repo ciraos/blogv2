@@ -27,7 +27,7 @@ export function AboutStatsGrid({
     return (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {stats.map((item) => (
-                <div key={item.label} className="rounded-xl border bg-card p-4 text-center shadow-sm">
+                <div key={item.label} className="soft-surface p-4 text-center">
                     <div className="text-2xl font-semibold tabular-nums text-foreground">
                         {item.value}
                         <span className="ml-1 text-xs font-normal text-muted-foreground">{item.unit}</span>
@@ -61,7 +61,7 @@ export function AboutSiteMap({ items = SITE_MAP }: { items?: typeof SITE_MAP }) 
                 <Link
                     key={href}
                     href={href}
-                    className="group flex items-center gap-3 rounded-xl border bg-card p-3 shadow-sm transition-colors hover:border-primary/50"
+                    className="group flex items-center gap-3 soft-surface p-3 transition-colors hover:border-primary/50"
                 >
                     <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                         <Icon className="size-4" />
@@ -139,7 +139,7 @@ export function AboutEquipmentMini({ items, groupTitle }: { items: EquipmentMini
             {groupTitle && <p className="text-xs text-muted-foreground">{groupTitle}</p>}
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 {items.map((item) => (
-                    <div key={item.name} className="flex items-center gap-2 rounded-xl border bg-card p-3 shadow-sm">
+                    <div key={item.name} className="flex items-center gap-2 soft-surface p-3">
                         {item.image ? (
                             // eslint-disable-next-line @next/next/no-img-element -- 装备图来自后端静态目录/外链
                             <img src={item.image} alt="" className="size-8 shrink-0 rounded-md object-cover" />

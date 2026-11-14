@@ -161,7 +161,7 @@ export function SearchDialog() {
 
             <DialogPrimitive.Portal>
                 <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
-                <DialogPrimitive.Content className="fixed left-1/2 top-[15vh] z-50 w-[min(94vw,32rem)] -translate-x-1/2 rounded-xl border bg-card shadow-2xl data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
+                <DialogPrimitive.Content className="fixed left-1/2 top-[15vh] z-50 w-[min(94vw,32rem)] -translate-x-1/2 soft-surface shadow-2xl data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
                     {/* 顶部：收缩式输入框（聚焦时高亮描边） */}
                     <div className="flex items-center gap-2 border-b px-4 py-3">
                         <Search className="size-4 shrink-0 text-muted-foreground" />

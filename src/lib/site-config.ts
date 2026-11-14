@@ -1,6 +1,6 @@
 import { cache } from "react";
 
-import { getPublicSiteConfigApi } from "@/lib/api";
+import { getPublicSiteConfigApi, getPublicSiteConfigFreshApi } from "@/lib/api";
 import type { SiteConfig } from "@/types/site-config";
 
 
@@ -54,6 +54,20 @@ export const getSiteConfigs = cache(async (): Promise<SiteConfig | undefined> =>
  * 给那些「没有配置就没法渲染」的页面用（文章页的作者兜底链、关于页的整页内容等）：
  * 行为与原来直接调 getPublicSiteConfigApi 一致，但和 layout/侧边栏共享同一次 fetch。
  */
+/**
+ * 站点配置 · 实时读（无数据缓存）。只给后台「系统设置」这类保存后要立刻回显的页面用，
+ * 前台页面请继续用 getSiteConfigs()（缓存 60 秒 + tag 失效）。
+ */
+export const getFreshSiteConfigs = cache(async (): Promise<SiteConfig | undefined> => {
+    try {
+        return await getPublicSiteConfigFreshApi();
+    } catch (error) {
+        if (isDynamicServerUsage(error)) throw error;
+        console.error("[site-config] 实时读取站点配置失败：", error);
+        return undefined;
+    }
+});
+
 export async function requireSiteConfigs(): Promise<SiteConfig> {
     const config = await getSiteConfigs();
     if (!config) throw new Error("获取站点配置失败");

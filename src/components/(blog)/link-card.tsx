@@ -39,7 +39,7 @@ export function LinkCard({ link }: { link: FriendLink }) {
             target="_blank"
             rel="noopener noreferrer nofollow"
             title={isLost ? "该友链站点已无法访问（已失联）" : undefined}
-            className={`group relative flex items-center gap-3 rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md${
+            className={`group relative flex items-center gap-3 soft-surface p-4 transition-all hover:-translate-y-0.5 hover:border-primary soft-surface-hover${
                 isLost ? " opacity-60 saturate-50 hover:opacity-100 hover:saturate-100" : ""
             }`}
         >

@@ -52,7 +52,7 @@ export function ChangelogTimeline({ entries }: { entries: ChangelogListItem[] })
                         className={`absolute left-0 top-6 size-3.5 rounded-full border-2 border-background ${entry.badge ? "bg-primary" : "bg-border"}`}
                     />
 
-                    <article className="rounded-lg border bg-card p-5 [overflow-wrap:anywhere] break-words">
+                    <article className="soft-surface p-5 [overflow-wrap:anywhere] break-words">
                         <div className="border-b pb-3">
                             <div className="flex flex-wrap items-center gap-2">
                                 <h2 className="text-xl font-bold tracking-tight">{entry.version}</h2>

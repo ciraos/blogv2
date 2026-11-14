@@ -100,7 +100,7 @@ export function EssayWaterfall({
 
     return (
         <>
-            <div ref={containerRef} className="relative w-full">
+            <div ref={containerRef} data-stagger-fade className="relative w-full">
                 {essays.map((essay, i) => (
                     <div
                         key={essay.id}

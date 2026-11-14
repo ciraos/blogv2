@@ -46,7 +46,7 @@ function EquipmentCard({ item }: { item: EquipmentItem }) {
     const initial = (item.name || "?").trim().charAt(0).toUpperCase();
 
     return (
-        <article className="relative flex min-h-[400px] flex-col overflow-hidden rounded-xl border border-border/60 bg-card transition-colors hover:border-primary/40">
+        <article className="relative flex min-h-[400px] flex-col overflow-hidden soft-surface transition-colors hover:border-primary/40">
             {/* 图区：固定 200px 高；没有配图时用名称首字母占位（比留一块空白更像"装备卡"） */}
             <div className="flex h-[200px] shrink-0 items-center justify-center overflow-hidden border-b bg-muted/40">
                 {image ? (

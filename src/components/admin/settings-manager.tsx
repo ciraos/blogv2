@@ -53,7 +53,7 @@ import { PaymentSettingsPanel } from "@/components/admin/payment-settings-panel"
 import { SettingsCodeField } from "@/components/admin/settings-code-field";
 import { TestEmailButton } from "@/components/admin/test-email-button";
 import { TokenColorEditor } from "@/components/admin/token-color-editor";
-import { updateAdminSettingsApi, uploadAdminImageApi } from "@/lib/api";
+import { getAdminSettingsByKeysApi, updateAdminSettingsApi, uploadAdminImageApi } from "@/lib/api";
 import { broadcastSiteConfigUpdate } from "@/lib/site-config-broadcast";
 import { UnverifiableHint } from "@/components/admin/unverifiable-hint";
 import { uploadFileToFileManager } from "@/lib/admin-file-upload";
@@ -218,6 +218,27 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
             toast.success(`已保存 ${Object.keys(payload).length} 项设置`);
             setBaseline(draft);
             router.refresh();
+
+            // 回读本次改动的键，覆盖草稿与基线：公开 site-config 有 60 秒缓存，
+            // 保存后立刻重渲染仍可能拿到旧配置，面板就会显示成「没保存」。
+            // get-by-keys 是管理端实时读，拿到的就是后端当前值。
+            const savedKeys = Object.keys(payload);
+            try {
+                const fresh = await getAdminSettingsByKeysApi(savedKeys);
+                const values: Draft = {};
+                for (const field of ALL_SETTINGS_FIELDS) {
+                    if (!savedKeys.includes(field.key)) continue;
+                    const raw = readConfigPath(fresh, field.key);
+                    if (raw === undefined || raw === null) continue;
+                    values[field.key] = toFormValue(field, raw);
+                }
+                if (Object.keys(values).length > 0) {
+                    setDraft((prev) => ({ ...prev, ...values }));
+                    setBaseline((prev) => ({ ...prev, ...values }));
+                }
+            } catch {
+                // 回读失败不影响「已保存」的事实：下次刷新仍会拿到后端值
+            }
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "保存失败");
         } finally {
@@ -378,7 +399,7 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
                 className="h-9 rounded-md border-border/50 bg-muted/40 pl-8 text-[13px] shadow-none"
             />
             {search.trim() !== "" && (
-                <div className="absolute inset-x-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm dark:shadow-lg">
+                <div className="absolute inset-x-0 top-full z-50 mt-1.5 overflow-hidden soft-surface dark:shadow-lg">
                     {searchHits.length > 0 ? (
                         <div className="max-h-80 overflow-y-auto p-1">
                             {searchHits.map((hit) => (
@@ -417,7 +438,7 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
                 禁止压缩后容器按内容撑高，滚动重新交回 admin layout 的 main。
                 这里用 overflow-clip 而不是 overflow-hidden：clip 同样按圆角裁剪，但**不构成滚动容器**，
                 所以左侧导航的 sticky 仍以 main 为参照系（用 hidden 时以本容器为参照，而它不滚动 → 吸顶失效）。 */}
-            <div className="flex shrink-0 overflow-clip rounded-xl border border-border/60 bg-card">
+            <div className="flex shrink-0 overflow-clip soft-surface">
                 {/* ===== 左侧导航栏（桌面端）===== */}
                 <aside className="hidden w-60 shrink-0 border-r border-border/60 bg-muted/30 lg:block">
                     {/* 外层负责铺满整列（背景/分隔线连续），内层 sticky 跟随滚动 */}
@@ -471,7 +492,7 @@ export function SettingsManager({ config }: { config: SiteConfig }) {
                         </div>
 
                         {/* 分组卡片 */}
-                        <div className="space-y-5">
+                        <div data-stagger className="space-y-5">
                             {activeSection.groups.map((group) => (
                                 <SettingsGroupCard
                                     key={group.id}
@@ -569,7 +590,7 @@ function SettingsGroupCard({
     const [open, setOpen] = useState(true);
 
     return (
-        <section className="rounded-xl border border-border/60 bg-card p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:shadow-none">
+        <section className="soft-surface p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:shadow-none">
             <header className={cn("flex items-center gap-2", open && "mb-4 border-b border-border/40 pb-3")}>
                 <button
                     type="button"
@@ -680,7 +701,13 @@ function FieldControl({
         return (
             // 开关占整行：文字在左、勾选框在右，说明文字挂在标签下方 —— 整行读起来像一条设置项，
             // 而不是一个孤立的复选框（半宽格子里原来就是这样，和相邻输入框对不齐）。
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-sm">
+            // field.disabled：只读展示（后端暂不支持该能力），不可点、不参与保存。
+            <label
+                className={cn(
+                    "flex min-h-11 items-center gap-3 rounded-lg border px-3 py-2 text-sm",
+                    field.disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                )}
+            >
                 <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1.5">
                         <span className="truncate">{field.label}</span>
@@ -694,6 +721,7 @@ function FieldControl({
                 </span>
                 <Checkbox
                     checked={value === true}
+                    disabled={field.disabled}
                     onCheckedChange={(checked) => onChange(checked === true)}
                     aria-label={field.label}
                 />

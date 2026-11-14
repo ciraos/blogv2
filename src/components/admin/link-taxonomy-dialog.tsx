@@ -201,7 +201,7 @@ export function LinkTaxonomyDialog() {
             </DialogPrimitive.Trigger>
             <DialogPrimitive.Portal>
                 <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
-                <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[min(94vw,52rem)] max-h-[86vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border bg-card p-5 shadow-2xl data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
+                <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[min(94vw,52rem)] max-h-[86vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto soft-surface p-5 shadow-2xl data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
                     <DialogPrimitive.Title className="text-base font-semibold">分类与标签</DialogPrimitive.Title>
                     <DialogPrimitive.Description className="mt-1 text-xs text-muted-foreground">
                         分类决定前台友链页的分区（style 选 card / list）；标签用于给单个友链打标记。改动后前台 /link 页与下方表格会同步刷新。

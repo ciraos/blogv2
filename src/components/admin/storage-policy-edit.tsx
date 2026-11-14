@@ -526,7 +526,7 @@ export function StoragePolicyEditPage({ policyId }: { policyId: string }) {
                     aria-label="确认保存存储策略"
                 >
                     <div
-                        className="w-full max-w-xl rounded-xl border bg-card p-5 shadow-xl"
+                        className="w-full max-w-xl soft-surface p-5 shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
                         <h3 className="text-base font-semibold">保存存储策略</h3>

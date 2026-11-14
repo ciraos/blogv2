@@ -139,7 +139,7 @@ function Modal({
         >
             <div
                 className={cn(
-                    "flex max-h-[86vh] w-full flex-col rounded-xl border bg-card p-4 shadow-xl",
+                    "flex max-h-[86vh] w-full flex-col soft-surface p-4 shadow-xl",
                     wide ? "max-w-2xl" : "max-w-xl"
                 )}
                 onMouseDown={(e) => e.stopPropagation()}

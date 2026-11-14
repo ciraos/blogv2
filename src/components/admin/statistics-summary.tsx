@@ -21,7 +21,7 @@ interface RankItem {
  * **高度由内容决定**（不设固定高度、不做卡内滚动）——「一目了然」看全排行。
  * 卡片在普通 CSS Grid 里按行铺排（左→右、上→下），单元格不会互相重叠。
  */
-const cardCls = "flex flex-col rounded-lg border bg-card p-4 transition-colors hover:border-foreground/15";
+const cardCls = "flex flex-col soft-surface p-4 transition-colors hover:border-foreground/15";
 
 /** 统计卡片容器：CSS 多列瀑布流（columns-*）——卡片高度由内容决定，列内紧密排列、
  *  **绝不会重叠**，也不会有「行内最高的卡把其它卡顶出空洞」的空隙。
@@ -277,12 +277,12 @@ function Skeleton() {
         <div aria-busy="true" aria-label="统计概览加载中">
             <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="h-[104px] animate-pulse rounded-xl border bg-card" />
+                    <div key={i} className="h-[104px] animate-pulse soft-surface" />
                 ))}
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="h-[180px] animate-pulse rounded-xl border bg-card" />
+                    <div key={i} className="h-[180px] animate-pulse soft-surface" />
                 ))}
             </div>
         </div>
@@ -428,7 +428,7 @@ export function StatisticsSummary() {
                 卡片高度完全由内容决定、列内紧密排列、**绝不重叠**，也没有行内空洞。
                 唯一间距来源是子项 mb-3（12px）。阅读顺序为**列优先**（先填满第一列）。
                 访问日志卡在最末（跨 2 列，位于热门页面右侧） */}
-            <div className={cardGridCls}>
+            <div data-stagger className={cardGridCls}>
                 {visibleTrends.map((t) => (
                     <TrendCard key={t.mode} data={t.data} mode={t.mode} wide={t.mode === "daily"} />
                 ))}

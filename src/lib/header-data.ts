@@ -85,6 +85,10 @@ export async function getHeaderData(
             siteinfo: config?.sidebar?.siteinfo,
             siteCreatedAt,
             oneImage: config?.page?.one_image,
+            // 页头附加项：显示时钟（header.nav.clock）
+            showClock: config?.header?.nav?.clock === true,
+            // 页头附加项：显示开往 travelling 入口（header.nav.travelling）
+            showTravelling: config?.header?.nav?.travelling === true,
         },
         authExpired,
     };

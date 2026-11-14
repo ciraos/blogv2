@@ -1,6 +1,6 @@
 ﻿"use client";
-import type { ReactNode } from "react";
-import { RotateCcw, Search, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -50,15 +50,18 @@ export function AdminFilterBar({
     children,
     className,
 }: AdminFilterBarProps) {
+    // 移动端：下拉组默认折叠，只留「搜索 + 查询/重置/计数」一行，把高度还给列表
+    const [filtersOpen, setFiltersOpen] = useState(false);
+
     const rowClass = cn(
-        "flex shrink-0 flex-col gap-2 border-b p-3 sm:flex-row sm:flex-wrap sm:items-center",
+        "flex shrink-0 flex-wrap items-center gap-2 border-b p-3 sm:flex-nowrap",
         className
     );
 
     const body = (
         <>
             {search && (
-                <div className={cn("relative w-full min-w-0 shrink-0 sm:w-56", search.className)}>
+                <div className={cn("relative w-full min-w-0 shrink-0 flex-1 sm:w-56 sm:flex-none", search.className)}>
                     <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                     <Input
                         value={search.value}
@@ -87,11 +90,31 @@ export function AdminFilterBar({
                 </div>
             )}
 
-            {/* 下拉在窄屏两两一行（≥sm 用 contents 直接并入外层那一行，不再多包一层） */}
-            {children && <div className="grid grid-cols-2 gap-2 sm:contents">{children}</div>}
+            {/* 下拉：移动端默认折叠（点「筛选」展开），≥sm 用 contents 直接并入外层一行 */}
+            {children && (
+                <>
+                    <button
+                        type="button"
+                        onClick={() => setFiltersOpen((v) => !v)}
+                        aria-expanded={filtersOpen}
+                        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border px-2 text-xs text-muted-foreground transition-colors hover:text-foreground sm:hidden"
+                    >
+                        <SlidersHorizontal className="size-3.5" />
+                        筛选
+                    </button>
+                    <div
+                        className={cn(
+                            "grid w-full grid-cols-2 gap-2 sm:contents",
+                            !filtersOpen && "hidden"
+                        )}
+                    >
+                        {children}
+                    </div>
+                </>
+            )}
 
             {onSubmit && (
-                <Button type="submit" size="sm" className="h-8 shrink-0 px-3 text-sm">
+                <Button type="submit" size="sm" className="h-8 w-auto shrink-0 self-start px-3 text-sm sm:self-auto">
                     查询
                 </Button>
             )}

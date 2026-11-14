@@ -388,7 +388,7 @@ export function AlbumManager() {
                                         <div
                                             key={album.id}
                                             className={cn(
-                                                "group relative overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md",
+                                                "group relative overflow-hidden soft-surface transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md",
                                                 checked && "border-primary ring-1 ring-primary/30"
                                             )}
                                         >
@@ -724,7 +724,7 @@ function AlbumEditorDialog({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
             <div
-                className="flex max-h-[88vh] w-full max-w-xl flex-col rounded-xl border bg-card p-4 shadow-xl"
+                className="flex max-h-[88vh] w-full max-w-xl flex-col soft-surface p-4 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <div className="mb-3 flex items-center justify-between gap-2">
@@ -887,7 +887,7 @@ function AlbumImportDialog({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
             <div
-                className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-xl border bg-card p-4 shadow-xl"
+                className="flex max-h-[88vh] w-full max-w-2xl flex-col soft-surface p-4 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <div className="mb-3 flex items-center justify-between gap-2">
@@ -1010,7 +1010,7 @@ function CategoryDialog({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
             <div
-                className="w-full max-w-sm rounded-xl border bg-card p-4 shadow-xl"
+                className="w-full max-w-sm soft-surface p-4 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <h3 className="mb-3 text-base font-semibold">{isNew ? "新建相册分类" : `编辑分类 #${category.id}`}</h3>
@@ -1145,7 +1145,7 @@ function AlbumFileImportDialog({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
             <div
-                className="flex max-h-[88vh] w-full max-w-xl flex-col rounded-xl border bg-card p-4 shadow-xl"
+                className="flex max-h-[88vh] w-full max-w-xl flex-col soft-surface p-4 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <div className="mb-3 flex items-center justify-between gap-2">
@@ -1331,7 +1331,7 @@ function AlbumExportDialog({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
             <div
-                className="w-full max-w-md rounded-xl border bg-card p-4 shadow-xl"
+                className="w-full max-w-md soft-surface p-4 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <div className="mb-3 flex items-center justify-between gap-2">

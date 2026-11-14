@@ -174,7 +174,7 @@ function StatusCard({
     rows: { label: string; value: string }[];
 }) {
     return (
-        <div className="flex flex-col gap-3 rounded-xl border bg-card p-4">
+        <div className="flex flex-col gap-3 soft-surface p-4">
             <div className="flex items-start justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
@@ -555,7 +555,7 @@ export function CacheManager() {
                         role="dialog"
                         aria-modal="true"
                         aria-label={pending.title}
-                        className="w-full max-w-md rounded-xl border bg-card p-4 shadow-xl"
+                        className="w-full max-w-md soft-surface p-4 shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-start gap-3">

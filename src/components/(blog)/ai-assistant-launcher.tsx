@@ -73,7 +73,7 @@ export function AiAssistantLauncher({
                     role="dialog"
                     aria-modal="false"
                     aria-label={assistantName}
-                    className="flex max-h-[70vh] w-[22rem] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-xl border bg-card shadow-xl"
+                    className="flex max-h-[70vh] w-[22rem] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden soft-surface shadow-xl"
                 >
                     <div className="flex items-center gap-2 border-b px-4 py-3">
                         <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">

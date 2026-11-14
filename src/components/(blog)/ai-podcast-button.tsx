@@ -73,7 +73,7 @@ export function AiPodcastButton({
                     onMouseDown={() => setOpen(false)}
                 >
                     <div
-                        className="w-full max-w-md rounded-xl border bg-card p-4 shadow-xl"
+                        className="w-full max-w-md soft-surface p-4 shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-start justify-between gap-3">

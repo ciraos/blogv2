@@ -603,8 +603,12 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
             {/* 底部：总数 + 每页条数 + 分页跳转（固定在卡片底部，不随表格滚动） */}
             <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1">
-                    <div>
-                        共 <span className="font-medium text-foreground">{total}</span> 条友链
+                    <div className="whitespace-nowrap">
+                        {/* 移动端只留「N 条」，省下「共 / 友链」两个词给页码腾地方 */}
+                        <span className="hidden sm:inline">共 </span>
+                        <span className="font-medium text-foreground">{total}</span>
+                        <span className="hidden sm:inline"> 条友链</span>
+                        <span className="sm:hidden"> 条</span>
                         {selected.size > 0 && (
                             <span className="ml-2 text-primary">已选 {selected.size} 条</span>
                         )}
@@ -626,10 +630,10 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                             批量删除{selected.size > 0 ? `（${selected.size}）` : ""}
                         </Button>
                     )}
+                    {/* 每页条数 → 页码 → 页码跳转，顺着排在一行里（窄屏自动换行） */}
                     <div className="flex flex-wrap items-center gap-3">
-                        {/* 每页条数 */}
-                        <div className="flex items-center gap-1.5">
-                            每页
+                        <div className="flex items-center gap-1.5 whitespace-nowrap">
+                            <span className="hidden sm:inline">每页</span>
                             <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
                                 <SelectTrigger className="h-7 w-max text-xs">
                                     <SelectValue />
@@ -643,29 +647,25 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                                 </SelectContent>
                             </Select>
                         </div>
-                    </div>
-                </div>
-                {/* 页码块 + 上一页 / 下一页，再跟上页码跳转。
-                    窄屏（<640px）只留页码块：「上一页/下一页」由它自带的左右箭头承担，
-                    页码输入框 + 跳转按钮也一并藏起来（见 pagination-controls.tsx 的同款说明）。 */}
-                <div className="flex flex-wrap items-center gap-1">
-                    <PaginationControls
-                        page={page}
-                        totalPages={totalPages}
-                        onPageChange={goPage}
-                    />
-                    <div className="hidden items-center gap-1 sm:flex">
-                        <Input
-                            value={jumpPage}
-                            onChange={(e) => setJumpPage(e.target.value.replace(/\D/g, ""))}
-                            onKeyDown={(e) => { if (e.key === "Enter") jump(); }}
-                            placeholder="页码"
-                            className="h-7 w-14 text-xs"
-                            aria-label="跳转到页码"
+                        {/* 页码块：窄屏只留数字 + 自带左右箭头，页码输入框与跳转按钮仅 ≥sm 显示 */}
+                        <PaginationControls
+                            page={page}
+                            totalPages={totalPages}
+                            onPageChange={goPage}
                         />
-                        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={jump}>
-                            跳转
-                        </Button>
+                        <div className="hidden items-center gap-1 sm:flex">
+                            <Input
+                                value={jumpPage}
+                                onChange={(e) => setJumpPage(e.target.value.replace(/\D/g, ""))}
+                                onKeyDown={(e) => { if (e.key === "Enter") jump(); }}
+                                placeholder="页码"
+                                className="h-7 w-14 text-xs"
+                                aria-label="跳转到页码"
+                            />
+                            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={jump}>
+                                跳转
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -677,7 +677,7 @@ export function FriendsTable({ filters }: { filters: FriendsFilterState }) {
                 onMouseDown={() => setEditing(null)}
             >
                 <div
-                    className="w-full max-w-xl rounded-xl border bg-card p-5 shadow-xl"
+                    className="w-full max-w-xl soft-surface p-5 shadow-xl"
                     onMouseDown={(e) => e.stopPropagation()}
                 >
                     <div className="mb-4 flex items-center justify-between">

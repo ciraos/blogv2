@@ -753,7 +753,7 @@ export function EssaysManager() {
                     onMouseDown={closeDialog}
                 >
                     <div
-                        className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-xl border bg-card shadow-xl"
+                        className="flex max-h-[88vh] w-full max-w-2xl flex-col soft-surface shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
                         {/* 头部：图标 + 标题 + 说明 */}
@@ -1002,7 +1002,7 @@ export function EssaysManager() {
                     onMouseDown={() => setPreview(null)}
                 >
                     <div
-                        className="w-full max-w-xl rounded-xl border bg-card p-5 shadow-xl"
+                        className="w-full max-w-xl soft-surface p-5 shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
                         <div className="mb-4 flex items-center justify-between">
@@ -1056,7 +1056,7 @@ export function EssaysManager() {
                     }}
                 >
                     <div
-                        className="w-full max-w-xl rounded-xl border bg-card p-4 shadow-xl"
+                        className="w-full max-w-xl soft-surface p-4 shadow-xl"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
                         <div className="mb-3 flex items-center justify-between">

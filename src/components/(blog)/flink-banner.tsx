@@ -122,7 +122,7 @@ export function FlinkBanner({
     }
 
     return (
-        <div className="relative flex min-h-[26rem] flex-col overflow-hidden rounded-xl border bg-card shadow-sm md:min-h-[30rem]">
+        <div className="relative flex min-h-[26rem] flex-col overflow-hidden soft-surface md:min-h-[30rem]">
             {/* 标题：左上 */}
             <div className="absolute left-6 top-6 z-10 md:left-10 md:top-8">
                 <p className="mb-2 ml-0.5 text-xs text-muted-foreground">{label}</p>

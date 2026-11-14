@@ -58,7 +58,7 @@ export function LinkPond({
             </div>
 
             {/* 内容：一行文字（来自友链 XX 的文章：title，可点击跳原文） */}
-            <div className="mt-2 rounded-xl border bg-card px-5 py-4 text-sm leading-relaxed shadow-sm">
+            <div className="mt-2 soft-surface px-5 py-4 text-sm leading-relaxed">
                 {post ? (
                     <p>
                         {prefix}

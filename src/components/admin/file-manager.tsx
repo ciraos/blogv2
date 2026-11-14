@@ -351,7 +351,7 @@ function ImagePreviewDialog({
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 {failed ? (
-                    <div className="flex max-w-sm flex-col items-center gap-2 rounded-xl border bg-card px-6 py-5 text-center">
+                    <div className="flex max-w-sm flex-col items-center gap-2 soft-surface px-6 py-5 text-center">
                         <ImageOff className="size-6 text-destructive" />
                         <p className="text-sm font-medium">图片加载失败</p>
                         <p className="text-xs text-muted-foreground">
@@ -987,7 +987,7 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
             <div className="flex min-h-10 shrink-0 flex-wrap items-center justify-between gap-2 border-b p-3">
                 <div className="flex flex-wrap items-center gap-2">
                     {/* 新建 / 重命名 / 删除 / 移动 / 复制：胶囊按钮组 */}
-                    <div className="flex items-center overflow-hidden rounded-xl border bg-card shadow-sm">
+                    <div className="flex items-center overflow-hidden soft-surface">
                         <button
                             type="button"
                             title="新建文件夹"
@@ -1180,7 +1180,7 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
                         <RefreshCw className={cn("size-4", loading && "animate-spin")} />
                     </Button>
 
-                    <div className="flex items-center overflow-hidden rounded-xl border bg-card shadow-sm">
+                    <div className="flex items-center overflow-hidden soft-surface">
                         <button
                             type="button"
                             aria-label="网格视图"
@@ -1234,7 +1234,7 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
                         文本用「已传 x / 共 y 片」，比百分比更贴近后端的分片语义；取消按钮直接 abort + 删会话。 */}
                     {uploadFile && (
                         <div
-                            className="flex min-w-0 items-center gap-2 rounded-xl border bg-card px-2.5 py-1.5 text-xs shadow-sm"
+                            className="flex min-w-0 items-center gap-2 soft-surface px-2.5 py-1.5 text-xs"
                             aria-live="polite"
                         >
                             <Loader2 className="size-3.5 shrink-0 animate-spin text-primary" />
@@ -1693,7 +1693,7 @@ function PromptDialog({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onCancel}>
             <div
-                className="w-full max-w-sm rounded-xl border bg-card p-5 shadow-xl"
+                className="w-full max-w-sm soft-surface p-5 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <h3 className="mb-3 text-base font-semibold">{title}</h3>
@@ -1776,7 +1776,7 @@ function FolderPickerDialog({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onCancel}>
             <div
-                className="flex max-h-[80vh] w-full max-w-md flex-col rounded-xl border bg-card p-5 shadow-xl"
+                className="flex max-h-[80vh] w-full max-w-md flex-col soft-surface p-5 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <h3 className="mb-1 text-base font-semibold">{mode === "move" ? "移动到" : "复制到"}</h3>

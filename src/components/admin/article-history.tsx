@@ -282,7 +282,7 @@ export function ArticleHistory({ articleId }: { articleId: string }) {
 
             {/* 回滚确认条 */}
             {restoreTarget && (
-                <div className="fixed inset-x-0 bottom-4 z-[70] mx-auto w-[min(680px,calc(100vw-2rem))] rounded-xl border bg-card p-3 shadow-lg">
+                <div className="fixed inset-x-0 bottom-4 z-[70] mx-auto w-[min(680px,calc(100vw-2rem))] soft-surface p-3 shadow-lg">
                     <p className="text-sm">
                         把文章回滚到 <span className="font-semibold text-primary">v{restoreTarget.version}</span>？
                         当前内容会被该版本覆盖（旧内容仍保留为历史版本，可再回滚回来）。

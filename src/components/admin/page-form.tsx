@@ -101,7 +101,7 @@ function emptyForm(): FormState {
 function SettingCard({ title, children }: { title: string; children: React.ReactNode }) {
     const [open, setOpen] = useState(true);
     return (
-        <section className="rounded-lg border bg-card">
+        <section className="soft-surface">
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}

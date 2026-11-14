@@ -193,7 +193,7 @@ export function AIWritingDialog({
             onMouseDown={generating ? undefined : close}
         >
             <div
-                className="flex max-h-[86vh] w-full max-w-3xl flex-col rounded-xl border bg-card p-4 shadow-xl"
+                className="flex max-h-[86vh] w-full max-w-3xl flex-col soft-surface p-4 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <div className="mb-3 flex items-start justify-between gap-3">

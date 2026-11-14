@@ -153,7 +153,7 @@ export function AlbumWaterfall({ images, config }: { images: Album[]; config: Al
                         className="left-0 top-0"
                     >
                         {/* 图片 + 相册名同属一张卡片：整体 bg-card 底色 + 描边/阴影（没标题时就是纯图片卡片） */}
-                        <figure className="group block overflow-hidden rounded-lg border border-border/60 bg-card shadow-sm transition-shadow hover:shadow-md">
+                        <figure className="group block overflow-hidden soft-surface transition-shadow hover:shadow-md">
                             <div className="overflow-hidden">
                                 {src ? (
                                     // eslint-disable-next-line @next/next/no-img-element

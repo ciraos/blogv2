@@ -57,6 +57,16 @@ const ROW_GRID =
     "grid-cols-[28px_minmax(0,1fr)_190px_100px_130px_130px_96px]";
 
 /** 时间字符串 → 两行展示（日期 / 时分） */
+/** RSS 摘要里常带 HTML（<blockquote>、<img>、属性串），列表里只留纯文本预览 */
+function summaryText(raw?: string, fallback?: string): string {
+    const text = (raw ?? "")
+        .replace(/<[^>]*>/g, " ")
+        .replace(/&nbsp;/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    return text || (fallback ?? "");
+}
+
 function TimeCell({ value }: { value?: string }) {
     const d = value ? new Date(value) : null;
     if (!d || Number.isNaN(d.getTime())) return <span className="text-xs text-muted-foreground">—</span>;
@@ -299,13 +309,25 @@ export function MomentManager() {
             {/* 统计 / 抓取状态、工具栏、批量操作条：固定在卡片顶部（shrink-0），不随列表滚动 */}
             <div className="shrink-0 space-y-2 border-b p-3 sm:space-y-3">
                 {/* ===== 统计 / 抓取状态 ===== */}
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
-                    <span>
+                {/* 移动端：整行不换行、可横向滑动（「空闲」徽标不再被挤到第二行）；
+                    ≥sm 恢复自动换行。统计项都加 whitespace-nowrap，避免中文被折成两段。 */}
+                <div className="no-scrollbar flex flex-nowrap items-center gap-x-2 overflow-x-auto text-xs text-muted-foreground sm:flex-wrap sm:gap-x-3 sm:gap-y-1.5 sm:overflow-visible">
+                    <span className="shrink-0 whitespace-nowrap">
                         共 <span className="font-medium text-foreground">{total}</span> 条
                     </span>
-                    <span>友链 {statistics?.total_links ?? 0}</span>
-                    <span>活跃 {statistics?.active_links ?? 0}</span>
-                    {statistics?.last_updated_time && <span>更新 {statistics.last_updated_time}</span>}
+                    <span className="shrink-0 whitespace-nowrap">友链 {statistics?.total_links ?? 0}</span>
+                    <span className="shrink-0 whitespace-nowrap">活跃 {statistics?.active_links ?? 0}</span>
+                    {statistics?.last_updated_time && (
+                        <>
+                            {/* 移动端省掉年份（2026-11-13 17:31:57 → 11-13 17:31:57），一行放得下 */}
+                            <span className="shrink-0 whitespace-nowrap sm:hidden">
+                                更新 {String(statistics.last_updated_time).replace(/^\d{4}-/, "")}
+                            </span>
+                            <span className="hidden shrink-0 whitespace-nowrap sm:inline">
+                                更新 {statistics.last_updated_time}
+                            </span>
+                        </>
+                    )}
                     {fetchStatus?.status && (
                         <Badge
                             variant="outline"
@@ -525,10 +547,10 @@ export function MomentManager() {
                                             )}
                                         </div>
                                         <p
-                                            className="mt-0.5 truncate text-xs text-muted-foreground"
-                                            title={item.post_summary || item.post_url}
+                                            className="mt-0.5 line-clamp-3 break-words text-xs leading-relaxed text-muted-foreground"
+                                            title={summaryText(item.post_summary, item.post_url)}
                                         >
-                                            {item.post_summary || item.post_url}
+                                            {summaryText(item.post_summary, item.post_url)}
                                         </p>
                                     </div>
 
@@ -702,7 +724,7 @@ function MomentDetailDialog({ moment, onClose }: { moment: AdminMomentItem; onCl
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
             <div
-                className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-xl border bg-card p-5 shadow-xl"
+                className="flex max-h-[88vh] w-full max-w-2xl flex-col soft-surface p-5 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <div className="mb-4 flex items-center justify-between gap-2">
@@ -742,7 +764,7 @@ function MomentDetailDialog({ moment, onClose }: { moment: AdminMomentItem; onCl
                     <div>
                         <span className="mb-1 block text-xs font-medium text-muted-foreground">文章摘要</span>
                         <p className="max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-input bg-muted/40 px-3 py-2 text-xs">
-                            {detail.post_summary || "—"}
+                            {summaryText(detail.post_summary) || "—"}
                         </p>
                     </div>
 
@@ -836,7 +858,7 @@ function MomentEditorDialog({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
             <div
-                className="flex max-h-[88vh] w-full max-w-3xl flex-col rounded-xl border bg-card p-5 shadow-xl"
+                className="flex max-h-[88vh] w-full max-w-3xl flex-col soft-surface p-5 shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <div className="mb-4 flex items-center justify-between gap-2">
