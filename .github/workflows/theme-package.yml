@@ -70,6 +70,18 @@ jobs:
           fi
           echo "no symlink entries ✓"
 
+      # 完整性：缺 .next/static 或 public 时 HTML 能出但资源全 404（白屏）
+      - name: Verify archive completeness
+        run: |
+          tar -tzf dist/*.tar.gz > /tmp/list.txt
+          for f in ./server.js ./theme.json ./.next/static/ ./node_modules/; do
+            if ! grep -q "^${f}" /tmp/list.txt; then
+              echo "::error::包内缺少 ${f}"
+              exit 1
+            fi
+          done
+          echo "completeness ✓ ($(wc -l < /tmp/list.txt) entries)"
+
       - uses: actions/upload-artifact@v4
         with:
           name: theme-package

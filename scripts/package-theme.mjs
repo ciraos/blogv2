@@ -121,6 +121,24 @@ function copyReal(src, dest) {
 
 copyReal(STANDALONE, stage);
 
+// ⚠️ Next 的 standalone **不含** .next/static（前端 JS/CSS chunk）和 public（图片/字体）：
+// 少了它们 HTML 能出、但所有静态资源 404，页面会白屏。必须从项目根补进来。
+const STATIC_SRC = path.join(ROOT, ".next", "static");
+const STATIC_DEST = path.join(stage, ".next", "static");
+if (fs.existsSync(STATIC_SRC)) {
+    copyReal(STATIC_SRC, STATIC_DEST);
+    console.log("  补入 .next/static");
+} else {
+    fail("找不到 .next/static（构建产物不完整）");
+}
+
+const PUBLIC_SRC = path.join(ROOT, "public");
+const PUBLIC_DEST = path.join(stage, "public");
+if (fs.existsSync(PUBLIC_SRC)) {
+    copyReal(PUBLIC_SRC, PUBLIC_DEST);
+    console.log("  补入 public");
+}
+
 // theme.json 必须在包根（后端 themes/<name>/theme.json 就是读设置的地方）
 fs.copyFileSync(THEME_JSON, path.join(stage, "theme.json"));
 
@@ -153,7 +171,17 @@ if (fileCount > LIMITS.maxEntries) fail(`条目数 ${fileCount} 超过上限 ${L
 if (byteCount / 1024 / 1024 > LIMITS.maxExtractedMB) fail(`解压后 ${mb(byteCount)}MB 超过 ${LIMITS.maxExtractedMB}MB`);
 if (biggest.size / 1024 / 1024 > LIMITS.maxFileMB) fail(`单文件 ${biggest.name} 有 ${mb(biggest.size)}MB，超过 ${LIMITS.maxFileMB}MB`);
 
-/* ---------- 5. 打包（-C stage . → 条目都以 ./ 开头，符合后端剥前缀逻辑） ---------- */
+/* ---------- 5. 产物完整性硬校验（HTML 能开 ≠ 能用） ---------- */
+for (const required of ["server.js", "theme.json", ".next", path.join(".next", "static"), "node_modules"]) {
+    if (!fs.existsSync(path.join(stage, required))) {
+        fail(`打包产物缺少 ${required}：装上后前端资源会 404`);
+    }
+}
+if (!fs.existsSync(path.join(stage, ".next", "static", "chunks"))) {
+    fail("打包产物缺少 .next/static/chunks：JS 分包没进包");
+}
+
+/* ---------- 6. 打包（-C stage . → 条目都以 ./ 开头，符合后端剥前缀逻辑） ---------- */
 fs.mkdirSync(DIST, { recursive: true });
 const tarPath = path.join(DIST, `${stageName}.tar.gz`);
 fs.rmSync(tarPath, { force: true });
@@ -172,7 +200,7 @@ if (alsoZip) {
 
 if (!keepStage) fs.rmSync(stage, { recursive: true, force: true });
 
-/* ---------- 6. 汇报 ---------- */
+/* ---------- 7. 汇报 ---------- */
 console.log("");
 console.log(`✓ dist/${stageName}.tar.gz`);
 console.log(`  名称 ${theme.name}  (${theme.displayName})  v${theme.version}  SSR 内核 v${theme.engineVersion}`);
