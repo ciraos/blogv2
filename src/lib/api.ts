@@ -41,19 +41,39 @@ import type { AdminDocSeriesListParams, DocSeriesListData } from "@/types/doc-se
 import type { StoragePolicyListData } from "@/types/storage-policy";
 import type { ThemeListData } from "@/types/themes";
 
+/** 去掉结尾斜杠，避免拼出 `//public/xxx` */
+const trimSlash = (value?: string) => (value ?? "").trim().replace(/\/+$/, "");
+
+/** 服务端用的后端地址：**运行时**读环境变量（不进构建产物） */
+function resolveServerBase(): string {
+    const explicit = trimSlash(process.env.API_URL) || trimSlash(process.env.INTERNAL_API_URL);
+    if (explicit) return explicit;
+
+    // 兼容老配置：仍可用 NEXT_PUBLIC_API_URL / NEXT_PUBLIC_SITE_URL
+    const publicApi = trimSlash(process.env.NEXT_PUBLIC_API_URL);
+    if (publicApi) return publicApi;
+    const siteOrigin = trimSlash(process.env.NEXT_PUBLIC_SITE_URL);
+    if (siteOrigin) return `${siteOrigin}/api`;
+
+    // 兜底：Anheyu 后端默认在本机 8091 端口。
+    // 这样「别人装了这个主题」时无需任何配置也能立刻工作。
+    return "http://127.0.0.1:8091/api";
+}
+
 /**
  * 远端 API 基址（带 `/api` 后缀）。
  *
- * 优先级：NEXT_PUBLIC_API_URL → NEXT_PUBLIC_SITE_URL + `/api`。
- * 也就是说「后端与站点同源」时**根本不用配** NEXT_PUBLIC_API_URL，
- * 只有后端独立部署在别的域名/端口时才需要显式写一个不同的地址。
+ * 为什么分端解析 —— 这是「主题能给别人用」的前提：
+ *  · **服务端**：优先读运行时环境变量 `API_URL` / `INTERNAL_API_URL`（Node 进程启动时才读，
+ *    不会被内联进构建产物），其次兼容 NEXT_PUBLIC_*，最后兜底 `http://127.0.0.1:8091/api`。
+ *    所以构建时可以**完全不配 env**，装到任何 Anheyu 实例上都能连上它自己的后端。
+ *  · **浏览器端**：只认 NEXT_PUBLIC_API_URL；没配就是空串 —— 空串会让所有请求变成
+ *    **同源相对路径**（`/api/...`），自动跟随安装者的域名，不会把作者站点写死进包里。
+ *
  * 末尾斜杠统一去掉，避免拼出 `//public/xxx`。
  */
-const SITE_ORIGIN = (process.env.NEXT_PUBLIC_SITE_URL ?? "").trim().replace(/\/+$/, "");
-export const API_URL = ((process.env.NEXT_PUBLIC_API_URL ?? "").trim() || (SITE_ORIGIN ? `${SITE_ORIGIN}/api` : "")).replace(
-    /\/+$/,
-    ""
-);
+export const API_URL =
+    typeof window === "undefined" ? resolveServerBase() : trimSlash(process.env.NEXT_PUBLIC_API_URL);
 
 /** 后端源（去掉结尾的 `/api`）：给「需要原样拼后端绝对路径」的地方用，如评论里的签名下载地址 */
 export const BACKEND_ORIGIN = API_URL.replace(/\/api$/i, "");
