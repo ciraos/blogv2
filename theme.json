@@ -1,0 +1,156 @@
+{
+  "name": "theme-ciraos",
+  "displayName": "葱苓小筑 · 编辑部主题",
+  "version": "1.5.0",
+  "description": "以「编辑部排版」为基调的 Anheyu 前台主题：宋体刊头 + 细线分隔 + 大量留白，附带即刻动态、音乐胶囊、节庆烟花与外链提示页。",
+  "author": {
+    "name": "Ciraos",
+    "url": "https://blog.ciraos.top"
+  },
+  "license": "MIT",
+  "homepage": "https://blog.ciraos.top",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ciraos/blogv2"
+  },
+  "keywords": [
+    "anheyu",
+    "theme",
+    "editorial",
+    "serif",
+    "nextjs"
+  ],
+  "category": "blog",
+  "renderMode": "ssr",
+  "engineVersion": 2,
+  "engines": {
+    "anheyu": ">=2.0.0"
+  },
+  "features": [
+    "编辑部风排版（宋体刊头 / 细线分隔 / 充足留白）",
+    "深浅色双主题，八套皮肤令牌",
+    "即刻动态瀑布流、音乐胶囊、节庆烟花",
+    "外链跳转提示页、页头时钟与「开往」入口"
+  ],
+  "settings": [
+    {
+      "group": "appearance",
+      "label": "外观",
+      "fields": [
+        {
+          "name": "skin",
+          "label": "配色皮肤",
+          "type": "select",
+          "default": "crimson",
+          "description": "切换主色令牌；与后台「换肤与配色」二选一即可",
+          "options": [
+            {
+              "label": "品牌蓝",
+              "value": "brand_blue"
+            },
+            {
+              "label": "翡翠绿",
+              "value": "emerald"
+            },
+            {
+              "label": "紫罗兰",
+              "value": "violet"
+            },
+            {
+              "label": "玫红",
+              "value": "rose"
+            },
+            {
+              "label": "琥珀",
+              "value": "amber"
+            },
+            {
+              "label": "青蓝",
+              "value": "cyan"
+            },
+            {
+              "label": "板岩灰",
+              "value": "slate"
+            },
+            {
+              "label": "深红",
+              "value": "crimson"
+            }
+          ]
+        },
+        {
+          "name": "defaultThemeMode",
+          "label": "默认明暗",
+          "type": "select",
+          "default": "auto",
+          "description": "auto 会按后台设定的时段自动切换",
+          "options": [
+            {
+              "label": "跟随系统",
+              "value": "auto"
+            },
+            {
+              "label": "始终浅色",
+              "value": "light"
+            },
+            {
+              "label": "始终深色",
+              "value": "dark"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "group": "home",
+      "label": "首页",
+      "fields": [
+        {
+          "name": "leadStory",
+          "label": "头条封面故事",
+          "type": "switch",
+          "default": true,
+          "description": "关闭后首页只保留目录列表"
+        },
+        {
+          "name": "pageSize",
+          "label": "每页篇数",
+          "type": "number",
+          "default": 10,
+          "validation": {
+            "min": 5,
+            "max": 50,
+            "message": "建议 5–50 篇"
+          }
+        }
+      ]
+    },
+    {
+      "group": "widgets",
+      "label": "页头与挂件",
+      "fields": [
+        {
+          "name": "headerClock",
+          "label": "页头时钟",
+          "type": "switch",
+          "default": true,
+          "description": "搜索按钮左侧显示 HH:MM"
+        },
+        {
+          "name": "headerTravelling",
+          "label": "「开往」入口",
+          "type": "switch",
+          "default": true,
+          "description": "仅首页桌面端显示，点击有 5 秒倒计时提示"
+        },
+        {
+          "name": "fireworks",
+          "label": "节庆烟花",
+          "type": "switch",
+          "default": true,
+          "description": "左下角悬浮入口，点击放全屏烟花"
+        }
+      ]
+    }
+  ]
+}

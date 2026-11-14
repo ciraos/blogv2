@@ -84,7 +84,7 @@ export function ThemeUploadDialog({ open, onOpenChange, onUploaded }: ThemeUploa
     const handleFile = useCallback((file: File | undefined) => {
         if (!file) return;
         if (!file.name.toLowerCase().endsWith(".zip")) {
-            toast.error("仅支持 ZIP 格式的主题压缩包");
+            toast.error("仅支持 ZIP 格式的静态主题包；Next.js 主题请用「SSR 主题」安装");
             return;
         }
         if (file.size > MAX_SIZE) {
@@ -161,11 +161,14 @@ export function ThemeUploadDialog({ open, onOpenChange, onUploaded }: ThemeUploa
                 <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[min(94vw,34rem)] max-h-[86vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto soft-surface p-5 shadow-2xl data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
                     <DialogPrimitive.Title className="flex items-center gap-2 text-base font-semibold">
                         <Upload className="size-4 text-muted-foreground" />
-                        上传主题压缩包
+                        上传静态主题（ZIP）
                     </DialogPrimitive.Title>
                     <DialogPrimitive.Description className="mt-1 text-xs text-muted-foreground">
-                        ZIP 格式、不超过 50MB，包内需含 <code>theme.json</code> 与 <code>index.html</code>
-                        。上传会直接解压安装到主题目录。
+                        ZIP 格式、不超过 50MB，包内需含 <code>theme.json</code> 与 <code>index.html</code>，
+                        上传会直接解压安装到主题目录。
+                        <span className="mt-1 block">
+                            Next.js 主题是 tar.gz + <code>server.js</code>，请到「SSR 主题」页签用下载地址安装。
+                        </span>
                     </DialogPrimitive.Description>
 
                     {/* 拖拽 / 点选区 */}

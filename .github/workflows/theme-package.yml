@@ -1,0 +1,74 @@
+name: Package theme
+
+# 在 ubuntu 上构建 SSR 主题包（tar.gz）并挂到 Release。
+#
+# 为什么必须在 Linux 跑：Windows 无法创建符号链接，`next build` 生成
+# .next/standalone 时会 EPERM；而 pnpm 的 node_modules 全是软链，
+# Anheyu 后端解压时不认软链条目（`不支持的归档文件类型`），
+# 所以需要在 Linux 上“解引用”后再打包（scripts/package-theme.mjs 负责）。
+#
+# 触发方式：
+#   1) 推 tag（v1.5.0）→ 自动构建 + 上传到该 tag 的 Release；
+#   2) Actions 页面手动 Run workflow → 只构建，产物在 Artifacts。
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 必须带 standalone 输出（不要设 NEXT_SKIP_STANDALONE）
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_SKIP_STANDALONE: "0"
+
+      - name: Check standalone exists
+        run: test -f .next/standalone/server.js || (echo "standalone 缺失，检查 next.config.ts 的 output 设置" && exit 1)
+
+      - name: Package theme
+        run: node scripts/package-theme.mjs
+
+      - name: Verify archive has no symlinks
+        run: |
+          # tar 里出现 'l' 类型条目后端就会失败，这里兜底拦一次
+          if tar -tvzf dist/*.tar.gz | grep -q '^l'; then
+            echo "::error::包内存在符号链接条目，后端解压会失败"
+            exit 1
+          fi
+          echo "no symlink entries ✓"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: theme-package
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.tar.gz
+          generate_release_notes: true

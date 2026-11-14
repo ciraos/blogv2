@@ -15,7 +15,9 @@
     "api:inventory:check": "node scripts/gen-api-inventory.mjs --check",
     "changelog:frontend": "node scripts/gen-frontend-changelog.mjs",
     "fonts:mirror": "node scripts/mirror-zcool-kuaile.mjs",
-    "test": "node --test \"tests/*.test.ts\""
+    "test": "node --test \"tests/*.test.ts\"",
+    "theme:package": "node scripts/package-theme.mjs",
+    "theme:build": "next build && node scripts/package-theme.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
