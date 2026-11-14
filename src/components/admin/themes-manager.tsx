@@ -11,11 +11,9 @@ import {
     Loader2,
     Package,
     Palette,
-    Play,
     RefreshCw,
     Server,
     Settings,
-    Square,
     Sparkles,
     Star,
     Trash2,
@@ -44,14 +42,7 @@ import {
     switchThemeApi,
     uninstallThemeApi,
 } from "@/lib/api-themes-write";
-import {
-    getSsrThemesApi,
-    installSsrThemeApi,
-    startSsrThemeApi,
-    stopSsrThemeApi,
-    uninstallSsrThemeApi,
-    type SsrTheme,
-} from "@/lib/api-ssr-theme";
+import { installSsrThemeApi } from "@/lib/api-ssr-theme";
 import { DEPLOY_TYPE_LABEL, SSR_STATUS_LABEL, THEME_TYPE_LABEL } from "@/types/themes";
 import type { Theme, ThemeConfigResponse, ThemeListData, ThemeSettingGroup } from "@/types/themes";
 
@@ -339,12 +330,7 @@ export function ThemesManager() {
     /** 上传主题弹窗开关 */
     const [uploadOpen, setUploadOpen] = useState(false);
 
-    /* ---- SSR 主题（Next.js standalone 包）：独立于上面两个 Tab 的数据 ---- */
-    /** 当前是否停在「SSR 主题」页签（不并进 TabKey，避免动到 Tab 的数据机） */
-    const [ssrMode, setSsrMode] = useState(false);
-    const [ssrThemes, setSsrThemes] = useState<SsrTheme[]>([]);
-    const [ssrLoading, setSsrLoading] = useState(false);
-    const [ssrPending, setSsrPending] = useState<{ name: string; action: "start" | "stop" | "uninstall" } | null>(null);
+    /** 安装 SSR 主题弹窗开关（SSR 主题没有独立页签，装完直接去「已安装」看） */
     const [ssrInstallOpen, setSsrInstallOpen] = useState(false);
     /** 主题详情弹窗开关 */
     const [detailOpen, setDetailOpen] = useState(false);
@@ -560,8 +546,7 @@ export function ThemesManager() {
                     ...(theme.version ? { version: theme.version } : {}),
                     downloadUrl,
                 });
-                toast.success(`SSR 主题「${theme.name || name}」安装成功，请到「SSR 主题」页签启动`);
-                setSsrMode(true);
+                toast.success(`SSR 主题「${theme.name || name}」安装成功`);
             } else {
                 await installThemeApi({
                     theme_name: name,
@@ -575,43 +560,6 @@ export function ThemesManager() {
             toast.error(e instanceof Error ? e.message : "安装主题失败");
         } finally {
             setPending(null);
-        }
-    };
-
-    /** 拉取 SSR 主题列表（后端返回数组，不是 { list, total }） */
-    const loadSsr = useCallback(async () => {
-        setSsrLoading(true);
-        try {
-            setSsrThemes(await getSsrThemesApi());
-        } catch (e) {
-            setSsrThemes([]);
-            toast.error(e instanceof Error ? e.message : "读取 SSR 主题列表失败");
-        } finally {
-            setSsrLoading(false);
-        }
-    }, []);
-
-    /** 启动 / 停止 / 卸载：卸载要二次确认（会删目录） */
-    const handleSsrAction = async (theme: SsrTheme, action: "start" | "stop" | "uninstall") => {
-        if (action === "uninstall") {
-            const ok = await confirm({
-                title: `确定卸载 SSR 主题「${theme.name}」吗？`,
-                description: "会先停止 Node 进程再删除主题目录，不可撤销。",
-                danger: true,
-            });
-            if (!ok) return;
-        }
-        setSsrPending({ name: theme.name, action });
-        try {
-            if (action === "start") await startSsrThemeApi(theme.name);
-            else if (action === "stop") await stopSsrThemeApi(theme.name);
-            else await uninstallSsrThemeApi(theme.name);
-            toast.success(action === "start" ? `「${theme.name}」已启动` : action === "stop" ? `「${theme.name}」已停止` : `「${theme.name}」已卸载`);
-            await loadSsr();
-        } catch (e) {
-            toast.error(e instanceof Error ? e.message : "操作失败");
-        } finally {
-            setSsrPending(null);
         }
     };
 
@@ -635,55 +583,33 @@ export function ThemesManager() {
                 tabs={[
                     { key: "installed", label: "已安装" },
                     { key: "market", label: "主题市场" },
-                    { key: "ssr", label: "SSR 主题" },
                 ]}
-                value={ssrMode ? "ssr" : tab}
+                value={tab}
                 onChange={(key) => {
-                    if (key === "ssr") {
-                        setSsrMode(true);
-                        // 切页签即拉取（不放在 effect 里：effect 内 setState 会触发级联渲染告警）
-                        void loadSsr();
-                        return;
-                    }
-                    setSsrMode(false);
                     setTab(key as TabKey);
                     setPage(1);
                 }}
             />
             <AdminFilterBar
-                search={
-                    ssrMode
-                        ? undefined
-                        : {
-                              value: keyword,
-                              onChange: (v) => {
-                                  setKeyword(v);
-                                  setPage(1);
-                              },
-                              placeholder: "搜索主题名称 / 作者…",
-                              ariaLabel: "搜索主题",
-                          }
-                }
-                onReset={
-                    ssrMode
-                        ? undefined
-                        : () => {
-                              setKeyword("");
-                              setPage(1);
-                          }
-                }
-                resetDisabled={ssrMode ? true : !keyword}
+                search={{
+                    value: keyword,
+                    onChange: (v) => {
+                        setKeyword(v);
+                        setPage(1);
+                    },
+                    placeholder: "搜索主题名称 / 作者…",
+                    ariaLabel: "搜索主题",
+                }}
+                onReset={() => {
+                    setKeyword("");
+                    setPage(1);
+                }}
+                resetDisabled={!keyword}
                 summary={
-                    ssrMode ? (
-                        <>
-                            已安装 <span className="font-medium text-foreground tabular-nums">{ssrThemes.length}</span> 个 SSR 主题
-                        </>
-                    ) : (
-                        <>
-                            共 <span className="font-medium text-foreground">{total}</span> 个
-                            {tab === "installed" ? "已安装主题" : "市场主题"}
-                        </>
-                    )
+                    <>
+                        共 <span className="font-medium text-foreground">{total}</span> 个
+                        {tab === "installed" ? "已安装主题" : "市场主题"}
+                    </>
                 }
                 actions={
                     <>
@@ -707,21 +633,14 @@ export function ThemesManager() {
                             <Server className="size-3.5" />
                             安装 SSR 主题
                         </Button>
-                        {/* 刷新：SSR 页签刷 SSR 列表，其他页签刷当前 Tab */}
                         <Button
                             variant="outline"
                             size="sm"
                             className="h-8 shrink-0 text-sm"
-                            disabled={ssrMode ? ssrLoading : loading}
-                            onClick={() => (ssrMode ? void loadSsr() : reload())}
+                            disabled={loading}
+                            onClick={() => reload()}
                         >
-                            {ssrMode ? (
-                                ssrLoading ? (
-                                    <Loader2 className="size-3.5 animate-spin" />
-                                ) : (
-                                    <RefreshCw className="size-3.5" />
-                                )
-                            ) : loading ? (
+                            {loading ? (
                                 <Loader2 className="size-3.5 animate-spin" />
                             ) : (
                                 <RefreshCw className="size-3.5" />
@@ -732,94 +651,6 @@ export function ThemesManager() {
                 }
             />
 
-            {ssrMode ? (
-                <div className="admin-scroll">
-                    {ssrLoading && ssrThemes.length === 0 ? (
-                        <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-                            <Loader2 className="size-4 animate-spin" />
-                            加载中…
-                        </div>
-                    ) : ssrThemes.length === 0 ? (
-                        <AdminEmptyState
-                            kind="generic"
-                            title="还没有安装 SSR 主题"
-                            description="点右上角「安装 SSR 主题」，填入 tar.gz 的公网下载地址（内网地址会被后端拒绝）"
-                        />
-                    ) : (
-                        <ul className="divide-y">
-                            {ssrThemes.map((item) => {
-                                const status = item.status ?? "";
-                                const tone =
-                                    status === "running"
-                                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                                        : status === "error"
-                                          ? "border-destructive/30 bg-destructive/10 text-destructive"
-                                          : "border-border bg-muted text-muted-foreground";
-                                const busy = ssrPending?.name === item.name ? ssrPending.action : null;
-                                return (
-                                    <li key={item.name} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="truncate font-medium text-foreground">{item.name}</span>
-                                                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${tone}`}>
-                                                    {SSR_STATUS_LABEL[status] ?? status ?? "未知"}
-                                                </span>
-                                                {item.is_current && (
-                                                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                                                        当前启用
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                                                <span className="tabular-nums">v{item.version || "—"}</span>
-                                                {typeof item.port === "number" && (
-                                                    <span className="tabular-nums">端口 {item.port}</span>
-                                                )}
-                                                {item.startedAt && <span className="tabular-nums">启动 {item.startedAt}</span>}
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <Button
-                                                size="sm"
-                                                className="h-7 px-2 text-xs"
-                                                disabled={busy !== null || status === "running"}
-                                                onClick={() => void handleSsrAction(item, "start")}
-                                                title={status === "running" ? "已在运行" : "启动 node 进程"}
-                                            >
-                                                {busy === "start" ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
-                                                启动
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-7 px-2 text-xs"
-                                                disabled={busy !== null || status !== "running"}
-                                                onClick={() => void handleSsrAction(item, "stop")}
-                                            >
-                                                {busy === "stop" ? <Loader2 className="size-3.5 animate-spin" /> : <Square className="size-3.5" />}
-                                                停止
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-7 px-2 text-xs text-destructive hover:text-destructive"
-                                                disabled={busy !== null || item.is_current}
-                                                title={item.is_current ? "当前启用中，先切回标准主题再卸载" : "停止并删除主题目录"}
-                                                onClick={() => void handleSsrAction(item, "uninstall")}
-                                            >
-                                                {busy === "uninstall" ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-                                                卸载
-                                            </Button>
-                                        </div>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    )}
-                </div>
-
-            ) : (
-                <>
 
             {/* 内容：卡片内唯一滚动区（网格上方的窄条吸顶），Tab 与分页都不动 */}
             <div className="admin-scroll">
@@ -1066,8 +897,6 @@ export function ThemesManager() {
                 </span>
                 <PaginationControls page={safePage} totalPages={totalPages} onPageChange={setPage} />
             </div>
-                </>
-            )}
 
             {/* 主题设置弹窗（动态表单）：保存走 POST /theme/config */}
             <ThemeConfigDialog
@@ -1076,14 +905,7 @@ export function ThemesManager() {
                 onSaved={() => resyncAfterWrite()}
             />
             {/* 安装 SSR 主题（Next standalone 包，只填公网 tar.gz 地址） */}
-            <SsrInstallDialog
-                open={ssrInstallOpen}
-                onOpenChange={setSsrInstallOpen}
-                onInstalled={() => {
-                    setSsrMode(true);
-                    void loadSsr();
-                }}
-            />
+            <SsrInstallDialog open={ssrInstallOpen} onOpenChange={setSsrInstallOpen} />
             {/* 上传主题压缩包：校验 + 上传安装 */}
             <ThemeUploadDialog open={uploadOpen} onOpenChange={setUploadOpen} onUploaded={handleUploaded} />
             {/* 主题详情：当前启用主题的配置定义与生效值 */}
