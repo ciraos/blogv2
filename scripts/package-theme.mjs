@@ -61,6 +61,18 @@ if (theme.renderMode !== "ssr") errors.push('SSR 主题必须声明 "renderMode"
 if (Number(theme.engineVersion) < 2) errors.push('"engineVersion" 应为 2');
 if (errors.length) fail(`theme.json 校验失败：\n  - ${errors.join("\n  - ")}`);
 
+/* ---------- 1.5 构建一致性：必须用 THEME_PACKAGE=1 构建 ---------- */
+if (process.env.THEME_PACKAGE !== "1") {
+    fail(
+        [
+            "打包前需要用 THEME_PACKAGE=1 构建：",
+            "  THEME_PACKAGE=1 NEXT_SKIP_STANDALONE=0 pnpm build && THEME_PACKAGE=1 pnpm theme:package",
+            "原因：主题包不携带 sharp（图片优化关闭）；若构建时没设这个变量，",
+            "运行时 next/image 会去找 sharp 并报错。",
+        ].join("\n")
+    );
+}
+
 /* ---------- 2. 检查 standalone ---------- */
 if (!fs.existsSync(path.join(STANDALONE, "server.js"))) {
     fail(
@@ -82,7 +94,24 @@ const stage = path.join(DIST, stageName);
 fs.rmSync(stage, { recursive: true, force: true });
 fs.mkdirSync(stage, { recursive: true });
 
-const SKIP_NAMES = new Set([".env", ".env.local", ".env.production", ".env.development", "cache", ".bin"]);
+const SKIP_NAMES = new Set([
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.development",
+    "cache",
+    ".bin",
+    // sharp 是图片优化用的原生库（平台相关、体积大）。主题包构建时已设
+    // THEME_PACKAGE=1 → next.config 里 images.unoptimized=true，运行时不会用到它。
+    "sharp",
+    "sharp-linux-x64",
+    "sharp-linux-arm64",
+    "sharp-libvips-linux-x64",
+    "sharp-libvips-linux-arm64",
+    "sharp-win32-x64",
+    "sharp-darwin-x64",
+    "sharp-darwin-arm64",
+]);
 /** 运行时用不到的文件后缀：source map 又多又大 */
 const SKIP_SUFFIXES = [".map"];
 let fileCount = 0;

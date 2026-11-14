@@ -151,6 +151,15 @@ const nextConfig: NextConfig = {
   // 图片优化：只放行已知图源（见 imageRemotePatterns 的说明）
   images: {
     remotePatterns: imageRemotePatterns(),
+    // 打包成 SSR 主题时关掉图片优化（THEME_PACKAGE=1）。
+    //
+    // 两个原因：
+    //  1. Next 的图像优化依赖 sharp，而 sharp 带的是 **平台相关原生库**
+    //     （node_modules/sharp-libvips-linux-x64 单它就有 15.9MB）。主题要能被别人装，
+    //     就不能假设对方是 linux-x64；关掉优化后整条依赖都不再需要，包也小一大截。
+    //  2. 镜像下载很慢（实测 gh-proxy 只有 ~0.3MB/s），而 Anheyu 后端下载有 60 秒超时，
+    //     包越小越容易装成功。
+    unoptimized: process.env.THEME_PACKAGE === "1",
   },
 
   experimental: {

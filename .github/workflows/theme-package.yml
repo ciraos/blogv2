@@ -50,6 +50,8 @@ jobs:
         run: pnpm build
         env:
           NEXT_SKIP_STANDALONE: "0"
+          # 主题包构建：关掉 next/image 优化（不依赖平台相关的 sharp 原生库，包也更小）
+          THEME_PACKAGE: "1"
 
       - name: Check standalone exists
         run: test -f .next/standalone/server.js || (echo "standalone 缺失，检查 next.config.ts 的 output 设置" && exit 1)
@@ -60,6 +62,8 @@ jobs:
 
       - name: Package theme
         run: node scripts/package-theme.mjs
+        env:
+          THEME_PACKAGE: "1"
 
       - name: Verify archive has no symlinks
         run: |
