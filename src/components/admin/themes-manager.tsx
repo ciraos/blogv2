@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
@@ -11,9 +11,11 @@ import {
     Loader2,
     Package,
     Palette,
+    Play,
     RefreshCw,
     Server,
     Settings,
+    Square,
     Sparkles,
     Star,
     Trash2,
@@ -42,7 +44,14 @@ import {
     switchThemeApi,
     uninstallThemeApi,
 } from "@/lib/api-themes-write";
-import { installSsrThemeApi } from "@/lib/api-ssr-theme";
+import {
+    getSsrThemesApi,
+    installSsrThemeApi,
+    startSsrThemeApi,
+    stopSsrThemeApi,
+    uninstallSsrThemeApi,
+    type SsrTheme,
+} from "@/lib/api-ssr-theme";
 import { DEPLOY_TYPE_LABEL, SSR_STATUS_LABEL, THEME_TYPE_LABEL } from "@/types/themes";
 import type { Theme, ThemeConfigResponse, ThemeListData, ThemeSettingGroup } from "@/types/themes";
 
@@ -75,6 +84,18 @@ const PAGE_SIZE = 12;
 
 /** Tab 类型（已安装 / 主题市场） */
 type TabKey = "installed" | "market";
+
+/**
+ * SSR 主题 -> 封面图（按主题名映射）。
+ *
+ * 为什么需要这张表：后端 SSR 的 ThemeInfo 里**没有预览图字段**，市场接口也不返回
+ * SSR 主题的截图，所以后台只能靠名字对上号。图放在 public/ 下，随站点与主题包一起分发
+ * （theme.json 的 screenshots 也指向它）。
+ * 映射不到的主题退回站点 404 配图。
+ */
+const SSR_PREVIEW_BY_NAME: Record<string, string> = {
+    "theme-ciraos": "/theme-preview-ciraos.png",
+};
 
 /** 单卡片上正在进行的写操作（同一主题同时只允许一个，按钮显示 loading） */
 type PendingAction = "switch" | "uninstall" | "install";
@@ -330,8 +351,15 @@ export function ThemesManager() {
     /** 上传主题弹窗开关 */
     const [uploadOpen, setUploadOpen] = useState(false);
 
-    /** 安装 SSR 主题弹窗开关（SSR 主题没有独立页签，装完直接去「已安装」看） */
+    /** 安装 SSR 主题弹窗开关 */
     const [ssrInstallOpen, setSsrInstallOpen] = useState(false);
+    /** 已安装的 SSR 主题（展示在「主题市场」页签顶部，与市场卡片同屏） */
+    const [ssrThemes, setSsrThemes] = useState<SsrTheme[]>([]);
+    const [ssrLoading, setSsrLoading] = useState(false);
+    const [ssrPending, setSsrPending] = useState<{ name: string; action: "start" | "stop" | "uninstall" } | null>(null);
+    /** SSR 卡片占位图（站点 404 配图；取不到就用默认封面） */
+    const [ssrPreview, setSsrPreview] = useState("/default-cover.png");
+    const ssrPreviewRef = useRef("");
     /** 主题详情弹窗开关 */
     const [detailOpen, setDetailOpen] = useState(false);
 
@@ -448,12 +476,17 @@ export function ThemesManager() {
         const installedList = states.installed.data?.list ?? [];
         const currentTheme = installedList.find((t) => t.is_current);
         return [
-            { label: "已安装", value: states.installed.data ? String(installedList.length) : "—", icon: Package },
+            {
+                label: "已安装",
+                // SSR 主题也列在「已安装」里，计数要一起算，否则会出现「0 个」却有一张卡
+                value: states.installed.data ? String(installedList.length + ssrThemes.length) : "—",
+                icon: Package,
+            },
             { label: "官方主题", value: ready ? String(source.filter((t) => t.isOfficial).length) : "—", icon: BadgeCheck },
             { label: "社区主题", value: ready ? String(source.filter((t) => t.themeType === "community").length) : "—", icon: Palette },
             { label: "当前主题", value: currentTheme?.name ?? "—", icon: Sparkles },
         ];
-    }, [current.data, source, states.installed.data]);
+    }, [current.data, source, states.installed.data, ssrThemes.length]);
 
     /** 应用（切换）主题：会立刻改变全站外观，故二次确认 */
     const handleSwitch = async (theme: Theme) => {
@@ -563,6 +596,72 @@ export function ThemesManager() {
         }
     };
 
+    /** 拉取已安装 SSR 主题（后端返回数组）；顺带取一次站点 404 配图当卡片占位图 */
+    const loadSsr = useCallback(async () => {
+        setSsrLoading(true);
+        try {
+            const [themes] = await Promise.all([
+                getSsrThemesApi(),
+                // SSR 主题的 ThemeInfo 里没有预览图，用后台「404 页面」配置的那张图占位。
+                // 取不到就退回 /default-cover.png，不让卡片空着。
+                (async () => {
+                    if (ssrPreviewRef.current) return;
+                    try {
+                        const res = await fetch("/api/public/site-config", { cache: "no-store" });
+                        const json = (await res.json()) as {
+                            data?: { post?: { page404?: { default_image?: string } } };
+                        };
+                        const img = resolveAssetUrl(json.data?.post?.page404?.default_image) || "/default-cover.png";
+                        ssrPreviewRef.current = img;
+                        setSsrPreview(img);
+                    } catch {
+                        ssrPreviewRef.current = "/default-cover.png";
+                        setSsrPreview("/default-cover.png");
+                    }
+                })(),
+            ]);
+            setSsrThemes(themes);
+        } catch {
+            // 列表拉不到不影响市场卡片，静默即可
+            setSsrThemes([]);
+        } finally {
+            setSsrLoading(false);
+        }
+    }, []);
+
+    /** 已安装页签要显示 SSR 卡片：切到该页签（含首屏默认）时拉一次 */
+    useEffect(() => {
+        if (tab !== "installed") return;
+        const timer = setTimeout(() => void loadSsr(), 0);
+        return () => clearTimeout(timer);
+    }, [tab, loadSsr]);
+
+    /** 启动 / 停止 / 卸载：卸载需二次确认 */
+    const handleSsrAction = async (theme: SsrTheme, action: "start" | "stop" | "uninstall") => {
+        if (action === "uninstall") {
+            const ok = await confirm({
+                title: `确定卸载 SSR 主题「${theme.name}」吗？`,
+                description: "会先停止 Node 进程再删除主题目录，不可撤销。",
+                danger: true,
+            });
+            if (!ok) return;
+        }
+        setSsrPending({ name: theme.name, action });
+        try {
+            if (action === "start") await startSsrThemeApi(theme.name);
+            else if (action === "stop") await stopSsrThemeApi(theme.name);
+            else await uninstallSsrThemeApi(theme.name);
+            toast.success(
+                action === "start" ? `「${theme.name}」已启动` : action === "stop" ? `「${theme.name}」已停止` : `「${theme.name}」已卸载`
+            );
+            await loadSsr();
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "操作失败");
+        } finally {
+            setSsrPending(null);
+        }
+    };
+
     /** 上传安装成功：切到「已安装」并刷新（主题已落盘，列表需要重拉） */
     const handleUploaded = () => {
         setTab("installed");
@@ -588,6 +687,8 @@ export function ThemesManager() {
                 onChange={(key) => {
                     setTab(key as TabKey);
                     setPage(1);
+                    // SSR 卡片在「已安装」里，切过去时刷一次
+                    if (key === "installed") void loadSsr();
                 }}
             />
             <AdminFilterBar
@@ -607,8 +708,11 @@ export function ThemesManager() {
                 resetDisabled={!keyword}
                 summary={
                     <>
-                        共 <span className="font-medium text-foreground">{total}</span> 个
-                        {tab === "installed" ? "已安装主题" : "市场主题"}
+                        共{" "}
+                        <span className="font-medium text-foreground tabular-nums">
+                            {tab === "installed" ? total + ssrThemes.length : total}
+                        </span>{" "}
+                        个{tab === "installed" ? "已安装主题" : "市场主题"}
                     </>
                 }
                 actions={
@@ -638,7 +742,10 @@ export function ThemesManager() {
                             size="sm"
                             className="h-8 shrink-0 text-sm"
                             disabled={loading}
-                            onClick={() => reload()}
+                            onClick={() => {
+                                reload();
+                                if (tab === "installed") void loadSsr();
+                            }}
                         >
                             {loading ? (
                                 <Loader2 className="size-3.5 animate-spin" />
@@ -654,6 +761,7 @@ export function ThemesManager() {
 
             {/* 内容：卡片内唯一滚动区（网格上方的窄条吸顶），Tab 与分页都不动 */}
             <div className="admin-scroll">
+                {/* 已安装的 SSR 主题：直接排在市场卡片上方，不单独占页签 */}
                 {/* 页签已经说明了这一屏是什么，这里只在搜索/加载时出现，避免标题重复 */}
                 {(hasFilter || loading) && (
                     <div className="admin-sticky-head flex items-center justify-between gap-2 border-b px-4 py-2 text-xs text-muted-foreground">
@@ -678,7 +786,7 @@ export function ThemesManager() {
                             重试
                         </Button>
                     </div>
-                ) : list.length === 0 ? (
+                ) : list.length === 0 && !(tab === "installed" && ssrThemes.length > 0) ? (
                     <AdminEmptyState
                         kind={hasFilter ? "search" : "generic"}
                         title={hasFilter ? undefined : tab === "installed" ? "还没有装主题" : "主题市场是空的"}
@@ -885,6 +993,131 @@ export function ThemesManager() {
                                 </div>
                             );
                         })}
+
+                        {/* SSR 列表加载中的占位卡片（避免卡片突然出现在最右边） */}
+                        {tab === "installed" && ssrLoading && ssrThemes.length === 0 && (
+                            <div className="flex flex-col overflow-hidden soft-surface">
+                                <div className="aspect-16/10 w-full animate-pulse bg-muted" />
+                                <div className="space-y-2 p-3">
+                                    <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+                                    <div className="h-3 w-16 animate-pulse rounded bg-muted" />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 已安装的 SSR 主题：跟其它已安装主题同一个栅格，排在它们右边 */}
+                        {tab === "installed" &&
+                            ssrThemes.map((item) => {
+                                const status = item.status ?? "";
+                                const busy = ssrPending?.name === item.name ? ssrPending.action : null;
+                                const badge =
+                                    status === "running"
+                                        ? {
+                                              cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                                              label: "运行中",
+                                          }
+                                        : status === "error"
+                                          ? { cls: "border-destructive/30 bg-destructive/10 text-destructive", label: "异常" }
+                                          : {
+                                                cls: "border-border bg-muted text-muted-foreground",
+                                                label: SSR_STATUS_LABEL[status] ?? "已安装",
+                                            };
+                                return (
+                                    <div
+                                        key={`ssr-${item.name}`}
+                                        className="group flex flex-col overflow-hidden soft-surface transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md"
+                                    >
+                                        {/* 预览图：SSR 主题没有截图，用站点 404 配图占位 */}
+                                        <div className="relative flex aspect-16/10 w-full items-center justify-center overflow-hidden bg-muted">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img
+                                                src={SSR_PREVIEW_BY_NAME[item.name] ?? ssrPreview}
+                                                alt=""
+                                                className="h-full w-full object-cover opacity-80 transition-transform duration-300 group-hover:scale-[1.02]"
+                                            />
+                                            <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium text-white">
+                                                SSR
+                                            </span>
+                                            {item.is_current && (
+                                                <span className="absolute right-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
+                                                    当前启用
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex flex-1 flex-col gap-2 p-3">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="min-w-0">
+                                                    <div className="truncate font-medium text-foreground">{item.name}</div>
+                                                    <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                                                        {typeof item.port === "number" ? `端口 ${item.port}` : "Next.js standalone"}
+                                                    </div>
+                                                </div>
+                                                <span
+                                                    className={cn(
+                                                        "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                                                        badge.cls
+                                                    )}
+                                                >
+                                                    {badge.label}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                                <span className="rounded-md bg-muted px-1.5 py-0.5">SSR 版</span>
+                                                <span className="tabular-nums">v{item.version || "—"}</span>
+                                                {item.startedAt && <span className="tabular-nums">启动 {item.startedAt}</span>}
+                                            </div>
+
+                                            <div className="mt-auto flex flex-wrap items-center gap-2 border-t pt-2">
+                                                <Button
+                                                    size="sm"
+                                                    className="h-7 px-2 text-xs"
+                                                    disabled={busy !== null || status === "running"}
+                                                    onClick={() => void handleSsrAction(item, "start")}
+                                                >
+                                                    {busy === "start" ? (
+                                                        <Loader2 className="size-3.5 animate-spin" />
+                                                    ) : (
+                                                        <Play className="size-3.5" />
+                                                    )}
+                                                    启动
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-7 px-2 text-xs"
+                                                    disabled={busy !== null || status !== "running"}
+                                                    onClick={() => void handleSsrAction(item, "stop")}
+                                                >
+                                                    {busy === "stop" ? (
+                                                        <Loader2 className="size-3.5 animate-spin" />
+                                                    ) : (
+                                                        <Square className="size-3.5" />
+                                                    )}
+                                                    停止
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                                                    disabled={busy !== null || item.is_current}
+                                                    title={item.is_current ? "当前启用中，先切回标准主题再卸载" : "停止并删除主题目录"}
+                                                    onClick={() => void handleSsrAction(item, "uninstall")}
+                                                >
+                                                    {busy === "uninstall" ? (
+                                                        <Loader2 className="size-3.5 animate-spin" />
+                                                    ) : (
+                                                        <Trash2 className="size-3.5" />
+                                                    )}
+                                                    卸载
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
                     </div>
                 )}
             </div>
@@ -905,7 +1138,14 @@ export function ThemesManager() {
                 onSaved={() => resyncAfterWrite()}
             />
             {/* 安装 SSR 主题（Next standalone 包，只填公网 tar.gz 地址） */}
-            <SsrInstallDialog open={ssrInstallOpen} onOpenChange={setSsrInstallOpen} />
+            <SsrInstallDialog
+                open={ssrInstallOpen}
+                onOpenChange={setSsrInstallOpen}
+                onInstalled={() => {
+                    setTab("installed");
+                    void loadSsr();
+                }}
+            />
             {/* 上传主题压缩包：校验 + 上传安装 */}
             <ThemeUploadDialog open={uploadOpen} onOpenChange={setUploadOpen} onUploaded={handleUploaded} />
             {/* 主题详情：当前启用主题的配置定义与生效值 */}
