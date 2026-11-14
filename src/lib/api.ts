@@ -44,16 +44,31 @@ import type { ThemeListData } from "@/types/themes";
 /** 去掉结尾斜杠，避免拼出 `//public/xxx` */
 const trimSlash = (value?: string) => (value ?? "").trim().replace(/\/+$/, "");
 
+/**
+ * 把「后端源」规范成「带 /api 的基址」。
+ *
+ * Anheyu 启动 SSR 主题时注入的是 `API_URL=http://localhost:8091`（**没有** /api 后缀，
+ * 见 pkg/ssr/manager.go:286），而本站所有接口路径都是 `/public/...`、`/admin/...` 这种，
+ * 必须拼在 `/api` 之后。这里统一补齐，避免拼出 `http://localhost:8091/public/xxx`。
+ * 另外把 `localhost` 换成 `127.0.0.1`：容器里 localhost 可能先解析到 ::1，
+ * 而后端通常只监听 IPv4，换掉能少一类「连不上」的坑。
+ */
+function normalizeBase(raw: string): string {
+    const base = trimSlash(raw).replace(/^(https?:\/\/)localhost(?=[:/]|$)/i, "$1127.0.0.1");
+    if (!base) return "";
+    return /\/api$/i.test(base) ? base : `${base}/api`;
+}
+
 /** 服务端用的后端地址：**运行时**读环境变量（不进构建产物） */
 function resolveServerBase(): string {
     const explicit = trimSlash(process.env.API_URL) || trimSlash(process.env.INTERNAL_API_URL);
-    if (explicit) return explicit;
+    if (explicit) return normalizeBase(explicit);
 
     // 兼容老配置：仍可用 NEXT_PUBLIC_API_URL / NEXT_PUBLIC_SITE_URL
     const publicApi = trimSlash(process.env.NEXT_PUBLIC_API_URL);
-    if (publicApi) return publicApi;
+    if (publicApi) return normalizeBase(publicApi);
     const siteOrigin = trimSlash(process.env.NEXT_PUBLIC_SITE_URL);
-    if (siteOrigin) return `${siteOrigin}/api`;
+    if (siteOrigin) return normalizeBase(siteOrigin);
 
     // 兜底：Anheyu 后端默认在本机 8091 端口。
     // 这样「别人装了这个主题」时无需任何配置也能立刻工作。
