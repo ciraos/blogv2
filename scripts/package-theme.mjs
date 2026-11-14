@@ -145,6 +145,7 @@ if (symlinks.length) {
     );
 }
 
+console.log(  解引用完成： 个文件 / MB / 软链  个);
 if (fileCount > LIMITS.maxEntries) fail(`条目数 ${fileCount} 超过上限 ${LIMITS.maxEntries}`);
 if (byteCount / 1024 / 1024 > LIMITS.maxExtractedMB) fail(`解压后 ${mb(byteCount)}MB 超过 ${LIMITS.maxExtractedMB}MB`);
 if (biggest.size / 1024 / 1024 > LIMITS.maxFileMB) fail(`单文件 ${biggest.name} 有 ${mb(biggest.size)}MB，超过 ${LIMITS.maxFileMB}MB`);

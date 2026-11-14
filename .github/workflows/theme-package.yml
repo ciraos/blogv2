@@ -36,6 +36,12 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      # 用 hoisted（npm 式扁平）node_modules：pnpm 默认的 .pnpm 软链农场一旦解引用，
+      # 同一份包会在几十个 .pnpm/*/node_modules 下反复实体化，条目数与体积都会炸
+      # （后端上限：10000 条目 / 512MB 解压）。
+      - name: Use hoisted node_modules
+        run: echo "node-linker=hoisted" >> .npmrc
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
