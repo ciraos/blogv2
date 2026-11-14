@@ -82,7 +82,9 @@ const stage = path.join(DIST, stageName);
 fs.rmSync(stage, { recursive: true, force: true });
 fs.mkdirSync(stage, { recursive: true });
 
-const SKIP_NAMES = new Set([".env", ".env.local", ".env.production", ".env.development", "cache"]);
+const SKIP_NAMES = new Set([".env", ".env.local", ".env.production", ".env.development", "cache", ".bin"]);
+/** 运行时用不到的文件后缀：source map 又多又大 */
+const SKIP_SUFFIXES = [".map"];
 let fileCount = 0;
 let byteCount = 0;
 let biggest = { name: "", size: 0 };
@@ -104,6 +106,7 @@ function copyReal(src, dest) {
         fs.mkdirSync(dest, { recursive: true });
         for (const entry of fs.readdirSync(src)) {
             if (SKIP_NAMES.has(entry)) continue;
+            if (SKIP_SUFFIXES.some((suffix) => entry.endsWith(suffix))) continue;
             copyReal(path.join(src, entry), path.join(dest, entry));
         }
         ancestorDirs.delete(real);
@@ -145,7 +148,7 @@ if (symlinks.length) {
     );
 }
 
-console.log(  解引用完成： 个文件 / MB / 软链  个);
+console.log(`  解引用完成：${fileCount} 个文件 / ${mb(byteCount)}MB / 残留软链 ${symlinks.length} 个`);
 if (fileCount > LIMITS.maxEntries) fail(`条目数 ${fileCount} 超过上限 ${LIMITS.maxEntries}`);
 if (byteCount / 1024 / 1024 > LIMITS.maxExtractedMB) fail(`解压后 ${mb(byteCount)}MB 超过 ${LIMITS.maxExtractedMB}MB`);
 if (biggest.size / 1024 / 1024 > LIMITS.maxFileMB) fail(`单文件 ${biggest.name} 有 ${mb(biggest.size)}MB，超过 ${LIMITS.maxFileMB}MB`);

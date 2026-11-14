@@ -54,6 +54,10 @@ jobs:
       - name: Check standalone exists
         run: test -f .next/standalone/server.js || (echo "standalone 缺失，检查 next.config.ts 的 output 设置" && exit 1)
 
+      # 先做语法自检：脚本语法错会让整步直接 SyntaxError，看不出是哪一环
+      - name: Syntax check packaging script
+        run: node --check scripts/package-theme.mjs
+
       - name: Package theme
         run: node scripts/package-theme.mjs
 
