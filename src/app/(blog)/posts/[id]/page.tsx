@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -8,6 +8,7 @@ import { ArticleSummary } from "@/components/(blog)/article-summary";
 import { JsonLd } from "@/components/(blog)/json-ld";
 import { PostActions } from "@/components/(blog)/post-actions";
 import { PostComments } from "@/components/(blog)/post-comments";
+import { PostToc } from "@/components/(blog)/post-toc";
 import { PostWaves } from "@/components/(blog)/post-waves";
 import { PageWithSidebar } from "@/components/(blog)/page-with-sidebar";
 
@@ -179,12 +180,16 @@ export default async function Post({ params }: PostPageProps) {
         // 配置获取失败时使用默认（不阻塞正文）
     }
 
-    // 正文结尾的装饰波浪开关（site-config post.waves.enable）。
+    // 正文结尾的装饰波浪开关（site-config post.waves.enable）+ 目录参数（sidebar.toc.collapseMode、post.toc.hash_update_mode）
     // 上面几次拿配置都走 lib/site-config 里被 React `cache()` 包住的实现，同一次渲染只会真正请求一次。
     let wavesEnabled = false;
+    let tocCollapseMode = false;
+    let tocHashUpdateMode: string | undefined;
     try {
         const config = await requireSiteConfigs();
         wavesEnabled = config.post?.waves?.enable === true;
+        tocCollapseMode = config.sidebar?.toc?.collapseMode === true;
+        tocHashUpdateMode = config.post?.toc?.hash_update_mode;
     } catch {
         // 配置获取失败时不渲染波浪（纯装饰，不能影响正文）
     }
@@ -241,8 +246,11 @@ export default async function Post({ params }: PostPageProps) {
     ];
 
     return (
-        <PageWithSidebar>
-            {/* 单栏文章正文；右侧目录（TOC）由全局侧边栏顶部的「文章目录」卡片接管 */}
+        /* 目录由 PageWithSidebar 的右侧窄边栏承接（桌面端 sticky 跟随；移动端走右下角悬浮目录抽屉） */
+        <PageWithSidebar
+            toc={<PostToc collapseMode={tocCollapseMode} hashUpdateMode={tocHashUpdateMode} />}
+        >
+            {/* 单栏文章正文 */}
             {/* 编辑部风：正文页收成 720px 沉浸阅读宽度（左侧留白均匀），文章内的 Markdown 样式不动 */}
             <article className="mx-auto w-full min-w-0 max-w-[720px]">
                 <JsonLd data={structuredData} />
