@@ -1,10 +1,14 @@
 import { createElement, type ComponentType } from "react";
 
 import {
+    buildChatHtml,
+    buildPanelHtml,
+    buildStepsHtml,
     buildTabsHtml,
     renderMathInHtml,
     renderShortcodesToHtml,
-    splitTabsBlocks,
+    splitSegmentedBlocks,
+    type ChatRenderedEntry,
 } from "@/lib/article-shortcodes-render";
 
 /**
@@ -254,8 +258,9 @@ function loadRenderer(): Promise<MarkdownToHtml> {
  * 未整理前的原始输出见 createRenderer，整理规则见 normalizeRenderedHtml。
  *
  * 渲染分两步：
- * 1. `:::tabs` 需要**分段渲染**（每个标签页单独渲染成 HTML 再拼装）——把标签页 Markdown
- *    塞进 `<div>` 指望 rehype 在 HTML 块里继续解析，遇到围栏代码块会整段丢失；
+ * 1. `:::tabs` / `:::chat` 需要**分段渲染**（每个标签页 / 每条聊天消息单独渲染成 HTML 再拼装）——
+ *    把 Markdown 塞进 `<div>` 指望 rehype 在 HTML 块里继续解析，遇到围栏代码块会整段丢失。
+ *    两者可以互相嵌套（tabs 里放 chat、chat 里放 tabs），所以这里是**递归**的 renderBlocks；
  * 2. 其余内容：短代码 → Markdown 渲染 → 公式 → 清理。
  */
 export async function renderMarkdownToHtml(markdown: string): Promise<string> {
@@ -264,35 +269,63 @@ export async function renderMarkdownToHtml(markdown: string): Promise<string> {
     const render = await loadRenderer();
 
     /**
-     * 顺序很关键：**先**把嵌套在 tabs 里的块级短代码（`:::btns` / `:::gallery` / `:::hidden`）
-     * 转成 HTML，**再**按 tabs 切分。
+     * 顺序很关键：**先**把块级短代码（`:::btns` / `:::gallery` / `:::hidden` / `{btn}` …）转成 HTML，
+     * **再**切 tabs / chat。
      *
-     * 为什么：这些短代码自己也用 `:::` 收尾。如果先切 tabs，外层 `:::tabs … :::` 的惰性匹配会
-     * 把内层那个 `:::` 当成自己的结束符 —— tabs 块在那里提前收尾，最后那页的按钮组/图集就变成
-     * 未闭合的裸文本（实测：按钮组那一页显示 `<p>:::btns cols=3</p>` + 一串 `<li>`）。
+     * 为什么：这些短代码自己也用 `:::` 收尾。如果先切块，外层 `:::tabs … :::` 的配对会把内层那个
+     * `:::` 当成自己的结束符 —— 块在那里提前收尾，最后那页的按钮组/图集就变成未闭合的裸文本。
      */
     const prepared = renderShortcodesToHtml(md);
 
     /** 一段 Markdown → HTML（块级短代码已在上面统一转换过，这里不再重复跑） */
     const renderSegment = (text: string): string => renderMathInHtml(normalizeRenderedHtml(render(text)));
 
-    const parts = splitTabsBlocks(prepared);
-    if (parts.length === 1 && parts[0].type === "md") return renderSegment(parts[0].text);
-
+    /** tabs 的 id 计数：嵌套时也要连续且唯一，所以整篇共用一份 */
     let tabsIndex = 0;
-    const html: string[] = [];
-    for (const part of parts) {
-        if (part.type === "md") {
-            const seg = renderSegment(part.text);
-            if (seg.trim()) html.push(seg);
-            continue;
+
+    /** 递归渲染一段 Markdown：普通段落直接渲染，tabs / steps / chat / panel 各自分段后再递归 */
+    const renderBlocks = (text: string): string[] => {
+        const html: string[] = [];
+        for (const part of splitSegmentedBlocks(text)) {
+            if (part.type === "md") {
+                const seg = renderSegment(part.text);
+                if (seg.trim()) html.push(seg);
+                continue;
+            }
+            // 已经拼好的白板块（chapters / compare / timeline / rating）：原样输出，不过渲染器
+            if (part.type === "html") {
+                if (part.html.trim()) html.push(part.html);
+                continue;
+            }
+            if (part.type === "tabs" || part.type === "steps") {
+                const sections = part.sections.map((s) => ({ title: s.title, html: renderBlocks(s.body).join("\n") }));
+                if (sections.length === 0) continue;
+                if (part.type === "steps") {
+                    html.push(buildStepsHtml(part.head, sections));
+                    continue;
+                }
+                tabsIndex += 1;
+                html.push(buildTabsHtml(part.head, sections, tabsIndex));
+                continue;
+            }
+            if (part.type === "panel") {
+                const body = renderBlocks(part.body).join("\n");
+                const block = buildPanelHtml(part.name, part.head, body);
+                if (block.trim()) html.push(block);
+                continue;
+            }
+            const entries = part.entries.map((entry): ChatRenderedEntry =>
+                entry.type === "system"
+                    ? entry
+                    : { type: "msg", name: entry.name, html: renderBlocks(entry.body).join("\n") }
+            );
+            const block = buildChatHtml(part.head, entries);
+            if (block.trim()) html.push(block);
         }
-        const sections = part.sections.map((s) => ({ title: s.title, html: renderSegment(s.body) }));
-        if (sections.length === 0) continue;
-        tabsIndex += 1;
-        html.push(buildTabsHtml(part.head, sections, tabsIndex));
-    }
-    return html.join("\n");
+        return html;
+    };
+
+    return renderBlocks(prepared).join("\n");
 }
 
 /** resolveContentHtml 的返回：本次提交要带的 content_html，以及它是不是现渲染出来的 */

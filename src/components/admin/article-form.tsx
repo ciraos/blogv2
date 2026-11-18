@@ -720,6 +720,57 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
     }, [dirty, loading, draftKey, buildPayload, status, currentSignature]);
 
     /**
+     * 预览的代码块配置（site-config `post.code_block`）：必须和前台文章页拿的是同一份，
+     * 否则预览里的代码框会缺 mac 圆点 / 按默认 10 行折叠，而前台按站点配置渲染 —— 这正是「预览和前台不一样」。
+     * 来源对齐 posts/[id]/page.tsx:169-179（那边是服务端 getPublicSiteConfigApi，走远端直连）；
+     * 客户端组件不能直连远端（后端无 CORS），所以走同源代理 GET /api/public/site-config（同 post-comments.tsx:380 的做法）。
+     * 取不到时不传参，ArticleBody 用它与前台完全相同的缺省值（默认 10 行折叠 / 不显示圆点）。
+     *
+     * 同一个请求顺带取头像服务（GRAVATAR_URL / DEFAULT_GRAVATAR_TYPE）：:::chat 里没写 avatar 的发言人
+     * 按名字在它上面生成头像（见 lib/avatar.ts:resolveNameAvatar），前台与预览必须同源。
+     * 声明位置必须在下面 `previewHtml` 之前：那个 useMemo 里要用到，声明在后面会踩 TDZ（ReferenceError）。
+     */
+    const [previewCodeBlock, setPreviewCodeBlock] = useState<PreviewCodeBlock | undefined>();
+    /** 站点头像服务（GRAVATAR_URL / DEFAULT_GRAVATAR_TYPE）：:::chat 发言人的默认头像 */
+    const [previewGravatar, setPreviewGravatar] = useState<{ url?: string | null; defaultType?: string | null }>();
+    // 只取一次：反复点「预览 / 继续编辑」不必重复请求（站点配置在一次编辑会话里基本不变）
+    const codeBlockRequestedRef = useRef(false);
+    useEffect(() => {
+        if (!showPreview || codeBlockRequestedRef.current) return;
+        codeBlockRequestedRef.current = true;
+        let cancelled = false;
+        void fetch("/api/public/site-config", { cache: "no-store" })
+            .then((res) => (res.ok ? res.json() : null))
+            .then(
+                (
+                    json:
+                        | {
+                              data?: {
+                                  post?: { code_block?: { code_max_lines?: number; mac_style?: boolean } };
+                                  GRAVATAR_URL?: string;
+                                  DEFAULT_GRAVATAR_TYPE?: string;
+                              };
+                          }
+                        | null
+                ) => {
+                    if (cancelled) return;
+                    const cb = json?.data?.post?.code_block;
+                    if (cb) setPreviewCodeBlock({ codeMaxLines: cb.code_max_lines, macStyle: cb.mac_style });
+                    setPreviewGravatar({
+                        url: json?.data?.GRAVATAR_URL,
+                        defaultType: json?.data?.DEFAULT_GRAVATAR_TYPE,
+                    });
+                }
+            )
+            .catch(() => {
+                // 配置取不到：留空 → ArticleBody 缺省值（与前台配置取不到时的行为一致，不阻塞预览）
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [showPreview]);
+
+    /**
      * 预览 HTML：优先用与提交**完全相同**的渲染器（src/lib/article-markdown.ts），
      * 让「预览所见 = 保存所存」。渲染器要按需动态加载，所以渲染完成后才替换；
      * md 与渲染结果对不上时先退回下面的极简渲染（不会出现「改了正文还显示上一份预览」）。
@@ -734,53 +785,42 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
      * 预览按渲染器原样显示（不静默改内容）。
      */
     const [renderedPreview, setRenderedPreview] = useState<{ md: string; html: string } | null>(null);
+    /** 是否已经渲染过一次预览（只用来决定第一次不防抖；放在 ref 里避免进 effect 依赖 → 无限重渲染） */
+    const hasRenderedPreviewRef = useRef(false);
     useEffect(() => {
         if (!showPreview) return;
         let cancelled = false;
-        void renderMarkdownToHtml(contentMd)
-            .then((html) => {
-                if (!cancelled) setRenderedPreview({ md: contentMd, html });
-            })
-            .catch(() => {
-                // 渲染器加载失败：保持 null，渲染时用 mdToHtml 兜底
-            });
+        /**
+         * 防抖：预览开着的时候每敲一个字都全量渲染一次 29KB 正文（≈100ms 主线程）会把手感拖死，
+         * 所以停手一会儿再渲染；期间预览还显示上一份结果。
+         * 第一次打开预览（还没有任何渲染结果）不延迟，点了就该看到东西。
+         */
+        const delay = hasRenderedPreviewRef.current ? 350 : 0;
+        const timer = setTimeout(() => {
+            void renderMarkdownToHtml(contentMd)
+                .then((html) => {
+                    if (cancelled) return;
+                    hasRenderedPreviewRef.current = true;
+                    setRenderedPreview({ md: contentMd, html });
+                })
+                .catch(() => {
+                    // 渲染器加载失败：保持 null，渲染时用 mdToHtml 兜底
+                });
+        }, delay);
         return () => {
             cancelled = true;
+            clearTimeout(timer);
         };
     }, [showPreview, contentMd]);
     const previewHtml = useMemo(() => {
-        const raw = renderedPreview && renderedPreview.md === contentMd ? renderedPreview.html : mdToHtml(contentMd);
-        return patchArticleContent(contentMd, raw);
-    }, [renderedPreview, contentMd]);
-
-    /**
-     * 预览的代码块配置（site-config `post.code_block`）：必须和前台文章页拿的是同一份，
-     * 否则预览里的代码框会缺 mac 圆点 / 按默认 10 行折叠，而前台按站点配置渲染 —— 这正是「预览和前台不一样」。
-     * 来源对齐 posts/[id]/page.tsx:169-179（那边是服务端 getPublicSiteConfigApi，走远端直连）；
-     * 客户端组件不能直连远端（后端无 CORS），所以走同源代理 GET /api/public/site-config（同 post-comments.tsx:380 的做法）。
-     * 取不到时不传参，ArticleBody 用它与前台完全相同的缺省值（默认 10 行折叠 / 不显示圆点）。
-     */
-    const [previewCodeBlock, setPreviewCodeBlock] = useState<PreviewCodeBlock | undefined>();
-    // 只取一次：反复点「预览 / 继续编辑」不必重复请求（站点配置在一次编辑会话里基本不变）
-    const codeBlockRequestedRef = useRef(false);
-    useEffect(() => {
-        if (!showPreview || codeBlockRequestedRef.current) return;
-        codeBlockRequestedRef.current = true;
-        let cancelled = false;
-        void fetch("/api/public/site-config", { cache: "no-store" })
-            .then((res) => (res.ok ? res.json() : null))
-            .then((json: { data?: { post?: { code_block?: { code_max_lines?: number; mac_style?: boolean } } } } | null) => {
-                if (cancelled) return;
-                const cb = json?.data?.post?.code_block;
-                if (cb) setPreviewCodeBlock({ codeMaxLines: cb.code_max_lines, macStyle: cb.mac_style });
-            })
-            .catch(() => {
-                // 配置取不到：留空 → ArticleBody 缺省值（与前台配置取不到时的行为一致，不阻塞预览）
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, [showPreview]);
+        // 预览没打开时一个字都别算：mdToHtml + patchArticleContent 在 29KB 正文上是 5~10ms，
+        // 挂在每次按键上就是白掉的延迟（编辑态根本用不到这份 HTML）。
+        if (!showPreview) return "";
+        // 有上一份渲染结果就先用它（防抖等待期间显示「上一帧」），没有才退回极简渲染。
+        // 不用「md 变了就退回极简渲染」：那样每敲一个字预览都会闪一下没有样式的裸文本。
+        const raw = renderedPreview ? renderedPreview.html : mdToHtml(contentMd);
+        return patchArticleContent(contentMd, raw, { gravatar: previewGravatar });
+    }, [showPreview, renderedPreview, contentMd, previewGravatar]);
 
     /** 分类/标签共用：已选则移除、未选则追加（下拉添加与标签上的 × 都走它） */
     const toggle = (list: string[], id: string, set: (v: string[]) => void) =>

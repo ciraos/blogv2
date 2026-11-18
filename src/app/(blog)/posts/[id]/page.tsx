@@ -170,12 +170,15 @@ export default async function Post({ params }: PostPageProps) {
 
     // 代码块配置（mac 风格 / 超过多少行折叠）：取自 site-config post.code_block（后端 snake_case → 前端 camelCase）
     let codeBlock: { codeMaxLines: number; macStyle: boolean } | undefined;
+    // 聊天框（:::chat）发言人的默认头像：站点头像服务，与评论头像同一套口径
+    let chatGravatar: { url?: string | null; defaultType?: string | null } | undefined;
     try {
         const config = await requireSiteConfigs();
         const cb = config.post?.code_block;
         if (cb) {
             codeBlock = { codeMaxLines: cb.code_max_lines, macStyle: cb.mac_style };
         }
+        chatGravatar = { url: config.GRAVATAR_URL, defaultType: config.DEFAULT_GRAVATAR_TYPE };
     } catch {
         // 配置获取失败时使用默认（不阻塞正文）
     }
@@ -209,7 +212,10 @@ export default async function Post({ params }: PostPageProps) {
      *     左/右两个方向、`delay=0/500` 全丢）→ 补 `tip-{theme}` / `tip-{position}` 类名与 wrapper 上的
      *     `data-trigger` / `data-delay`。tip 的显示/隐藏/延迟机制仍在 globals.css + article-body.tsx:enhanceTips。
      */
-    const contentHtml = patchArticleContent(article.content_md, article.content_html || "");
+    const contentHtml = patchArticleContent(article.content_md, article.content_html || "", {
+        // 聊天框（:::chat）里没写 avatar 的发言人：按名字在站点头像服务上生成一张（GRAVATAR_URL + 兜底类型）
+        gravatar: chatGravatar,
+    });
 
     /* ---------- 结构化数据（JSON-LD）----------
      * BlogPosting + BreadcrumbList：让搜索结果能出「标题/时间/作者/缩略图」的富摘要。

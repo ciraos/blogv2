@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { commands as mdCommands, type ICommand } from "@uiw/react-md-editor";
 import { Heading1, Heading2, Heading3, ImagePlus, Loader2, WandSparkles } from "lucide-react";
@@ -19,7 +19,7 @@ const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
  * - 图片：直接 Ctrl+V 粘贴截图 → 走后端 /api/admin/articles/upload → 在正文末尾插入 Markdown 图片语法；
  *   也可以用下方「插入图片」按钮选文件。上传成功后光标位置拿不到（编辑器内部 textarea），统一追加到末尾。
  */
-export function MarkdownEditor({
+function MarkdownEditorImpl({
     value,
     onChange,
     placeholder,
@@ -33,6 +33,15 @@ export function MarkdownEditor({
     const wrapRef = useRef<HTMLDivElement>(null);
     const fileRef = useRef<HTMLInputElement>(null);
     const [uploading, setUploading] = useState(false);
+    /**
+     * 编辑器里的「语法高亮层」开关。
+     *
+     * @uiw 的高亮层会把整篇 Markdown 同步跑一遍 rehype + prism，再铺在 textarea 底下当底图，
+     * 而且**每次渲染都重跑**。实测 29KB 正文下每次按键 ≈150ms（关掉后 ≈10ms），长文根本没法打字。
+     * 所以默认按正文长度决定：短文（≤4k 字，一次高亮 ≈10ms 以内）开着有颜色，
+     * 长文默认关；页脚有「语法高亮」按钮可以随时手动开关（关掉不影响后台「预览」里的完整高亮）。
+     */
+    const [highlight, setHighlight] = useState(() => value.length <= 4000);
     // 实时预览开关：默认关闭 —— 长文（20KB+，含 KaTeX/表格/图片）开着会让页面多渲染一份完整
     // 正文，滚动与输入都明显掉帧（用户 2026-10 反馈"编辑页上下滚动很卡"）。
     const [livePreview, setLivePreview] = useState(false);
@@ -215,12 +224,19 @@ export function MarkdownEditor({
         []
     );
 
+    /**
+     * onChange / textareaProps 必须是稳定引用：它们每渲染都换新对象的话，
+     * MDEditor 里的 textarea 会被整体重挂一遍（29KB 正文白白多一次赋值 + 布局）。
+     */
+    const onEditorChange = useCallback((next?: string) => onChange(next ?? ""), [onChange]);
+    const textareaProps = useMemo(() => ({ placeholder }), [placeholder]);
+
     return (
         <div ref={wrapRef} className="overflow-hidden rounded-md border" data-color-mode="light">
             <div onPaste={onPaste}>
                 <MDEditor
                     value={value}
-                    onChange={(v) => onChange(v ?? "")}
+                    onChange={onEditorChange}
                     height={height}
                     /**
                      * 默认 `edit`，**不要** `live`。
@@ -237,7 +253,18 @@ export function MarkdownEditor({
                     extraCommands={toolbarExtra}
                     preview={livePreview ? "live" : "edit"}
                     visibleDragbar={false}
-                    textareaProps={{ placeholder }}
+                    /**
+                     * 关掉编辑器自带的「语法高亮层」——**这是长文输入卡顿的真正原因**（2026-11-18 实测）。
+                     *
+                     * 默认开启时，它会把整篇 Markdown 转义进 `<pre><code class="language-markdown">`，
+                     * 再同步跑一遍 `rehype().use(rehypePrism).processSync(...)`（完整 HTML → hast →
+                     * prism 高亮 → 序列化），最后 `dangerouslySetInnerHTML` 铺在 textarea 底下当彩色底图。
+                     * 这段是同步的，而且**每次渲染都会重跑**（每敲一个字一次）。实测 29KB 正文：
+                     * 每次按键 ≈150ms，关掉后 ≈10ms；页面里也因此少了一整份正文的 DOM。
+                     * 代价是编辑器里没有彩色底图了，但后台的「预览」仍会给出完整高亮。
+                     */
+                    highlightEnable={highlight}
+                    textareaProps={textareaProps}
                 />
             </div>
             <div data-editor-footer className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/30 px-2 py-1.5">
@@ -265,6 +292,19 @@ export function MarkdownEditor({
                     >
                         {livePreview ? "关闭实时预览" : "实时预览"}
                     </button>
+                    {/* 语法高亮层：默认关（长文每次按键要多跑一遍 prism），想给短文上色时打开 */}
+                    <button
+                        type="button"
+                        onClick={() => setHighlight((v) => !v)}
+                        className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors ${
+                            highlight
+                                ? "border-primary/40 bg-primary/10 text-primary"
+                                : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        title="编辑器里的彩色底图：打开后每次按键都会重新高亮全文，长文会明显卡顿"
+                    >
+                        {highlight ? "关闭语法高亮" : "语法高亮"}
+                    </button>
                 </div>
                 <span className="text-[11px] tabular-nums text-muted-foreground">{value.length} 字</span>
             </div>
@@ -288,3 +328,10 @@ export function MarkdownEditor({
         </div>
     );
 }
+
+/**
+ * memo 包一层：`article-form` 每次按键都会重渲染整页，但改标题/摘要/分类时正文没变，
+ * 编辑器没必要跟着重渲染（29KB 的 textarea 重渲染一次要几十毫秒）。
+ * onChange 传进来的就是 setState（引用稳定），placeholder 是字面量，所以这条 memo 能命中。
+ */
+export const MarkdownEditor = memo(MarkdownEditorImpl);

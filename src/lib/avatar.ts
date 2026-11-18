@@ -80,3 +80,40 @@ export function resolveCommentAvatar(
     if (md5) return `${base}/avatar/${md5}?s=${AVATAR_SIZE}&d=${type}`;
     return `${base}/avatar/?s=${AVATAR_SIZE}&d=${type}`;
 }
+
+/** FNV-1a（32 位，纯 JS，不引依赖） */
+function fnv1a(input: string, seed: number): number {
+    let hash = seed >>> 0;
+    for (let i = 0; i < input.length; i += 1) {
+        hash ^= input.charCodeAt(i);
+        hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    return hash >>> 0;
+}
+
+/**
+ * 由名字算一个**稳定的 32 位十六进制哈希**（纯函数：name → hex）。
+ *
+ * 用途：`:::chat` 里没写 `avatar=` 的发言人，用 Gravatar 风格的「按哈希生成的兜底头像」。
+ * 为什么不是真的邮箱 md5：前端没有 md5 实现（也不该为此引依赖），而 `DEFAULT_GRAVATAR_TYPE`
+ * 里的 wavatar / identicon / monsterid 本来就是**按哈希现画**的头像 —— 任意 32 位 hex 都能得到
+ * 一张确定的脸，同一个名字永远同一张、不同名字不同张（实测线上 d=wavatar ✓）。
+ */
+export function nameAvatarHash(name: string): string {
+    const seed = `chat:${(name ?? "").trim() || "匿名"}`;
+    // 四段不同初始值各取 32 位 → 拼成 32 个 hex 字符
+    return [0x811c9dc5, 0x1b873593, 0x9e3779b9, 0x85ebca6b]
+        .map((initial) => fnv1a(seed, initial).toString(16).padStart(8, "0"))
+        .join("");
+}
+
+/**
+ * 站点头像服务上「按名字生成」的头像地址（纯函数：name → URL）。
+ * 口径与评论头像完全一致：`{GRAVATAR_URL 基址}/avatar/{哈希}?s=140&d={DEFAULT_GRAVATAR_TYPE}`
+ * —— 只是哈希由名字算，不再是邮箱 md5。
+ */
+export function resolveNameAvatar(name: string, config?: GravatarConfig): string {
+    const base = normalizeGravatarBase(config?.url);
+    const type = (config?.defaultType || "").trim() || DEFAULT_GRAVATAR_TYPE;
+    return `${base}/avatar/${nameAvatarHash(name)}?s=${AVATAR_SIZE}&d=${type}`;
+}

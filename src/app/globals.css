@@ -1897,6 +1897,837 @@ body {
   display: block;
 }
 
+/* ---------- 聊天框（:::chat：播客对谈 / 采访稿 / 群聊梗） ----------
+ * 结构：.chat-thread > [.chat-title] + .chat-msgs > .chat-msg(.chat-left|.chat-right) 或 .chat-system
+ * 配色全部走变量，三套预设：ink（默认，跟主题主色）/ qq（天蓝）/ wechat（草绿）。
+ * 左侧气泡的底色靠 --chat-other-*，右侧靠 --chat-self-*，见 html 里的 chat-theme-* 类。 */
+.article-body .chat-thread {
+  --chat-avatar: 34px;
+  --chat-bubble-max: 78%;
+  --chat-other-bg: var(--muted);
+  --chat-other-fg: var(--foreground);
+  --chat-other-border: var(--border);
+  --chat-self-bg: color-mix(in oklab, var(--primary) 12%, var(--card));
+  --chat-self-fg: var(--foreground);
+  --chat-self-border: color-mix(in oklab, var(--primary) 26%, transparent);
+
+  margin: 1.35rem 0 !important;
+  padding: 14px 16px 16px;
+  font-size: 0.95em;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.article-body .chat-theme-qq {
+  --chat-other-bg: #fff;
+  --chat-other-fg: #1f1f1f;
+  --chat-other-border: #e3e5e8;
+  --chat-self-bg: #12b7f5;
+  --chat-self-fg: #fff;
+  --chat-self-border: #12b7f5;
+}
+
+.article-body .chat-theme-wechat {
+  --chat-other-bg: #fff;
+  --chat-other-fg: #1a1a1a;
+  --chat-other-border: #e6e6e6;
+  --chat-self-bg: #95ec69;
+  --chat-self-fg: #1a1a1a;
+  --chat-self-border: #8ad963;
+}
+
+/* qq / wechat 是固定浅色气泡：气泡里必须把主题令牌也换成浅色，
+ * 否则深色模式下气泡内会出现「深底深字」的行内代码、代码块与引用（令牌继承自 .dark）。 */
+.article-body .chat-theme-qq .chat-bubble,
+.article-body .chat-theme-wechat .chat-bubble {
+  color-scheme: light;
+  --background: #fff;
+  --card: #fff;
+  --foreground: #1f1f1f;
+  --muted: #f1f2f4;
+  --muted-foreground: #6b7075;
+  --border: #e3e5e8;
+}
+
+.article-body .chat-theme-qq .chat-bubble {
+  --primary: #12b7f5;
+}
+
+.article-body .chat-theme-wechat .chat-bubble {
+  --primary: #3f9e3f;
+}
+
+/* 顶部会话标题（不写 title= 就不渲染） */
+.article-body .chat-title {
+  padding: 0 2px 10px;
+  margin-bottom: 14px;
+  font-size: 0.84em;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  border-bottom: 1px solid var(--border);
+}
+
+.article-body .chat-msgs {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.article-body .chat-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 100%;
+}
+
+/* 自己：头像与气泡整体镜像到右侧 */
+.article-body .chat-msg.chat-right {
+  flex-direction: row-reverse;
+}
+
+.article-body .chat-avatar {
+  flex: 0 0 var(--chat-avatar);
+  width: var(--chat-avatar);
+  height: var(--chat-avatar);
+  overflow: hidden;
+  background: var(--muted);
+  border-radius: 50%;
+}
+
+.article-body .chat-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 没给头像：名字首字色块（补丁会按 `.chat-avatar-name` 里的名字换成站点头像）
+ * 名字本身只给脚本读，不显示；颜色统一走主色，不再按名字算色相 ——
+ * 内联 style 里的 CSS 变量能过消毒，但为一块「马上会被替换掉的占位」多塞一个变量不值。 */
+.article-body .chat-avatar-name {
+  display: none;
+}
+
+.article-body .chat-avatar-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82em;
+  font-weight: 600;
+  color: var(--primary);
+  background: color-mix(in oklab, var(--primary) 12%, var(--card));
+}
+
+.dark .article-body .chat-avatar-text {
+  color: color-mix(in oklab, var(--primary) 70%, white);
+  background: color-mix(in oklab, var(--primary) 18%, var(--card));
+}
+
+.article-body .chat-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  max-width: var(--chat-bubble-max);
+}
+
+.article-body .chat-msg.chat-right .chat-main {
+  align-items: flex-end;
+}
+
+.article-body .chat-name {
+  padding: 0 2px;
+  font-size: 0.78em;
+  line-height: 1.2;
+  color: var(--muted-foreground);
+}
+
+.article-body .chat-bubble {
+  max-width: 100%;
+  padding: 8px 13px;
+  overflow-wrap: anywhere;
+  font-size: 0.98em;
+  line-height: 1.7;
+  color: var(--chat-other-fg);
+  background: var(--chat-other-bg);
+  border: 1px solid var(--chat-other-border);
+  border-radius: 12px;
+}
+
+.article-body .chat-msg.chat-right .chat-bubble {
+  color: var(--chat-self-fg);
+  background: var(--chat-self-bg);
+  border-color: var(--chat-self-border);
+}
+
+/* 气泡内部：抹掉正文的段间距（不然一句话的气泡被撑得很高），但保留列表/代码块自己的间距 */
+.article-body .chat-bubble> :first-child {
+  margin-top: 0;
+}
+
+.article-body .chat-bubble> :last-child {
+  margin-bottom: 0;
+}
+
+.article-body .chat-bubble p {
+  margin: 0.35em 0;
+}
+
+.article-body .chat-bubble ul,
+.article-body .chat-bubble ol {
+  margin: 0.35em 0;
+  padding-left: 1.2em;
+}
+
+.article-body .chat-bubble pre {
+  margin: 0.5em 0;
+  font-size: 0.9em;
+}
+
+.article-body .chat-bubble blockquote {
+  margin: 0.35em 0;
+}
+
+/* 系统条：居中的小灰字，两侧各一段发丝线 */
+.article-body .chat-system {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 0.76em;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.article-body .chat-system::before,
+.article-body .chat-system::after {
+  flex: 1;
+  max-width: 18%;
+  height: 1px;
+  content: "";
+  background: var(--border);
+}
+
+@media (max-width: 640px) {
+  .article-body .chat-thread {
+    --chat-avatar: 30px;
+    --chat-bubble-max: 84%;
+    padding: 12px 12px 14px;
+  }
+}
+
+/* ---------- 播客章节条（:::chapters：时间戳 + 播放/跳转） ---------- */
+
+/* 这些块用的是「自定义列表」：容器都是 div（ol/figure 的 class 过不了后端消毒），
+ * 所以只要压掉正文给 ul 画的圆点即可（rating 那一条在它自己的规则里）。 */
+.article-body .rating-rows {
+  padding-left: 0;
+  list-style: none;
+}
+
+.article-body .rating-row {
+  margin: 0;
+}
+
+.article-body .chapters {
+  margin: 1.35rem 0 !important;
+  padding: 14px 16px 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.article-body .chapters-title {
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  font-size: 0.84em;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  border-bottom: 1px solid var(--border);
+}
+
+.article-body .chapters-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.article-body .chapters-toggle {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--foreground);
+  cursor: pointer;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+/* 播放图标用 CSS 画：▶ 之类的文字符号在 Windows 上会被渲染成彩色 emoji */
+.article-body .chapters-toggle::before {
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  content: "";
+  border-style: solid;
+  border-width: 5px 0 5px 8px;
+  border-color: transparent transparent transparent currentColor;
+}
+
+/* 播放中 → 双竖条（暂停） */
+.article-body .chapters-toggle.is-playing::before {
+  width: 3px;
+  height: 9px;
+  margin-left: 0;
+  background: currentColor;
+  border: 0;
+  box-shadow: 6px 0 0 currentColor;
+}
+
+.article-body .chapters-toggle:hover,
+.article-body .chapters-toggle.is-playing {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.article-body .chapters-clock {
+  flex: 0 0 auto;
+  font-size: 0.72em;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+}
+
+.article-body .chapters-track {
+  position: relative;
+  flex: 1;
+  height: 3px;
+  cursor: pointer;
+  background: var(--border);
+  border-radius: 999px;
+}
+
+.article-body .chapters-track-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: var(--primary);
+  border-radius: 999px;
+  transition: width 0.15s linear;
+}
+
+/* 播放器本身不显示：所有控件都是上面那几个，audio 只当引擎 */
+.article-body .chapters-player audio {
+  display: none;
+}
+
+.article-body .chapters-list {
+  padding: 0;
+  margin: 0;
+}
+
+/* 相邻章节之间留一点缝：条目本身是 button（有音频）或 div（没音频），没有 li 可用 */
+.article-body .chapters-item + .chapters-item {
+  margin-top: 2px;
+}
+
+.article-body .chapters-item {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+/* 没给 src 时是个 div（点不动），光标不要骗人 */
+.article-body div.chapters-item {
+  cursor: default;
+}
+
+.article-body .chapters-item:hover {
+  background: var(--muted);
+}
+
+.article-body .chapters-item.is-active {
+  background: color-mix(in oklab, var(--primary) 10%, transparent);
+}
+
+.article-body .chapters-stamp {
+  flex: 0 0 auto;
+  font-size: 0.76em;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+  letter-spacing: 0.02em;
+}
+
+.article-body .chapters-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 0.92em;
+}
+
+.article-body .chapters-note {
+  margin-top: 2px;
+  font-size: 0.82em;
+  color: var(--muted-foreground);
+}
+
+/* ---------- 前后对比滑块（:::compare） ---------- */
+.article-body .compare {
+  position: relative;
+  margin: 1.35rem 0 !important;
+  overflow: hidden;
+  aspect-ratio: var(--compare-ratio, 16 / 9);
+  background: var(--muted);
+  border-radius: 14px;
+  user-select: none;
+  touch-action: pan-y;
+}
+
+.article-body .compare img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  box-shadow: none;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+/* 上层「后」图按 --compare-pos 裁切（右侧露出的部分是「后」） */
+.article-body .compare-layer {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(0 0 0 var(--compare-pos, 50%));
+}
+
+.article-body .compare-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--compare-pos, 50%);
+  width: 2px;
+  pointer-events: none;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 12%);
+  transform: translateX(-1px);
+}
+
+.article-body .compare-handle::after {
+  content: "⟷";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  font-size: 14px;
+  color: #111;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 25%);
+}
+
+/* 透明的 range 盖在整张图上：拖动、点按、键盘左右键都交给它 */
+.article-body .compare-range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: ew-resize;
+  background: transparent;
+  appearance: none;
+  opacity: 0;
+}
+
+.article-body .compare-range::-webkit-slider-thumb {
+  width: 44px;
+  height: 100%;
+  appearance: none;
+}
+
+.article-body .compare-tag {
+  position: absolute;
+  bottom: 10px;
+  padding: 2px 8px;
+  font-size: 0.72em;
+  color: #fff;
+  background: rgb(0 0 0 / 45%);
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+}
+
+.article-body .compare-tag-before {
+  left: 10px;
+}
+
+.article-body .compare-tag-after {
+  right: 10px;
+}
+
+/* ---------- 时间轴（:::timeline） ---------- */
+.article-body .timeline {
+  margin: 1.35rem 0 !important;
+}
+
+.article-body .timeline-title {
+  margin-bottom: 10px;
+  font-size: 0.84em;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.article-body .timeline-list {
+  position: relative;
+  padding: 0 0 0 18px;
+  margin: 0;
+  list-style: none;
+}
+
+.article-body .timeline-list::before {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 5px;
+  width: 1px;
+  content: "";
+  background: var(--border);
+}
+
+.article-body .timeline-item {
+  position: relative;
+  padding: 2px 0 14px;
+}
+
+.article-body .timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.article-body .timeline-marker {
+  position: absolute;
+  top: 7px;
+  left: -17px;
+  width: 9px;
+  height: 9px;
+  background: var(--card);
+  border: 2px solid var(--primary);
+  border-radius: 50%;
+}
+
+.article-body .timeline-date {
+  display: block;
+  font-size: 0.76em;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+  letter-spacing: 0.02em;
+}
+
+.article-body .timeline-heading {
+  margin-top: 1px;
+  font-size: 0.96em;
+  font-weight: 600;
+}
+
+.article-body .timeline-note {
+  margin-top: 2px;
+  font-size: 0.88em;
+  color: var(--muted-foreground);
+}
+
+/* ---------- 步骤条（:::steps） ---------- */
+.article-body .steps {
+  margin: 1.35rem 0 !important;
+}
+
+.article-body .steps-title {
+  margin-bottom: 12px;
+  font-size: 0.84em;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.article-body .steps-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.article-body .steps-item {
+  position: relative;
+  display: flex;
+  gap: 14px;
+  padding-bottom: 18px;
+}
+
+.article-body .steps-item:last-child {
+  padding-bottom: 0;
+}
+
+/* 竖向连接线：整条贯穿条目高度，上段被编号圆点盖住（圆点不透明 + z-index），
+ * 这样相邻两步之间不会露出缝（只从 30px 画到 bottom 会在圆点前留一小段空白）。 */
+.article-body .steps-item::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 13px;
+  width: 1px;
+  content: "";
+  background: var(--border);
+}
+
+.article-body .steps-item:last-child::before {
+  display: none;
+}
+
+.article-body .steps-index {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 0 0 27px;
+  align-items: center;
+  justify-content: center;
+  height: 27px;
+  font-size: 0.78em;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+}
+
+.article-body .steps-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.article-body .steps-heading {
+  margin: 2px 0 4px;
+  font-size: 0.98em;
+  font-weight: 600;
+}
+
+.article-body .steps-content> :first-child {
+  margin-top: 0;
+}
+
+.article-body .steps-content> :last-child {
+  margin-bottom: 0;
+}
+
+/* ---------- 评分卡（:::rating） ---------- */
+.article-body .rating {
+  margin: 1.35rem 0 !important;
+  padding: 14px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.article-body .rating-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.article-body .rating-title {
+  font-size: 0.95em;
+  font-weight: 600;
+}
+
+.article-body .rating-score {
+  font-size: 0.8em;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+}
+
+.article-body .rating-score b {
+  margin-right: 2px;
+  font-size: 1.9em;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.article-body .rating-rows {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.article-body .rating-row {
+  display: grid;
+  grid-template-columns: 5.5em 1fr 2.4em;
+  gap: 10px;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 0.88em;
+}
+
+.article-body .rating-dim {
+  color: var(--muted-foreground);
+}
+
+.article-body .rating-bar {
+  height: 5px;
+  overflow: hidden;
+  background: var(--border);
+  border-radius: 999px;
+}
+
+.article-body .rating-bar i {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  border-radius: 999px;
+}
+
+.article-body .rating-value {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+  text-align: right;
+}
+
+/* ---------- 面板块：编辑结论 / 引文卡 / 小注（:::verdict / :::quote-card / :::note） ---------- */
+.article-body .article-panel {
+  margin: 1.35rem 0 !important;
+  padding: 16px 18px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.article-body .panel-label {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 0.74em;
+  font-weight: 600;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* 标签前的一小段发丝线：编辑部风的记号 */
+.article-body .panel-label::before {
+  width: 12px;
+  height: 1px;
+  content: "";
+  background: currentColor;
+}
+
+.article-body .panel-body {
+  font-size: 0.96em;
+}
+
+.article-body .panel-body> :first-child {
+  margin-top: 0;
+}
+
+.article-body .panel-body> :last-child {
+  margin-bottom: 0;
+}
+
+.article-body .panel-source,
+.article-body .panel-byline {
+  margin-top: 8px;
+  font-size: 0.8em;
+  color: var(--muted-foreground);
+}
+
+/* 编辑结论：左侧主色竖线 + 淡底，读起来是「刊物的编者按」 */
+.article-body .article-panel-verdict {
+  background: color-mix(in oklab, var(--primary) 5%, var(--card));
+  border-left: 3px solid var(--primary);
+}
+
+/* 引文卡：不要卡片皮，改成衬线大字 + 细竖线 */
+.article-body .article-panel-quote-card {
+  padding: 6px 0 6px 20px;
+  background: transparent;
+  border: 0;
+  border-left: 2px solid var(--border);
+  border-radius: 0;
+}
+
+.article-body .article-panel-quote-card .panel-label {
+  color: var(--muted-foreground);
+}
+
+.article-body .article-panel-quote-card .panel-body {
+  font-family: var(--font-editorial);
+  font-size: 1.16em;
+  line-height: 1.75;
+}
+
+.article-body .article-panel-quote-card .panel-source {
+  font-family: var(--font-editorial);
+  font-style: italic;
+}
+
+/* 小注：最安静的一档，左侧虚线 */
+.article-body .article-panel-note {
+  padding: 10px 14px;
+  background: color-mix(in oklab, var(--muted) 55%, transparent);
+  border: 0;
+  border-left: 2px dashed var(--border);
+  border-radius: 0 10px 10px 0;
+}
+
+.article-body .article-panel-note .panel-body {
+  font-size: 0.9em;
+  color: var(--muted-foreground);
+}
+
+@media (max-width: 640px) {
+
+  .article-body .rating-row {
+    grid-template-columns: 4.5em 1fr 2.2em;
+  }
+
+  .article-body .chapters {
+    padding: 12px 12px 8px;
+  }
+}
+
+/* 块被放进 tabs 的某一页时，自己不再套一层卡片皮：
+ * 标签页本身已经是「描边 + 底色 + 内边距」的盒子，再套一层就是三圈边框叠在一起。
+ * 只压章节条与评分卡（这两块的主要视觉就是卡片皮）；timeline / steps / compare 本来就没有皮，
+ * 面板块（verdict / note）的底色与竖线是「引文」的记号，不属于卡片，保留。 */
+.article-body .tab-item-content>.chapters,
+.article-body .tab-item-content>.rating {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
 /* ---------- 行内文本样式（u/emp/wavy/del） ---------- */
 .article-body .inline-underline {
   text-decoration: underline;

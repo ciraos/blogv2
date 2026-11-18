@@ -1082,6 +1082,135 @@ function enhanceMusic(root: HTMLElement, cleanupFns: (() => void)[]) {
 
 // ===================== 组件 =====================
 
+/**
+ * 播客章节条（`:::chapters`）：播放 / 拖动进度 / 点章节跳转。
+ *
+ * 结构由 article-shortcodes-render.ts 的 buildChaptersHtml 产出（受后端消毒白名单约束）：
+ * `.chapters > .chapters-player(button + 当前时间 + 进度条 + 总时长 + audio>source) + .chapters-list > button.chapters-item`
+ * 跳转秒数**不存在 data-* 里**（会被消毒剥掉），而是从 `.chapters-stamp` 的文本（`mm:ss`）现算。
+ * 不引第三方播放器：原生 `<audio>` + 手工画进度，样式全在 globals.css。
+ */
+function enhanceChapters(root: HTMLElement, cleanups: (() => void)[]) {
+    root.querySelectorAll<HTMLElement>(".chapters").forEach((card) => {
+        const audio = card.querySelector<HTMLAudioElement>("audio");
+        const toggle = card.querySelector<HTMLButtonElement>(".chapters-toggle");
+        const current = card.querySelector<HTMLElement>(".chapters-clock-current");
+        const total = card.querySelector<HTMLElement>(".chapters-clock-total");
+        const track = card.querySelector<HTMLElement>(".chapters-track");
+        const fill = card.querySelector<HTMLElement>(".chapters-track-fill");
+        const items = card.querySelectorAll<HTMLElement>("button.chapters-item");
+        if (!audio) return;
+
+        const clock = (seconds: number) => {
+            if (!Number.isFinite(seconds) || seconds < 0) return "--:--";
+            const whole = Math.floor(seconds);
+            const mm = String(Math.floor(whole / 60)).padStart(2, "0");
+            const ss = String(whole % 60).padStart(2, "0");
+            return `${mm}:${ss}`;
+        };
+        /** `03:12` / `01:03:12` → 秒（与渲染器的 timeToSeconds 同一口径） */
+        const stampToSeconds = (text: string): number => {
+            const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(text.trim());
+            if (!m) return Number.NaN;
+            const minutes = Number(m[2]);
+            return m[3] === undefined ? Number(m[1]) * 60 + minutes : Number(m[1]) * 3600 + minutes * 60 + Number(m[3]);
+        };
+
+        /** 时间 → 进度条填充 + 当前时间文本 + 当前章节高亮 */
+        const sync = () => {
+            const duration = audio.duration;
+            const at = audio.currentTime;
+            if (current) current.textContent = clock(at);
+            if (total) total.textContent = Number.isFinite(duration) && duration > 0 ? clock(duration) : "--:--";
+            if (fill && Number.isFinite(duration) && duration > 0) {
+                fill.style.width = `${Math.min(100, (at / duration) * 100)}%`;
+            }
+            // 高亮「正在播的那一章」：最后一个起点 ≤ 当前时间
+            let active: HTMLElement | null = null;
+            items.forEach((item) => {
+                const seconds = stampToSeconds(item.querySelector(".chapters-stamp")?.textContent ?? "");
+                if (Number.isFinite(seconds) && seconds <= at + 0.25) active = item;
+            });
+            items.forEach((item) => item.classList.toggle("is-active", item === active));
+        };
+
+        const onToggle = () => {
+            if (audio.paused) {
+                void audio.play().catch(() => {
+                    // 浏览器拒绝自动播放（或被策略拦下）：保持暂停，不弹错
+                });
+            } else {
+                audio.pause();
+            }
+        };
+        const onTimeUpdate = () => sync();
+        const onLoaded = () => sync();
+        const onPlayPause = () => {
+            if (toggle) {
+                // 图标是 CSS 画的（三角 / 双竖条），这里只切类名与无障碍标签
+                toggle.setAttribute("aria-label", audio.paused ? "播放" : "暂停");
+                toggle.classList.toggle("is-playing", !audio.paused);
+            }
+            sync();
+        };
+        /** 点进度条跳转 */
+        const onSeekClick = (event: MouseEvent) => {
+            if (!track || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
+            const rect = track.getBoundingClientRect();
+            if (rect.width <= 0) return;
+            const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+            audio.currentTime = ratio * audio.duration;
+            sync();
+        };
+
+        toggle?.addEventListener("click", onToggle);
+        audio.addEventListener("timeupdate", onTimeUpdate);
+        audio.addEventListener("loadedmetadata", onLoaded);
+        audio.addEventListener("play", onPlayPause);
+        audio.addEventListener("pause", onPlayPause);
+        track?.addEventListener("click", onSeekClick);
+
+        items.forEach((item) => {
+            const onClick = () => {
+                const seconds = stampToSeconds(item.querySelector(".chapters-stamp")?.textContent ?? "");
+                if (!Number.isFinite(seconds)) return;
+                audio.currentTime = seconds;
+                void audio.play().catch(() => {
+                    // 同上：播不了就只跳时间
+                });
+                sync();
+            };
+            item.addEventListener("click", onClick);
+            cleanups.push(() => item.removeEventListener("click", onClick));
+        });
+
+        cleanups.push(() => {
+            toggle?.removeEventListener("click", onToggle);
+            audio.removeEventListener("timeupdate", onTimeUpdate);
+            audio.removeEventListener("loadedmetadata", onLoaded);
+            audio.removeEventListener("play", onPlayPause);
+            audio.removeEventListener("pause", onPlayPause);
+            track?.removeEventListener("click", onSeekClick);
+        });
+        sync();
+    });
+}
+
+/**
+ * 前后对比滑块（`:::compare`）：把 `<input type=range>` 的值写到 `--compare-pos` 上。
+ * 上层图与把手都靠这个变量定位（clip-path / left），所以这里只做一件事。
+ */
+function enhanceCompare(root: HTMLElement, cleanups: (() => void)[]) {
+    root.querySelectorAll<HTMLElement>(".compare").forEach((figure) => {
+        const range = figure.querySelector<HTMLInputElement>(".compare-range");
+        if (!range) return;
+        const sync = () => figure.style.setProperty("--compare-pos", `${range.value}%`);
+        range.addEventListener("input", sync);
+        cleanups.push(() => range.removeEventListener("input", sync));
+        sync();
+    });
+}
+
 export function ArticleBody({
     html,
     codeBlock,
@@ -1213,6 +1342,8 @@ export function ArticleBody({
         enhanceLinkCards(root);
         enhanceMusicCards(root);
     enhanceMusic(root, cleanups);
+        enhanceChapters(root, cleanups);
+        enhanceCompare(root, cleanups);
         void renderMermaid(root);
 
         // 主题切换时重渲染 mermaid（深色/浅色用不同 mermaid 主题）

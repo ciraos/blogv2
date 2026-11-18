@@ -1,3 +1,5 @@
+import { resolveNameAvatar, type GravatarConfig } from "@/lib/avatar";
+
 /**
  * 正文短代码的「前端补参数」：把后端**收下但忽略**的参数补回成类名 / 块级容器 / data-*。
  *   - `{btn ...}`：layout / position / style / size / color → 类名与块级容器；
@@ -62,7 +64,6 @@
 
 /** `{btn ...}` 支持且本模块会消费的参数（官方格式：值里不含空格，参数之间用空白分隔） */
 const BTN_PARAM_KEYS = ["url", "text", "icon", "color", "style", "layout", "position", "size"] as const;
-
 /** 一条 `{btn ...}` 短代码（没写的参数不出现） */
 export interface BtnShortcode {
     url?: string;
@@ -738,12 +739,53 @@ export function patchArticleTips(contentMd: string, contentHtml: string): string
 }
 
 /**
- * 正文 HTML 的全部前端补丁（服务端文章页与编辑器预览唯一入口）：先按钮、后 tip。
+ * 聊天框头像补丁：把 `:::chat` 里**没写** `avatar` / `my-avatar` 的发言人头像
+ * （渲染器输出的「首字色块 + 名字塞在 `.chat-avatar-name` 里」占位块）
+ * 换成**按名字生成的 Gravatar 头像** —— 站点配置的 `GRAVATAR_URL` + `DEFAULT_GRAVATAR_TYPE`
+ * 与评论头像同一套口径（同一张脸永远同一个名字，不同发言人不同脸）。
  *
- * 两个补丁作用区间互不相交（按钮 = `<a class="btn-anzhiyu">` 及其外层 `<p>` / 容器 div；
- * tip = `.anzhiyu-tip-wrapper` 及其内部 `.anzhiyu-tip`），且各自独立兜底：其中一个数量对不上而整体放弃时，
- * 另一个照常生效——「按钮没补上」不该连带把 tip 也废掉。
+ * 为什么放在渲染时换、而不是保存时写死地址：`:::chat` 的 HTML 是保存文章时由浏览器渲染进库的，
+ * 站点换了头像服务 / 兜底头像类型后，老文章里的地址就过期了。做成占位 + 渲染前替换，
+ * 头像永远跟着站点配置走，与 `{btn}` / `{tip}` 的补丁是同一层、同一时机（服务端文章页与编辑器预览共用）。
+ *
+ * 为什么用 `.chat-avatar-name` 而不是 data-*：后端消毒会把未登记的 `data-*` 整个剥掉，
+ * 类名与文本内容才活得下来（见 article-shortcodes-render.ts 顶部那段消毒白名单说明）。
  */
-export function patchArticleContent(contentMd: string, contentHtml: string): string {
-    return patchArticleTips(contentMd, patchArticleButtons(contentMd, contentHtml));
+export function patchChatAvatars(contentHtml: string, gravatar?: GravatarConfig): string {
+    const html = contentHtml ?? "";
+    if (!html || !html.includes("chat-avatar-site")) return html;
+    return html.replace(/<div\b[^>]*class="chat-avatar[^"]*chat-avatar-site[^"]*"[^>]*>[\s\S]*?<\/div>/g, (element) => {
+        const name = /<span class="chat-avatar-name">([\s\S]*?)<\/span>/.exec(element)?.[1] ?? "";
+        const src = resolveNameAvatar(decodeEntities(name).trim(), gravatar).replace(/&/g, "&amp;");
+        return `<div class="chat-avatar"><img src="${src}" alt="" loading="lazy" decoding="async" /></div>`;
+    });
+}
+
+/** 把渲染器写进属性的实体解回原文（只处理 esc() 会产出的四个） */
+function decodeEntities(value: string): string {
+    return value
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&amp;/g, "&");
+}
+
+/**
+ * 正文 HTML 的全部前端补丁（服务端文章页与编辑器预览唯一入口）：先按钮、再 tip、最后聊天框头像。
+ *
+ * 三个补丁作用区间互不相交（按钮 = `<a class="btn-anzhiyu">` 及其外层 `<p>` / 容器 div；
+ * tip = `.anzhiyu-tip-wrapper` 及其内部 `.anzhiyu-tip`；聊天头像 = `.chat-avatar[data-chat-avatar="site"]`），
+ * 且各自独立兜底：其中一个数量对不上而整体放弃时，另一个照常生效——「按钮没补上」不该连带把 tip 也废掉。
+ */
+export function patchArticleContent(
+    contentMd: string,
+    contentHtml: string,
+    options?: {
+        /** 站点头像服务（site-config 的 GRAVATAR_URL / DEFAULT_GRAVATAR_TYPE）：聊天框发言人的默认头像 */
+        gravatar?: GravatarConfig;
+    }
+): string {
+    const patched = patchArticleTips(contentMd, patchArticleButtons(contentMd, contentHtml));
+    return patchChatAvatars(patched, options?.gravatar);
 }
