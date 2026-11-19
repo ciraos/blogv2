@@ -13,6 +13,22 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - 改动完成后**不要**自动跑 `lint` / `build`（`tsc` 同理）：只有明确说了"跑 lint""build""提交"这类指令时才跑。
   - 日常改完只在浏览器里（`localhost:<package.json dev 里的端口>`）自测效果，汇报保持简短，不要每次都附一大串检查报告。
 
+## 打包与部署（Windows 本机必读）
+
+- `pnpm deploy`（= `pnpm i && pnpm build && pnpm copy`）会产出 `.next/standalone`，这一步要在
+  `node_modules` 里建**大量符号链接**。Windows 普通用户没有 `SeCreateSymbolicLinkPrivilege`，
+  直接跑必然报：
+
+  ```
+  Error: EPERM: operation not permitted, symlink '..\..\..\@swc+helpers@0.5.15\node_modules\@swc\helpers' ...
+  ```
+
+  所以本机要打可 `node server.js` 启动的包时：**以管理员身份运行终端**，再执行 `pnpm deploy`
+  （或开启「设置 → 隐私和安全性 → 开发者选项 → 开发人员模式」，`AllowDevelopmentWithoutDevLicense=1`）。
+  Linux / 容器 / CI 上没有这个限制，这也是打正式包的首选环境。
+- 只在本机验证 / 用 `pnpm start` 起服务时，用 `NEXT_SKIP_STANDALONE=1 pnpm build`：
+  跳过 standalone（只出普通 `.next`），代价是没有 `server.js`，也就跑不了 `pnpm copy`。
+
 ## 提交与推送（用户偏好，优先级最高）
 
 - **不要自动 `git commit` / `git push`**：改完文件就把改动留在工作区，等用户确认。
