@@ -1,4 +1,4 @@
-﻿// 后端 API 客户端：统一处理 Bearer 鉴权、JSON 解析与错误
+// 后端 API 客户端：统一处理 Bearer 鉴权、JSON 解析与错误
 //
 // 注意：后端不开放 CORS，浏览器不能直连远端 API。
 // 所有需要从客户端发起的请求（如登录）都必须走本应用同源的 /api/* 路由，
@@ -917,19 +917,29 @@ export function batchDeleteAdminLinksApi(ids: number[]): Promise<AdminBatchDelet
 }
 
 /** 友链健康检查状态（后端 POST /links/health-check 触发后，GET 其/status 返回的进度/结果） */
+/** 健康检查的统计结果（后端 model.LinkHealthCheckResponse） */
+export interface LinkHealthCheckResult {
+    /** 本次参与检查的友链总数（APPROVED + INVALID 全查一遍） */
+    total: number;
+    /** 可访问数（含本次由失联恢复为 APPROVED 的） */
+    healthy: number;
+    /** 不可访问数 */
+    unhealthy: number;
+    /** 本次被标记为失联的友链 ID（恢复的不在这里） */
+    unhealthy_ids: number[];
+}
+
+/**
+ * GET /links/health-check/status 的 data 形状（后端 handler.HealthCheckStatus）。
+ * 检查是**异步后台任务**：触发后先 `is_running: true`，跑完写 result / error。
+ */
 export interface LinkHealthCheckStatus {
-    /** 是否仍在执行中（各字段按后端实际枚举/命名兜底读取） */
-    running?: boolean;
-    status?: string;
-    finished?: boolean;
-    /** 检查总数 / 结果计数（各字段可能为 total/count、ok/success、fail/failed/error） */
-    total?: number;
-    count?: number;
-    ok?: number;
-    success?: number;
-    failed?: number;
-    fail?: number;
-    error?: number;
+    is_running?: boolean;
+    /** RFC3339 时间串；未跑过时为 undefined */
+    start_time?: string;
+    end_time?: string;
+    result?: LinkHealthCheckResult;
+    error?: string;
 }
 
 /** POST /api/admin/links/health-check 触发后台执行友链健康检查（同源代理，需登录） */

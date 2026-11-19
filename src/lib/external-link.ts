@@ -14,6 +14,26 @@
 
 const SKIP_KEY = "skip-external-link-warning";
 
+/**
+ * 倒计时结束（用户没点「立即前往」）时，提示页会广播这个频道，
+ * 由原标签页（layout 里挂的 ExternalLinkCancelNotice）弹 toast —— 提示页自己要把标签关掉，
+ * 关掉之后它上面的 toast 也一起没了，只有跨标签通知才能让用户看到原因。
+ */
+export const EXTERNAL_LINK_CANCEL_CHANNEL = "anheyu:external-link-warning";
+export const EXTERNAL_LINK_CANCEL_MESSAGE =
+    "权限校验未通过：未确认「立即前往」。外链通行已回滚。";
+
+/** 广播「倒计时结束、不跳转」（同源跨标签；BroadcastChannel 不可用时静默失败） */
+export function broadcastExternalLinkCancel() {
+    try {
+        const channel = new BroadcastChannel(EXTERNAL_LINK_CANCEL_CHANNEL);
+        channel.postMessage("countdown-expired");
+        channel.close();
+    } catch {
+        // 老浏览器 / 隐私模式：没有通知就算了，页面本身仍会关闭或返回
+    }
+}
+
 /** 相对路径、锚点、特殊协议、同源地址都不算外链 */
 export function isExternalLink(url: string): boolean {
     if (!url) return false;

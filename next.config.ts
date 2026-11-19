@@ -97,6 +97,22 @@ function imageRemotePatterns() {
   return [...hosts].map((hostname) => ({ protocol: "https" as const, hostname }));
 }
 
+/**
+ * next/image 的远程图源放行表（见 imageRemotePatterns）。
+ *
+ * 开发环境额外放行所有 https 主机：`next.config.ts` 只在**进程启动那一刻**读一次 `.env`，
+ * 之后改 `NEXT_PUBLIC_SITE_URL` 只会触发 "Reload env" 而不会重算这份配置 ——
+ * 结果就是站点图（`{SITE_URL}/api/f/…`）在 dev 里被判成「未配置的主机」，整页抛错。
+ * 生产构建时 `.env` 必然已就位，仍然走严格白名单。
+ */
+function imageConfigPatterns() {
+  const patterns = imageRemotePatterns();
+  if (process.env.NODE_ENV !== "production") {
+    patterns.push({ protocol: "https" as const, hostname: "**" });
+  }
+  return patterns;
+}
+
 
 /**
  * package.json 读一次，供下面多处复用（版本号 / 开发端口）。构建期读文件，不进客户端包。
@@ -167,7 +183,7 @@ const nextConfig: NextConfig = {
 
   // 图片优化：只放行已知图源（见 imageRemotePatterns 的说明）
   images: {
-    remotePatterns: imageRemotePatterns(),
+    remotePatterns: imageConfigPatterns(),
     // 打包成 SSR 主题时关掉图片优化（THEME_PACKAGE=1）。
     //
     // 两个原因：

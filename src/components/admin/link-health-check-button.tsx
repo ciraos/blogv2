@@ -12,37 +12,24 @@ import {
 } from "@/lib/api";
 
 const POLL_INTERVAL_MS = 2000;
-const MAX_ATTEMPTS = 12;
+/** 最多轮询 3 分钟：后端 10 并发、单条超时 10s，140 条友链最坏情况也要近两分钟 */
+const MAX_ATTEMPTS = 90;
 
-/** 汇总健康检查结果文案（后端 status 字段命名可能不同，按常见字段兜底读取） */
+/**
+ * 汇总健康检查结果文案。
+ * 后端实际返回 `{ is_running, start_time, end_time, result: { total, healthy, unhealthy, unhealthy_ids }, error }`，
+ * 所以只看 result / error —— 之前按 total/ok/failed 这种"猜的字段名"读，永远读不到值。
+ */
 function summarize(st: LinkHealthCheckStatus): string {
-    const total = st.total ?? st.count;
-    if (typeof total === "number") {
-        const ok = st.ok ?? st.success;
-        const failed = st.failed ?? st.fail ?? st.error;
-        const parts: string[] = [];
-        if (typeof ok === "number") parts.push(`${ok} 正常`);
-        if (typeof failed === "number") parts.push(`${failed} 异常`);
-        if (parts.length === 0) parts.push(`${total} 条已检查`);
-        return `健康检查完成：${parts.join("，")}`;
-    }
-    return "健康检查完成";
+    if (st.error) return `健康检查失败：${st.error}`;
+    const result = st.result;
+    if (!result) return "健康检查已完成，但没有拿到统计结果";
+    return `健康检查完成：共 ${result.total} 条，${result.healthy} 条正常，${result.unhealthy} 条失联`;
 }
 
-/** 判断检查是否已结束 */
+/** 判断检查是否已结束：只有结果或错误落库才算，`is_running: false` 在"刚触发还没起来"时也会出现 */
 function isFinished(st: LinkHealthCheckStatus): boolean {
-    if (st.finished === true) return true;
-    if (typeof st.total === "number") {
-        const ok = st.ok ?? st.success;
-        const failed = st.failed ?? st.fail ?? st.error;
-        if (typeof ok === "number" && typeof failed !== "number") return false;
-        if (typeof ok === "number" || typeof failed === "number") return true;
-        return true;
-    }
-    const s = (st.status || "").toLowerCase();
-    if (s === "running" || s === "pending" || s === "processing") return false;
-    if (s) return true;
-    return false;
+    return Boolean(st.result || st.error);
 }
 
 /** 友链健康检查按钮：点击触发后端后台执行 → 提示执行中 → 轮询状态 → 结果 toast */
@@ -71,10 +58,17 @@ export function LinkHealthCheckButton() {
         try {
             await triggerLinkHealthCheckApi();
         } catch (err) {
-            toast.dismiss(loadingId);
-            toast.error(err instanceof Error ? err.message : "触发健康检查失败");
-            stopPolling();
-            return;
+            const message = err instanceof Error ? err.message : "触发健康检查失败";
+            // 409 = 后端已在跑：不用报错，直接开始轮询那次任务的结果
+            if (message.includes("正在执行") || message.includes("409")) {
+                toast.dismiss(loadingId);
+                toast.info("已有一次健康检查在执行，直接等它的结果");
+            } else {
+                toast.dismiss(loadingId);
+                toast.error(message);
+                stopPolling();
+                return;
+            }
         }
 
         // 触发成功：右上角提示已进入后台执行

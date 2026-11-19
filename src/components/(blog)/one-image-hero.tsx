@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -6,6 +6,13 @@ import { ChevronDown } from "lucide-react";
 
 import { resolveAssetUrl } from "@/lib/utils";
 import type { PageOneImageConfig, PageOneImageSingle } from "@/types/site-config";
+
+/**
+ * header 的占位高度（见 src/components/header.tsx 的 NEXT_PUBLIC_HEADER_STYLE）：
+ * 0 = 通栏条 h-14；1/2 = 浮岛外壳 ≈64px。首屏大图要靠同样的负外边距顶到视口顶端。
+ */
+const headerOffsetClass =
+    (process.env.NEXT_PUBLIC_HEADER_STYLE ?? "0").trim() === "0" ? "-mt-14" : "-mt-16";
 
 /** site-config page.one_image 的载荷（config + hitokoto_api + typing_speed） */
 export type OneImagePayload = PageOneImageConfig["one_image"];
@@ -123,9 +130,12 @@ export function OneImageHero({ oneImage, appName = "博客" }: OneImageHeroProps
     };
 
     return (
+        // 向上顶掉的正是 header 的占位高度，让首屏大图从视口顶端铺满：
+        //  · 通栏模式（NEXT_PUBLIC_HEADER_STYLE=0）：-mt-14（h-14 = 56px）
+        //  · 浮岛模式（1/2）：-mt-16（外壳 pt-2.5 + h-12 + pb-1.5 ≈ 64px）
         <section
             ref={sectionRef}
-            className="one-image-hero relative -mt-14 flex min-h-[100svh] w-full flex-col overflow-hidden"
+            className={`one-image-hero relative flex min-h-[100svh] w-full flex-col overflow-hidden ${headerOffsetClass}`}
         >
             {/* 桌面媒体（≥md）：video 或 image，fixed 相对视口 → 整页滚动背景不动 */}
             {isDesktopVideo ? (

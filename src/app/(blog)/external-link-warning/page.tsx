@@ -4,8 +4,8 @@ import type { Metadata } from "next";
 import { ExternalLinkWarningClient } from "./external-link-warning-client";
 
 export const metadata: Metadata = {
-    title: "外部链接提示",
-    description: "跳转外部站点前的安全提示页。",
+    title: "外部站点通行确认",
+    description: "建立站外连接前的通行确认页。",
     robots: { index: false, follow: false },
 };
 

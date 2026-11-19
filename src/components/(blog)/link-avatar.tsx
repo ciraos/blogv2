@@ -18,7 +18,7 @@ export function LinkAvatar({ src, alt, onError }: LinkAvatarProps) {
     }
 
     return (
-        <div className="size-12 shrink-0 overflow-hidden rounded-full border bg-muted">
+        <div className="link-avatar size-12 shrink-0 overflow-hidden rounded-full border bg-muted">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
                 src={src}

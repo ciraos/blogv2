@@ -24,6 +24,7 @@ import { GravatarProvider } from "@/components/(blog)/gravatar-provider";
 import { LiveRefresher } from "@/components/(blog)/live-refresher";
 import { OneImageHero } from "@/components/(blog)/one-image-hero";
 import { ExternalLinkInterceptor } from "@/components/(blog)/external-link-interceptor";
+import { ExternalLinkCancelNotice } from "@/components/(blog)/external-link-cancel-notice";
 import { ScrollToTop } from "@/components/(blog)/scroll-to-top";
 import { SidebarCollapseProvider } from "@/components/(blog)/sidebar-collapse-provider";
 // import Aside from "@/components/aside";
@@ -152,6 +153,8 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
               <div id="CIRAOS" className="flex min-h-dvh flex-col">
                 {/* 外链提示页拦截器：站点设置 ENABLE_EXTERNAL_LINK_WARNING 开启时才装 */}
                 <ExternalLinkInterceptor enabled={config?.ENABLE_EXTERNAL_LINK_WARNING === true} />
+                {/* 外链提示页倒计时结束（没跳转）时，由原标签页在这里弹提示 */}
+                <ExternalLinkCancelNotice />
 
                 <Header {...header} />
 
