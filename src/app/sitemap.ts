@@ -4,6 +4,7 @@ import { getBackendEdition } from "@/lib/edition";
 import { getAllPublicArticlesCached } from "@/lib/public-content-cache";
 import { SiteConfigResponse } from "@/types/site-config";
 import { API_URL } from "@/lib/api";
+import { localSiteOrigin } from "@/lib/site-origin";
 
 
 const env_site_url = process.env.NEXT_PUBLIC_SITE_URL ?? "";
@@ -47,7 +48,7 @@ async function resolveSiteUrl(): Promise<string> {
     } catch {
         // 配置获取失败：走回退
     }
-    return "http://localhost:3000";
+    return localSiteOrigin();
 }
 
 // sitemap 由站点配置与文章数据驱动（fetch 属 request-time API，需动态生成）

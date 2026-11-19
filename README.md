@@ -1,4 +1,4 @@
-﻿# blog-app · 博客前端
+# blog-app · 博客前端
 
 [简体中文](./README.md) · [English](./README.en.md)
 
@@ -10,7 +10,8 @@
 
 ### 前台（`(blog)` 路由组）
 
-- **文章**：首页分页列表、文章详情（目录 TOC、代码高亮、KaTeX 公式、Mermaid 图表）、随机文章
+- **文章**：首页分页列表、文章详情（右侧常驻目录、代码高亮、KaTeX 公式、Mermaid 图表）、随机文章
+- **正文组件**：标签页、步骤条、时间轴、前后对比滑块、评分卡、编辑结论 / 引文卡 / 小注、播客章节条、聊天框 —— 都是可互相嵌套的 `:::` 块，写法见下文[「正文块」](#-正文块markdown-组件)
 - **分类与标签**：分类 / 标签聚合页、归档时间线
 - **随笔**：瀑布流 + 时间线双视图、图片灯箱
 - **友链**：友链卡片、分区展示、自助申请表单
@@ -33,6 +34,29 @@
 
 > 说明：`air-conditioner` 等页面为预留占位，暂无内容。`equipment` 装备页与 `update` 更新日志页已接通：装备页读 site-config 的 `equipment.*`；更新日志拉官方 changelog 聚合接口（`anheyuofficialwebsiteapi.anheyu.com`，最近 10 条 Release）。
 
+## 📝 正文块（Markdown 组件）
+
+文章正文支持一组可互相嵌套的 `:::` 块，写法和 `:::tabs` 一致：首行 `:::名字 参数…`，末行单独一行 `:::`。
+
+| 块 | 用途 | 写法示例 |
+| --- | --- | --- |
+| `:::tabs` / `:::steps` | 标签页 / 步骤条（都用 `== 标题` 分段，每段是完整 Markdown） | `:::steps` 后接 `== 装 ffmpeg` |
+| `:::chapters` | 播客章节条：时间戳清单，点一条把播放器跳到那个时间点（给 `src=` 才出播放条） | `- 03:12 降噪该给多少` |
+| `:::compare` | 前后对比滑块（降噪前后 / 调色前后），拖拽分割线看前后 | `:::compare before=/a.jpg after=/b.jpg ratio=16:9` |
+| `:::timeline` | 时间轴（复盘、历程、更新日志） | `- 2026-03 第 1 期上线 :: 两个人一台笔记本` |
+| `:::rating` | 评分卡：`- 维度 :: 分数`，`score=` 总分、`max=` 满分（默认 5） | `:::rating title=剪映 score=4.2` |
+| `:::verdict` / `:::quote-card` / `:::note` | 编辑结论 / 引文卡 / 小注，块内照常写 Markdown | `:::verdict author=米葱苓` |
+| `:::chat` | 聊天框：`名字: 台词` 生成气泡，`me=` 指定右侧，`:: 文字` 是居中系统条 | `:::chat other=阿柚 me=我 theme=qq` |
+| `:::btns` / `:::gallery` / `:::video-gallery` / `:::hidden` | 按钮组 / 图片组 / 视频画廊 / 折叠答案块 | 同官方短代码 |
+
+几个约定：
+
+- 块**可以互相嵌套**（tabs / steps / chat 之间，以及它们里面放上表的其它块）；结束符按栈配对，不会被内层的 `:::` 提前截断；
+- **围栏代码块里写这些语法是安全的**（教程里教人怎么写不会被当成真块）；
+- 解析不出合法内容时整块原样退回正文，不会吞掉原文；
+- 正文 HTML 是**保存文章时**由前端渲染进 `content_html` 的（后端不渲染 Markdown）：改了正文要保存一次前台才会变；
+- 产出只能使用后端消毒白名单里的标签 / 属性：`ol`、`figure` 上的 `class`、`<audio>` 的 `src`、未登记的 `data-*` 都会被剥掉 —— 所以这些块用 `div` 列表、`<audio><source>`、用类名与文本传状态（细节见 `src/lib/article-shortcodes-render.ts` 顶部注释）。
+
 ## 🧱 技术栈
 
 | 类别 | 选型 |
@@ -41,7 +65,7 @@
 | 语言 | TypeScript 5.9 |
 | 样式 | Tailwind CSS 4 + `tw-animate-css` |
 | 组件 | shadcn/ui（`radix-nova` 风格）、radix-ui、`@base-ui/react`、lucide-react |
-| 内容渲染 | MDX、highlight.js、KaTeX、Mermaid、remark-gfm |
+| 内容渲染 | `@uiw/react-md-editor`（正文在**保存时**由前端渲染成 HTML 入库）、highlight.js（代码高亮）、KaTeX（公式）、Mermaid（图表）、MDX（自定义页可用） |
 | 图表与表格 | Recharts、TanStack Table、dnd-kit |
 | 其它 | sonner（提示）、vaul（抽屉）、next-themes、zod |
 
@@ -52,10 +76,10 @@ blog-app/
 ├─ src/
 │  ├─ app/
 │  │  ├─ (auth)/          # 登录 / 注册 / 账号激活
-│  │  ├─ (blog)/          # 前台页面（layout 内含 header、侧边栏、footer）
+│  │  ├─ (blog)/          # 前台页面（layout 内含 header、公告条、footer；文章页右侧是目录窄栏）
 │  │  ├─ admin/           # 后台管理页面
 │  │  ├─ album/ music/    # 相册、音乐播放器
-│  │  ├─ api/             # 同源代理路由（auth / admin / public / search）
+│  │  ├─ api/             # 同源代理路由（auth / admin / public / pro / user / search / moments）
 │  │  ├─ rss.xml/ atom.xml/ llms.txt/   # Feed 与 LLM 说明的 Route Handler
 │  │  └─ sitemap.ts robots.ts manifest.ts
 │  ├─ components/         # 组件：(blog) / admin / ui / (auth) / (music)
@@ -85,7 +109,7 @@ pnpm install
 # 配置环境变量（.env 不入版本库）
 cp .env.example .env
 
-pnpm dev        # 开发服务器：http://localhost:3126
+pnpm dev        # 开发服务器：端口取 package.json 的 dev 脚本（当前 http://localhost:3126）
 ```
 
 ### 构建与本地运行
@@ -167,12 +191,15 @@ docker run -d -p 3126:3126 --name blog-app blog-app
 
 | 脚本 | 说明 |
 | --- | --- |
-| `pnpm dev` | 启动开发服务器（端口 3126） |
-| `pnpm build` | 生产构建（standalone） |
-| `pnpm start` | 启动 Next 服务 |
+| `pnpm dev` | 启动开发服务器（端口取 `package.json` 的 `dev` 脚本，当前 3126） |
+| `pnpm build` | 生产构建（standalone；Windows 本地需 `NEXT_SKIP_STANDALONE=1`，见 `.env.example` 说明） |
+| `pnpm start` | `next start` 起普通产物（非 standalone；Windows 用 `pnpm start:win` 指定端口） |
+| `pnpm server:linux` | 直接跑 standalone 产物：`PORT=3126 node .next/standalone/server.js`（Linux / 容器） |
 | `pnpm lint` | ESLint 检查 |
 | `pnpm copy` | 将 `public/`、`.next/static` 并入 standalone 产物（cpy-cli 实现，Windows / Linux / macOS 通用） |
-| `pnpm deploy` | 安装依赖 → 构建 → 拷贝 → `node .next/standalone/server.js` |
+| `pnpm deploy` | 安装依赖 → 构建 → 拷贝静态资源到 standalone 产物（**不启动**；启动用 `pnpm server:linux` 或 `pnpm start`） |
+| `pnpm test` | 跑 `tests/*.test.ts`（node --test） |
+| `pnpm theme:build` / `pnpm theme:package` | 构建并打包成 Anheyu SSR 主题 tar.gz（Windows 上打包需在 Linux / CI 里做） |
 
 ## 📄 许可证
 

@@ -1,4 +1,4 @@
-﻿# blog-app · Blog Frontend
+# blog-app · Blog Frontend
 
 [简体中文](./README.md) · [English](./README.en.md)
 
@@ -10,7 +10,8 @@ The frontend and the backend (a Go service) are **deployed separately**. The bac
 
 ### Public site (the `(blog)` route group)
 
-- **Posts**: paginated home list, post detail (table of contents, syntax highlighting, KaTeX formulas, Mermaid diagrams), random post
+- **Posts**: paginated home list, post detail (sticky table of contents, syntax highlighting, KaTeX formulas, Mermaid diagrams), random post
+- **Content blocks**: tabs, steps, timeline, before/after slider, rating card, editorial verdict / pull quote / note, podcast chapters, chat mockup — all nestable `:::` blocks, see [“Content blocks”](#-content-blocks) below
 - **Categories & tags**: category / tag listing pages, archives timeline
 - **Essays**: waterfall and timeline views, image lightbox
 - **Friend links**: link cards, grouped sections, self-service application form
@@ -29,9 +30,32 @@ The frontend and the backend (a Go service) are **deployed separately**. The bac
 
 ### Experience
 
-Light/dark themes (the default mode comes from the backend config), responsive layout, mobile hamburger menu, floating action buttons, scroll-to-top, and silent logout with a notice when the token expires.
+Light/dark themes (the default mode comes from the backend config), responsive layout, mobile hamburger menu, floating action buttons, scroll-to-top, silent logout with a notice when the token expires, and a long-document editor tuned for large posts (the editor's syntax-highlight layer switches off automatically past 4k characters).
 
-> Note: pages such as `air-conditioner`, `equipment`, and `update` are placeholders with no content yet.
+> Note: pages such as `air-conditioner` are placeholders with no content yet. The `equipment` page reads `equipment.*` from site-config, and `update` pulls the changelog feed (`anheyuofficialwebsiteapi.anheyu.com`, latest 10 releases).
+
+## 📝 Content Blocks
+
+Post bodies support a set of nestable `:::` blocks, written like `:::tabs`: the first line is `:::name params…`, the last line is a bare `:::`.
+
+| Block | Purpose |
+| --- | --- |
+| `:::tabs` / `:::steps` | Tab pages / numbered steps (both split on `== Title`, each section is full Markdown) |
+| `:::chapters` | Podcast chapter list; clicking an item seeks the player (add `src=` for the audio bar) |
+| `:::compare` | Before/after slider (`before=` `after=` `ratio=`), drag the divider |
+| `:::timeline` | Timeline items: `- date title :: note` |
+| `:::rating` | Rating card: `- dimension :: score`, plus `score=` / `max=` |
+| `:::verdict` / `:::quote-card` / `:::note` | Editorial verdict / pull quote / margin note (body is Markdown) |
+| `:::chat` | Chat mockup: `Name: line` makes a bubble, `me=` picks the right side, `:: text` is a centered system line |
+| `:::btns` / `:::gallery` / `:::video-gallery` / `:::hidden` | Button grid / image grid / video gallery / collapsible answer |
+
+Notes:
+
+- Blocks **nest freely** (tabs / steps / chat, and any of the blocks above inside them); terminators are stack-matched, so an inner `:::` never truncates the outer block;
+- Writing these syntaxes **inside fenced code blocks is safe** (tutorials about the syntax won't be treated as real blocks);
+- If nothing valid parses, the whole block falls back to plain text instead of swallowing the author's content;
+- The body HTML is rendered **client-side at save time** into `content_html` (the backend does not render Markdown), so re-save after editing;
+- Generated markup must stay inside the backend's sanitizer allow-list: `class` on `ol`/`figure`, `src` on `<audio>`, and unregistered `data-*` attributes are stripped — hence `div` lists, `<audio><source>`, and class/text-based state (see the header comment in `src/lib/article-shortcodes-render.ts`).
 
 ## 🧱 Tech Stack
 
@@ -41,7 +65,7 @@ Light/dark themes (the default mode comes from the backend config), responsive l
 | Language | TypeScript 5.9 |
 | Styling | Tailwind CSS 4 + `tw-animate-css` |
 | UI | shadcn/ui (`radix-nova` style), radix-ui, `@base-ui/react`, lucide-react |
-| Content rendering | MDX, highlight.js, KaTeX, Mermaid, remark-gfm |
+| Content rendering | `@uiw/react-md-editor` (renders the post body to HTML **on save**), highlight.js (code highlighting), KaTeX (math), Mermaid (diagrams), MDX (available for custom pages) |
 | Charts & tables | Recharts, TanStack Table, dnd-kit |
 | Misc | sonner (toasts), vaul (drawers), next-themes, zod |
 
@@ -52,10 +76,10 @@ blog-app/
 ├─ src/
 │  ├─ app/
 │  │  ├─ (auth)/          # Login / register / account activation
-│  │  ├─ (blog)/          # Public pages (layout holds header, sidebar, footer)
+│  │  ├─ (blog)/          # Public pages (layout holds header, announcement bar, footer; post pages use a narrow TOC rail)
 │  │  ├─ admin/           # Admin console pages
 │  │  ├─ album/ music/    # Album and music player
-│  │  ├─ api/             # Same-origin proxy routes (auth / admin / public / search)
+│  │  ├─ api/             # Same-origin proxy routes (auth / admin / public / pro / user / search / moments)
 │  │  ├─ rss.xml/ atom.xml/ llms.txt/   # Route Handlers for feeds and llms.txt
 │  │  └─ sitemap.ts robots.ts manifest.ts
 │  ├─ components/         # Components: (blog) / admin / ui / (auth) / (music)
@@ -85,14 +109,14 @@ pnpm install
 # Configure environment variables (.env is not committed)
 cp .env.example .env
 
-pnpm dev        # Dev server at http://localhost:3126
+pnpm dev        # Dev server: port comes from the `dev` script in package.json (currently http://localhost:3126)
 ```
 
 ### Build & run locally
 
 ```bash
 pnpm build      # Produces the standalone output
-pnpm copy       # Copies public / .next/static into standalone (Linux/macOS only)
+pnpm copy       # Copies public / .next/static into standalone (cross-platform, cpy-cli)
 pnpm start      # Or: PORT=3126 node .next/standalone/server.js
 ```
 
@@ -101,7 +125,7 @@ pnpm start      # Or: PORT=3126 node .next/standalone/server.js
 | Variable | Required | Description |
 | --- | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | ✅ | Public origin of the site (no path). Used for SEO, sitemap, icons, etc. |
-| `NEXT_PUBLIC_API_URL` | — | Remote API base URL (**must include the `/api` suffix**). Defaults to `NEXT_PUBLIC_SITE_URL + /api`; only needed when the backend lives on another origin |ed by server-side code |
+| `NEXT_PUBLIC_API_URL` | — | Remote API base URL (**must include the `/api` suffix**). Defaults to `NEXT_PUBLIC_SITE_URL + /api`; only needed when the backend lives on another origin |
 | `NEXT_PUBLIC_GRAVATAR_URL` | — | Avatar service URL, defaults to `https://cravatar.cn/` |
 | `BACKEND_URL` | — | Development only: backend base URL for the `rewrites()` proxy (no `/api`) |
 | `API_URL` | — | Production only: same as above |
@@ -167,12 +191,15 @@ The image is based on `node:20-alpine`, uses a multi-stage build, runs as a non-
 
 | Script | Description |
 | --- | --- |
-| `pnpm dev` | Start the dev server (port 3126) |
-| `pnpm build` | Production build (standalone) |
-| `pnpm start` | Start the Next server |
+| `pnpm dev` | Start the dev server (port comes from the `dev` script in package.json, currently 3126) |
+| `pnpm build` | Production build (standalone; on Windows set `NEXT_SKIP_STANDALONE=1`, see `.env.example`) |
+| `pnpm start` | `next start` for a regular build (not standalone; on Windows use `pnpm start:win`) |
+| `pnpm server:linux` | Run the standalone output directly: `PORT=3126 node .next/standalone/server.js` |
 | `pnpm lint` | Run ESLint |
-| `pnpm copy` | Copy `public/` and `.next/static` into the standalone output (requires `cp`; Linux/macOS only) |
-| `pnpm deploy` | Install deps → build → copy → `node .next/standalone/server.js` |
+| `pnpm copy` | Copy `public/` and `.next/static` into the standalone output (cross-platform, cpy-cli) |
+| `pnpm deploy` | Install deps → build → copy assets into the standalone output (**does not start**; use `pnpm server:linux` or `pnpm start`) |
+| `pnpm test` | Run `tests/*.test.ts` (node --test) |
+| `pnpm theme:build` / `pnpm theme:package` | Build and package the Anheyu SSR theme tarball (packaging needs Linux / CI, not Windows) |
 
 ## 📄 License
 

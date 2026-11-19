@@ -112,8 +112,8 @@ export interface SettingsField {
      * 否则面板只会显示空态、把「已配置」误判成「没配」。
      */
     remoteOnly?: boolean;
-    /** type="ai"：该字段归属的模块（面板按模块分块渲染） */
-    aiModule?: "summary" | "writing" | "podcast" | "assistant";
+    /** type="ai"：该字段归属的模块（面板按模块分块渲染）；global = 全局 Profile 列表 */
+    aiModule?: "summary" | "writing" | "podcast" | "assistant" | "global";
     /** type="ai"：控件细类 */
     aiControl?: SettingsAiControl;
     /**
@@ -1670,6 +1670,18 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                 id: "ai-panel",
                 label: "AI 配置",
                 fields: [
+                    // ---------- AI 全局 Profile（settings.ai_profiles，新版后端的多 Profile 存储） ----------
+                    // 值是一段 JSON 数组（后端 GetByKeys 会解析成数组对象、update 时按字符串收），
+                    // 所以这里登记成 list：toFormValue 归一成数组给面板编，buildSettingsPayload 自动 stringify。
+                    {
+                        key: "ai_profiles",
+                        label: "AI Profile",
+                        type: "list",
+                        aiModule: "global",
+                        remoteOnly: true,
+                        wide: true,
+                        hint: "多套 AI 连接配置（provider / api_url / model / api_key）。未单独配置的模块默认用这里。",
+                    },
                     // ---------- AI 摘要（PRO，官方扁平键名） ----------
                     {
                         key: "ai_summary_provider",
@@ -2703,9 +2715,54 @@ function parseJson(value: unknown): unknown {
 }
 
 /** 把配置里的原始值归一成表单值 */
+/**
+ * AI Profile 已存密钥的内存缓存（key = profile.id）。
+ *
+ * 为什么需要：`settings.ai_profiles` 里每个 Profile 自带 `api_key`。后端**本应**只回掩码
+ * （handler.go:maskAIProfilesSetting），但线上 v1.9.2 因为值被解析成数组、掩码函数的
+ * `value.(string)` 断言失败，直接把明文回给了管理员。这里把明文留在内存里（只给「显示」按钮用），
+ * 草稿里换成人造的 `api_key_masked` —— 既保证界面默认看不到明文，也保证保存时不会把它写回。
+ * 后端哪天改成只回掩码了，这里自然取不到明文，界面就只剩掩码提示。
+ */
+const aiProfileKeyCache = new Map<string, string>();
+
+/** 人造掩码：`sk-****abcd`（保留前 3 位 + 末 4 位，中间按长度补星号） */
+export function maskAiProfileKey(key: string): string {
+    const value = key.trim();
+    if (!value) return "";
+    if (value.length <= 8) return "*".repeat(value.length);
+    return `${value.slice(0, 3)}${"*".repeat(Math.max(3, value.length - 7))}${value.slice(-4)}`;
+}
+
+/** 取回某个 Profile 已存密钥的明文（仅当前会话；后端只回掩码时返回空串） */
+export function recallAiProfileKey(id: string): string {
+    return aiProfileKeyCache.get(id) ?? "";
+}
+
+/** 后端原始 Profile → 表单里的 Profile（去掉明文 key，换成掩码 + has_api_key） */
+function normalizeAiProfile(profile: Record<string, unknown>): Record<string, unknown> {
+    const id = String(profile.id ?? "").trim();
+    const plain = typeof profile.api_key === "string" ? profile.api_key.trim() : "";
+    const masked = typeof profile.api_key_masked === "string" ? profile.api_key_masked.trim() : "";
+    const hasKey = Boolean(plain) || profile.has_api_key === true || Boolean(masked);
+    if (id && plain) aiProfileKeyCache.set(id, plain);
+    return {
+        id,
+        name: String(profile.name ?? ""),
+        provider: String(profile.provider ?? ""),
+        api_url: String(profile.api_url ?? ""),
+        model: String(profile.model ?? ""),
+        purpose: String(profile.purpose ?? ""),
+        enabled: profile.enabled === undefined ? true : profile.enabled === true,
+        /** 只放「本次新输入的 key」；留空 = 保留已存的（后端按 id 沿用旧 key） */
+        api_key: "",
+        api_key_masked: hasKey ? masked || maskAiProfileKey(plain) : "",
+        has_api_key: hasKey,
+    };
+}
+
 /** 地址型下拉字段：把历史值规范成与选项一致的形式（去尾斜杠、去 /avatar） */
-function normalizeSelectUrl(field: SettingsField, value: string): string {
-    if (field.key !== "GRAVATAR_URL") return value;
+function normalizeSelectUrl(field: SettingsField, value: string): string {    if (field.key !== "GRAVATAR_URL") return value;
     return value
         .trim()
         .replace(/\/+$/, "")
@@ -2717,6 +2774,16 @@ export function toFormValue(field: SettingsField, raw: unknown): SettingsFormVal
         if (typeof raw === "boolean") return raw;
         if (typeof raw === "string") return raw.trim() === "true" || raw.trim() === "1";
         return false;
+    }
+    if (field.key === "ai_profiles") {
+        // AI Profile：后端回的是数组（或 JSON 字符串），每一项里可能带**明文 api_key**。
+        // 草稿里只留「本次新输入的 key」：已存的 key 挪进内存缓存（供「显示」按钮用），
+        // 数组里换成 api_key_masked —— 这样界面默认看不到明文，保存时留空也会被后端按 id 保留。
+        const parsed = parseJson(raw);
+        const list = Array.isArray(parsed) ? parsed : [];
+        return list
+            .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+            .map((item) => normalizeAiProfile(item));
     }
     if (field.type === "list") {
         const parsed = parseJson(raw);

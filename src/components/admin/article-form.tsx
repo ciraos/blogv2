@@ -61,7 +61,7 @@ import type { PostCategory, PostTag } from "@/types/articles";
  *    卡片顺序：发布时间 / 定时发布（仅状态=定时时出现）/ 基础 / 摘要 & SEO / 显示 / 会员权限 / 全文隐藏 / 高级。
  *    后端仍然没有对应字段的项目（自定义发布日期、会员可见、全文隐藏、单章 JS）一律不做假输入框：
  *    禁用 + 灰字说明为什么（NotSupportedNote）。
- *  - 三处已接通的真实功能：①「AI 生成摘要」走 AI 写作通道 + customPrompt（右栏「摘要 & SEO」卡）；
+ *  - 三处已接通的真实功能：①「AI 生成摘要」走 AI 写作通道（摘要指令拼在 topic 里，后端忽略 customPrompt）；
  *    ②定时发布（状态按钮 + 「定时发布」卡 + 提交 scheduled_at）；③文档模式改为入口，链到 /admin/doc-series。
  * 设置项（可提交）：状态、定时发布时间、分类/标签、封面与顶部大图（走 /api/admin/articles/upload）、摘要、
  *        关键词/永久链接、首页展示与排序、主色、原创与版权、IP 属地。
@@ -852,7 +852,8 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
     }, []);
 
     /**
-     * 「AI 生成摘要」：走 AI 写作通道 + customPrompt（src/lib/api-ai.ts 的 generateArticleSummaryApi），
+     * 「AI 生成摘要」：走 AI 写作通道（摘要指令拼在 topic 里，后端忽略 customPrompt；
+     * src/lib/api-ai.ts 的 generateArticleSummaryApi），
      * 流式结果**实时覆盖**写进摘要框（摘要一行一条，所以边收边压成单行）。
      * 生成中再点一次 = 停止：已生成的部分保留，用户自己决定要不要留。
      */
@@ -1502,7 +1503,8 @@ export function ArticleForm({ mode, articleId }: { mode: Mode; articleId?: strin
                                                     取正文前 300 字
                                                 </Button>
                                                 {/* AI 生成摘要：没有独立的摘要接口（/api/pro/admin/ai/summary 探测 404），
-                                                    走的是 AI 写作通道 + customPrompt（src/lib/api-ai.ts 的 generateArticleSummaryApi）。
+                                                    走的是 AI 写作通道（摘要指令拼在 topic 里；后端忽略 customPrompt，
+                                                    见 src/lib/api-ai.ts 的 generateArticleSummaryApi）。
                                                     生成中同一个按钮就是「停止生成」；PRO 徽标保留（走的仍是 PRO 通道）。 */}
                                                 <Button
                                                     type="button"

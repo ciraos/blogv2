@@ -1,7 +1,8 @@
-﻿// 订阅源（RSS 2.0 / Atom）共享逻辑：站点信息 + 文章数据 + XML 工具函数
+// 订阅源（RSS 2.0 / Atom）共享逻辑：站点信息 + 文章数据 + XML 工具函数
 import { getAllPublicArticlesCached } from "@/lib/public-content-cache";
 import { SiteConfigResponse } from "@/types/site-config";
 import { API_URL } from "@/lib/api";
+import { localSiteOrigin } from "@/lib/site-origin";
 
 
 const env_site_url = process.env.NEXT_PUBLIC_SITE_URL ?? "";
@@ -40,7 +41,7 @@ async function resolveSiteUrl(): Promise<string> {
     } catch {
         // 配置获取失败：走回退
     }
-    return "http://localhost:3000";
+    return localSiteOrigin();
 }
 
 /** 拉取站点名/描述与全部公开文章；单项失败时降级，不整体抛错 */

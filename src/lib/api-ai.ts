@@ -34,7 +34,8 @@ export interface AIWritingParams {
     length?: AIWritingLength;
     /** 是否使用标签插件 */
     useTags?: boolean;
-    /** 自定义提示词 */
+    /** 自定义提示词 —— ⚠️ 2026-11-19 实测后端**忽略**这个字段（传了也不影响生成），
+     *  要加要求只能并进 `topic`（写作对话框与文章摘要都按这个结论改过）。保留字段仅为对齐官方类型。 */
     customPrompt?: string;
 }
 
@@ -340,8 +341,21 @@ export function streamAIWriting(params: AIWritingParams, callbacks: AIWritingCal
 // streamAIWriting（**没有**第二份解析器）。
 
 /**
- * 摘要指令。后端只有一个自定义提示词入口（customPrompt，没有独立的 system 角色），
- * 所以「单段、100-200 字、不带 Markdown」这些约束只能写进提示词里。
+ * 「不要用博客专属标签」的硬性要求。
+ *
+ * 后端的 `useTags` 字段只是建议，拦不住它：system prompt（后台可编辑的「AI 写作 System Prompt」）
+ * 里写死了 tip / folding / tabs / btn / linkcard 的用法，模型会照着加。实测把这条要求拼进
+ * **topic** 后，输出就是干净的 Markdown（同样的主题，`{tip}`/`:::`/`{btn}` 一个都没有）。
+ */
+export const NO_TAG_INSTRUCTION =
+    "硬性要求：禁止使用任何自定义标签（如 {tip}、:::folding、:::tabs、{btn}、{linkcard}），" +
+    "只输出标准 Markdown（标题、段落、列表、代码块）。";
+
+/**
+ * 摘要指令。
+ *
+ * ⚠️ 拼在 **topic** 里，不是 customPrompt：实测后端只认 topic（见 buildArticleSummaryParams 的注释）。
+ * 「单段、100-200 字、不带 Markdown」这些约束只能这样写进提示词。
  */
 export const ARTICLE_SUMMARY_PROMPT =
     "请为下面的文章正文写一段摘要。" +
@@ -364,12 +378,15 @@ export interface AISummaryParams {
 
 /**
  * 把「标题 + 正文」拼成写作接口的请求体。
- * **导出是为了单测**：参数构造的正确性用本函数直接断言（线上生成是计费写操作，按铁律不实测）。
+ * **导出是为了单测**：参数构造的正确性用本函数直接断言。
+ *
+ * ── 2026-11-19 线上实测，改过一次 ────────────────────────────────────────────
+ * 原来把摘要指令放 `customPrompt`、topic 放文章标题，结果后端**完全忽略 customPrompt**：
+ * 一次「摘要」请求返回的是一篇同标题的完整文章（topic 才是后端真正喂给模型的主题）。
+ * 实测把摘要指令换到 **topic** 后，返回的就是合格的单段摘要（100-200 字、无 Markdown）。
+ * 所以现在：指令 + 正文都塞进 topic，customPrompt 不再传（传了也不生效，留着只会误导）。
  *
  * 几个刻意的取舍：
- *  - topic：写作通道的 topic 相当于「写作主题」，空着可能被后端拒；优先用文章标题，
- *    标题为空时退化成正文首行（去掉 # 与图片语法），仍为空才用兜底词。
- *  - customPrompt：摘要指令 + 正文（只能这么拼，原因见 ARTICLE_SUMMARY_PROMPT）。
  *  - length: "short"：写作通道自己的篇幅档，用 short 兜住「摘要别写成长文」。
  *  - useTags: false：摘要里不该出现 tip/folding 这类标签插件。
  *  - 不传 style：避免后端的风格模板和提示词里的「客观中性」互相打架。
@@ -380,16 +397,11 @@ export function buildArticleSummaryParams({ title, content }: AISummaryParams): 
         body.length > SUMMARY_CONTENT_LIMIT
             ? `${body.slice(0, SUMMARY_CONTENT_LIMIT)}\n\n（正文过长，以上只是前 ${SUMMARY_CONTENT_LIMIT} 字）`
             : body;
-    const topicFromBody = body
-        .replace(/^#{1,6}\s*/gm, "")
-        .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
+    const heading = (title ?? "").trim();
     return {
-        topic: (title ?? "").trim() || topicFromBody.slice(0, 50) || "文章摘要",
+        topic: `${ARTICLE_SUMMARY_PROMPT}\n\n${heading ? `文章标题：${heading}\n\n` : ""}文章正文：\n${clipped}`,
         length: "short",
         useTags: false,
-        customPrompt: `${ARTICLE_SUMMARY_PROMPT}\n\n文章正文：\n${clipped}`,
     };
 }
 

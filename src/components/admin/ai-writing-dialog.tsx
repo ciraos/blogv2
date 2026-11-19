@@ -13,6 +13,7 @@ import {
     AIWritingApiError,
     getAIWritingConfigApi,
     isAIWritingConfigured,
+    NO_TAG_INSTRUCTION,
     streamAIWriting,
     type AIWritingConfigOption,
     type AIWritingLength,
@@ -33,6 +34,17 @@ const FALLBACK_LENGTH_OPTIONS: Array<{ value: AIWritingLength; label: string }> 
     { value: "medium", label: "中篇（800~2000 字）" },
     { value: "long", label: "长篇（2000~5000 字）" },
 ];
+
+/**
+ * 拼最终提交的 topic（后端只认这个字段，见下方注释）。
+ * 顺序：主题 → 用户自定义要求 → （关标签时）禁用标签指令。
+ */
+function buildTopic(topic: string, extra: string, useTags: boolean): string {
+    const parts = [topic];
+    if (extra.trim()) parts.push(`额外要求：\n${extra.trim()}`);
+    if (!useTags) parts.push(NO_TAG_INSTRUCTION);
+    return parts.join("\n\n");
+}
 
 /**
  * 配置状态：loading 中不允许重复读取；error 时如实把错误摆出来，不假装「未配置」。
@@ -65,6 +77,8 @@ export function AIWritingDialog({
     const [style, setStyle] = useState<AIWritingStyle>("professional");
     const [length, setLength] = useState<AIWritingLength>("medium");
     const [customPrompt, setCustomPrompt] = useState("");
+    /** 是否让模型用本站的 tip/folding/tabs 等标签（关掉会把「禁止标签」拼进 topic） */
+    const [useTags, setUseTags] = useState(true);
     const [preview, setPreview] = useState("");
     const [generating, setGenerating] = useState(false);
     const [error, setError] = useState("");
@@ -123,6 +137,7 @@ export function AIWritingDialog({
 
     const handleGenerate = useCallback(() => {
         const trimmed = topic.trim();
+        const extra = customPrompt.trim();
         if (!trimmed) return;
 
         controllerRef.current?.abort();
@@ -131,7 +146,18 @@ export function AIWritingDialog({
         setError("");
 
         controllerRef.current = streamAIWriting(
-            { topic: trimmed, style, length, customPrompt: customPrompt.trim() || undefined },
+            {
+                // 「自定义提示词」必须并进 topic：2026-11-19 实测后端**忽略 customPrompt**
+                // （传「只输出一行 HELLO-1234」，它照样按 topic 写了一整篇文章），
+                // 只有 topic 会真正喂给模型；并进 topic 后要求生效（实测「全篇英文」输出全英文）。
+                //
+                // 关掉「博客标签」时同理：后端的 useTags 拦不住 system prompt 里的标签规范，
+                // 必须把「禁止使用标签」拼进 topic 才有效（实测输出变成纯 Markdown）。
+                topic: buildTopic(trimmed, extra, useTags),
+                style,
+                length,
+                useTags,
+            },
             {
                 onChunk: (chunk) => setPreview((prev) => prev + chunk),
                 onDone: (full) => {
@@ -145,7 +171,7 @@ export function AIWritingDialog({
                 },
             }
         );
-    }, [topic, style, length, customPrompt]);
+    }, [topic, style, length, customPrompt, useTags]);
 
     const handleStop = useCallback(() => {
         controllerRef.current?.abort();
@@ -186,7 +212,9 @@ export function AIWritingDialog({
 
     return createPortal(
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            // z-[70]：文章编辑页的容器是 `fixed inset-0 z-[60]`（article-editor-page），
+            // 用 z-50 时弹窗虽然渲染在 body 上、却被整页盖住（点不到、截图也看不见）。
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4"
             role="dialog"
             aria-modal="true"
             aria-label="AI 写作"
@@ -294,7 +322,26 @@ export function AIWritingDialog({
                             onChange={(e) => setCustomPrompt(e.target.value)}
                             placeholder="额外的写作要求或限制，例如「多用代码示例」"
                         />
+                        <p className="text-[11px] text-muted-foreground">
+                            会拼接在主题后面一起提交（后端的 customPrompt 字段实测不生效）。
+                        </p>
                     </div>
+
+                    <label className="flex cursor-pointer items-start justify-between gap-3 rounded-lg border px-3 py-2.5">
+                        <span className="min-w-0">
+                            <span className="text-sm font-medium">使用博客专属标签</span>
+                            <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                                tip / 折叠 / 选项卡 / 按钮 / 链接卡片；关掉后只输出标准 Markdown
+                            </span>
+                        </span>
+                        <input
+                            type="checkbox"
+                            checked={useTags}
+                            onChange={(e) => setUseTags(e.target.checked)}
+                            className="mt-1 size-4 shrink-0 accent-primary"
+                            aria-label="使用博客专属标签"
+                        />
+                    </label>
 
                     {error && (
                         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">

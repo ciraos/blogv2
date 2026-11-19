@@ -99,13 +99,30 @@ function imageRemotePatterns() {
 
 
 /**
+ * package.json 读一次，供下面多处复用（版本号 / 开发端口）。构建期读文件，不进客户端包。
+ */
+const pkgJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), "package.json"), "utf8")) as {
+  version?: string;
+  scripts?: Record<string, string>;
+};
+
+/**
  * 前端自己的版本号：以 package.json 的 version 为唯一来源，构建时注入给前后端代码。
  * 与后端程序版本（/api/version）和站点配置里的 APP_VERSION 无关，互不影响。
  * 浏览器端也会内联，所以在客户端组件里读 process.env.APP_VERSION 同样有效。
  */
-const appVersion = (
-  JSON.parse(fs.readFileSync(path.join(process.cwd(), "package.json"), "utf8")) as { version?: string }
-).version ?? "0.0.0";
+const appVersion = pkgJson.version ?? "0.0.0";
+
+/**
+ * 开发端口：**只从 package.json 的 `dev` 脚本里解析**（`next dev -p 3126` → "3126"），
+ * 不在代码里另写一份。注入成 APP_DEV_PORT 供「SITE_URL 取不到时」的兜底地址使用
+ * （src/lib/site-origin.ts）—— 想换端口只改 package.json 的 `-p`，这里自动跟随。
+ */
+const devPort = (() => {
+  // 同时认 `-p 3126` / `-p3126` / `--port 3126` / `--port=3126`
+  const match = /(?:^|\s)(?:-p|--port)[=\s]*(\d{2,5})\b/.exec(pkgJson.scripts?.dev ?? "");
+  return match ? match[1] : "3126";
+})();
 
 /**
  * 是否跳过 standalone 打包（严格布尔解析）。
@@ -188,15 +205,20 @@ const nextConfig: NextConfig = {
     //    不会重新注入 env（实测：自动重启后 proxy 里读到的是 undefined，全站差点被 404）。
     APP_ADMIN_ROUTE_REGEXPS: JSON.stringify(adminRouteRegexps),
     APP_VERSION: appVersion,
+    // 开发端口（从 package.json 的 dev 脚本解析）：SITE_URL 缺失时的兜底地址用它，见 src/lib/site-origin.ts
+    APP_DEV_PORT: devPort,
   },
 
   // 代理配置 - 客户端请求代理到 Go 后端
   async rewrites() {
     // 后端基址优先级：显式 BACKEND_URL/API_URL > 同源站点 NEXT_PUBLIC_SITE_URL > 通用兜底
     // （后端与站点同源时，只要 .env 设了站点地址即可，无需重复配后端地址）
+    //
+    // ⚠️ 兜底值必须是**后端**的默认端口 8091（anheyu-app 的 pkg/config/config.go:132），
+    //    不是本前端的 3126 —— 之前这里抄成了 3126，没配 SITE_URL 时 /api/f/… 会被代理回自己。
     const backendUrl = isDev
-      ? process.env.BACKEND_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3126"
-      : process.env.API_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://anheyu:3126";
+      ? process.env.BACKEND_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:8091"
+      : process.env.API_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://anheyu:8091";
 
     return {
       // beforeFiles: 在检查 public 目录之前执行（API 等必须代理的路径）

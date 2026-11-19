@@ -1,18 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Eye, EyeOff, Info, Lightbulb } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, Eye, EyeOff, Info, Lightbulb, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import {
     AI_EMBEDDING_MODEL_OPTIONS,
     AI_PROVIDER_API_URLS,
     AI_PROVIDER_MODEL_EXAMPLES,
     AI_PROVIDER_MODEL_OPTIONS,
+    AI_PROVIDER_OPTIONS,
     isFieldDirty,
     isSecretMask,
+    recallAiProfileKey,
     type SettingsField,
     type SettingsFormValue,
 } from "@/lib/admin-settings";
@@ -289,6 +293,368 @@ function Switch({ checked, label, onChange }: { checked: boolean; label: string;
     );
 }
 
+/** 提供商下拉：已知 6 家 + 「自定义」（后端 Profile 的 provider 是自由字符串，线上就有 custom） */
+const PROFILE_PROVIDER_OPTIONS = [...AI_PROVIDER_OPTIONS, { value: "custom", label: "自定义（custom）" }];
+
+/** 新 Profile 的默认骨架；id 由前端生成（后端只 trim，不补 id） */
+function createProfile(): Record<string, unknown> {
+    return {
+        id: `profile-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+        name: "",
+        provider: "custom",
+        api_url: "",
+        model: "",
+        purpose: "通用",
+        enabled: true,
+        api_key: "",
+        api_key_masked: "",
+        has_api_key: false,
+    };
+}
+
+/**
+ * 「默认模型」下拉（**只能选，不能手填**）。
+ *
+ * 为什么不用原生 `<datalist>` / `<select>`：
+ *  · `<datalist>` 的弹层是浏览器默认样式（白底、行距很大、不跟暗色令牌），在这套后台里很突兀；
+ *  · `<select>` 没法在「选项还没拉回来」时优雅地展示「当前值 + 未获取」这两种状态。
+ * 所以用主题令牌自绘一个：外观对齐 ui/select 的 trigger，选项列表是主题化的 popover。
+ *
+ * · 只能从 `options` 里选（值不在列表里时 trigger 仍显示它，只是不会高亮）；
+ * · `options` 为空时整个控件禁用，title 里说明为什么；
+ * · ↑/↓ 移动、Enter 选中、Esc 关闭、点外面关闭。
+ */
+function ModelSelect({
+    value,
+    options,
+    placeholder,
+    disabledHint,
+    onChange,
+}: {
+    value: string;
+    options: string[];
+    placeholder?: string;
+    /** options 为空时给个 title，说明为什么点不了（例如「先点获取上游模型」） */
+    disabledHint?: string;
+    onChange: (next: string) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const [active, setActive] = useState(-1);
+    const boxRef = useRef<HTMLDivElement>(null);
+    /** combobox 与 listbox 的关联 id（a11y 规则要求 aria-controls） */
+    const listboxId = useId();
+
+    const disabled = options.length === 0;
+
+    // 点弹层外面关掉
+    useEffect(() => {
+        if (!open) return;
+        const onDown = (event: MouseEvent) => {
+            if (!boxRef.current?.contains(event.target as Node)) setOpen(false);
+        };
+        document.addEventListener("mousedown", onDown);
+        return () => document.removeEventListener("mousedown", onDown);
+    }, [open]);
+
+    const choose = (next: string) => {
+        onChange(next);
+        setOpen(false);
+        setActive(-1);
+    };
+
+    const onKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+        if (event.key === "Escape") {
+            setOpen(false);
+            return;
+        }
+        if (disabled) return;
+        if (event.key === "ArrowDown") {
+            event.preventDefault();
+            setOpen(true);
+            setActive((index) => Math.min(options.length - 1, index + 1));
+        } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            setOpen(true);
+            setActive((index) => Math.max(0, index - 1));
+        } else if ((event.key === "Enter" || event.key === " ") && open && active >= 0 && options[active]) {
+            event.preventDefault();
+            choose(options[active]);
+        }
+    };
+
+    return (
+        <div ref={boxRef} className="relative">
+            <button
+                type="button"
+                role="combobox"
+                aria-expanded={open}
+                aria-haspopup="listbox"
+                aria-controls={open ? listboxId : undefined}
+                disabled={disabled}
+                title={disabled ? disabledHint : undefined}
+                onClick={() => {
+                    if (disabled) return;
+                    setOpen((v) => !v);
+                    setActive(-1);
+                }}
+                onKeyDown={onKeyDown}
+                className={cn(
+                    "flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent px-2.5 text-sm whitespace-nowrap transition-colors outline-none",
+                    "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50",
+                    "disabled:cursor-not-allowed disabled:opacity-60"
+                )}
+            >
+                <span className={cn("truncate font-mono text-left", value ? "text-foreground" : "text-muted-foreground")}>
+                    {value || placeholder || "选择模型"}
+                </span>
+                <ChevronDown
+                    className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
+                    aria-hidden
+                />
+            </button>
+            {open && !disabled && (
+                <div
+                    role="listbox"
+                    id={listboxId}
+                    className="absolute inset-x-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg"
+                >
+                    {options.map((name, index) => (
+                        <button
+                            key={name}
+                            type="button"
+                            role="option"
+                            aria-selected={name === value}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onMouseEnter={() => setActive(index)}
+                            onClick={() => choose(name)}
+                            className={cn(
+                                "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left font-mono text-xs transition-colors",
+                                index === active ? "bg-muted text-foreground" : "text-muted-foreground",
+                                name === value && "text-primary"
+                            )}
+                        >
+                            <span className="truncate">{name}</span>
+                            {name === value && <Check className="size-3.5 shrink-0" aria-hidden />}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/**
+ * 单个 AI Profile 卡片（`settings.ai_profiles` 的一项）。
+ *
+ * 密钥规则（与后端 prepareAIProfilesSettingForSave 对齐）：
+ *  · 输入框只用于「这次要换 key」，留空 = 保留已存的（后端按 profile.id 沿用旧 key）；
+ *  · 因此提交上去的 api_key 只可能是新值；
+ *  · 已存的 key 不做回显（列表里不显示掩码，避免把密钥痕迹摊在页面上）；
+ *    只有「获取上游模型」需要真 key 时才从本次会话的内存缓存里取（recallAiProfileKey）。
+ */
+function ProfileCard({
+    profile,
+    index,
+    onPatch,
+    onRemove,
+}: {
+    profile: Record<string, unknown>;
+    index: number;
+    onPatch: (patch: Record<string, unknown>) => void;
+    onRemove: () => void;
+}) {
+    const [visible, setVisible] = useState(false);
+    /** 「获取上游模型」拉到的候选（只在本卡片里用于「默认模型」的下拉候选） */
+    const [models, setModels] = useState<string[]>([]);
+    const [loadingModels, setLoadingModels] = useState(false);
+
+    const id = String(profile.id ?? "");
+    const provider = String(profile.provider ?? "");
+    const model = String(profile.model ?? "");
+    const newKey = String(profile.api_key ?? "");
+    const storedPlain = recallAiProfileKey(id);
+    const knownProvider = PROFILE_PROVIDER_OPTIONS.some((option) => option.value === provider);
+    const apiUrl = String(profile.api_url ?? "");
+    /** 上游调用要真 key：优先用这次输入的，其次用本次会话读到的明文（后端只回掩码时就没有） */
+    const effectiveKey = newKey.trim() || storedPlain;
+    // 三项都填好才允许去拉模型（没 key 拉了也是 401，省得白跑一趟）
+    const canFetchModels = Boolean(provider.trim() && apiUrl.trim() && effectiveKey);
+
+    const handleProvider = (next: string) => {
+        const patch: Record<string, unknown> = { provider: next };
+        // 换服务商 → API 地址跟着预填（仍可手改）；模型不动，避免把别家的模型名留在框里
+        const url = AI_PROVIDER_API_URLS[next];
+        if (url) patch.api_url = url;
+        onPatch(patch);
+        // 换了服务商，之前的模型列表就不作数了
+        setModels([]);
+    };
+
+    /** 拉上游 /models：服务端代取（浏览器直连会被 CORS 拦），见 src/app/api/admin/ai/models/route.ts */
+    const fetchModels = async () => {
+        if (!canFetchModels || loadingModels) return;
+        setLoadingModels(true);
+        try {
+            const res = await fetch("/api/admin/ai/models", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ api_url: apiUrl, api_key: effectiveKey }),
+            });
+            const json = (await res.json().catch(() => null)) as
+                | { code?: number; message?: string; data?: { models?: string[] } }
+                | null;
+            const list = json?.data?.models ?? [];
+            if (!res.ok || list.length === 0) {
+                setModels([]);
+                toast.error(json?.message || "获取模型失败");
+                return;
+            }
+            setModels(list);
+            toast.success(`获取到 ${list.length} 个模型，可在「默认模型」里选`);
+        } catch {
+            setModels([]);
+            toast.error("获取模型失败：网络异常");
+        } finally {
+            setLoadingModels(false);
+        }
+    };
+
+    return (
+        <div className="rounded-lg border bg-background/40 p-3">
+            <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 text-[11px] font-medium text-muted-foreground">Profile {index + 1}</span>
+                    <Input
+                        value={String(profile.name ?? "")}
+                        onChange={(e) => onPatch({ name: e.target.value })}
+                        placeholder="名称（例如 new-api）"
+                        className="h-8 max-w-56 text-sm"
+                        aria-label={`Profile ${index + 1} 名称`}
+                    />
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                    {/* Switch 的可见部分是个 span、真正的 checkbox 是 sr-only，必须裹 label 才点得动 */}
+                    <label className="cursor-pointer" title={profile.enabled === true ? "停用这个 Profile" : "启用这个 Profile"}>
+                        <Switch
+                            checked={profile.enabled === true}
+                            label={`启用 Profile ${index + 1}`}
+                            onChange={(next) => onPatch({ enabled: next })}
+                        />
+                    </label>
+                    <button
+                        type="button"
+                        onClick={onRemove}
+                        title="删除这个 Profile"
+                        aria-label={`删除 Profile ${index + 1}`}
+                        className="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    >
+                        <Trash2 className="size-3.5" />
+                    </button>
+                </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">提供商</Label>
+                    <Select value={knownProvider ? provider : "custom"} onValueChange={handleProvider}>
+                        <SelectTrigger className="h-8 w-full">
+                            <SelectValue placeholder="选择提供商" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {PROFILE_PROVIDER_OPTIONS.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">用途</Label>
+                    <Input
+                        value={String(profile.purpose ?? "")}
+                        onChange={(e) => onPatch({ purpose: e.target.value })}
+                        placeholder="通用 / 写作 / 摘要"
+                        className="h-8 text-sm"
+                    />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                    <Label className="text-xs text-muted-foreground">API 地址</Label>
+                    <Input
+                        value={apiUrl}
+                        onChange={(e) => onPatch({ api_url: e.target.value })}
+                        placeholder="https://api.example.com/v1"
+                        className="h-8 font-mono text-sm"
+                    />
+                    <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                        <button
+                            type="button"
+                            onClick={() => void fetchModels()}
+                            disabled={!canFetchModels || loadingModels}
+                            title={
+                                canFetchModels
+                                    ? "请求上游 {地址}/models，把拿到的模型填进「默认模型」的候选"
+                                    : "填好提供商、API 地址和 API Key 后才可用"
+                            }
+                            className="inline-flex h-7 items-center gap-1 rounded-md border px-2 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-muted-foreground"
+                        >
+                            {loadingModels ? (
+                                <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                            ) : (
+                                <RefreshCw className="size-3.5" aria-hidden />
+                            )}
+                            {loadingModels ? "获取中…" : "获取上游模型"}
+                        </button>
+                        <span className="text-[11px] text-muted-foreground">
+                            {canFetchModels
+                                ? models.length > 0
+                                    ? `已获取 ${models.length} 个模型`
+                                    : "从上游 /models 拉取「默认模型」的候选"
+                                : "填好提供商、API 地址和 API Key 后可用"}
+                        </span>
+                    </div>
+                </div>
+                <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">默认模型</Label>
+                    <ModelSelect
+                        value={model}
+                        options={models}
+                        onChange={(next) => onPatch({ model: next })}
+                        placeholder={provider ? (AI_PROVIDER_MODEL_EXAMPLES[provider] ?? "选择模型") : "选择模型"}
+                        disabledHint="先点上方「获取上游模型」，拉到候选后才可选"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                        {models.length > 0 ? `已获取 ${models.length} 个模型` : "点上方「获取上游模型」拉候选"}
+                    </p>
+                </div>
+                <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">API Key</Label>
+                    <div className="relative">
+                        <Input
+                            type={visible ? "text" : "password"}
+                            value={newKey}
+                            onChange={(e) => onPatch({ api_key: e.target.value })}
+                            placeholder="sk-xxx"
+                            autoComplete="new-password"
+                            className="h-8 pr-9 font-mono text-sm"
+                        />
+                        <div className="absolute inset-y-0 right-1 flex items-center">
+                            <button
+                                type="button"
+                                onClick={() => setVisible((v) => !v)}
+                                aria-label={visible ? "隐藏刚输入的 Key" : "显示刚输入的 Key"}
+                                className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            >
+                                {visible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 /**
  * AI 设置面板（对齐官方 components/admin/settings/AISettingsForm.tsx 的信息架构）。
  *
@@ -297,10 +663,11 @@ function Switch({ checked, label, onChange }: { checked: boolean; label: string;
  * 字段本身仍登记在 src/lib/admin-settings.ts 的 schema 里 —— 基线、改动判定、保存载荷
  * 全部复用设置页既有机制（草稿 → 底部保存条），这里只负责画。
  *
- * 全局配置区：
- *  - 版式与官方一致（默认 Profile + 添加 Profile + 全局 provider/api_key/url/model）。
- *  - 后端没有这些全局键（官方快照里只有各模块自己的 provider/api_key/api_url/model），
- *    写了会被静默丢弃，所以**整块控件置灰不可改**，只作为「未单独配置时沿用全局」的视觉说明位。
+ * 全局配置区（`settings.ai_profiles`）：
+ *  - 值是一段 JSON 数组，后端读时会被解析成数组对象、写时按字符串收（见 admin-settings 的 ai_profiles 字段）。
+ *  - 这里按 Profile 卡片渲染：可增删、可改 provider / api_url / model / purpose / enabled。
+ *  - 密钥只写不回显：已存的 key 显示掩码（点「显示」展开本次会话读到的明文），编辑时留空即保留
+ *    （后端 prepareAIProfilesSettingForSave 按 profile.id 沿用旧 key）。
  */
 export function AiSettingsPanel({
     fields,
@@ -316,6 +683,11 @@ export function AiSettingsPanel({
     const byKey = useMemo(() => new Map(fields.map((field) => [field.key, field])), [fields]);
 
     const text = (key: string) => String(draft[key] ?? "");
+
+    /** settings.ai_profiles：多 Profile 数组（toFormValue 已归一化成「无明文 key」的形状） */
+    const profiles = Array.isArray(draft["ai_profiles"]) ? (draft["ai_profiles"] as Record<string, unknown>[]) : [];
+    const setProfiles = (next: Record<string, unknown>[]) => onChange("ai_profiles", next);
+    const addProfile = () => setProfiles([...profiles, createProfile()]);
 
     /** 一组键是否全空（用于「未单独配置」提示；布尔 false 与空数组都算空） */
     const allEmpty = (keys: string[]) =>
@@ -415,23 +787,13 @@ export function AiSettingsPanel({
 
             const options = (source && providerValue ? source.options[providerValue] : undefined) ?? [];
             return (
-                <div>
-                    <Input
-                        id={controlId}
-                        list={`ai-${field.key.replace(/\./g, "-")}-models`}
-                        value={value}
-                        onChange={(e) => set(e.target.value)}
-                        placeholder={providerValue ? "从列表选择或直接输入模型名" : "请先选择向量化服务商"}
-                        className="h-8 text-sm"
-                    />
-                    <datalist id={`ai-${field.key.replace(/\./g, "-")}-models`}>
-                        {options.map((option) => (
-                            <option key={option.value} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </datalist>
-                </div>
+                <ModelSelect
+                    value={value}
+                    options={options.map((option) => option.value)}
+                    onChange={set}
+                    placeholder={providerValue ? "选择模型" : "请先选择向量化服务商"}
+                    disabledHint="先选一个向量化服务商，才有模型候选"
+                />
             );
         }
 
@@ -543,49 +905,46 @@ export function AiSettingsPanel({
 
     return (
         <div className="space-y-4">
-            {/* ---------- 全局配置（版式对齐官方；后端未提供全局键，控件置灰） ---------- */}
+            {/* ---------- 全局配置：settings.ai_profiles（多 Profile，可增删改） ---------- */}
             <div className={card}>
-                <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
-                    AI 全局配置
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">未开放</span>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                        AI 全局配置
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
+                            {profiles.length} 个 Profile
+                        </span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={addProfile}
+                        className="h-7 w-max rounded-md border px-2.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                    >
+                        + 添加 Profile
+                    </button>
                 </div>
                 <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                    未单独配置的模块沿用这里的默认值。
+                    未单独配置的模块沿用这里的默认值。密钥只写不回显：编辑时留空即保留已存的 Key。
                 </p>
 
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">默认 Profile</Label>
-                        <Select disabled>
-                            <SelectTrigger className="h-8 w-full" disabled>
-                                <SelectValue placeholder="默认" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="default">默认</SelectItem>
-                            </SelectContent>
-                        </Select>
+                {profiles.length === 0 ? (
+                    <div className="mt-3 rounded-lg border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">
+                        还没有 Profile。点「添加 Profile」填一条（提供商 + API 地址 + 模型 + Key），AI 写作 / 摘要才有可用的连接。
                     </div>
-                    <div className="flex items-end">
-                        <button
-                            type="button"
-                            disabled
-                            className="h-8 w-max cursor-not-allowed rounded-md border px-2.5 text-xs text-muted-foreground/70"
-                        >
-                            + 添加 Profile
-                        </button>
+                ) : (
+                    <div className="mt-3 space-y-3">
+                        {profiles.map((profile, index) => (
+                            <ProfileCard
+                                key={String(profile.id ?? index)}
+                                profile={profile}
+                                index={index}
+                                onPatch={(patch) =>
+                                    setProfiles(profiles.map((item, i) => (i === index ? { ...item, ...patch } : item)))
+                                }
+                                onRemove={() => setProfiles(profiles.filter((_, i) => i !== index))}
+                            />
+                        ))}
                     </div>
-                    {[
-                        { label: "提供商", placeholder: "例如 openai / glm" },
-                        { label: "API Key", placeholder: "仅在官方 AiProfile 里生效" },
-                        { label: "API 地址", placeholder: "https://…" },
-                        { label: "默认模型", placeholder: "例如 gpt-4o-mini" },
-                    ].map((item) => (
-                        <div key={item.label} className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">{item.label}</Label>
-                            <Input disabled placeholder={item.placeholder} className="h-8 text-sm" />
-                        </div>
-                    ))}
-                </div>
+                )}
             </div>
 
             {/* ---------- AI 摘要 ---------- */}
