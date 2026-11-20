@@ -1,10 +1,13 @@
-﻿"use client";
+"use client";
+import { useState } from "react";
 import Link from "next/link";
 import {
     Bell,
     Coins,
     Share2
 } from "lucide-react";
+
+import { SubscribeDialog } from "@/components/(blog)/subscribe-dialog";
 
 export interface PostActionsConfig {
     /** 站点名称 */
@@ -28,6 +31,16 @@ export interface PostActionsConfig {
      * 模板本身允许写 <a>，所以这里用 dangerouslySetInnerHTML 渲染。
      */
     copyrightHtml: string;
+    /**
+     * 订阅功能（post.subscribe.*）：enable=false 时整颗按钮不渲染 ——
+     * 后台没开启却留一个点了没反应的按钮，比没有更糟。
+     */
+    subscribe?: {
+        enabled: boolean;
+        buttonText: string;
+        dialogTitle: string;
+        dialogDesc: string;
+    };
 }
 
 interface PostActionsProps extends PostActionsConfig {
@@ -51,17 +64,22 @@ export function PostActions({
     showSubscribeButton,
     showShareButton,
     copyrightHtml,
+    subscribe,
     title,
     url,
 }: PostActionsProps) {
+    const [subscribeOpen, setSubscribeOpen] = useState(false);
+    // 订阅开关没开时整颗按钮都不渲染（含只有 show_subscribe_button 打开的情况）
+    const subscribeEnabled = showSubscribeButton && subscribe?.enabled === true;
+
     // TODO: 打赏 —— 打开打赏弹层（post.reward 二维码等，接口预留）
     function handleReward() {
         // 接口预留：openRewardModal()
     }
 
-    // TODO: 订阅 —— 打开订阅弹层（post.subscribe，接口预留）
+    // 订阅 —— 打开订阅弹窗（邮箱 + 验证码，接口见 lib/api-subscribe.ts）
     function handleSubscribe() {
-        // 接口预留：openSubscribeModal()
+        setSubscribeOpen(true);
     }
 
     // TODO: 分享 —— 优先 navigator.share，降级复制链接
@@ -71,7 +89,7 @@ export function PostActions({
         void url;
     }
 
-    const showButtons = showRewardButton || showSubscribeButton || showShareButton;
+    const showButtons = showRewardButton || subscribeEnabled || showShareButton;
 
     return (
         <div className="mt-16 w-full border-y border-border/60 bg-linear-to-r from-transparent via-primary/[0.04] to-transparent py-5">
@@ -105,7 +123,7 @@ export function PostActions({
                             打赏作者
                         </button>
                     )}
-                    {showSubscribeButton && (
+                    {subscribeEnabled && (
                         <button
                             type="button"
                             onClick={handleSubscribe}
@@ -113,7 +131,7 @@ export function PostActions({
                             aria-label="订阅"
                         >
                             <Bell className="size-4" />
-                            订阅
+                            {subscribe?.buttonText?.trim() || "订阅"}
                         </button>
                     )}
                     {showShareButton && (
@@ -137,6 +155,15 @@ export function PostActions({
             <div
                 className="text-center text-xs text-muted-foreground [&_a]:underline [&_a]:decoration-dotted"
                 dangerouslySetInnerHTML={{ __html: copyrightHtml }}
+            />
+
+            {/* 订阅弹窗：只有开关打开才可能触发，但组件本身常驻（避免 open 时再加节点） */}
+            <SubscribeDialog
+                open={subscribeOpen}
+                onOpenChange={setSubscribeOpen}
+                title={subscribe?.dialogTitle}
+                description={subscribe?.dialogDesc}
+                submitText={subscribe?.buttonText}
             />
         </div>
     );

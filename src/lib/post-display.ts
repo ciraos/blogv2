@@ -14,6 +14,17 @@ export function formatPostDate(iso?: string | null): string {
     return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/**
+ * 文章发布至今的天数（用于「内容可能已过时」提示；时间解析失败返回 0）。
+ * 放在组件外：服务端组件在 render 里直接调 `Date.now()` 会被 react-hooks/purity 拦下。
+ */
+export function daysSincePublished(iso?: string | null): number {
+    if (!iso) return 0;
+    const published = new Date(iso).getTime();
+    if (Number.isNaN(published)) return 0;
+    return Math.floor((Date.now() - published) / 86_400_000);
+}
+
 /** 后端摘要有时带着 MDX 记号（行首 `#`、`**粗体**`、反引号、列表符号），
  *  直接塞进 line-clamp 会把记号当正文露出来（首页曾出现「# 在服务器上部署…」）。
  *  这里只剥记号，不改写任何文字。 */

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "nextjs-toploader/app";
@@ -16,8 +16,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 import { ApiError, loginApi } from "@/lib/api";
+import { OAuthButtons, type OAuthProviderOption } from "@/components/(auth)/oauth-buttons";
 
-export function LoginPage({ registered = false }: { registered?: boolean }) {
+export function LoginPage({
+    registered = false,
+    oauthProviders = [],
+}: {
+    registered?: boolean;
+    /** 站点开启的第三方登录（服务端按 site-config 算好传进来） */
+    oauthProviders?: OAuthProviderOption[];
+}) {
     const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -128,6 +136,9 @@ export function LoginPage({ registered = false }: { registered?: boolean }) {
                 <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "登录中…" : "登 录"}
                 </Button>
+
+                {/* 第三方登录（后台「第三方登录」里开启哪个就显示哪个） */}
+                <OAuthButtons providers={oauthProviders} />
 
                 <p className="mt-0 text-center text-sm text-muted-foreground">
                     没有账号，{" "}

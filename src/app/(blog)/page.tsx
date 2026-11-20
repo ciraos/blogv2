@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ArticleCard } from "@/components/(blog)/article-card";
+import { ArticleCardGrid, ArticleGrid } from "@/components/(blog)/article-card-grid";
 import { HomeLeadStory } from "@/components/(blog)/home-lead-story";
 import { HomeMasthead } from "@/components/(blog)/home-masthead";
 import { NumberedPagination } from "@/components/(blog)/numbered-pagination";
@@ -33,11 +34,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
     const defaults = config?.post?.default;
     const defaultCover = resolveAssetUrl(defaults?.cover);
     const enablePrimaryColorTag = defaults?.enable_primary_color_tag === true;
+    /** 双列布局：post.default.double_column。开着时**所有文章（含第一篇）都进网格**，不再单拎头条 */
+    const doubleColumn = defaults?.double_column === true;
 
     // 第一页把最新一篇提成头条（封面故事），下面的目录从第二篇开始，同一篇文章不出现两次。
     // 翻页时不再有头条，按普通目录排 —— 头条是「本期封面」，只属于第一页。
-    const lead = page === 1 ? list[0] : undefined;
-    const rest = lead ? list.slice(1) : list;
+    // 双列模式不要头条：那样第一篇会孤零零占满一整行，网格从第二张卡才开始。
+    const lead = !doubleColumn && page === 1 ? list[0] : undefined;
+    const rest = doubleColumn ? list : lead ? list.slice(1) : list;
 
     return (
         <PageWithSidebar>
@@ -54,18 +58,33 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
 
                 {lead && <HomeLeadStory article={lead} defaultCover={defaultCover} />}
 
-                {rest.length > 0 && (
-                    <div className="w-full border-t border-border/60">
-                        {rest.map((article) => (
-                            <ArticleCard
-                                key={article.id}
-                                article={article}
-                                defaultCover={defaultCover}
-                                enablePrimaryColorTag={enablePrimaryColorTag}
-                            />
-                        ))}
-                    </div>
-                )}
+                {rest.length > 0 &&
+                    (doubleColumn ? (
+                        // 双列：头条仍是单栏封面故事，下面这一批用卡片网格（后台 post.default.double_column）
+                        <div className="mt-10">
+                            <ArticleGrid>
+                                {rest.map((article) => (
+                                    <ArticleCardGrid
+                                        key={article.id}
+                                        article={article}
+                                        defaultCover={defaultCover}
+                                        enablePrimaryColorTag={enablePrimaryColorTag}
+                                    />
+                                ))}
+                            </ArticleGrid>
+                        </div>
+                    ) : (
+                        <div className="w-full border-t border-border/60">
+                            {rest.map((article) => (
+                                <ArticleCard
+                                    key={article.id}
+                                    article={article}
+                                    defaultCover={defaultCover}
+                                    enablePrimaryColorTag={enablePrimaryColorTag}
+                                />
+                            ))}
+                        </div>
+                    ))}
 
                 {list.length === 0 && (
                     <div className="py-20 text-center text-muted-foreground">

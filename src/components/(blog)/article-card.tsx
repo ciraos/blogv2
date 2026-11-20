@@ -75,7 +75,12 @@ export function ArticleCard({ article, defaultCover, enablePrimaryColorTag = fal
                         </span>
                     ))}
                     {tags.map((t) => (
-                        <span key={t.id}>#{t.name}</span>
+                        <span
+                            key={t.id}
+                            style={primaryColor ? { color: primaryColor, opacity: 0.85 } : undefined}
+                        >
+                            #{t.name}
+                        </span>
                     ))}
                     <span className="tabular-nums">阅读 {article.view_count}</span>
                     {article.reading_time > 0 && <span className="tabular-nums">{article.reading_time} 分钟</span>}

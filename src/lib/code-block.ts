@@ -54,23 +54,29 @@ function detectLanguage(codeEl: HTMLElement): string {
 }
 
 /** 复制按钮：图标按钮，无背景无边框，复制成功后右上角 toast */
-function makeCopyButton(codeEl: HTMLElement): HTMLButtonElement {
+function makeCopyButton(codeEl: HTMLElement, options: CodeBlockOptions): HTMLButtonElement {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "code-copy-btn";
-    btn.title = "复制代码";
-    btn.setAttribute("aria-label", "复制代码");
+    btn.title = options.copyDisabled ? "本站已关闭复制" : "复制代码";
+    btn.setAttribute("aria-label", options.copyDisabled ? "本站已关闭复制" : "复制代码");
     btn.innerHTML =
         '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
 
     btn.addEventListener("click", async (event) => {
         event.preventDefault();
         event.stopPropagation();
+        if (options.copyDisabled) {
+            toast.error("本站已关闭复制");
+            return;
+        }
+        // 追加版权等转换在写剪贴板前做（复制按钮不触发 copy 事件，正文的监听兜不住）
+        const text = options.transformCopy ? options.transformCopy(codeEl.innerText) : codeEl.innerText;
         try {
-            await navigator.clipboard.writeText(codeEl.innerText);
+            await navigator.clipboard.writeText(text);
         } catch {
             const textarea = document.createElement("textarea");
-            textarea.value = codeEl.innerText;
+            textarea.value = text;
             textarea.style.position = "fixed";
             textarea.style.opacity = "0";
             document.body.appendChild(textarea);
@@ -140,6 +146,14 @@ function countCodeLines(text: string): number {
 export interface CodeBlockOptions {
     codeMaxLines: number;
     macStyle: boolean;
+    /**
+     * 复制代码前对文本做转换（文章页用它把 site-config post.copy 的版权声明追加到末尾）。
+     * 注意：代码框的复制按钮走 `navigator.clipboard.writeText`，**不会触发 `copy` 事件**，
+     * 所以正文那段 document 级 copy 监听管不到它 —— 追加版权必须在这里做。
+     */
+    transformCopy?: (text: string) => string;
+    /** 站点关闭了复制（post.copy.enable=false）：按钮点了只提示，不写剪贴板 */
+    copyDisabled?: boolean;
 }
 
 /** 代码块配置缺省值：默认不显示 mac 圆点、10 行折叠 */
@@ -244,7 +258,7 @@ export function enhanceBlock(pre: HTMLPreElement, options: CodeBlockOptions) {
 
     // 右上角复制按钮
     if (!head.querySelector(".code-copy-btn")) {
-        head.appendChild(makeCopyButton(codeEl));
+        head.appendChild(makeCopyButton(codeEl, options));
     }
 }
 

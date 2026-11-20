@@ -136,6 +136,21 @@ export interface ArticleCopyCopyrightConfig {
 }
 
 /**
+ * 剪贴板里给人看的地址：把中文等非 ASCII 还原成可读字符。
+ * `window.location.href` 拿到的锚点是被百分号编码的（`#依旧懒得写…` → `#%E4%BE%9D…`），
+ * 直接粘到聊天框里很丑；用 `decodeURI` 而不是 `decodeURIComponent`，
+ * 这样 `#`、`?`、`&` 这些保留字符不会被一起解码坏掉。解析失败就退回原串。
+ */
+function readableUrl(url: string): string {
+    if (!url) return url;
+    try {
+        return decodeURI(url);
+    } catch {
+        return url;
+    }
+}
+
+/**
  * 渲染「复制正文时追加」的纯文本版权声明。
  * 注意：{url} 与 {currentUrl} 官方都取 window.location.href，只能在客户端调用。
  */
@@ -145,12 +160,12 @@ export function renderCopyCopyrightText(input: CopyTemplateInput): string {
         return template
             .replace(/{originalAuthor}/g, (input.copyrightAuthor ?? "").trim() || "原作者")
             .replace(/{originalUrl}/g, (input.copyrightUrl ?? "").trim())
-            .replace(/{currentUrl}/g, input.currentUrl);
+            .replace(/{currentUrl}/g, readableUrl(input.currentUrl));
     }
 
     const template = (input.copyrightOriginal ?? "").trim() || DEFAULT_COPY_TEMPLATE_ORIGINAL;
     return template
         .replace(/{siteName}/g, input.siteName || "本站")
         .replace(/{author}/g, input.author || "博主")
-        .replace(/{url}/g, input.currentUrl);
+        .replace(/{url}/g, readableUrl(input.currentUrl));
 }

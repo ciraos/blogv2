@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { Clock } from "lucide-react";
 
 import { ArticleBody } from "@/components/(blog)/article-body";
 import { ArticleSummary } from "@/components/(blog)/article-summary";
+import { CommentBarrage } from "@/components/(blog)/comment-barrage";
+import { CommentCarousel } from "@/components/(blog)/comment-carousel";
 import { JsonLd } from "@/components/(blog)/json-ld";
 import { PostActions } from "@/components/(blog)/post-actions";
 import { PostComments } from "@/components/(blog)/post-comments";
@@ -17,7 +20,7 @@ import { patchArticleContent } from "@/lib/article-shortcodes";
 import { getCommentAuthor } from "@/lib/comment-author";
 import { renderCopyrightHtml, type ArticleCopyCopyrightConfig } from "@/lib/post-copyright";
 import { requireSiteConfigs } from "@/lib/site-config";
-import { resolvePostCover } from "@/lib/post-display";
+import { daysSincePublished, resolvePostCover, toPlainSummary } from "@/lib/post-display";
 import { splitKeywords } from "@/lib/seo";
 import { articleSchema, breadcrumbSchema } from "@/lib/structured-data";
 import { resolveAssetUrl } from "@/lib/utils";
@@ -119,6 +122,13 @@ export default async function Post({ params }: PostPageProps) {
         showShareButton: boolean;
         /** 版权声明 HTML（post.copyright.*_template 渲染结果，占位符已替换） */
         copyrightHtml: string;
+        /** 订阅功能（post.subscribe.*） */
+        subscribe: {
+            enabled: boolean;
+            buttonText: string;
+            dialogTitle: string;
+            dialogDesc: string;
+        };
     } | null = null;
     // 复制正文时的版权配置（post.copy.*）；null = 配置没取到，客户端不拦截也不追加
     let copyCopyright: ArticleCopyCopyrightConfig | null = null;
@@ -138,6 +148,13 @@ export default async function Post({ params }: PostPageProps) {
             showRewardButton: config.post?.copyright?.show_reward_button ?? true,
             showSubscribeButton: config.post?.copyright?.show_subscribe_button ?? true,
             showShareButton: config.post?.copyright?.show_share_button ?? true,
+            // 订阅弹窗（post.subscribe.*）：enable 才显示按钮，文案三件套直接取后台设置
+            subscribe: {
+                enabled: config.post?.subscribe?.enable === true,
+                buttonText: config.post?.subscribe?.button_text ?? "订阅",
+                dialogTitle: config.post?.subscribe?.dialog_title ?? "订阅博客更新",
+                dialogDesc: config.post?.subscribe?.dialog_desc ?? "",
+            },
             // 版权模板：配置为空时回退官方默认模板（等价于此前的写死文案）
             copyrightHtml: renderCopyrightHtml({
                 originalTemplate: config.post?.copyright?.original_template,
@@ -188,11 +205,21 @@ export default async function Post({ params }: PostPageProps) {
     let wavesEnabled = false;
     let tocCollapseMode = false;
     let tocHashUpdateMode: string | undefined;
+    // 文章过期提示（post.expiration_time，单位天；0 = 不提示）
+    let expirationDays = 0;
+    // 评论弹窗模式（post.comment_dialog）：评论区从内嵌改成「展开评论」抽屉
+    let commentDialogMode = false;
+    // 评论弹幕（comment.barrage_enable）：热评从右往左飘过封面
+    let barrageEnabled = false;
     try {
         const config = await requireSiteConfigs();
         wavesEnabled = config.post?.waves?.enable === true;
         tocCollapseMode = config.sidebar?.toc?.collapseMode === true;
         tocHashUpdateMode = config.post?.toc?.hash_update_mode;
+        const configuredExpiration = config.post?.expiration_time;
+        expirationDays = typeof configuredExpiration === "number" && configuredExpiration > 0 ? configuredExpiration : 0;
+        commentDialogMode = config.post?.comment_dialog === true;
+        barrageEnabled = config.comment?.barrage_enable === true;
     } catch {
         // 配置获取失败时不渲染波浪（纯装饰，不能影响正文）
     }
@@ -250,6 +277,29 @@ export default async function Post({ params }: PostPageProps) {
             { name: article.title, url: postUrl },
         ]),
     ];
+
+    // 文章年龄（天）：交给「过期提示」判断。发布时间解析失败就不提示。
+    const ageInDays = daysSincePublished(article.created_at);
+    const showExpiredNotice = expirationDays > 0 && ageInDays > expirationDays;
+
+    /** 评论区节点（内嵌 / 抽屉两种模式共用同一份，避免重复 await 与重复渲染） */
+    const commentsNode = (
+        <PostComments targetPath={targetPath} comments={comments} author={await getCommentAuthor()} />
+    );
+
+    /**
+     * 右下角轮播的数据：只取展示需要的字段，去掉 HTML（避免把整段 content_html 送进客户端）。
+     * 注意：后端有时只回 `content_html`、`content` 是空的（实测这条评论 content='' 而
+     * content_html='<p>6</p>'），所以空的时候从 HTML 里剥一份纯文本兜底。
+     */
+    const carouselItems = comments.map((comment) => ({
+        id: comment.id,
+        nickname: comment.nickname,
+        content:
+            toPlainSummary(comment.content) ||
+            toPlainSummary((comment.content_html ?? "").replace(/<[^>]*>/g, " ")),
+        isAdmin: comment.is_admin_comment === true,
+    }));
 
     return (
         /* 目录由 PageWithSidebar 的右侧窄边栏承接（桌面端 sticky 跟随；移动端走右下角悬浮目录抽屉） */
@@ -333,6 +383,17 @@ export default async function Post({ params }: PostPageProps) {
                     没有摘要时组件自己返回 null，不会留空档。 */}
                 <ArticleSummary summaries={article.summaries} />
 
+                {/* 文章过期提示（post.expiration_time）：发布超过 N 天就在正文前提醒内容可能过时。
+                    只提示、不拦截；0 表示不提示，配置取不到时也不显示。 */}
+                {showExpiredNotice && (
+                    <div className="mt-8 flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-700 dark:text-amber-400">
+                        <Clock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                        <span>
+                            本文发布于 {ageInDays} 天前，已超过 {expirationDays} 天，内容可能已过时，请以最新情况为准。
+                        </span>
+                    </div>
+                )}
+
                 {/* 后端渲染好的正文 HTML，客户端组件负责代码块高亮 + 复制按钮；正文白底卡片，深浅色随主题切换 */}
                 <div className="mt-8 border-t border-border/60 pt-8">
                     <ArticleBody html={contentHtml} codeBlock={codeBlock} copyCopyright={copyCopyright} />
@@ -366,8 +427,10 @@ export default async function Post({ params }: PostPageProps) {
                     </nav>
                 )}
 
-                {/* 评论区（评论列表由服务端按 target_path 获取；已登录时作者信息取自账号） */}
-                <PostComments targetPath={targetPath} comments={comments} author={await getCommentAuthor()} />
+                {/* 评论区（评论列表由服务端按 target_path 获取；已登录时作者信息取自账号）。
+                    评论区本身**永远内嵌**在这里，不受任何开关影响；post.comment_dialog 只额外
+                    在右下角加一个「评论轮播」小卡，把最新评论露出来（见文件末尾）。 */}
+                {commentsNode}
 
                 {article.related_articles.length > 0 && (
                     <section className="mt-10 border-t pt-6">
@@ -384,6 +447,14 @@ export default async function Post({ params }: PostPageProps) {
                     </section>
                 )}
             </article>
+
+            {/* 右下角「评论轮播」（post.comment_dialog）：不接管评论区，只是把最新评论摘要轮着露出来。
+                没有评论、或正文评论没渲染出来时不显示。 */}
+            {commentDialogMode && carouselItems.length > 0 && <CommentCarousel items={carouselItems} />}
+
+            {/* 评论弹幕（comment.barrage_enable）：热评在整个浏览器可视区里从右往左飘。
+                挂在页面根层级（fixed 覆盖视口），不放进封面容器里，免得受 overflow/transform 影响。 */}
+            {barrageEnabled && <CommentBarrage />}
         </PageWithSidebar>
     );
 }

@@ -1,5 +1,6 @@
-﻿import type { PostItem } from "@/types/articles";
+import type { PostItem } from "@/types/articles";
 import { ArticleCard } from "@/components/(blog)/article-card";
+import { ArticleCardGrid, ArticleGrid } from "@/components/(blog)/article-card-grid";
 import { NumberedPagination } from "@/components/(blog)/numbered-pagination";
 import { getSiteConfigs } from "@/lib/site-config";
 import { resolveAssetUrl } from "@/lib/utils";
@@ -37,6 +38,8 @@ export async function PagedArticleList({
     const defaults = config?.post?.default;
     const defaultCover = resolveAssetUrl(defaults?.cover);
     const enablePrimaryColorTag = defaults?.enable_primary_color_tag === true;
+    /** 双列布局：post.default.double_column（首页与列表页共用同一个开关） */
+    const doubleColumn = defaults?.double_column === true;
 
     return (
         <div className="w-full space-y-6">
@@ -44,6 +47,19 @@ export async function PagedArticleList({
                 <div className="py-20 text-center text-muted-foreground">
                     {page > 1 ? "该页没有文章" : emptyText}
                 </div>
+            ) : doubleColumn ? (
+                // 双列（post.default.double_column）：卡片网格；窄屏自动回落单列
+                <ArticleGrid>
+                    {articles.map((article, index) => (
+                        <ArticleCardGrid
+                            key={article.id}
+                            article={article}
+                            defaultCover={defaultCover}
+                            enablePrimaryColorTag={enablePrimaryColorTag}
+                            priority={index < 2}
+                        />
+                    ))}
+                </ArticleGrid>
             ) : (
                 // 编辑部风：单栏顺序列表（行内自带发丝分割线），不再用卡片网格
                 <div className="w-full border-t border-border/60">

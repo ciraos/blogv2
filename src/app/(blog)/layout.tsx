@@ -25,6 +25,7 @@ import { LiveRefresher } from "@/components/(blog)/live-refresher";
 import { OneImageHero } from "@/components/(blog)/one-image-hero";
 import { ExternalLinkInterceptor } from "@/components/(blog)/external-link-interceptor";
 import { ExternalLinkCancelNotice } from "@/components/(blog)/external-link-cancel-notice";
+import { SmoothScroll } from "@/components/(blog)/smooth-scroll";
 import { ScrollToTop } from "@/components/(blog)/scroll-to-top";
 import { SidebarCollapseProvider } from "@/components/(blog)/sidebar-collapse-provider";
 // import Aside from "@/components/aside";
@@ -155,6 +156,8 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
                 <ExternalLinkInterceptor enabled={config?.ENABLE_EXTERNAL_LINK_WARNING === true} />
                 {/* 外链提示页倒计时结束（没跳转）时，由原标签页在这里弹提示 */}
                 <ExternalLinkCancelNotice />
+                {/* 平滑滚动（后台 post.smooth_scroll）：客户端给 <html> 挂类名，CSS 里配合减少动态效果 */}
+                <SmoothScroll enabled={config?.post?.smooth_scroll === true} />
 
                 <Header {...header} />
 
@@ -234,8 +237,12 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
 
               </div>
 
-              {/* (blog) 全局右下角悬浮按钮组：外层展开 → 目录（仅文章页）+ 回到顶部 */}
-              <FloatingActions />
+              {/* (blog) 全局右下角悬浮按钮组：外层展开 → 目录（仅文章页）+ 回到顶部。
+                  繁简转换 / 沉浸式阅读两个 PRO 开关也在这里（site-config post.*）。 */}
+              <FloatingActions
+                  readingModeEnabled={config?.post?.reading_mode === true}
+                  chineseConversionEnabled={config?.post?.chinese_conversion === true}
+              />
 
               {/* 左下角一列（从上到下）：AI 播客 → AI 助手 → 迷你音乐播放器（gap-2）。
                 三者都拆掉各自的 fixed 定位，由这层容器统一锚定，避免各自算偏移量对不齐。

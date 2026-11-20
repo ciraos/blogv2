@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
     ArrowUp,
+    BookOpen,
     ListTree,
     Moon,
     MoveHorizontal,
@@ -14,6 +15,7 @@ import {
 
 import { useSidebarCollapse } from "@/components/(blog)/sidebar-collapse-provider";
 import { clearAutoThemeManagement } from "@/lib/scheduled-theme";
+import { convertElementChinese } from "@/lib/chinese-convert";
 
 interface TocItem {
     id: string;
@@ -27,7 +29,15 @@ interface TocItem {
  *  - 目录按钮：仅移动端文章页直接显示（PC 端有右侧常驻目录）
  *  - 回到顶部：页面顶部隐藏（不占位，上方按钮下移），下滑后显示
  */
-export function FloatingActions() {
+export function FloatingActions({
+    readingModeEnabled = false,
+    chineseConversionEnabled = false,
+}: {
+    /** site-config post.reading_mode：显示「沉浸式阅读」按钮 */
+    readingModeEnabled?: boolean;
+    /** site-config post.chinese_conversion：显示「繁简转换」按钮 */
+    chineseConversionEnabled?: boolean;
+}) {
     const pathname = usePathname();
     const isPostPage = pathname.startsWith("/posts/");
     const { setTheme } = useTheme();
@@ -38,12 +48,60 @@ export function FloatingActions() {
     // 侧边栏收缩状态：由 SidebarCollapseProvider 持有（按页面路径持久化），这里只读状态 + 触发切换
     const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useSidebarCollapse();
 
-    // 繁简状态（仅按钮 UI，转换逻辑后续接入）
+    // 繁简状态：`tw` 时把 .article-body 的正文整段转成繁体（原文记在 lib/chinese-convert 里，切回可还原）
     const [lang, setLang] = useState<"cn" | "tw">("cn");
+    // 沉浸式阅读：给 <html> 挂 reading-mode，CSS 负责隐藏页头/侧栏等（见 globals.css）
+    const [readingMode, setReadingMode] = useState(false);
     const [tocItems, setTocItems] = useState<TocItem[]>([]);
     const [activeId, setActiveId] = useState<string>("");
     const tocRef = useRef<HTMLDivElement | null>(null);
     const rootRef = useRef<HTMLDivElement | null>(null);
+
+    /** 繁简切换：只改正文文本节点，代码块/行内代码不在转换范围内 */
+    const toggleLang = useCallback(() => {
+        setLang((prev) => {
+            const next = prev === "cn" ? "tw" : "cn";
+            const body = document.querySelector<HTMLElement>(".article-body");
+            if (body) convertElementChinese(body, next);
+            return next;
+        });
+    }, []);
+
+    /** 沉浸式阅读：<html> 加类名，偏好写 localStorage（下次进文章页自动恢复） */
+    const toggleReadingMode = useCallback(() => {
+        setReadingMode((prev) => {
+            const next = !prev;
+            document.documentElement.classList.toggle("reading-mode", next);
+            try {
+                localStorage.setItem("blog:reading-mode", next ? "1" : "0");
+            } catch {
+                // 隐私模式：忽略，下次不还原
+            }
+            return next;
+        });
+    }, []);
+
+    // 挂载时恢复阅读模式偏好（只在文章页 + 开启该功能的站点上）。
+    // 用宏任务包裹初始 setState：react-hooks/set-state-in-effect 不允许 effect 内同步 setState。
+    // 依赖里带 isPostPage：离开文章页时清掉类名，免得把首页的页头也藏了。
+    useEffect(() => {
+        if (!readingModeEnabled || !isPostPage) return;
+        let on = false;
+        try {
+            on = localStorage.getItem("blog:reading-mode") === "1";
+        } catch {
+            on = false;
+        }
+        if (!on) return;
+        const timer = window.setTimeout(() => {
+            setReadingMode(true);
+            document.documentElement.classList.add("reading-mode");
+        }, 0);
+        return () => {
+            window.clearTimeout(timer);
+            document.documentElement.classList.remove("reading-mode");
+        };
+    }, [readingModeEnabled, isPostPage]);
 
     /** 侧边栏收缩的持久化与「按路径恢复」逻辑已移到 SidebarCollapseProvider，
      *  这里不再直接改 #blog-sidebar 的 DOM（那会让晚 hydrate 的侧边栏报 hydration 不匹配）。 */
@@ -174,6 +232,44 @@ export function FloatingActions() {
                 >
                     <MoveHorizontal className="size-4" />
                 </button>
+                {/* 展开组的排列（**从下往上**）：深浅色切换 → 繁简转换 → 沉浸式阅读。
+                    弹层是 `flex-col`，DOM 顺序即从上到下，所以这里写成倒序：
+                    沉浸式阅读在最上，深浅色紧贴 + 触发器（最下）。 */}
+                {/* 沉浸式阅读（post.reading_mode）：隐藏页头/侧栏，正文居中放宽 */}
+                {readingModeEnabled && isPostPage && (
+                    <button
+                        type="button"
+                        onClick={toggleReadingMode}
+                        aria-label={readingMode ? "退出沉浸式阅读" : "进入沉浸式阅读"}
+                        aria-pressed={readingMode}
+                        title={readingMode ? "退出沉浸式阅读" : "沉浸式阅读"}
+                        className={`flex size-10 items-center justify-center rounded-full border shadow-lg backdrop-blur transition-colors ${readingMode
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card text-foreground hover:border-primary hover:text-primary"
+                            }`}
+                    >
+                        <BookOpen className="size-4" />
+                    </button>
+                )}
+
+                {/* 繁简转换（post.chinese_conversion）：真转换正文字符，代码块不动。
+                    只在文章页出现 —— 首页/列表页没有 `.article-body`，放这儿也是死按钮。 */}
+                {chineseConversionEnabled && isPostPage && (
+                    <button
+                        type="button"
+                        onClick={toggleLang}
+                        aria-label="繁简转换"
+                        aria-pressed={lang === "tw"}
+                        title={lang === "cn" ? "转换为繁体" : "转换为简体"}
+                        className={`flex size-10 items-center justify-center rounded-full border shadow-lg backdrop-blur transition-colors ${lang === "tw"
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card text-foreground hover:border-primary hover:text-primary"
+                            }`}
+                    >
+                        <span className="text-sm font-bold">{lang === "cn" ? "繁" : "简"}</span>
+                    </button>
+                )}
+
                 {/* 深浅色切换（图标/高亮用 CSS dark: 变体切换，避免 useTheme 导致 SSR/客户端水合不一致） */}
                 <button
                     type="button"
@@ -188,20 +284,6 @@ export function FloatingActions() {
                 >
                     <Sun className="size-4 dark:hidden" />
                     <Moon className="hidden size-4 dark:block" />
-                </button>
-
-                {/* 繁简转换 */}
-                <button
-                    type="button"
-                    onClick={() => setLang((v) => (v === "cn" ? "tw" : "cn"))}
-                    aria-label="繁简转换"
-                    title={lang === "cn" ? "转换为繁体" : "转换为简体"}
-                    className={`flex size-10 items-center justify-center rounded-full border shadow-lg backdrop-blur transition-colors ${lang === "tw"
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card text-foreground hover:border-primary hover:text-primary"
-                        }`}
-                >
-                    <span className="text-sm font-bold">{lang === "cn" ? "繁" : "简"}</span>
                 </button>
             </div>
 

@@ -132,6 +132,10 @@ export interface SettingsGroup {
     id: string;
     label: string;
     fields: SettingsField[];
+    /** PRO 专属分组：标题旁挂 PRO 徽标（社区版后端没有这些键，开关改了也不生效） */
+    pro?: boolean;
+    /** PRO 分组展开时的那句说明（解释为什么社区版没用 / 需要什么） */
+    proHint?: string;
 }
 
 export interface SettingsSection {
@@ -1100,6 +1104,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
             {
                 id: "post-reading",
                 label: "阅读增强",
+                pro: true,
                 fields: [
                     { key: "post.reading_mode", label: "沉浸式阅读模式", type: "boolean" },
                     { key: "post.smooth_scroll", label: "平滑滚动", type: "boolean" },
@@ -1157,42 +1162,119 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
         group: "三方服务",
         icon: KeyRound,
         keywords: ["第三方登录", "oauth", "github", "google", "logto", "microsoft", "oidc", "qq", "rainbow", "微信登录"],
-        desc: "GitHub / Google / Logto / Microsoft / OIDC / QQ / Rainbow / 微信 八种第三方登录的启用开关。",
+        desc: "八种第三方登录的完整配置：各服务商的 AppID / 密钥 / 回调地址 / 自动注册，以及登录按钮名称。",
         groups: [
             {
-                id: "oauth",
-                label: "第三方登录",
+                id: "oauth-qq",
+                label: "QQ 登录",
+                pro: true,
                 fields: [
-                    { key: "oauth.github.enable", label: "启用 GitHub 登录", type: "boolean" },
-                    { key: "oauth.google.enable", label: "启用 Google 登录", type: "boolean" },
-                    { key: "oauth.logto.enable", label: "启用 Logto 登录", type: "boolean" },
-                    { key: "oauth.microsoft.enable", label: "启用 Microsoft 登录", type: "boolean" },
-                    { key: "oauth.oidc.enable", label: "启用 OIDC 登录", type: "boolean" },
                     { key: "oauth.qq.enable", label: "启用 QQ 登录", type: "boolean" },
-                    { key: "oauth.rainbow.enable", label: "启用 Rainbow 登录", type: "boolean" },
-                    { key: "oauth.wechat.enable", label: "启用微信登录", type: "boolean" },
+                    { key: "oauth.qq.app_id", label: "AppID", type: "text", placeholder: "QQ 互联应用 AppID" },
+                    { key: "oauth.qq.app_key", label: "AppKey（密钥）", type: "password" },
+                    {
+                        key: "oauth.qq.callback_url",
+                        label: "回调地址",
+                        type: "text",
+                        placeholder: "https://你的域名/callback/qq",
+                        hint: "填本站的 /callback/qq，并在 QQ 互联后台登记同一个地址",
+                    },
+                    { key: "oauth.qq.auto_register", label: "首次登录自动注册", type: "boolean" },
                 ],
             },
             {
-                id: "oauth-name",
-                label: "登录按钮名称",
+                id: "oauth-wechat",
+                label: "微信登录",
+                pro: true,
                 fields: [
-                    { key: "oauth.github.display_name", label: "GitHub", type: "text", placeholder: "GitHub" },
-                    { key: "oauth.google.display_name", label: "Google", type: "text", placeholder: "Google" },
-                    { key: "oauth.logto.display_name", label: "Logto", type: "text", placeholder: "Logto" },
-                    { key: "oauth.microsoft.display_name", label: "Microsoft", type: "text", placeholder: "Microsoft" },
-                    { key: "oauth.oidc.display_name", label: "OIDC", type: "text", placeholder: "OIDC" },
-                    { key: "oauth.qq.display_name", label: "QQ", type: "text", placeholder: "QQ" },
-                    { key: "oauth.rainbow.display_name", label: "Rainbow", type: "text", placeholder: "Rainbow" },
-                    { key: "oauth.wechat.display_name", label: "微信", type: "text", placeholder: "微信" },
+                    { key: "oauth.wechat.enable", label: "启用微信登录", type: "boolean" },
+                    { key: "oauth.wechat.app_id", label: "AppID", type: "text" },
+                    { key: "oauth.wechat.app_secret", label: "AppSecret（密钥）", type: "password" },
+                    {
+                        key: "oauth.wechat.login_mode",
+                        label: "登录模式",
+                        type: "text",
+                        placeholder: "qrcode / open",
+                        hint: "公众号扫码（qrcode）或在微信内直接授权（open）",
+                    },
+                    { key: "oauth.wechat.token", label: "服务器 Token", type: "password", hint: "公众号后台「服务器配置」里的 Token" },
+                    { key: "oauth.wechat.encoding_aes_key", label: "EncodingAESKey", type: "password" },
+                    { key: "oauth.wechat.qrcode_login_reply", label: "扫码登录回复文案", type: "text" },
+                    { key: "oauth.wechat.qrcode_bind_reply", label: "扫码绑定回复文案", type: "text" },
+                    {
+                        key: "oauth.wechat.callback_url",
+                        label: "回调地址",
+                        type: "text",
+                        placeholder: "https://你的域名/callback/wechat",
+                    },
+                    { key: "oauth.wechat.auto_register", label: "首次登录自动注册", type: "boolean" },
+                ],
+            },
+            {
+                id: "oauth-logto",
+                label: "Logto 登录",
+                pro: true,
+                fields: [
+                    { key: "oauth.logto.enable", label: "启用 Logto 登录", type: "boolean" },
+                    { key: "oauth.logto.app_id", label: "App ID", type: "text" },
+                    { key: "oauth.logto.app_secret", label: "App Secret", type: "password" },
+                    { key: "oauth.logto.endpoint", label: "Endpoint", type: "text", placeholder: "https://xxx.logto.app" },
+                    { key: "oauth.logto.direct_connector", label: "直连连接器（可选）", type: "text", hint: "跳过 Logto 登录页、直连某个社交连接器时填" },
+                    {
+                        key: "oauth.logto.callback_url",
+                        label: "回调地址",
+                        type: "text",
+                        placeholder: "https://你的域名/callback/logto",
+                    },
+                    { key: "oauth.logto.auto_register", label: "首次登录自动注册", type: "boolean" },
+                    { key: "oauth.logto.display_name", label: "按钮名称", type: "text", placeholder: "Logto" },
+                ],
+            },
+            {
+                id: "oauth-oidc",
+                label: "OIDC 登录",
+                pro: true,
+                fields: [
+                    { key: "oauth.oidc.enable", label: "启用 OIDC 登录", type: "boolean" },
+                    { key: "oauth.oidc.client_id", label: "Client ID", type: "text" },
+                    { key: "oauth.oidc.client_secret", label: "Client Secret", type: "password" },
+                    { key: "oauth.oidc.wellknown", label: "Well-known 地址", type: "text", placeholder: "https://…/.well-known/openid-configuration" },
+                    { key: "oauth.oidc.scope", label: "Scope", type: "text", placeholder: "openid profile email" },
+                    {
+                        key: "oauth.oidc.callback_url",
+                        label: "回调地址",
+                        type: "text",
+                        placeholder: "https://你的域名/callback/oidc",
+                    },
+                    { key: "oauth.oidc.auto_register", label: "首次登录自动注册", type: "boolean" },
+                    { key: "oauth.oidc.display_name", label: "按钮名称", type: "text", placeholder: "OIDC" },
                 ],
             },
             {
                 id: "oauth-rainbow",
-                label: "Rainbow 附加配置",
+                label: "Rainbow 聚合登录",
+                pro: true,
                 fields: [
-                    { key: "oauth.rainbow.callback_url", label: "回调地址", type: "text", placeholder: "https://example.com/callback" },
-                    { key: "oauth.rainbow.login_methods", label: "登录方式", type: "text" },
+                    { key: "oauth.rainbow.enable", label: "启用 Rainbow 登录", type: "boolean" },
+                    { key: "oauth.rainbow.api_url", label: "API 地址", type: "text", placeholder: "https://login.qjqq.cn/" },
+                    { key: "oauth.rainbow.app_id", label: "App ID", type: "text" },
+                    { key: "oauth.rainbow.app_key", label: "App Key", type: "password" },
+                    { key: "oauth.rainbow.login_methods", label: "登录方式", type: "text", hint: "Rainbow 后台支持的登录渠道（逗号分隔）" },
+                    {
+                        key: "oauth.rainbow.callback_url",
+                        label: "回调地址",
+                        type: "text",
+                        placeholder: "https://你的域名/callback/rainbow",
+                    },
+                ],
+            },
+            {
+                id: "oauth-simple",
+                label: "GitHub / Google / Microsoft",
+                fields: [
+                    { key: "oauth.github.enable", label: "启用 GitHub 登录", type: "boolean", hint: "凭证在后端环境变量里配置" },
+                    { key: "oauth.google.enable", label: "启用 Google 登录", type: "boolean", hint: "凭证在后端环境变量里配置" },
+                    { key: "oauth.microsoft.enable", label: "启用 Microsoft 登录", type: "boolean", hint: "凭证在后端环境变量里配置" },
                 ],
             },
         ],
@@ -1525,11 +1607,12 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                     {
                         key: "DEFAULT_RESET_PASSWORD_TEMPLATE",
                         label: "邮件模板（HTML）",
-                        type: "textarea",
+                        type: "code",
+                        language: "html",
                         remoteOnly: true,
                         wide: true,
-                        rows: 10,
-                        hint: "变量：{{.Nickname}} {{.AppName}} {{.ResetLink}} {{.ExpireMinutes}}",
+                        rows: 12,
+                        hint: "变量：{{.Nickname}} {{.AppName}} {{.ResetLink}} {{.ExpireMinutes}}；工具栏可一键「格式化」（pre/code/style 内部保持原样）",
                     },
                 ],
             },
@@ -1555,11 +1638,12 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                     {
                         key: "DEFAULT_ACTIVATE_ACCOUNT_TEMPLATE",
                         label: "邮件模板（HTML）",
-                        type: "textarea",
+                        type: "code",
+                        language: "html",
                         remoteOnly: true,
                         wide: true,
-                        rows: 10,
-                        hint: "变量：{{.Nickname}} {{.AppName}} {{.ActivateLink}} {{.ExpireMinutes}}",
+                        rows: 12,
+                        hint: "变量：{{.Nickname}} {{.AppName}} {{.ActivateLink}} {{.ExpireMinutes}}；工具栏可一键「格式化」（pre/code/style 内部保持原样）",
                     },
                 ],
             },
@@ -2006,13 +2090,48 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
         group: "高级功能",
         icon: Share2,
         keywords: ["微信分享", "分享", "share", "wechat"],
-        desc: "文章与页面的微信分享功能开关。",
+        desc: "微信公众号相关的两个功能：文章发布后自动同步为公众号草稿，以及文章页的微信分享（JS-SDK）。两项都需要公众号 AppID / AppSecret，且公众号后台要配置对应的接口权限与域名。",
         groups: [
             {
-                id: "share",
-                label: "微信分享",
+                id: "wechat-draft",
+                label: "公众号草稿同步",
+                pro: true,
                 fields: [
-                    { key: "wechat.share.enable", label: "启用微信分享功能", type: "boolean" },
+                    {
+                        key: "wechat.draft.enable",
+                        label: "发布后自动生成公众号草稿",
+                        type: "boolean",
+                        // 后端尚未提供草稿同步接口（实测 /wechat/draft/* 全 404），先禁用避免误以为能生效
+                        disabled: true,
+                        hint: "仅同步普通公开文章。使用下方公众号凭据，需要草稿及素材权限；图片必须为公网 JPG/PNG/GIF 且不超过 2 MB。人工改稿或草稿已发布/删除时暂停同步。开启文章保护会停止后续同步，已传送的草稿需在公众号后台自行处理。（后端暂未提供同步接口，开关暂时禁用）",
+                    },
+                ],
+            },
+            {
+                id: "wechat-share",
+                label: "微信分享配置",
+                fields: [
+                    {
+                        key: "wechat.share.enable",
+                        label: "启用微信分享",
+                        type: "boolean",
+                        // 后端尚未提供 JSSDK 签名接口（实测 /wechat/jssdk/* 全 404），先禁用
+                        disabled: true,
+                        hint: "开启后文章页将支持微信分享（需公众号「JS 接口安全域名」指向本站，且后端提供签名接口）。（后端暂未提供签名接口，开关暂时禁用）",
+                    },
+                    {
+                        key: "wechat.share.app_id",
+                        label: "App ID",
+                        type: "text",
+                        placeholder: "请输入微信公众号 App ID",
+                    },
+                    {
+                        key: "wechat.share.app_secret",
+                        label: "App Secret",
+                        type: "password",
+                        placeholder: "请输入微信公众号 App Secret",
+                        hint: "只写不回显；留空表示不修改已保存的值",
+                    },
                 ],
             },
         ],
@@ -2079,33 +2198,13 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
         label: "关于页面",
         group: "页面显示",
         icon: UserRound,
-        keywords: ["关于", "about", "自我介绍", "技能", "性格", "座右铭", "生涯", "追番", "音乐", "地图"],
-        desc: "关于页的全部文案与模块开关：头像区、自我介绍、技能图标、统计、地图、性格、座右铭、Buff、游戏、追番、技术偏好、音乐。",
+        keywords: ["关于", "about", "自我介绍", "技能", "头像", "技能标签"],
+        // ⚠️ 本站关于页已按自己的版式重写（头像框 → 此刻 → 数据一览 → 本站地图 → 最近动态 → 装备），
+        // 只读取下面这几个键。旧版模块（座右铭/Buff/生涯/追番/游戏/技术偏好/音乐卡/地图/性格/照片/
+        // 统计背景/自定义代码/技能图标 CREATIVITY）前台一个字都不读，所以从后台移除了 ——
+        // 后端配置值本身不动，将来若要恢复旧版关于页，把键加回来即可。
+        desc: "本站关于页只使用：名字、一句话介绍、头像、左右技能标签、作者头像框开关。旧版模块配置已移除（前台不读取）。",
         groups: [
-            {
-                id: "creativity",
-                label: "技能展示图标",
-                fields: [
-                    {
-                        key: "CREATIVITY.creativity_list",
-                        label: "技能图标列表",
-                        type: "list",
-                        itemFields: [
-                            { name: "name", label: "名称", placeholder: "Vue" },
-                            { name: "icon", label: "图标地址", placeholder: "图片地址" },
-                            { name: "color", label: "底色", type: "color", placeholder: "#39c5bb" },
-                        ],
-                    },
-                ],
-            },
-            {
-                id: "creativity-text",
-                label: "技能展示标题",
-                fields: [
-                    { key: "CREATIVITY.title", label: "标题", type: "text" },
-                    { key: "CREATIVITY.subtitle", label: "副标题", type: "text" },
-                ],
-            },
             {
                 id: "hero",
                 label: "关于页头部",
@@ -2113,53 +2212,6 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                     { key: "about.page.name", label: "名字", type: "text" },
                     { key: "about.page.description", label: "一句话介绍", type: "textarea", wide: true },
                     { key: "about.page.avatar_img", label: "头像", type: "image", hint: "站点信息里填了站长头像时以站长头像优先" },
-                    { key: "about.page.statistics_background", label: "统计卡片背景图", type: "image" },
-                ],
-            },
-            {
-                id: "hero-subtitle",
-                label: "关于页副标题",
-                fields: [{ key: "about.page.subtitle", label: "副标题", type: "text" }],
-            },
-            {
-                id: "self-info",
-                label: "个人信息",
-                fields: [
-                    { key: "about.page.self_info.tips1", label: "标签一", type: "text", placeholder: "生于" },
-                    { key: "about.page.self_info.contentYear", label: "标签一内容", type: "text", placeholder: "2000" },
-                    { key: "about.page.self_info.tips2", label: "标签二", type: "text", placeholder: "毕业于" },
-                    { key: "about.page.self_info.content2", label: "标签二内容", type: "text" },
-                    { key: "about.page.self_info.tips3", label: "标签三", type: "text", placeholder: "现在职业" },
-                    { key: "about.page.self_info.content3", label: "标签三内容", type: "text" },
-                ],
-            },
-            {
-                id: "personalities",
-                label: "性格与照片",
-                fields: [
-                    { key: "about.page.personalities.tips", label: "小字提示", type: "text" },
-                    { key: "about.page.personalities.authorName", label: "昵称", type: "text" },
-                    { key: "about.page.personalities.nameUrl", label: "昵称跳转链接", type: "text" },
-                    { key: "about.page.personalities.personalityType", label: "性格类型", type: "text", placeholder: "INFP" },
-                    { key: "about.page.personalities.personalityTypeColor", label: "性格类型颜色", type: "color", placeholder: "#ac899c" },
-                    { key: "about.page.personalities.personalityImg", label: "性格配图", type: "image" },
-                    { key: "about.page.personalities.photoUrl", label: "照片", type: "image" },
-                ],
-            },
-            {
-                id: "about-site-tips",
-                label: "站点关键词轮播",
-                fields: [
-                    { key: "about.page.about_site_tips.tips", label: "小字提示", type: "text" },
-                    { key: "about.page.about_site_tips.title1", label: "标题第一行", type: "text" },
-                    { key: "about.page.about_site_tips.title2", label: "标题第二行", type: "text" },
-                    {
-                        key: "about.page.about_site_tips.word",
-                        label: "轮播词",
-                        type: "stringlist",
-                        hint: "至少两条才会显示轮播",
-                        placeholder: "一条词",
-                    },
                 ],
             },
             {
@@ -2168,135 +2220,12 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
                 fields: [
                     { key: "about.page.avatar_skills_left", label: "头像左侧技能", type: "stringlist", placeholder: "一条技能" },
                     { key: "about.page.avatar_skills_right", label: "头像右侧技能", type: "stringlist", placeholder: "一条技能" },
-                    { key: "about.page.skills_tips.tips", label: "小字提示", type: "text" },
-                    { key: "about.page.skills_tips.title", label: "标题", type: "text" },
                 ],
             },
             {
                 id: "enable",
-                label: "模块开关（生效中）",
-                fields: [
-                    { key: "about.page.enable.author_box", label: "作者头像框", type: "boolean" },
-                    { key: "about.page.enable.page_content", label: "自我介绍卡", type: "boolean" },
-                    { key: "about.page.enable.skills", label: "技能展示", type: "boolean" },
-                    { key: "about.page.enable.careers", label: "生涯", type: "boolean" },
-                    { key: "about.page.enable.statistic", label: "访问统计", type: "boolean" },
-                    { key: "about.page.enable.map_and_info", label: "地图与个人信息", type: "boolean" },
-                    { key: "about.page.enable.personality", label: "性格", type: "boolean" },
-                    { key: "about.page.enable.photo", label: "照片", type: "boolean" },
-                    { key: "about.page.enable.maxim", label: "座右铭", type: "boolean" },
-                    { key: "about.page.enable.buff", label: "Buff 卡片", type: "boolean" },
-                    { key: "about.page.enable.game", label: "游戏", type: "boolean" },
-                    { key: "about.page.enable.comic", label: "追番", type: "boolean" },
-                    { key: "about.page.enable.like_tech", label: "技术偏好", type: "boolean" },
-                    { key: "about.page.enable.music", label: "音乐", type: "boolean" },
-                ],
-            },
-            {
-                id: "enable-extra",
-                label: "模块开关（未渲染）",
-                fields: [
-                    { key: "about.page.enable.comment", label: "评论区", type: "boolean" },
-                    { key: "about.page.enable.custom_code", label: "自定义代码模块", type: "boolean" },
-                ],
-            },
-            {
-                id: "buff",
-                label: "Buff 卡片",
-                fields: [
-                    { key: "about.page.buff.tips", label: "小字提示", type: "text" },
-                    { key: "about.page.buff.top", label: "上行文案", type: "text" },
-                    { key: "about.page.buff.bottom", label: "下行文案", type: "text" },
-                ],
-            },
-            {
-                id: "maxim",
-                label: "座右铭",
-                fields: [
-                    { key: "about.page.maxim.tips", label: "小字提示", type: "text" },
-                    { key: "about.page.maxim.top", label: "上行文案", type: "text" },
-                    { key: "about.page.maxim.bottom", label: "下行文案", type: "text" },
-                ],
-            },
-            {
-                id: "careers",
-                label: "生涯",
-                fields: [
-                    { key: "about.page.careers.title", label: "标题", type: "text" },
-                    { key: "about.page.careers.tips", label: "小字提示", type: "text" },
-                    { key: "about.page.careers.img", label: "右下角配图", type: "image" },
-                    {
-                        key: "about.page.careers.list",
-                        label: "生涯条目",
-                        type: "list",
-                        itemFields: [
-                            { name: "desc", label: "描述" },
-                            { name: "color", label: "圆点颜色", type: "color", placeholder: "#357ef5" },
-                        ],
-                    },
-                ],
-            },
-            {
-                id: "comic",
-                label: "追番",
-                fields: [
-                    { key: "about.page.comic.title", label: "标题", type: "text" },
-                    { key: "about.page.comic.tips", label: "小字提示", type: "text" },
-                    {
-                        key: "about.page.comic.list",
-                        label: "追番条目",
-                        type: "list",
-                        itemFields: [
-                            { name: "name", label: "名称" },
-                            { name: "cover", label: "封面地址", placeholder: "图片地址" },
-                            { name: "href", label: "跳转链接" },
-                        ],
-                    },
-                ],
-            },
-            {
-                id: "game",
-                label: "游戏",
-                fields: [
-                    { key: "about.page.game.title", label: "标题", type: "text" },
-                    { key: "about.page.game.tips", label: "小字提示", type: "text" },
-                    { key: "about.page.game.background", label: "背景图", type: "image" },
-                    { key: "about.page.game.uid", label: "UID", type: "text" },
-                ],
-            },
-            {
-                id: "like",
-                label: "技术偏好",
-                fields: [
-                    { key: "about.page.like.title", label: "标题", type: "text" },
-                    { key: "about.page.like.tips", label: "小字提示", type: "text" },
-                    { key: "about.page.like.bottom", label: "底部文案", type: "text" },
-                    { key: "about.page.like.background", label: "背景图", type: "image" },
-                ],
-            },
-            {
-                id: "map",
-                label: "地图与信息",
-                fields: [
-                    { key: "about.page.map.title", label: "地图标题", type: "text" },
-                    { key: "about.page.map.strengthenTitle", label: "地图加粗标题", type: "text" },
-                    { key: "about.page.map.background", label: "地图背景图", type: "image" },
-                ],
-            },
-            {
-                id: "map-extra",
-                label: "地图深色背景",
-                fields: [{ key: "about.page.map.backgroundDark", label: "深色模式背景图", type: "image" }],
-            },
-            {
-                id: "music",
-                label: "音乐卡片",
-                fields: [
-                    { key: "about.page.music.title", label: "标题", type: "text" },
-                    { key: "about.page.music.tips", label: "小字提示", type: "text" },
-                    { key: "about.page.music.link", label: "更多推荐链接", type: "text" },
-                    { key: "about.page.music.background", label: "背景图", type: "image" },
-                ],
+                label: "模块开关",
+                fields: [{ key: "about.page.enable.author_box", label: "作者头像框", type: "boolean" }],
             },
         ],
     },

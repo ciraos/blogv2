@@ -289,6 +289,66 @@ body {
   }
 }
 
+/* 评论弹幕（后台 comment.barrage_enable）：从右往左飘过封面。
+   起始位置在容器右侧之外（left:100% → translateX 从 0 到 -100vw 再减去自身宽度也不够，
+   所以用 100vw + 100% 的组合近似：起点 0，终点 -100vw，元素本身靠 left:100% 定位）。 */
+@keyframes comment-barrage-fly {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-100vw - 100%));
+  }
+}
+
+.comment-barrage__item {
+  animation-name: comment-barrage-fly;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comment-barrage__item {
+    animation: none !important;
+  }
+}
+
+/* 沉浸式阅读（后台 post.reading_mode）：<html class="reading-mode"> 时隐藏页头、文章目录侧栏、
+   浮动按钮以外的干扰，把正文放窄到舒适行宽。开关在右下角悬浮按钮里（BookOpen 图标）。 */
+.reading-mode .header {
+  display: none;
+}
+
+/* 右侧文章目录栏（PageWithSidebar 的 aside） */
+.reading-mode aside {
+  display: none;
+}
+
+/* 正文区域：收窄行宽、加大行高，长文更耐读；移动端保留内边距 */
+.reading-mode .article-body {
+  max-width: 46rem;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.95;
+}
+
+/* 评论区、版权块也跟着居中，避免正文窄、底下宽 */
+.reading-mode #post-comment,
+.reading-mode #post-comment ~ * {
+  max-width: 46rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* 平滑滚动（后台 post.smooth_scroll）：类名由 components/(blog)/smooth-scroll.tsx 挂到 <html> 上。
+   只在用户没开「减少动态效果」时生效，避免前庭敏感用户被强制滚动动画影响。 */
+@media (prefers-reduced-motion: no-preference) {
+  html.smooth-scroll {
+    scroll-behavior: smooth;
+  }
+}
+
 /* 朋友圈网格：同样按容器宽度 —— 侧边栏收缩后内容区变宽，由 3 列升为 4 列 */
 @container (min-width: 60rem) {
   .fcircle-grid {

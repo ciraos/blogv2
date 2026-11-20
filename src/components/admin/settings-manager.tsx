@@ -7,6 +7,7 @@ import {
     ArrowUp,
     ChevronRight,
     ImageIcon,
+    Info,
     Loader2,
     Menu,
     Plus,
@@ -602,6 +603,12 @@ function SettingsGroupCard({
                         className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")}
                     />
                     <h3 className={cn("truncate text-[13px] font-medium tracking-tight text-foreground/80", hideTitle && "sr-only")}>{group.label}</h3>
+                    {/* PRO 专属分组：标题旁挂个徽标，别让人以为社区版也能用 */}
+                    {group.pro && (
+                        <span className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-amber-600 dark:text-amber-400">
+                            PRO
+                        </span>
+                    )}
                     <span className="shrink-0 text-[11px] text-muted-foreground/70">{group.fields.length} 项</span>
                 </button>
                 {dirtyCount > 0 && (
@@ -619,7 +626,15 @@ function SettingsGroupCard({
                 ) : group.fields.some((field) => field.aiModule) ? (
                     <AiSettingsPanel fields={group.fields} draft={draft} baseline={baseline} onChange={onChange} />
                 ) : (
-                    <div className="grid grid-cols-1 gap-x-5 gap-y-5 md:grid-cols-2">
+                    <>
+                        {/* PRO 分组说明：解释「社区版为什么没用」，避免以为开关失效是 bug */}
+                        {group.pro && group.proHint && (
+                            <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-700 dark:text-amber-400">
+                                <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                                <span>{group.proHint}</span>
+                            </div>
+                        )}
+                        <div className="grid grid-cols-1 gap-x-5 gap-y-5 md:grid-cols-2">
                         {group.fields.map((field) => (
                             <div
                                 key={field.key}
@@ -657,7 +672,8 @@ function SettingsGroupCard({
                                 />
                             </div>
                         )}
-                    </div>
+                        </div>
+                    </>
                 )
             )}
         </section>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import katex from "katex";
 
@@ -1224,15 +1224,6 @@ export function ArticleBody({
 }) {
     const ref = useRef<HTMLDivElement>(null);
 
-    // 代码块配置缺省值：默认不显示 mac 圆点、10 行折叠（useMemo 稳定引用，避免 effect 频繁重跑）
-    const codeBlockOpts = useMemo<CodeBlockOptions>(
-        () => ({
-            codeMaxLines: codeBlock?.codeMaxLines ?? 10,
-            macStyle: codeBlock?.macStyle ?? false,
-        }),
-        [codeBlock?.codeMaxLines, codeBlock?.macStyle]
-    );
-
     // ── 复制正文：post.copy.enable / post.copy.copyright_enable ──
     // 官方实现（PostContent/index.tsx 第 45-111 行）在 document 上以捕获阶段监听 copy：
     //   enable === false          → 禁止复制正文
@@ -1247,6 +1238,52 @@ export function ArticleBody({
     const copyIsReprint = copyCopyright?.isReprint;
     const copyCopyrightAuthor = copyCopyright?.copyrightAuthor;
     const copyCopyrightUrl = copyCopyright?.copyrightUrl;
+
+    /**
+     * 代码框复制按钮的文本转换：和正文复制走同一份文案。
+     * 代码框按钮是 `navigator.clipboard.writeText` 直接写，不触发 `copy` 事件，
+     * 所以必须把追加逻辑显式接到按钮上（见 lib/code-block.ts 的 transformCopy）。
+     */
+    const transformCodeCopy = useCallback(
+        (text: string) => {
+            if (copyCopyrightEnable !== true) return text;
+            const copyrightText = renderCopyCopyrightText({
+                copyrightOriginal: copyOriginalTemplate,
+                copyrightReprint: copyReprintTemplate,
+                isReprint: copyIsReprint === true,
+                copyrightAuthor: copyCopyrightAuthor,
+                copyrightUrl: copyCopyrightUrl,
+                siteName: copySiteName ?? "",
+                author: copyAuthor ?? "",
+                currentUrl: typeof window === "undefined" ? "" : window.location.href,
+            });
+            return `${text}\n\n---\n${copyrightText}`;
+        },
+        [
+            copyCopyrightEnable,
+            copyOriginalTemplate,
+            copyReprintTemplate,
+            copySiteName,
+            copyAuthor,
+            copyIsReprint,
+            copyCopyrightAuthor,
+            copyCopyrightUrl,
+        ]
+    );
+
+    /**
+     * 代码块配置（mac 圆点 / 折叠行数）+ 复制相关：
+     * 代码框复制按钮的文本转换和「禁止复制」都住在这里 —— 它直接写剪贴板、不走 copy 事件。
+     */
+    const codeBlockOpts = useMemo<CodeBlockOptions>(
+        () => ({
+            codeMaxLines: codeBlock?.codeMaxLines ?? 10,
+            macStyle: codeBlock?.macStyle ?? false,
+            transformCopy: transformCodeCopy,
+            copyDisabled: copyEnable === false,
+        }),
+        [codeBlock?.codeMaxLines, codeBlock?.macStyle, transformCodeCopy, copyEnable]
+    );
 
     useEffect(() => {
         const root = ref.current;

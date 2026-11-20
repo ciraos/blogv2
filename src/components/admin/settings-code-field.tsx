@@ -22,15 +22,15 @@ const CLOSE_BLOCK = new RegExp(`</(?:${BLOCK_TAGS})\\s*>`, "gi");
 /**
  * 保守的 HTML 格式化：只做「块级标签之间换行 + 按层级缩进」。
  *
- * 为什么不用现成的 beautifier：这份内容是**后端渲染好的 HTML**，里面常有
- * `<pre><code>` 代码示例；通用美化器会把代码块里的每一行也重排，等于改掉正文内容。
- * 所以先把 <pre>/<code> 整段挖出来占位，处理完再原样放回。
+ * 为什么不用现成的 beautifier：这份内容里常有 `<pre><code>` 代码示例，通用美化器
+ * 会把代码块里的每一行也重排，等于改掉正文内容；邮件模板里还有整段 `<style>` CSS，
+ * 重排同样没意义。所以先把 pre/code/style/script 整段挖出来占位，处理完再原样放回。
  */
 export function formatHtml(input: string): string {
     if (!input.trim()) return input;
 
     const blocks: string[] = [];
-    let text = input.replace(/<(pre|code)\b[\s\S]*?<\/\1\s*>/gi, (match) => {
+    let text = input.replace(/<(pre|code|style|script)\b[\s\S]*?<\/\1\s*>/gi, (match) => {
         blocks.push(match);
         return `\u0000${blocks.length - 1}\u0000`;
     });

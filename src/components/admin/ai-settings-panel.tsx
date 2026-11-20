@@ -88,40 +88,6 @@ const MODULE_FIELD_KEYS: Record<string, string[]> = {
     ],
 };
 
-/**
- * 「检测到历史配置」的判据字段 —— 刻意与官方不同。
- *
- * 官方 AISettingsForm.tsx:201-237 把 button_text / button_icon / name / welcome / 建议词这些
- * **后端本来就有默认值**的键也算进「历史配置」：线上 /public/site-config 实测
- * ai_podcast.button_text = "AI 播客"、button_icon = "ri:mic-fill"、ai_assistant.name = "AI 助手"，
- * 照官方的列表判断，只要开关是关的就必然命中 → 会无条件显示「检测到历史配置已保留」，
- * 这是拿一句写死的话骗人。
- *
- * 所以这里只统计**真正由管理员填过、后端没有默认值**的键（提供商/凭据/音色/音频参数/Prompt/向量库）：
- * 这些键全空就不显示提示（宁可不说，也不编）。
- */
-const MODULE_HISTORY_KEYS: Record<string, string[]> = {
-    podcast: [
-        "ai_podcast.provider",
-        "ai_podcast.speaker1",
-        "ai_podcast.speaker2",
-        "ai_podcast.use_head_music",
-        "ai_podcast.use_tail_music",
-        "ai_podcast.audio_format",
-        "ai_podcast.sample_rate",
-        "ai_podcast.speech_rate",
-    ],
-    assistant: [
-        "ai_assistant.embedding_provider",
-        "ai_assistant.embedding_api_key",
-        "ai_assistant.embedding_model",
-        "ai_assistant.vector_store",
-        "ai_assistant.system_prompt",
-        "ai_assistant.user_prompt",
-        "ai_assistant.no_context_prompt",
-    ],
-};
-
 /** PRO 徽标（官方这四个模块标题都带；用琥珀色与橙色提示条同一色系） */
 function ProBadge() {
     return (
@@ -133,16 +99,6 @@ function ProBadge() {
 
 /** 主题色说明条：该模块未单独配置（没填 API Key）时提示「将使用全局配置」 */
 function NotConfiguredNote({ children }: { children: React.ReactNode }) {
-    return (
-        <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
-            <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span>{children}</span>
-        </div>
-    );
-}
-
-/** 主题色说明条：开关关闭但检测到管理员填过的配置 */
-function HistoryKeptNote({ children }: { children: React.ReactNode }) {
     return (
         <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
             <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
@@ -1021,17 +977,7 @@ export function AiSettingsPanel({
                             另外当前后端也没有播客生成接口（前台入口只做诚实提示，不生成音频）。
                         </div>
                     </div>
-                ) : (
-                    <div className="mt-3">
-                        {!allEmpty(MODULE_HISTORY_KEYS.podcast) ? (
-                            <HistoryKeptNote>AI 播客当前关闭，但检测到历史配置已保留；重新开启后会继续生效。</HistoryKeptNote>
-                        ) : (
-                            <p className="text-xs text-muted-foreground">
-                                未开启。开启后文章页会显示 AI 播客按钮（当前后端未提供生成接口，前台只做诚实提示）。
-                            </p>
-                        )}
-                    </div>
-                )}
+                ) : null}
             </div>
 
             {/* ---------- AI 助手 ---------- */}
@@ -1057,17 +1003,7 @@ export function AiSettingsPanel({
                             ]}
                         />
                     </div>
-                ) : (
-                    <div className="mt-3">
-                        {!allEmpty(MODULE_HISTORY_KEYS.assistant) ? (
-                            <HistoryKeptNote>AI 助手当前关闭，但检测到历史配置已保留；重新开启后会继续生效。</HistoryKeptNote>
-                        ) : (
-                            <p className="text-xs text-muted-foreground">
-                                未开启。开启后站点会显示 AI 助手入口（当前后端未提供对话接口，前台只展示配置预览）。
-                            </p>
-                        )}
-                    </div>
-                )}
+                ) : null}
             </div>
         </div>
     );
