@@ -436,6 +436,22 @@ function ProfileCard({
     // 三项都填好才允许去拉模型（没 key 拉了也是 401，省得白跑一趟）
     const canFetchModels = Boolean(provider.trim() && apiUrl.trim() && effectiveKey);
 
+    /**
+     * 是否已存过密钥。v1.9.5 起后端只回掩码（`api_key_masked` + `has_api_key`），
+     * 不再回明文 —— 所以「已配置」要靠这两个字段判断，不能只看有没有明文。
+     */
+    const maskedKey = String(profile.api_key_masked ?? "");
+    const hasStoredKey = profile.has_api_key === true || Boolean(maskedKey) || Boolean(storedPlain);
+
+    /** 「获取上游模型」点不了时的原因：分清「没填」和「填了但后端不回明文」两种情况 */
+    const fetchDisabledReason = canFetchModels
+        ? null
+        : !provider.trim() || !apiUrl.trim()
+          ? "填好提供商、API 地址和 API Key 后可用"
+          : hasStoredKey
+            ? "已保存的 Key 不再回显，重新输入一次才能拉取上游模型"
+            : "填写 API Key 后才能拉取上游模型";
+
     const handleProvider = (next: string) => {
         const patch: Record<string, unknown> = { provider: next };
         // 换服务商 → API 地址跟着预填（仍可手改）；模型不动，避免把别家的模型名留在框里
@@ -542,46 +558,6 @@ function ProfileCard({
                         placeholder="https://api.example.com/v1"
                         className="h-8 font-mono text-sm"
                     />
-                    <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                        <button
-                            type="button"
-                            onClick={() => void fetchModels()}
-                            disabled={!canFetchModels || loadingModels}
-                            title={
-                                canFetchModels
-                                    ? "请求上游 {地址}/models，把拿到的模型填进「默认模型」的候选"
-                                    : "填好提供商、API 地址和 API Key 后才可用"
-                            }
-                            className="inline-flex h-7 items-center gap-1 rounded-md border px-2 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-muted-foreground"
-                        >
-                            {loadingModels ? (
-                                <Loader2 className="size-3.5 animate-spin" aria-hidden />
-                            ) : (
-                                <RefreshCw className="size-3.5" aria-hidden />
-                            )}
-                            {loadingModels ? "获取中…" : "获取上游模型"}
-                        </button>
-                        <span className="text-[11px] text-muted-foreground">
-                            {canFetchModels
-                                ? models.length > 0
-                                    ? `已获取 ${models.length} 个模型`
-                                    : "从上游 /models 拉取「默认模型」的候选"
-                                : "填好提供商、API 地址和 API Key 后可用"}
-                        </span>
-                    </div>
-                </div>
-                <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">默认模型</Label>
-                    <ModelSelect
-                        value={model}
-                        options={models}
-                        onChange={(next) => onPatch({ model: next })}
-                        placeholder={provider ? (AI_PROVIDER_MODEL_EXAMPLES[provider] ?? "选择模型") : "选择模型"}
-                        disabledHint="先点上方「获取上游模型」，拉到候选后才可选"
-                    />
-                    <p className="text-[11px] text-muted-foreground">
-                        {models.length > 0 ? `已获取 ${models.length} 个模型` : "点上方「获取上游模型」拉候选"}
-                    </p>
                 </div>
                 <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">API Key</Label>
@@ -590,7 +566,7 @@ function ProfileCard({
                             type={visible ? "text" : "password"}
                             value={newKey}
                             onChange={(e) => onPatch({ api_key: e.target.value })}
-                            placeholder="sk-xxx"
+                            placeholder="sk-xxxx"
                             autoComplete="new-password"
                             className="h-8 pr-9 font-mono text-sm"
                         />
@@ -605,6 +581,44 @@ function ProfileCard({
                             </button>
                         </div>
                     </div>
+                </div>
+                <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">默认模型</Label>
+                    <ModelSelect
+                        value={model}
+                        options={models}
+                        onChange={(next) => onPatch({ model: next })}
+                        placeholder={provider ? (AI_PROVIDER_MODEL_EXAMPLES[provider] ?? "选择模型") : "选择模型"}
+                        disabledHint="先点下方「获取上游模型」，拉到候选后才可选"
+                    />
+                </div>
+                {/* 「获取上游模型」放在「默认模型」正下方：它拉到的就是这一格的候选 */}
+                <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+                    <button
+                        type="button"
+                        onClick={() => void fetchModels()}
+                        disabled={!canFetchModels || loadingModels}
+                        title={
+                            canFetchModels
+                                ? "请求上游 {地址}/models，把拿到的模型填进「默认模型」的候选"
+                                : (fetchDisabledReason ?? "")
+                        }
+                        className="inline-flex h-7 items-center gap-1 rounded-md border px-2 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-muted-foreground"
+                    >
+                        {loadingModels ? (
+                            <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                        ) : (
+                            <RefreshCw className="size-3.5" aria-hidden />
+                        )}
+                        {loadingModels ? "获取中…" : "获取上游模型"}
+                    </button>
+                    <span className="text-[11px] text-muted-foreground">
+                        {canFetchModels
+                            ? models.length > 0
+                                ? `已获取 ${models.length} 个模型`
+                                : "从上游 /models 拉取「默认模型」的候选"
+                            : (fetchDisabledReason ?? "")}
+                    </span>
                 </div>
             </div>
         </div>
