@@ -1039,6 +1039,11 @@ body {
   white-space: pre;
   word-break: normal;
   overflow-wrap: normal;
+  /* 行内代码的 0.88em 不能带进代码块：否则 <code> 会比行号栏小一档（12.67px vs 14.4px），
+     line-height 跟着缩成 21.54px，而行号栏是 24.48px —— 每行差约 3px，到第 10 行就明显错位。
+     这里显式继承 pre 的字号/行高，保证「行号 + 代码」同一套度量。 */
+  font-size: inherit;
+  line-height: inherit;
 }
 
 /* ============ 评论区代码框 ============

@@ -1,11 +1,11 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { FlinkBanner } from "@/components/(blog)/flink-banner";
 import { LinkApplyConditions } from "@/components/(blog)/link-apply-conditions";
 import { LinkCustomHtml } from "@/components/(blog)/link-custom-html";
 import { LinkPond } from "@/components/(blog)/link-pond";
 import { LinkSections } from "@/components/(blog)/link-sections";
 import { PostComments } from "@/components/(blog)/post-comments";
-import { getCommentsWithChildrenApi, getLinksByCategoryApi, getLinksGroupedByCategoryApi, getPublicLinkCategoriesApi, getRandomMomentPostApi } from "@/lib/api";
+import { getCommentsWithChildrenApi, getLinksGroupedByCategoryApi, getRandomMomentPostApi } from "@/lib/api";
 import { getCommentAuthor } from "@/lib/comment-author";
 import { pickFishLine } from "@/lib/fish-lines";
 import { requireSiteConfigs } from "@/lib/site-config";
@@ -88,21 +88,11 @@ export default async function Link() {
     // 站点配置（用于页脚自定义内容）
     const config = await requireSiteConfigs().catch(() => null);
 
-    // 友链分区：按分类展示该分类下的「全部友链」——包含状态为 INVALID 的已失联友链，
-    // 所以分区标题里的计数是该分类的总条数（不是其中「已通过」的条数）。
-    // 全状态公开接口不可用时回退到「仅已通过」的旧路径（/public/link-categories + /public/links）。
-    let sections = await getLinksGroupedByCategoryApi();
-    if (!sections) {
-        const categories = await getPublicLinkCategoriesApi();
-        sections = (
-            await Promise.all(
-                categories.map(async (category) => ({
-                    category,
-                    links: await getLinksByCategoryApi(category.id),
-                }))
-            )
-        ).sort((a, b) => a.category.id - b.category.id);
-    }
+    // 友链分区：按分类展示该分类下的**已通过**友链。
+    // 注：INVALID（失联）友链前台拿不到 —— 旧版公开的全状态接口 /public/links/applications
+    // 已在后端 v1.9.4 收紧到管理端（v1.9.5 实测 404），/public/links?status=INVALID 也被
+    // 服务端写死成只返回 APPROVED，所以这里不再保留「含失联友链」的分支。
+    const sections = await getLinksGroupedByCategoryApi();
     // 顺序：按分类 id 升序（创建越早越靠前，id 越大越往下）；空分类一律隐藏不展示。
     const visible = sections.filter((section) => section.links.length > 0);
 

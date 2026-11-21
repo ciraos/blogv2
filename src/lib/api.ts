@@ -574,75 +574,39 @@ export async function getPublicLinksRandomApi(num = 1): Promise<FriendLink[]> {
     return request<FriendLink[]>(`/public/links/random?num=${num}`, { method: "GET" });
 }
 
-/** 公开友链申请列表请求参数（GET /public/links/applications） */
-export interface PublicLinkApplicationsParams {
-    page?: number;
-    pageSize?: number;
-    /** 审核状态：PENDING / APPROVED / REJECTED / INVALID */
-    status?: string;
-    category_id?: number;
-    /** 名称模糊搜索 */
-    name?: string;
-}
-
 /**
- * GET /public/links/applications 公开的全状态友链列表（官方公开接口、无需鉴权）。
- * 与 /public/links 的关键差别：这里**不按状态过滤**，能拿到 INVALID（已失联）的友链。
- */
-export function getPublicLinkApplicationsApi(params: PublicLinkApplicationsParams = {}): Promise<LinkListData> {
-    const qs = new URLSearchParams();
-    for (const [key, value] of Object.entries(params)) {
-        if (value !== undefined && value !== null && value !== "") {
-            qs.set(key, String(value));
-        }
-    }
-    const query = qs.toString();
-    return request<LinkListData>(`/public/links/applications${query ? `?${query}` : ""}`, { method: "GET" }, undefined, {
-        revalidate: 60,
-        tags: [LINKS_TAG],
-    });
-}
-
-/** 友链页对外展示的状态：已通过 + 已失联（健康检查自动标记）。
- *  未审核（PENDING）与被拒绝（REJECTED）的申请不对访客展示。 */
-const PUBLIC_LINK_STATUSES: readonly string[] = ["APPROVED", "INVALID"];
-
-/**
- * 友链页数据源：拉全量友链后**按分类分组**，每个分类带该分类下的全部友链
- * （含状态为 INVALID 的已失联友链），供友链页「按分类展示全部友链」使用。
+ * 友链页数据源：拉全量**已通过**友链后按分类分组。
  *
- * 为什么不用 getLinksByCategoryApi：它走 /public/links，而该接口服务端写死
- * `WHERE status = 'APPROVED'`（link_repo.go ListPublic），已失联的友链会被整体过滤掉，
- * 分类里就只剩活着的那些。改用官方的全状态公开接口 /public/links/applications。
+ * ⚠️ 这里曾经改用 `GET /public/links/applications`（旧版公开的全状态接口），
+ * 目的是把 INVALID（已失联）友链也展示出来并打「已失联」角标。
+ * 但后端 v1.9.4「收紧公开接口」把这组路由挪进了管理端（`linksAdmin.GET("/applications")`），
+ * v1.9.5 实测 `/public/links/applications` 已 **404**；而 `/public/links?status=INVALID`
+ * 也被服务层写死成只返回 APPROVED（实测三种 status 都回同样的 153 条）。
  *
- * 只保留 APPROVED / INVALID：未审核与被拒绝的申请不对外展示。
- * 全量拉取失败时返回 null，由调用方回退到「仅已通过」的旧路径。
+ * 结论：访客侧拿不到 INVALID，所以友链页只按官方口径展示**已通过**的友链，
+ * 不再保留「已失联角标」那套死逻辑（否则每次渲染都白打一个 404）。
+ * 将来后端若重新开放只读全状态接口，在这里接一次即可。
  */
-export async function getLinksGroupedByCategoryApi(): Promise<LinkCategoryGroup[] | null> {
-    const pageSize = 50;
-    const maxPages = 20; // 安全上限：最多 1000 条
+export async function getLinksGroupedByCategoryApi(): Promise<LinkCategoryGroup[]> {
+    const pageSize = 100;
+    const maxPages = 20; // 安全上限：最多 2000 条
     const all: FriendLink[] = [];
     const seen = new Set<number>();
 
-    try {
-        for (let page = 1; page <= maxPages; page++) {
-            const data = await getPublicLinkApplicationsApi({ page, pageSize });
-            const list = data.list ?? [];
-            for (const link of list) {
-                if (!seen.has(link.id) && PUBLIC_LINK_STATUSES.includes(link.status)) {
-                    seen.add(link.id);
-                    all.push(link);
-                }
-            }
-            if (list.length === 0 || page * pageSize >= (data.total ?? 0)) {
-                break;
+    for (let page = 1; page <= maxPages; page++) {
+        const data = await getPublicLinksApi({ page, pageSize }).catch(() => null);
+        if (!data) break;
+        const list = data.list ?? [];
+        for (const link of list) {
+            if (!seen.has(link.id)) {
+                seen.add(link.id);
+                all.push(link);
             }
         }
-    } catch {
-        return null;
+        if (list.length === 0 || page * pageSize >= (data.total ?? 0)) break;
     }
 
-    // 按分类分组：分类按 id 升序（保持原有展示顺序）；分类内保持后端返回顺序（= sort_order DESC），不再本地重排
+    // 按分类分组：分类按 id 升序（保持原有展示顺序）；分类内保持后端返回顺序（= sort_order DESC）
     const grouped = new Map<number, LinkCategoryGroup>();
     for (const link of all) {
         const category = link.category;
@@ -653,13 +617,6 @@ export async function getLinksGroupedByCategoryApi(): Promise<LinkCategoryGroup[
         grouped.set(category.id, group);
     }
 
-    // 分类内**不再本地重排**（原先是按 id 降序）。
-    // ⚠️ 但要注意：本函数的数据源 `GET /public/links/applications` 后端是 `Order(Desc(id))`（link_repo.go:327），
-    //    查询里**没有 sort_order**（实测该接口返回的 12 条 sort_order 全是 0、id 严格降序），
-    //    所以"后台排序 → 前台生效"做不到，除非后端给该查询加上 `Order(Desc(sort_order), Asc(id))`，
-    //    或前台改走尊重 sort_order 的 `GET /public/links`（那里服务端写死 status=APPROVED，会丢掉失联友链）。
-    //    这里只是不再用本地排序去盖后端顺序，别误以为前台已经能跟随 sort_order。
-    // 分类之间仍按 id 升序（分类没有排序接口，保持原有展示顺序）。
     return [...grouped.values()].sort((a, b) => a.category.id - b.category.id);
 }
 

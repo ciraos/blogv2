@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bot, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ArticleSummaryProps {
@@ -10,9 +10,6 @@ interface ArticleSummaryProps {
      */
     summaries?: string[] | null;
 }
-
-/** 超过这个长度才出现「展开全文」：短摘要本来就该一眼看完，多一个按钮反而碍眼 */
-const CLAMP_THRESHOLD = 160;
 
 /**
  * 摘要的**显示**清洗（数据库里的原文不动，后台仍看到/编辑原样）。
@@ -52,6 +49,37 @@ export function ArticleSummary({ summaries }: ArticleSummaryProps) {
         [summaries]
     );
     const [expanded, setExpanded] = useState(false);
+    /**
+     * 是否真的需要「展开全文」：**实测**折叠后有没有溢出，而不是靠字数猜。
+     * 以前用「字数 > 160 就显示按钮」的阈值，结果两百来字的摘要其实一眼能看完，
+     * 按钮却还在，且折叠高度和实际行数对不上（最后半行被裁掉）。
+     */
+    const textRef = useRef<HTMLSpanElement>(null);
+    const [overflowing, setOverflowing] = useState(false);
+
+    useEffect(() => {
+        const el = textRef.current;
+        if (!el) return;
+        let cancelled = false;
+
+        const measure = () => {
+            if (cancelled) return;
+            // 折叠态下 scrollHeight 是全文高度、clientHeight 是 6 行高度，差值 > 2px 即说明被裁了
+            setOverflowing(el.scrollHeight - el.clientHeight > 2);
+        };
+
+        // 首帧用宏任务兜一下：effect 内同步 setState 会被 react-hooks/set-state-in-effect 拦
+        const timer = window.setTimeout(measure, 0);
+        // 宽度变化（窗口缩放 / 侧栏收缩）会改变行数，重新量
+        const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+        observer?.observe(el);
+
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timer);
+            observer?.disconnect();
+        };
+    }, [text, expanded]);
 
     /**
      * 没有摘要时**不隐藏**，而是明说「此篇文章无摘要」：
@@ -76,7 +104,7 @@ export function ArticleSummary({ summaries }: ArticleSummaryProps) {
         );
     }
 
-    const collapsible = text.length > CLAMP_THRESHOLD;
+    const collapsible = overflowing;
 
     return (
         <section
@@ -87,14 +115,30 @@ export function ArticleSummary({ summaries }: ArticleSummaryProps) {
                 <Bot className="size-4 shrink-0" aria-hidden />
                 <span className="text-sm font-medium">文章摘要</span>
             </div>
-            <p
-                className={`whitespace-pre-line px-4 pt-1.5 pb-3 text-sm leading-relaxed text-muted-foreground md:px-5 md:pb-4 ${
-                    !expanded && collapsible ? "line-clamp-4" : ""
-                }`}
-            >
-                {text}
+            {/*
+              折叠必须作用在**没有内边距的内层**上：overflow: hidden 的裁剪边界是 padding box，
+              直接把 line-clamp 写在外层 <p>（带 pb-3）上时，第 7 行会画进下内边距里露出来半截。
+              所以外层只管内边距/字号，内层 span 只管行数与裁剪。
+            */}
+            <p className="px-4 pt-1.5 pb-3 text-sm leading-relaxed text-muted-foreground md:px-5 md:pb-4">
+                <span
+                    ref={textRef}
+                    className="block whitespace-pre-line"
+                    style={
+                        expanded
+                            ? undefined
+                            : {
+                                  display: "-webkit-box",
+                                  WebkitBoxOrient: "vertical",
+                                  WebkitLineClamp: 6,
+                                  overflow: "hidden",
+                              }
+                    }
+                >
+                    {text}
+                </span>
             </p>
-            {collapsible && (
+            {(collapsible || expanded) && (
                 <button
                     type="button"
                     onClick={() => setExpanded((open) => !open)}
