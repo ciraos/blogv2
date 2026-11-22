@@ -1,0 +1,109 @@
+# CNB（cnb.cool）流水线配置
+#
+# 与 .github/workflows/theme-package.yml 等价：推到 v* tag → 在 CNB 的 Linux 容器里
+# 构建 SSR 主题包（tar.gz）→ 建 Release → 把包挂成 Release 附件。
+#
+# 为什么要有一份 CNB 的：
+#   · 构建机在国内，拉依赖、出包都比 GitHub runner 快；
+#   · 产物挂在 CNB，后端下载主题包不用绕 GitHub（12 MB 从 GitHub 拉很慢）。
+#
+# 语法要点（CNB 与 GitHub Actions 差异很大，别照抄 workflow）：
+#   · 顶层按「分支/tag 名」分组，`tag_push` / `push` 是事件；
+#   · stages 里直接写 shell，或用 `image:` 指定插件镜像、`type:` 指定内置任务；
+#   · 没有 actions/checkout 之类，代码已经自动就位在 /workspace。
+#
+# 详见：https://docs.cnb.cool/zh/build/trigger-rule.html
+
+# ---------- tag 触发：打主题包 ----------
+"v*":
+  tag_push:
+    - runner:
+        cpus: 4
+      docker:
+        image: node:22
+        volumes:
+          # pnpm store 缓存，跨次构建复用（copy-on-write 避免并发写冲突）
+          - /root/.local/share/pnpm:copy-on-write
+      stages:
+        - name: 准备 pnpm
+          script: |
+            set -euo pipefail
+            corepack enable
+            corepack prepare pnpm@10 --activate
+            # pnpm 默认的软链农场一解引用体积就爆炸（后端上限 10000 条目 / 512MB），
+            # 这里用 npm 式扁平 node_modules，和 GitHub Actions 保持一致
+            echo "node-linker=hoisted" >> .npmrc
+            node -v && pnpm -v
+
+        - name: 安装依赖
+          script: pnpm install --frozen-lockfile
+
+        - name: 构建（必须产出 standalone）
+          script: |
+            set -euo pipefail
+            NEXT_SKIP_STANDALONE=0 THEME_PACKAGE=1 pnpm build
+            test -f .next/standalone/server.js || { echo "standalone 缺失：检查 next.config.ts 的 output"; exit 1; }
+
+        - name: 打包主题
+          script: |
+            set -euo pipefail
+            THEME_PACKAGE=1 node scripts/ci/package-theme.mjs
+
+        - name: 校验产物（软链 / 服务端分包）
+          script: |
+            set -euo pipefail
+            PKG=$(ls dist/*.tar.gz | head -n1)
+            echo "包: $PKG"
+            if tar -tvzf "$PKG" | grep -q '^l'; then
+              echo "包内存在符号链接条目，后端解压会报「不支持的归档文件类型」"
+              exit 1
+            fi
+            # 这两项缺了，装出来的主题页面一渲染就 ChunkLoadError
+            tar -tzf "$PKG" | grep -q '^\./\.next/server/chunks/' || { echo "缺少 .next/server/chunks"; exit 1; }
+            tar -tzf "$PKG" | grep -q '^\./\.next/static/chunks/' || { echo "缺少 .next/static/chunks"; exit 1; }
+            tar -tzf "$PKG" | grep -q '^\./server\.js' || { echo "缺少 server.js"; exit 1; }
+            echo "条目数: $(tar -tzf "$PKG" | wc -l)"
+
+        # 先建 Release：附件必须挂在一个已存在的 Release 上
+        - name: 创建 Release
+          type: git:release
+          options:
+            title: $CNB_BRANCH
+            latest: true
+            description: |
+              SSR 主题包（tar.gz），由 CNB 云原生构建产出。
+              安装方式：后台「SSR 主题 → 安装」，downloadUrl 填本页附件的下载地址。
+
+        - name: 上传附件
+          image: cnbcool/attachments:latest
+          settings:
+            type: UPLOAD
+            tag: $CNB_BRANCH
+            attachments: dist/*.tar.gz
+
+# ---------- main 分支 push：跑与 GitHub checks 等价的检查 ----------
+main:
+  push:
+    - docker:
+        image: node:22
+        volumes:
+          - /root/.local/share/pnpm:copy-on-write
+      stages:
+        - name: 准备 pnpm
+          script: |
+            set -euo pipefail
+            corepack enable
+            corepack prepare pnpm@10 --activate
+            echo "node-linker=hoisted" >> .npmrc
+
+        - name: 安装依赖
+          script: pnpm install --frozen-lockfile
+
+        - name: 脚本引用存在性（防 CI 脚本没进库）
+          script: pnpm scripts:verify
+
+        - name: ESLint
+          script: pnpm lint
+
+        - name: 接口清单校验
+          script: pnpm api:inventory:check

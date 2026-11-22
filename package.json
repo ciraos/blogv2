@@ -17,7 +17,8 @@
     "test": "node --test \"tests/*.test.ts\"",
     "theme:package": "node scripts/ci/package-theme.mjs",
     "theme:build": "next build && node scripts/ci/package-theme.mjs",
-    "scripts:verify": "node scripts/ci/verify-script-paths.mjs"
+    "scripts:verify": "node scripts/ci/verify-script-paths.mjs",
+    "push:all": "node scripts/ci/push-all.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
