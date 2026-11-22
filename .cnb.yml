@@ -21,13 +21,10 @@
         cpus: 4
       docker:
         image: node:22
-        volumes:
-          # pnpm store 缓存，跨次构建复用（copy-on-write 避免并发写冲突）
-          - /root/.local/share/pnpm:copy-on-write
       stages:
         - name: 准备 pnpm
           script: |
-            set -euo pipefail
+            set -eu
             corepack enable
             corepack prepare pnpm@10 --activate
             # pnpm 默认的软链农场一解引用体积就爆炸（后端上限 10000 条目 / 512MB），
@@ -40,18 +37,18 @@
 
         - name: 构建（必须产出 standalone）
           script: |
-            set -euo pipefail
+            set -eu
             NEXT_SKIP_STANDALONE=0 THEME_PACKAGE=1 pnpm build
             test -f .next/standalone/server.js || { echo "standalone 缺失：检查 next.config.ts 的 output"; exit 1; }
 
         - name: 打包主题
           script: |
-            set -euo pipefail
+            set -eu
             THEME_PACKAGE=1 node scripts/ci/package-theme.mjs
 
         - name: 校验产物（软链 / 服务端分包）
           script: |
-            set -euo pipefail
+            set -eu
             PKG=$(ls dist/*.tar.gz | head -n1)
             echo "包: $PKG"
             if tar -tvzf "$PKG" | grep -q '^l'; then
@@ -86,12 +83,10 @@ main:
   push:
     - docker:
         image: node:22
-        volumes:
-          - /root/.local/share/pnpm:copy-on-write
       stages:
         - name: 准备 pnpm
           script: |
-            set -euo pipefail
+            set -eu
             corepack enable
             corepack prepare pnpm@10 --activate
             echo "node-linker=hoisted" >> .npmrc
