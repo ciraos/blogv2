@@ -45,10 +45,13 @@ next-env.d.ts
 
 package-lock.json
 
-# 本地开发验证/探测脚本（不进版本库）
-# 例外：主题打包脚本是发布链路的一部分，必须进版本库（GitHub Actions 会调用）
+# 本地开发验证/探测脚本（不进版本库：里面还有 anheyu 后端源码快照，几百 MB 级）
+# 例外：以下脚本是**发布/CI 链路**的一部分，必须进版本库，否则 GitHub Actions 上找不到文件会直接失败
+#   - package-theme.mjs      theme-package.yml 调用（打 SSR 主题包）
+#   - gen-api-inventory.mjs  checks.yml 调用（pnpm api:inventory:check）
 /scripts/*
 !/scripts/package-theme.mjs
+!/scripts/gen-api-inventory.mjs
 
 # 本地文档（接口清单 / 实测记录，不进版本库）
 /docs/
