@@ -9,6 +9,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - 启动 dev server 时**直接打开**开发页面，不要询问。
   - **端口以 `package.json` 的 `dev` 脚本为准**（当前 `next dev -p 3126` → `http://localhost:3126/`），不要写死：每次启动先看一眼 `-p` 后面的数字，以后改了端口就跟着打开新端口。
   - 一律用 `localhost`，**不要**用 `127.0.0.1`（dev 资源会被 `allowedDevOrigins` 拦截导致页面不水合）。
+  - **每次启动 dev 之前先删掉 `.next`**（`Remove-Item .next -Recurse -Force`）：避免旧产物/旧 RSC 缓存导致「改了没生效」的假象；启动成功后立刻打开页面。
 - 以"停止 dev server"结尾的流水线（lint / build / 提交等）跑完后，**不要**自动重启 dev。
 - 改动完成后**不要**自动跑 `lint` / `build`（`tsc` 同理）：只有明确说了"跑 lint""build""提交"这类指令时才跑。
   - 日常改完只在浏览器里（`localhost:<package.json dev 里的端口>`）自测效果，汇报保持简短，不要每次都附一大串检查报告。
