@@ -45,13 +45,12 @@ next-env.d.ts
 
 package-lock.json
 
-# 本地开发验证/探测脚本（不进版本库：里面还有 anheyu 后端源码快照，几百 MB 级）
-# 例外：以下脚本是**发布/CI 链路**的一部分，必须进版本库，否则 GitHub Actions 上找不到文件会直接失败
-#   - package-theme.mjs      theme-package.yml 调用（打 SSR 主题包）
-#   - gen-api-inventory.mjs  checks.yml 调用（pnpm api:inventory:check）
+# 本地开发验证/探测脚本（不进版本库：里面还有 anheyu 后端源码快照，几百 MB 级；
+# 根目录还堆着 300 多个一次性探测脚本，逐个放行会污染历史）
+# 约定：**需要进版本库、被 CI / package.json 调用的脚本一律放 `scripts/ci/`**，
+# 该目录整体放行；此目录之外一律忽略，新增 CI 脚本不用再改这里。
 /scripts/*
-!/scripts/package-theme.mjs
-!/scripts/gen-api-inventory.mjs
+!/scripts/ci/
 
 # 本地文档（接口清单 / 实测记录，不进版本库）
 /docs/

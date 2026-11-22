@@ -5,7 +5,7 @@ name: Package theme
 # 为什么必须在 Linux 跑：Windows 无法创建符号链接，`next build` 生成
 # .next/standalone 时会 EPERM；而 pnpm 的 node_modules 全是软链，
 # Anheyu 后端解压时不认软链条目（`不支持的归档文件类型`），
-# 所以需要在 Linux 上“解引用”后再打包（scripts/package-theme.mjs 负责）。
+# 所以需要在 Linux 上“解引用”后再打包（scripts/ci/package-theme.mjs 负责）。
 #
 # 触发方式：
 #   1) 推 tag（v1.5.0）→ 自动构建 + 上传到该 tag 的 Release；
@@ -58,10 +58,10 @@ jobs:
 
       # 先做语法自检：脚本语法错会让整步直接 SyntaxError，看不出是哪一环
       - name: Syntax check packaging script
-        run: node --check scripts/package-theme.mjs
+        run: node --check scripts/ci/package-theme.mjs
 
       - name: Package theme
-        run: node scripts/package-theme.mjs
+        run: node scripts/ci/package-theme.mjs
         env:
           THEME_PACKAGE: "1"
 
