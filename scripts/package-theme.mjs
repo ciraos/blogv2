@@ -206,8 +206,45 @@ for (const required of ["server.js", "theme.json", ".next", path.join(".next", "
         fail(`打包产物缺少 ${required}：装上后前端资源会 404`);
     }
 }
-if (!fs.existsSync(path.join(stage, ".next", "static", "chunks"))) {
-    fail("打包产物缺少 .next/static/chunks：JS 分包没进包");
+
+/**
+ * 服务端产物的三件套，缺一个线上就是「页面一渲染就崩」，而且报错信息完全看不出是打包问题：
+ *   - `.next/server/app/`    页面/路由产物（page.js、route.js）
+ *   - `.next/server/chunks/` 这些页面 require 的服务端分包 → 缺了报
+ *                            `ChunkLoadError: Cannot find module '.next/server/chunks/ssr/*.js'`
+ *   - `.next/BUILD_ID`       生产构建标志；dev 产出的 .next 里没有它，可据此拦掉「拿 dev 缓存打包」
+ * 之前的校验只看了 `.next/static/chunks`，线上就踩过「有页面产物、没服务端分包」的坑。
+ */
+const SERVER_REQUIRED = [
+    { rel: path.join(".next", "server", "app"), why: "页面/路由产物缺失，所有页面 404" },
+    {
+        rel: path.join(".next", "server", "chunks"),
+        why: "服务端分包缺失，页面渲染会报 ChunkLoadError: server/chunks/ssr/*.js",
+    },
+    { rel: path.join(".next", "static", "chunks"), why: "JS 分包没进包，页面白屏" },
+    { rel: path.join(".next", "BUILD_ID"), why: "不是 next build 的产物（可能是 dev 缓存）" },
+];
+for (const { rel, why } of SERVER_REQUIRED) {
+    if (!fs.existsSync(path.join(stage, rel))) fail(`打包产物缺少 ${rel}：${why}`);
+}
+
+/**
+ * 目录「存在但为空」= 半成品构建。Windows 上 next build 会在复制 node_modules 软链时 EPERM 中断，
+ * 留下的 .next/standalone 就是这种「壳」，光看 existsSync 是查不出来的。
+ */
+const countFiles = (dir) => {
+    let n = 0;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, entry.name);
+        if (entry.isDirectory()) n += countFiles(p);
+        else if (entry.isFile()) n += 1;
+    }
+    return n;
+};
+for (const rel of [path.join(".next", "server", "chunks"), path.join(".next", "static", "chunks")]) {
+    if (countFiles(path.join(stage, rel)) === 0) {
+        fail(`打包产物里的 ${rel} 是空目录：构建没跑完（Windows 上常见于 standalone 复制阶段 EPERM 中断）`);
+    }
 }
 
 /* ---------- 6. 打包（-C stage . → 条目都以 ./ 开头，符合后端剥前缀逻辑） ---------- */
