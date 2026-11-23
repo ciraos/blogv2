@@ -895,10 +895,6 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
         remove: () => void confirmRemoveItem(item),
     });
 
-    /** 分两组渲染：文件夹用「原尺寸」卡，文件用「紧凑」卡（顺序仍是 visible 的顺序） */
-    const gridFolders = useMemo(() => visible.filter((f) => isFolder(f)), [visible]);
-    const gridFiles = useMemo(() => visible.filter((f) => !isFolder(f)), [visible]);
-
     /**
      * 详情抽屉里的直链：后端给的可能是相对路径，统一补成绝对地址，
      * 这样「显示的地址」和「复制出来的地址」一致，也不会出现打不开的相对路径。
@@ -1354,29 +1350,17 @@ export function FileManager({ initialUri = FILE_ROOT_URI }: { initialUri?: strin
                         {query ? "没有匹配的文件" : "这个目录是空的"}
                     </div>
                 ) : view === "grid" ? (
-                    // 卡片贴紧内容：auto-fill + 6.5rem 下限 → 一屏尽量多放，同时每个卡都不会被拉得比「缩略图 + 文字」宽太多
-                    // 网格视图分两组渲染（文件夹在前、文件在后，顺序与 visible 一致）：
-                    //   文件夹：**保持改动前的默认尺寸**（p-3 卡片 + 48px 缩略图 + 原网格列数）
-                    //   文件：紧凑卡（p-1.5 + 80px 缩略图 + auto-fill，一屏能放更多）
-                    // 两组的列宽下限不同，所以分开两个 grid，避免同一行里两种尺寸互相拉扯。
-                    <div>
-                        {gridFolders.length > 0 && (
-                            <div
-                                data-fm-grid="folder"
-                                className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
-                            >
-                                {gridFolders.map((item) => renderGridCard(item, true))}
-                            </div>
-                        )}
-                        {gridFiles.length > 0 && (
-                            <div
-                                data-fm-grid="file"
-                                // 卡片贴紧内容：auto-fill + 6.5rem 下限 → 一屏尽量多放，且卡片不会比「缩略图 + 文字」宽太多
-                                className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-2 p-2"
-                            >
-                                {gridFiles.map((item) => renderGridCard(item, false))}
-                            </div>
-                        )}
+                    // 卡片贴紧内容：auto-fill + 8rem 下限 → 一屏尽量多放，同时每个卡都不会被拉得比「缩略图 + 文字」宽太多
+                    //
+                    // 文件夹和文件放在**同一个 grid** 里：以前拆成两个 grid（列宽下限不同），
+                    // 结果文件夹永远占满自己那几行、文件从新的一行开始，同一行里看不到文件夹+文件混排。
+                    // 现在统一列宽，两类卡片只是内部尺寸不同（文件夹 p-3 / 48px，文件紧凑 p-1.5 / 80px），
+                    // 顺序仍是 visible 的顺序（文件夹恒在前）。
+                    <div
+                        data-fm-grid
+                        className="grid grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] items-start gap-2 p-2"
+                    >
+                        {visible.map((item) => renderGridCard(item, isFolder(item)))}
                     </div>
                 ) : (
                     // 列表视图：表头吸顶；整个列表与网格视图共用外层 admin-scroll，这里不再自带滚动/边框

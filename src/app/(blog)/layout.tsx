@@ -194,7 +194,16 @@ export default async function BlogLayout({ children }: Readonly<{ children: Reac
                     <FooterCustomText text={config?.footer?.custom_text} />
                     <div className="footer-project">
                       {config?.footer?.project?.list?.length ? (
-                        <div className="grid grid-cols-2 gap-6 pt-0 sm:grid-cols-4">
+                        /*
+                         * 列数不能写死：项目链接组是后台可配的（官方默认 4 组：服务/框架/导航/协议），
+                         * 后面还会再插一个「友链」格子。以前固定 sm:grid-cols-4，5 个格子就会把
+                         * 友链挤到第二行、占掉「服务」下面那一格，看起来像布局坏了。
+                         * 改成 auto-fit + 最小列宽：宽屏按格数铺满一行，窄屏自动降列，不会横挤。
+                         */
+                        <div
+                          className="grid gap-6 pt-0"
+                          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(9rem, 1fr))" }}
+                        >
                           {config.footer.project.list.map((group) => (
                             <div key={group.title}>
                               <h3 className="mb-3 text-sm font-semibold">{group.title}</h3>
