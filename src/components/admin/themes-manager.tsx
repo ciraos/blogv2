@@ -359,7 +359,7 @@ export function ThemesManager() {
     const [ssrLoading, setSsrLoading] = useState(false);
     const [ssrPending, setSsrPending] = useState<{ name: string; action: "start" | "stop" | "uninstall" } | null>(null);
     /** SSR 卡片占位图（站点 404 配图；取不到就用默认封面） */
-    const [ssrPreview, setSsrPreview] = useState("/default-cover.png");
+    const [ssrPreview, setSsrPreview] = useState("/default-cover-v2.png");
     const ssrPreviewRef = useRef("");
     /** 主题详情弹窗开关 */
     const [detailOpen, setDetailOpen] = useState(false);
@@ -604,7 +604,7 @@ export function ThemesManager() {
             const [themes] = await Promise.all([
                 getSsrThemesApi(),
                 // SSR 主题的 ThemeInfo 里没有预览图，用后台「404 页面」配置的那张图占位。
-                // 取不到就退回 /default-cover.png，不让卡片空着。
+                // 取不到就退回 /default-cover-v2.png，不让卡片空着。
                 (async () => {
                     if (ssrPreviewRef.current) return;
                     try {
@@ -612,12 +612,12 @@ export function ThemesManager() {
                         const json = (await res.json()) as {
                             data?: { post?: { page404?: { default_image?: string } } };
                         };
-                        const img = resolveAssetUrl(json.data?.post?.page404?.default_image) || "/default-cover.png";
+                        const img = resolveAssetUrl(json.data?.post?.page404?.default_image) || "/default-cover-v2.png";
                         ssrPreviewRef.current = img;
                         setSsrPreview(img);
                     } catch {
-                        ssrPreviewRef.current = "/default-cover.png";
-                        setSsrPreview("/default-cover.png");
+                        ssrPreviewRef.current = "/default-cover-v2.png";
+                        setSsrPreview("/default-cover-v2.png");
                     }
                 })(),
             ]);

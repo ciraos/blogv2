@@ -5,6 +5,7 @@ import { PieChart } from "lucide-react";
 import Link from "next/link";
 
 import type { BasicStats } from "@/lib/api";
+import { SafeBackground } from "@/components/ui/safe-background";
 
 interface StatItem {
     label: string;
@@ -66,9 +67,15 @@ export function AboutStatisticCard({ stats, cover }: { stats: BasicStats; cover:
     return (
         <div
             ref={containerRef}
-            className="about-statistic relative w-full overflow-hidden rounded-xl text-white md:min-h-[380px] md:flex-[39]"
-            style={{ backgroundImage: `url(${cover})`, backgroundPosition: "top", backgroundSize: "cover" }}
+            className="about-statistic relative w-full overflow-hidden rounded-xl bg-primary/85 text-white md:min-h-[380px] md:flex-[39]"
         >
+            {/* 封面走 CSS 背景（失败时 SafeBackground 换成底色 + warn，不留空白） */}
+            <SafeBackground
+                src={cover}
+                context="关于页访问统计卡封面"
+                className="absolute inset-0 bg-top bg-cover"
+                fallbackClassName="bg-primary/85"
+            />
             <div className="relative z-[2] flex h-full w-full flex-col p-2.5">
                 <div className="mb-2.5 text-xs opacity-80">数据</div>
                 <span className="text-4xl font-bold leading-none">访问统计</span>

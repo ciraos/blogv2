@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="图片加载失败">
+  <rect width="64" height="64" rx="14" fill="#6b7280" fill-opacity="0.16" />
+  <circle cx="24" cy="24" r="4.5" fill="#6b7280" fill-opacity="0.55" />
+  <path d="M15 47l11.5-14 8 9 5.5-6.5L49 47z" fill="#6b7280" fill-opacity="0.55" />
+</svg>

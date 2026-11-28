@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LinkIcon } from "lucide-react";
 
+import { SafeImage } from "@/components/ui/safe-image";
 import { resolveAssetUrl } from "@/lib/utils";
 
 /**
@@ -43,8 +44,14 @@ export function PageBanner({ background, tip, title, description, action }: Page
         >
             {bg && (
                 <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={bg} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                    {/* 背景图是后台可配的（essay.top_background / moments.top_background / album.banner.background），
+                        配错或后端回 404 时由 SafeImage 换成占位图并 warn 一次，避免整块横幅变成裂图 */}
+                    <SafeImage
+                        src={bg}
+                        alt=""
+                        context="页面横幅背景"
+                        className="absolute inset-0 h-full w-full object-cover"
+                    />
                     {/* 遮罩：白字压在任意背景图上都可读（深浅色主题一致） */}
                     <div className="absolute inset-0 bg-black/35" />
                 </>

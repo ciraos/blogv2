@@ -1,7 +1,7 @@
 import Link from "next/link";
-import Image from "next/image";
 
 import type { PostItem } from "@/types/articles";
+import { CoverImage } from "@/components/(blog)/cover-image";
 import { formatPostDate, toPlainSummary, resolvePostCover } from "@/lib/post-display";
 
 /** 只接受看起来像颜色值的字符串，其余（空值/脏数据）回退默认样式 */
@@ -42,9 +42,10 @@ export function ArticleCardGrid({ article, defaultCover, enablePrimaryColorTag =
             className="group flex h-full flex-col overflow-hidden rounded-[var(--surface-r)] border border-border/60 bg-card transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_14px_36px_-22px_rgba(0,0,0,0.45)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
         >
             <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
-                <Image
+                <CoverImage
                     src={cover}
                     alt={article.title}
+                    context="卡片网格封面"
                     fill
                     priority={priority}
                     sizes="(min-width: 640px) 46vw, 92vw"

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { SubscribeDialog } from "@/components/(blog)/subscribe-dialog";
+import { SafeImage } from "@/components/ui/safe-image";
 
 export interface PostActionsConfig {
     /** 站点名称 */
@@ -96,10 +97,10 @@ export function PostActions({
             <div className="flex flex-col items-center gap-2">
                 {userAvatar && (
                     <Link href={siteUrl} target="_blank" className="block relative z-10 -mt-12">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                        <SafeImage
                             src={userAvatar}
                             alt="站长头像"
+                            context="站长头像（文章底部）"
                             className="size-16 rounded-full border-2 border-white object-cover shadow-sm dark:border-border"
                         />
                     </Link>

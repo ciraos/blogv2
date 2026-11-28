@@ -1,7 +1,8 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 
 import { AboutEquipmentMini, AboutSiteMap, AboutStatsGrid, AboutTimeline, type TimelineItem } from "@/components/(blog)/about-sections";
 import { AboutNowBar } from "@/components/(blog)/about-now-bar";
+import { SafeImage } from "@/components/ui/safe-image";
 
 import { getLatestCommentsApi, getPublicArticlesApi, getPublicEssaysApi } from "@/lib/api";
 import { getMusicPlaylist } from "@/lib/music";
@@ -169,8 +170,7 @@ export default async function About() {
                     {avatar && (
                         <div className="avatar-wrap mx-3 md:mx-4">
                             <div className="avatar-img">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={avatar} alt="avatar" />
+                                <SafeImage src={avatar} alt="avatar" context="关于页头像" />
                             </div>
                             <span className="avatar-online" aria-hidden="true" />
                         </div>

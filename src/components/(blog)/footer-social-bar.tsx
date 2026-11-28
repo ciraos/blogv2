@@ -1,6 +1,7 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 
 import { Icon } from "@/components/ui/icon";
+import { SafeImage } from "@/components/ui/safe-image";
 import { resolveAssetUrl } from "@/lib/utils";
 import type { FooterSocialItem } from "@/types/site-config";
 
@@ -47,10 +48,10 @@ export function FooterSocialBar({ left = [], right = [], centerImg }: FooterSoci
 
                 {/* 中：头像 */}
                 {avatar && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <SafeImage
                         src={avatar}
                         alt="site avatar"
+                        context="页脚头像"
                         loading="lazy"
                         className="size-10 rounded-full border-2 border-border object-cover"
                     />

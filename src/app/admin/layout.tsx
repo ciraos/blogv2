@@ -20,6 +20,7 @@ import { resolveThemeSchedule } from "@/lib/scheduled-theme";
 import { isAdminUser } from "@/lib/auth";
 import { getBackendEdition } from "@/lib/edition";
 import { getSiteConfigs, resolveSiteIcons } from "@/lib/site-config";
+import { ImageFallbackWatcher } from "@/components/ui/image-fallback-watcher";
 
 export async function generateMetadata(): Promise<Metadata> {
     // 站点配置接口抖一下不该把整个后台打成 500：取不到就用本地默认图标
@@ -68,6 +69,8 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
                 <style dangerouslySetInnerHTML={{ __html: appearance.css }} />
             </head>
             <body className="bg-background text-foreground">
+              {/* 全站图片兜底：正文/评论里由后端 HTML 注入的 <img>、以及没单独接兜底的 <img> 都由它接管 */}
+              <ImageFallbackWatcher />
                 <ThemeProvider
                     attribute="class"
                     defaultTheme={schedule.initial}

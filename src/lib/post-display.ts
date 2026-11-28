@@ -42,12 +42,21 @@ export function toPlainSummary(text?: string | null): string {
 }
 
 /**
- * 内置默认封面（public/default-cover.png，编辑部风的纸面 + 站名）。
+ * 内置默认封面（public/default-cover-v2.png：编辑部纸感 + 细线框 + 抽象几何标记）。
+ *
+ * 刻意**不含任何文字/站名** —— 这个主题会被别人装到自己的站点上，
+ * 兜底封面一旦写死「葱苓小筑」，别人的站也会跟着显示成我们的站名。
+ *
+ * 为什么文件名带 `-v2`：封面图形换过一版（旧的带站名，新的纯几何）。
+ * next/image 优化器、浏览器、CDN 都按 **URL** 做缓存，同名文件换不掉旧图；
+ * 又不能加 `?v=2` 查询串 —— 本项目 `images.localPatterns` 只允许 `search: ""`，
+ * next/image 会直接报 "using a query string which is not configured in images.localPatterns"。
+ * 所以图形再改版时，**换个文件名**是最稳的缓存失效方式。
  *
  * 取值优先级：文章封面 → 文章顶图 → 站点设置的默认封面（post.default.cover）→ 这张内置图。
  * 也就是说**任何一篇文章都会有封面**，不会再出现「有的行有图、有的行没有」的参差。
  */
-export const DEFAULT_POST_COVER = "/default-cover.png";
+export const DEFAULT_POST_COVER = "/default-cover-v2.png";
 
 /**
  * 解析一篇文章最终使用的封面地址（**已解析过域名**，调用方不要再套 resolveAssetUrl）。

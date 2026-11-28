@@ -99,7 +99,7 @@ export default async function Post({ params }: PostPageProps) {
         throw err;
     }
 
-    // 封面：文章封面 → 文章顶图 → 站点默认封面(post.default.cover) → 内置 default-cover.png
+    // 封面：文章封面 → 文章顶图 → 站点默认封面(post.default.cover) → 内置 default-cover-v2.png
     // requireSiteConfigs 用 React cache 去重，这里再调一次不会多发请求
     const coverConfig = await requireSiteConfigs().catch(() => null);
     const cover = resolvePostCover(article, coverConfig?.post?.default?.cover);
@@ -454,7 +454,7 @@ export default async function Post({ params }: PostPageProps) {
 
             {/* 评论弹幕（comment.barrage_enable）：热评在整个浏览器可视区里从右往左飘。
                 挂在页面根层级（fixed 覆盖视口），不放进封面容器里，免得受 overflow/transform 影响。 */}
-            {barrageEnabled && <CommentBarrage />}
+            {barrageEnabled && <CommentBarrage comments={comments} />}
         </PageWithSidebar>
     );
 }

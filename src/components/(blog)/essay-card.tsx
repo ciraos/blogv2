@@ -34,8 +34,12 @@ function formatRelative(iso: string, now: number): string {
 }
 
 /**
- * 说说的卡片底色：五种低饱和纸色，按 id 稳定取一种（不是随机 —— 同一条说说刷新前后颜色一致）。
- * 深浅色各一份：浅色用 50 号浅底，深色用同色系 6% 透明度，避免在暗背景上炸眼。
+ * 说说的卡片底色：八种低饱和纸色，按 id 稳定取一种（不是随机 —— 同一条说说刷新前后颜色一致）。
+ * 深浅色各一份：浅色用 100 号浅底，深色用同色系 6% 透明度，避免在暗背景上炸眼。
+ *
+ * 数量从 5 加到 8：以前只有 5 色，而 id 是 1、2、3… 连号，`hash % 5` 会退化成
+ * 「emerald→amber→teal→rose→violet」的整齐循环，第 6 张和第 1 张同色，一眼就看出重复。
+ * 8 色 + FNV 散列后周期变长、顺序变乱，视觉上不再像“循环贴纸”。
  */
 const ESSAY_TONES = [
     { bg: "bg-amber-100/80 dark:bg-amber-400/[0.06]" },
@@ -43,13 +47,28 @@ const ESSAY_TONES = [
     { bg: "bg-rose-100/80 dark:bg-rose-400/[0.06]" },
     { bg: "bg-violet-100/80 dark:bg-violet-400/[0.06]" },
     { bg: "bg-emerald-100/80 dark:bg-emerald-400/[0.06]" },
+    { bg: "bg-sky-100/80 dark:bg-sky-400/[0.06]" },
+    { bg: "bg-orange-100/80 dark:bg-orange-400/[0.06]" },
+    { bg: "bg-lime-100/80 dark:bg-lime-400/[0.06]" },
 ] as const;
 
-function toneFor(id: string | number) {
+/** 色板大小：瀑布流里做「相邻不撞色」时要用 */
+export const ESSAY_TONE_COUNT = ESSAY_TONES.length;
+
+/**
+ * id → 色板下标。
+ *
+ * 用 FNV-1a 而不是 `hash*31`：后者对单字符 id（"1"、"2"…）等于字符码本身，
+ * `% N` 就是等差数列，会出现整齐的颜色循环。
+ */
+export function essayToneIndex(id: string | number): number {
     const key = String(id);
-    let hash = 0;
-    for (let i = 0; i < key.length; i += 1) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
-    return ESSAY_TONES[hash % ESSAY_TONES.length];
+    let hash = 2166136261 >>> 0;
+    for (let i = 0; i < key.length; i += 1) {
+        hash ^= key.charCodeAt(i);
+        hash = Math.imul(hash, 16777619) >>> 0;
+    }
+    return hash % ESSAY_TONE_COUNT;
 }
 
 interface EssayCardProps {
@@ -57,11 +76,13 @@ interface EssayCardProps {
     onImageClick: (index: number) => void;
     /** 点击右下角「评论」：把该条说说作为引用带到页面底部的评论区 */
     onComment: (essay: Essay) => void;
+    /** 底色下标（瀑布流会传入「相邻不撞色」的结果；不传则按 id 自己算） */
+    toneIndex?: number;
 }
 
 /** 即刻 / 说说卡片（对齐线上格式：文字 + 方形缩略图 + 虚线 + 底部信息条） */
-export function EssayCard({ essay, onImageClick, onComment }: EssayCardProps) {
-    const tone = toneFor(essay.id);
+export function EssayCard({ essay, onImageClick, onComment, toneIndex }: EssayCardProps) {
+    const tone = ESSAY_TONES[(toneIndex ?? essayToneIndex(essay.id)) % ESSAY_TONE_COUNT];
     const images = (essay.image ?? [])
         .map((url) => resolveAssetUrl(url))
         .filter((url): url is string => url !== null);

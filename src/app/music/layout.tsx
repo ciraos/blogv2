@@ -8,6 +8,7 @@ import { TopProgress } from "@/components/ui/top-progress";
 import { getHeaderData } from "@/lib/header-data";
 import { getSiteConfigs } from "@/lib/site-config";
 import { resolveThemeSchedule } from "@/lib/scheduled-theme";
+import { ImageFallbackWatcher } from "@/components/ui/image-fallback-watcher";
 
 export default async function MusicLayout({ children }: Readonly<{ children: React.ReactNode }>) {
     const config = await getSiteConfigs();
@@ -21,6 +22,8 @@ export default async function MusicLayout({ children }: Readonly<{ children: Rea
             suppressHydrationWarning
         >
             <body>
+              {/* 全站图片兜底：正文/评论里由后端 HTML 注入的 <img>、以及没单独接兜底的 <img> 都由它接管 */}
+              <ImageFallbackWatcher />
                 <ThemeProvider
                     attribute="class"
                     defaultTheme={schedule.initial}

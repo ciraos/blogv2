@@ -9,6 +9,7 @@ import { resolveAppearance } from "@/lib/appearance";
 import { resolveThemeSchedule } from "@/lib/scheduled-theme";
 import { getSiteConfigs, resolveSiteIcons } from "@/lib/site-config";
 import { quoteOfDay, siteDays } from "@/lib/auth-quotes";
+import { ImageFallbackWatcher } from "@/components/ui/image-fallback-watcher";
 
 export async function generateMetadata(): Promise<Metadata> {
     // 与整页共用同一份配置（lib/site-config.ts 用 React cache 同请求去重），不再单独 fetch；
@@ -38,6 +39,8 @@ export default async function AuthLayout({ children }: Readonly<{ children: Reac
                 <style dangerouslySetInnerHTML={{ __html: appearance.css }} />
             </head>
             <body className="bg-background text-foreground">
+              {/* 全站图片兜底：正文/评论里由后端 HTML 注入的 <img>、以及没单独接兜底的 <img> 都由它接管 */}
+              <ImageFallbackWatcher />
                 <ThemeProvider
                     attribute="class"
                     defaultTheme={schedule.initial}

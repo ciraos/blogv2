@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { headers } from "next/headers";
 import {
     ArrowRight,
@@ -14,6 +14,8 @@ import { CommentAvatar } from "@/components/(blog)/comment-avatar";
 import { PostToc } from "@/components/(blog)/post-toc";
 import { AuthorGreeting } from "@/components/(blog)/author-greeting";
 import { Icon } from "@/components/ui/icon";
+import { SafeBackground } from "@/components/ui/safe-background";
+import { SafeImage } from "@/components/ui/safe-image";
 import { collectTags } from "@/lib/articles";
 import { getLatestCommentsApi, getPublicArticlesApi, type RecentComment } from "@/lib/api";
 import { getAllPublicArticlesCached, getPublicArchivesCached } from "@/lib/public-content-cache";
@@ -49,18 +51,18 @@ function AuthorCard({ config }: { config: SiteConfig }) {
                     <div className="group relative mx-auto mt-4 flex w-full cursor-pointer items-center justify-center">
                         {/* 头像（含状态图标）：悬浮时缩小消失（自定义类 author-avatar-hover，见 globals.css） */}
                         <div className="author-avatar-hover relative transition-all duration-500">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
+                            <SafeImage
                                 src={avatar}
                                 alt={config.APP_NAME || "头像"}
+                                context="站长头像（侧栏作者卡）"
                                 loading="lazy"
                                 className="size-24 rounded-full border-[5px] border-white object-cover"
                             />
                             {author.statusImg && (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
+                                <SafeImage
                                     src={author.statusImg}
                                     alt="状态"
+                                    context="作者状态图标"
                                     loading="lazy"
                                     className="absolute -bottom-1 -right-1 size-8 rounded-full bg-white object-contain"
                                 />
@@ -155,26 +157,31 @@ function WechatCard({
     blurBackground: string;
     link?: string;
 }) {
-    const faceStyle = { backgroundImage: `url(${face})`, backgroundSize: "100%" };
-    const backFaceStyle = { backgroundImage: `url(${backFace})`, backgroundSize: "100%" };
-
     const inner = (
         <>
             {/* 模糊背景：悬浮时下滑淡出（官方 CardWechat 的 ::before 行为） */}
             {blurBackground && (
-                <div
+                <SafeBackground
+                    src={blurBackground}
+                    context="微信卡片模糊背景"
                     className="absolute inset-0 bg-cover bg-center transition-all duration-300 group-hover:translate-y-full group-hover:opacity-0"
-                    style={{ backgroundImage: `url(${blurBackground})` }}
                 />
             )}
             <div className="relative z-[1] h-[110px] w-[235px] [perspective:1000px]">
                 <div className="h-full w-full transition-transform duration-300 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)]">
                     {/* 正面 */}
-                    <div className="absolute inset-0 bg-center bg-no-repeat [backface-visibility:hidden]" style={faceStyle} />
+                    <SafeBackground
+                        src={face}
+                        context="微信卡片正面二维码"
+                        className="absolute inset-0 bg-center bg-no-repeat [backface-visibility:hidden]"
+                        style={{ backgroundSize: "100%" }}
+                    />
                     {/* 背面（预先翻转 180°，正面朝外时正好背对视线） */}
-                    <div
+                    <SafeBackground
+                        src={backFace}
+                        context="微信卡片背面"
                         className="absolute inset-0 bg-center bg-no-repeat [backface-visibility:hidden] [transform:rotateY(180deg)]"
-                        style={backFaceStyle}
+                        style={{ backgroundSize: "100%" }}
                     />
                 </div>
             </div>

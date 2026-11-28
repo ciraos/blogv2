@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import type { PostItem } from "@/types/articles";
+import { CoverImage } from "@/components/(blog)/cover-image";
 import { formatPostDate, resolvePostCover, toPlainSummary } from "@/lib/post-display";
 
 interface HomeLeadStoryProps {
@@ -65,9 +65,10 @@ export function HomeLeadStory({ article, defaultCover }: HomeLeadStoryProps) {
 
                 {cover && (
                     <div className="relative aspect-[3/2] w-full shrink-0 overflow-hidden rounded-[6px] border border-border/60 sm:w-[360px]">
-                        <Image
+                        <CoverImage
                             src={cover}
                             alt={article.title}
+                            context="首页头条封面"
                             fill
                             sizes="(max-width: 640px) 100vw, 360px"
                             className="object-cover"

@@ -1,10 +1,10 @@
-﻿/* eslint-disable @next/next/no-img-element -- 站点 Logo 是后端 /static 下的静态图，走 rewrites 同源代理，用不上 next/image */
 "use client";
 
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 
+import { SafeImage } from "@/components/ui/safe-image";
 import { clearAutoThemeManagement } from "@/lib/scheduled-theme";
 
 /**
@@ -46,18 +46,23 @@ export function AuthCard({
                 <Sun className="hidden size-4 dark:block" />
             </button>
 
-            {/* 窄屏品牌头（宽屏由左栏的刊头承担） */}
+            {/* 窄屏品牌头（宽屏由左栏的刊头承担）。logo 是后台可配的，配错时 SafeImage 换成
+                /favicon.ico 并 warn 一次，避免登录页顶部出现裂图 */}
             <div className="mb-8 lg:hidden">
                 <Link href="/" aria-label={`返回 ${appName} 首页`} className="inline-block">
-                    <img
+                    <SafeImage
                         src={logoDay}
                         alt={appName}
+                        context="站点 Logo（日间，窄屏）"
+                        fallbackSrc="/favicon.ico"
                         className="h-9 w-auto max-w-[160px] object-contain dark:hidden"
                     />
-                    <img
+                    <SafeImage
                         src={logoNight}
                         alt=""
                         aria-hidden="true"
+                        context="站点 Logo（夜间，窄屏）"
+                        fallbackSrc="/favicon.ico"
                         className="hidden h-9 w-auto max-w-[160px] object-contain dark:block"
                     />
                 </Link>

@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, EyeOff, MessageSquareQuote } from "lucide-react";
 
+import type { CommentWithChildren, RecentComment } from "@/lib/api";
+
 interface BarrageItem {
     id: string;
     nickname: string;
@@ -15,27 +17,37 @@ const HIDDEN_KEY = "blog:barrage-hidden";
 /** 一次最多飘几条：太多会把封面糊死 */
 const MAX_ITEMS = 10;
 
-/** 后端 /public/comments/latest 的单条结构（只取用得到的字段） */
-interface LatestComment {
-    id: string;
-    nickname: string;
-    content?: string;
-    content_html?: string;
-    is_admin_comment?: boolean;
-}
-
 /** 从 HTML 里剥纯文本：弹幕只显示一行摘要 */
-function toText(comment: LatestComment): string {
+function toText(comment: Pick<RecentComment, "content" | "content_html">): string {
     const raw = (comment.content ?? "").trim() || (comment.content_html ?? "").replace(/<[^>]*>/g, " ");
     return raw.replace(/\s+/g, " ").trim();
 }
 
 /**
+ * 稳定的伪随机排序键（FNV-1a）。
+ *
+ * 用 hash 而不是 `Math.random()`：① `Math.random()` 在 render 期间调用会被 react-hooks/purity 拦；
+ * ② 随机排序会让同一条评论每次重渲染都换位置，弹幕轨道（用 id 做种子）与内容对不上，看着在“跳”。
+ */
+function shuffleKey(id: string): number {
+    let hash = 2166136261 >>> 0;
+    for (let i = 0; i < id.length; i += 1) {
+        hash ^= id.charCodeAt(i);
+        hash = Math.imul(hash, 16777619) >>> 0;
+    }
+    return hash;
+}
+
+/**
  * 评论弹幕（后台 `comment.barrage_enable`，官方叫「文章详情页评论弹幕（热评）」）。
  *
- * 形态：**整个浏览器可视区域**从右往左飘过几条最新热评 —— 每条「昵称：摘要」，点一下滚到评论区。
+ * 形态：**整个浏览器可视区域**从右往左飘过几条评论 —— 每条「昵称：摘要」，点一下滚到评论区。
  * 所以弹幕层是 `fixed inset-0`（铺满视口，而不是窝在封面里），单条自己的动画从视口右缘飞进、
- * 从左缘飞出。数据来自 `GET /public/comments/latest`（站内同源代理），不依赖本页评论。
+ * 从左缘飞出。
+ *
+ * 数据来源：**只取本页评论**（由文章页把自己已经拉到的 `comments` 传进来，含子回复）。
+ * 以前这里请求 `GET /public/comments/latest`（全站最新评论），在文章页飘的却是别的文章的评价，
+ * 语义不对而且多一次请求；后端那个接口也没有 `target_path` 过滤参数，只能靠前端换数据源。
  *
  * 细节：
  *  · 每条的轨道（纵向位置）、时长、延迟随机，避免整齐划一像跑马灯；
@@ -44,18 +56,34 @@ function toText(comment: LatestComment): string {
  *  · 系统开了「减少动态效果」→ 不飘，改成静态列 2 条，避免前庭不适；
  *  · z-index 压在页头（z-50）之下：弹幕飘过但点得到导航，只有弹幕本身可点。
  */
-export function CommentBarrage() {
-    const [items, setItems] = useState<BarrageItem[]>([]);
+export function CommentBarrage({ comments = [] }: { comments?: CommentWithChildren[] }) {
     const [hidden, setHidden] = useState(true); // 先按隐藏渲染，挂载后再读 localStorage（避免 SSR 抖动）
     const [paused, setPaused] = useState(false);
     const [reduceMotion, setReduceMotion] = useState(false);
     const hostRef = useRef<HTMLDivElement>(null);
 
-    // 读偏好 + 拉热评（都放在挂载后做，SSR 阶段不碰 localStorage / 网络）
+    /** 本页评论 → 弹幕条目（含一级子回复；按 id 散列排一遍，避免总是前几条，也不引入随机） */
+    const items = useMemo<BarrageItem[]>(() => {
+        const flat: RecentComment[] = [];
+        for (const comment of comments) {
+            flat.push(comment);
+            for (const child of comment.children ?? []) flat.push(child);
+        }
+        return flat
+            .map((comment) => ({
+                id: comment.id,
+                nickname: comment.nickname,
+                text: toText(comment).slice(0, 80),
+                isAdmin: comment.is_admin_comment === true,
+            }))
+            .filter((item) => item.text.length > 0)
+            .sort((a, b) => shuffleKey(a.id) - shuffleKey(b.id))
+            .slice(0, MAX_ITEMS);
+    }, [comments]);
+
+    // 读偏好 + 监听「减少动态效果」（都放在挂载后做，SSR 阶段不碰 localStorage / matchMedia）
     useEffect(() => {
-        let cancelled = false;
         const timer = window.setTimeout(() => {
-            if (cancelled) return;
             try {
                 setHidden(localStorage.getItem(HIDDEN_KEY) === "1");
             } catch {
@@ -64,34 +92,7 @@ export function CommentBarrage() {
             setReduceMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
         }, 0);
 
-        void (async () => {
-            try {
-                const res = await fetch("/api/public/comments/latest?page=1&pageSize=20", { cache: "no-store" });
-                if (!res.ok) return;
-                const json = (await res.json()) as { data?: { list?: LatestComment[] } };
-                if (cancelled) return;
-                const list = json.data?.list ?? [];
-                const picked = list
-                    .map((comment) => ({
-                        id: comment.id,
-                        nickname: comment.nickname,
-                        text: toText(comment).slice(0, 80),
-                        isAdmin: comment.is_admin_comment === true,
-                    }))
-                    .filter((item) => item.text.length > 0)
-                    // 随机抽几条，让每次进页面看到的组合不一样
-                    .sort(() => Math.random() - 0.5)
-                    .slice(0, MAX_ITEMS);
-                setItems(picked);
-            } catch {
-                // 拉不到就不显示弹幕（纯装饰，不能影响正文）
-            }
-        })();
-
-        return () => {
-            cancelled = true;
-            window.clearTimeout(timer);
-        };
+        return () => window.clearTimeout(timer);
     }, []);
 
     /** 每条弹幕的随机轨道 / 时长 / 延迟：用 id 做种子，重渲染不会跳来跳去 */

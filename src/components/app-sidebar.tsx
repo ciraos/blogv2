@@ -9,6 +9,7 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar"
+import { SafeImage } from "@/components/ui/safe-image"
 import { SidebarCollapseButton } from "@/components/sidebar-collapse-button"
 import {
   LayoutDashboardIcon,
@@ -134,13 +135,14 @@ export function AppSidebar({
         <div className="flex items-center gap-2 px-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
           <SidebarCollapseButton />
           <div className="flex min-w-0 items-center gap-2 group-data-[collapsible=icon]:hidden">
-            {/* 站点图标：优先用站点配置里的 ICON_URL（千站千面），取不到才回退到通用图标 */}
+            {/* 站点图标：优先用站点配置里的 ICON_URL（千站千面），取不到才回退到通用图标；
+                配置了但加载失败（例如后端 404）时由 SafeImage 换成占位图并 warn 一次 */}
             {config?.ICON_URL ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                    src={resolveAssetUrl(config.ICON_URL) ?? ""}
+                <SafeImage
+                    src={resolveAssetUrl(config.ICON_URL)}
                     alt=""
                     aria-hidden="true"
+                    context="后台侧栏站点图标"
                     className="size-5 shrink-0 rounded-sm object-cover"
                 />
             ) : (

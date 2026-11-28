@@ -6,7 +6,7 @@ import type { Essay } from "@/types/essays";
 import { toPlainText, useCommentQuote } from "@/hooks/use-comment-quote";
 import { resolveAssetUrl } from "@/lib/utils";
 
-import { EssayCard } from "./essay-card";
+import { EssayCard, ESSAY_TONE_COUNT, essayToneIndex } from "./essay-card";
 import { EssayLightbox } from "./essay-lightbox";
 
 const GAP = 16;
@@ -63,6 +63,25 @@ export function EssayWaterfall({
         return list;
     }, [essays]);
 
+    /**
+     * 底色下标：先按 id 稳定取色，再跟上一张比对 —— 撞色就顺延一格。
+     *
+     * 为什么还要这一步：色板只有 8 种，id 又是连号，纯 hash 仍可能让相邻两张同色；
+     * 一句「顺延一格」就能保证瀑布流里不会出现两块一模一样颜色的卡片挨在一起，
+     * 同时每条说说自己的颜色依旧是确定的（同一页刷新不变）。
+     */
+    const toneIndexes = useMemo(() => {
+        const list: number[] = [];
+        let prev = -1;
+        for (const e of essays) {
+            let idx = essayToneIndex(e.id);
+            if (idx === prev) idx = (idx + 1) % ESSAY_TONE_COUNT;
+            list.push(idx);
+            prev = idx;
+        }
+        return list;
+    }, [essays]);
+
     const layout = useCallback(() => {
         const container = containerRef.current;
         if (!container) return;
@@ -111,6 +130,7 @@ export function EssayWaterfall({
                     >
                         <EssayCard
                             essay={essay}
+                            toneIndex={toneIndexes[i]}
                             onImageClick={(local) => setLightbox(offsets[i] + local)}
                             onComment={handleComment}
                         />

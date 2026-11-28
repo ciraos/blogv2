@@ -1,7 +1,7 @@
 import Link from "next/link";
-import Image from "next/image";
 
 import type { PostItem } from "@/types/articles";
+import { CoverImage } from "@/components/(blog)/cover-image";
 import { formatPostDate, toPlainSummary, resolvePostCover } from "@/lib/post-display";
 
 /** 只接受看起来像颜色值的字符串，其余（空值/脏数据）回退默认样式 */
@@ -89,7 +89,14 @@ export function ArticleCard({ article, defaultCover, enablePrimaryColorTag = fal
 
             {cover && (
                 <div className="relative mt-0.5 hidden aspect-[3/2] w-[112px] overflow-hidden rounded-[6px] border border-border/60 sm:block">
-                    <Image src={cover} alt={article.title} fill sizes="112px" className="object-cover" />
+                    <CoverImage
+                        src={cover}
+                        alt={article.title}
+                        context="列表文章封面"
+                        fill
+                        sizes="112px"
+                        className="object-cover"
+                    />
                 </div>
             )}
         </Link>
